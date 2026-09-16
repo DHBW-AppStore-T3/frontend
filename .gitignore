@@ -35,3 +35,6 @@ vite.config.d.ts
 
 # Vitest coverage output
 coverage/
+graphify-out/cache/
+graphify-out/.graphify_python
+graphify-out/.graphify_root
