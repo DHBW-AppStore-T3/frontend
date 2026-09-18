@@ -2,10 +2,10 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     tags: ['v*.*.*']
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 env:
   REGISTRY: ghcr.io
@@ -65,6 +65,14 @@ jobs:
           COLOR=$(node -e "const p=$PCT; console.log(p>=80?'brightgreen':p>=70?'green':p>=50?'yellow':p>=30?'orange':'red')")
           printf '{"schemaVersion":1,"label":"coverage","message":"%s%%","color":"%s"}\n' "$PCT" "$COLOR" > coverage/badge.json
           echo "Coverage: ${PCT}% (${COLOR})"
+
+      - name: Test Coverage Gate (enforce on main)
+        if: (github.ref == 'refs/heads/main' || github.base_ref == 'main') && always()
+        run: |
+          MIN_COVERAGE=60.0
+          PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
+          echo "Current frontend coverage: ${PCT}%, required minimum: ${MIN_COVERAGE}%"
+          node -e "const p = Number(require('./coverage/coverage-summary.json').total.lines.pct); if (p < $MIN_COVERAGE) { console.error('❌ Coverage Gate Failed: ' + p + '% < $MIN_COVERAGE%'); process.exit(1); } else { console.log('✅ Coverage Gate Passed: ' + p + '% >= $MIN_COVERAGE%'); }"
 
       - name: Upload coverage report
         if: always()
@@ -312,7 +320,7 @@ jobs:
     name: "📦 Push"
     runs-on: ubuntu-latest
     needs: [build, image-scan]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
     timeout-minutes: 20
     permissions:
       contents: read
@@ -342,6 +350,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -368,13 +377,13 @@ jobs:
     name: "🚀 Trigger Staging Deploy"
     runs-on: ubuntu-latest
     needs: [push]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
 
     steps:
       - name: Trigger staging deployment
         run: |
           gh workflow run staging.yml \
-            --repo six7-click-n-deploy/deployment \
-            --ref main
+            --repo DHBW-AppStore-T3/deployment \
+            --ref dev
         env:
           GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
