@@ -82,50 +82,12 @@ jobs:
           path: coverage
           retention-days: 14
 
-  # ================================================================
-  # 📊 COVERAGE — download report + publish to GitHub Pages
-  # ================================================================
-  # Downloads the coverage/ artifact produced by the test job and
-  # (only on main) deploys it to GitHub Pages. On PRs the job still
-  # runs and re-attaches the artifact so the green check is visible
-  # — only the Pages-specific steps are skipped.
-  #
-  # The Pages source for this repo must be set to "GitHub Actions"
-  # under Settings → Pages once. Until then, the deploy step fails
-  # but the artifact is still produced by the test job.
-  coverage:
-    name: "📊 Coverage"
-    runs-on: ubuntu-latest
-    needs: [test]
-    if: ${{ !cancelled() }}
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    concurrency:
-      group: pages
-      cancel-in-progress: false
-
-    steps:
-      - name: Download coverage report
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-html
-          path: coverage
-
-      - name: Configure Pages
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: coverage
-
-      - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/deploy-pages@v4
+  # The 📊 Coverage job used to live here (download the coverage-html
+  # artifact from `test`, then publish to GitHub Pages on main). Removed:
+  # Pages was never actually enabled for this repo, the README badge
+  # pointed at the pre-rename org and had never resolved either, and
+  # without the Pages steps the job did nothing `test`'s own
+  # "Upload coverage report" step doesn't already do.
 
   # ================================================================
   # 🔒 SECURITY (deps + filesystem) — blocks on HIGH/CRITICAL
