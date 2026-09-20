@@ -136,5 +136,35 @@ export const useAuthStore = defineStore('auth', {
       if (!this.user?.role) return false
       return roles.includes(this.user.role as UserRole)
     },
+
+    async setDevUser(email: string) {
+      await keycloak.setDevUser(email)
+      this.user = {
+        userId: `dev-${email}`,
+        email,
+        username: email,
+        role: 'student' as UserRole,
+        courseId: null,
+        created_at: new Date().toISOString(),
+      } as User
+    },
+
+    async setLtiUser(email: string, token: string, role: UserRole = 'student') {
+      await keycloak.setLtiUser(email, token)
+      const stub: User = {
+        userId: `lti-${email}`,
+        email,
+        username: email,
+        role,
+        courseId: null,
+        created_at: new Date().toISOString(),
+      }
+      this.user = stub
+      // Replace the stub with the real DB record (correct role + name fields).
+      // On failure keep the stub so the UI never goes blank.
+      this.fetchMe().catch(() => {
+        if (!this.user) this.user = stub
+      })
+    },
   },
 })

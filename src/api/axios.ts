@@ -15,9 +15,16 @@ api.interceptors.request.use(
   async (config) => {
     const keycloak = useKeycloak()
     const token = await keycloak.getAccessToken()
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+
+    if (import.meta.env.DEV) {
+      const devEmail = keycloak.getDevEmail()
+      if (devEmail) {
+        config.headers['X-Dev-User'] = devEmail
+      }
     }
     return config
   },
@@ -37,7 +44,11 @@ api.interceptors.response.use(
       
       if (!hasValidToken) {
         // Clear any stored data
-        localStorage.removeItem('user')
+        try {
+          localStorage.removeItem('user')
+        } catch {
+          /* storage blocked in embedded iframe */
+        }
         
         // Redirect to login if not already there
         if (window.location.pathname !== '/login') {

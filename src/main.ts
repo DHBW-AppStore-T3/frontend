@@ -7,13 +7,42 @@ import { useAuthStore } from '@/stores/auth.store'
 
 import '@/style.css'
 
-const app = createApp(App)
+;(async () => {
+    const app = createApp(App)
+    app.use(createPinia())
+    app.use(router)
+    app.use(i18n)
 
-app.use(createPinia())
-app.use(router)
-app.use(i18n)
-app.mount('#app')
+    const auth = useAuthStore()
+    const params = new URLSearchParams(window.location.search)
 
-// Initialize auth store (loads user from localStorage if token exists)
-const auth = useAuthStore()
-auth.initialize()
+    // LTI launch: backend redirects here with ?lti=1&email=...&session_token=...
+    // Works in both dev and production — no DEV guard.
+    const ltiEmail = params.get('lti') === '1' ? params.get('email') : null
+    const ltiToken = params.get('session_token')
+
+    // SSO bridge from self-service-ui: dev-only, passes user via ?sso_handoff=email
+    const ssoHandoff = import.meta.env.DEV ? params.get('sso_handoff') : null
+
+    if (ltiEmail && ltiToken) {
+        const ltiRoleRaw = params.get('role') ?? 'student'
+        const ltiRole = ltiRoleRaw === 'instructor' ? 'teacher' : ltiRoleRaw as import('@/types').UserRole
+        await auth.setLtiUser(ltiEmail, ltiToken, ltiRole)
+        const clean = new URL(window.location.href)
+        for (const k of ['lti', 'email', 'name', 'course', 'courseId', 'role', 'synced', 'session_token']) {
+            clean.searchParams.delete(k)
+        }
+        window.history.replaceState({}, '', clean.toString())
+    } else if (ssoHandoff) {
+        // SSO bridge: set up the user BEFORE mounting so the router guard sees isAuthenticated=true.
+        await auth.setDevUser(decodeURIComponent(ssoHandoff))
+        const clean = new URL(window.location.href)
+        clean.searchParams.delete('sso_handoff')
+        window.history.replaceState({}, '', clean.toString())
+    } else {
+        await auth.initialize()
+    }
+
+    app.mount('#app')
+})()
+
