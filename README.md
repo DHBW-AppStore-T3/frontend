@@ -19,7 +19,33 @@ make dev-logs-frontend      # Frontend-Logs verfolgen
 make shell-frontend         # interaktive Shell im Container
 ```
 
-Lint, Type-Check und Tests werden im Frontend-Container ausgeführt — `make shell-frontend` öffnet eine Shell, in der die üblichen `npm run lint`, `npm run type-check`, `npm run test:unit` und `npm run build` zur Verfügung stehen.
+Lint, Type-Check und Tests laufen im Frontend-Container — `make shell-frontend` öffnet eine Shell. Die tatsächlich vorhandenen Skripte:
+
+```bash
+npm run lint            # ESLint (eslint.config.js)
+npm run lint:fix        # ESLint mit --fix
+npx vue-tsc -b --noEmit # Type-Check (kein eigenes npm-Skript)
+npm run test            # Vitest, einmaliger Lauf
+npm run test:coverage   # Vitest + Coverage (istanbul)
+npm run build           # vue-tsc + vite build
+```
+
+### API-Typen aus dem Backend-Schema
+
+`src/types/api.generated.ts` wird aus `src/types/openapi.json` erzeugt und **nicht von Hand bearbeitet**. Die Datei `openapi.json` ist eine committete Kopie des Backend-Schemas — FastAPI ist laut HARNESS.md die Single Source of Truth für den API-Contract.
+
+Bei einer Backend-API-Änderung:
+
+```bash
+# 1. im backend-Repo: Schema exportieren
+poetry run python scripts/export_openapi.py        # oder: make openapi aus deployment/
+# 2. Ergebnis nach frontend/src/types/openapi.json kopieren
+# 3. im frontend-Repo:
+npm run gen:api-types
+npx vue-tsc -b --noEmit
+```
+
+Schritt 3 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die User-Typen bereits aus dem generierten Schema ab; die übrigen Blöcke sind noch handgepflegt und sollten bei Gelegenheit nachgezogen werden.
 
 ## Technologie-Stack
 

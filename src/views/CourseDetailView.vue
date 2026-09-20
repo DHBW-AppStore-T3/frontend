@@ -5,6 +5,7 @@ import { GraduationCap, ArrowLeft, UserMinus, UserPlus, Search, X, Loader2, Edit
 import { useCourseStore } from '@/stores/course.store'
 import { userApi } from '@/api/user.api'
 import { useToast } from '@/composables/useToast'
+import { extractErrorMessage } from '@/utils/http-error'
 import { useRole } from '@/composables/useRole'
 import { roleLabelKey } from '@/i18n/role-labels'
 import { useI18n } from 'vue-i18n' // <-- i18n importieren
@@ -52,7 +53,7 @@ const saveName = async () => {
     await courseStore.updateCourse(courseId.value, { name: editNameValue.value })
     toast.success(t('CourseDetailView.toasts.nameUpdated'))
     isEditingName.value = false
-  } catch (err) {
+  } catch (_err) {
     toast.error(t('CourseDetailView.toasts.nameUpdateError'))
   }
 }
@@ -178,7 +179,7 @@ const submitAddMembers = async () => {
     }
     closeAddModal()
   } catch (err: any) {
-    toast.error(err?.response?.data?.detail || t('CourseDetailView.toasts.addError'))
+    toast.error(extractErrorMessage(err, t('CourseDetailView.toasts.addError')))
   } finally {
     isAddingMembers.value = false
   }
@@ -208,7 +209,7 @@ const confirmRemoveMember = async () => {
     showRemoveModal.value = false
     memberToRemove.value = null
   } catch (err: any) {
-    toast.error(err?.response?.data?.detail || t('CourseDetailView.toasts.removeError'))
+    toast.error(extractErrorMessage(err, t('CourseDetailView.toasts.removeError')))
   } finally {
     removingId.value = null
   }

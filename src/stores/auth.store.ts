@@ -36,6 +36,12 @@ export const useAuthStore = defineStore('auth', {
     userId: (state) => state.user?.userId || null,
   },
 
+  // These actions deliberately do NOT use `runRequest` from ./_request.
+  // They wrap Keycloak/OIDC calls, not axios calls: the useful text is on
+  // `err.message`, there is no `response.data.detail` to extract, and
+  // `initialize`/`fetchMe` are promise-cached and log rather than setting
+  // `error`. Routing them through the shared helper would replace real
+  // Keycloak error messages with a generic fallback.
   actions: {
     async initialize() {
       if (initializePromise) return initializePromise

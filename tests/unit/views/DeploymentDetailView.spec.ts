@@ -211,11 +211,18 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
 // 2. Die Tests
 // ---------------------------------------------------------
 
-// TODO: Tests gegen die neue View-Struktur neu schreiben (main hat
-// die Detail-Seite umgebaut: Infrastructure-Panel, MarkdownRenderer,
-// canResendAccess-Gate, neue Failure-Headline-Logik im Log-Viewer,
-// drawer-Wrapper). Bis dahin geskippt.
-describe.skip('DeploymentDetailView.vue', () => {
+// Un-skipped 2026-09 (skipped since 2026-06-29). The TODO listed a
+// batch of UI changes -- infrastructure panel, MarkdownRenderer,
+// canResendAccess gate, drawer wrapper -- as the reason. None of those
+// changed what this suite is about; they moved the DOM out from under
+// selectors like `findAll('div.cursor-pointer')[0]`, which picked the
+// group card by its position among every element carrying a Tailwind
+// utility class.
+//
+// The view now exposes `data-testid` on the group cards, the task-history
+// rows and the delete buttons. Those are a testing contract and survive
+// layout work -- including the component split this file is about to get.
+describe('DeploymentDetailView.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -254,7 +261,13 @@ describe.skip('DeploymentDetailView.vue', () => {
           BaseButton: { template: '<button><slot /></button>' },
           Modal: {
             props: ['show'],
-            template: '<div v-if="$props.show" class="modal"><slot name="title" /><slot /></div>',
+            // Renders the footer slot too -- the confirm/cancel pair lives
+            // there, and a stub that dropped it made the delete-flow test
+            // look like a regression when it was the harness that was stale.
+            template:
+              '<div v-if="$props.show" class="modal">' +
+              '<slot name="title" /><slot /><slot name="footer" />' +
+              '</div>',
           },
         },
       },
@@ -284,7 +297,7 @@ describe.skip('DeploymentDetailView.vue', () => {
     expect(wrapper.text()).toContain('ubuntu:22.04')
     expect(wrapper.text()).not.toContain('# default image')
 
-   const groupCard = wrapper.findAll('div.cursor-pointer')[0]
+    const groupCard = wrapper.findAll('[data-testid="group-card"]')[0]
     expect(groupCard?.text()).toContain('Group A')
 
     await groupCard!.trigger('click')
@@ -315,7 +328,8 @@ describe.skip('DeploymentDetailView.vue', () => {
     const wrapper = mountComponent()
     await flushPromises()
 
-    const taskRow = wrapper.findAll('div.cursor-pointer')[wrapper.findAll('div.cursor-pointer').length - 1]
+    const taskRows = wrapper.findAll('[data-testid="task-row"]')
+    const taskRow = taskRows[taskRows.length - 1]
     expect(taskRow?.text()).toContain('deploy')
 
     await taskRow!.trigger('click')
@@ -332,19 +346,17 @@ describe.skip('DeploymentDetailView.vue', () => {
     const wrapper = mountComponent()
     await flushPromises()
 
-    const buttons = wrapper.findAll('button')
-    const deleteButton = buttons.find((button) => button.text().includes('DeploymentDetailView.deploymentDelete'))
-
-    expect(deleteButton).toBeTruthy()
-    await deleteButton!.trigger('click')
+    const deleteButton = wrapper.find('[data-testid="btn-delete-deployment"]')
+    expect(deleteButton.exists()).toBe(true)
+    await deleteButton.trigger('click')
     await nextTick()
 
     expect(wrapper.find('.modal').exists()).toBe(true)
 
-    const confirmButton = wrapper.findAll('.modal button').find((button) => button.text().includes('DeploymentDetailView.confirmButton'))
-    expect(confirmButton).toBeTruthy()
+    const confirmButton = wrapper.find('[data-testid="btn-confirm-delete"]')
+    expect(confirmButton.exists()).toBe(true)
 
-    await confirmButton!.trigger('click')
+    await confirmButton.trigger('click')
     await flushPromises()
 
     expect(mocks.mockDeleteDeployment).toHaveBeenCalledWith('dep-1')
