@@ -36,6 +36,19 @@ const sshCommandFor = (data: { username?: string; ip?: string; port?: number }):
     return `ssh ${portFlag}${data.username}@${data.ip}`
 }
 
+// Wrap a bare IPv6 literal in brackets so it can be embedded in a
+// host:port string. IPv4 and hostnames pass through untouched.
+const bracketHost = (ip: string): string => (ip.includes(':') ? `[${ip}]` : ip)
+
+// Build a copy-paste RDP command from an account. Windows apps opt in by
+// publishing ``authtype: "rdp"``; only those reach this helper, so apps
+// that predate it keep their existing URL / SSH rendering unchanged.
+// ``mstsc`` needs the IPv6 literal bracketed, hence ``bracketHost``.
+const rdpCommandFor = (data: { username?: string; ip?: string; port?: number }): string => {
+    if (!data.ip) return ''
+    return `mstsc /v:${bracketHost(data.ip)}:${data.port ?? 3389}`
+}
+
 // Build a per-user URL from user_accounts (ip + port), preserving any path
 // suffix the team VM url carries (e.g. "/pgadmin4").
 const userUrlFor = (data: { ip?: string; port?: number }, teamVmUrl?: string): string | null => {
@@ -83,7 +96,7 @@ interface UserAccount {
     port: number
     auth: string
     type?: 'password' | 'ssh_key' | 'oauth' | 'none' | string
-    authtype?: 'ssh' | 'url' | string
+    authtype?: 'ssh' | 'url' | 'rdp' | string
     url?: string
 }
 
@@ -1967,7 +1980,22 @@ const deselectTask = () => {
                                     </button>
                                 </div>
 
-                                <div v-if="member.account.data.ip && member.account.data.port && member.account.data.type !== 'ssh_key' && member.account.data.authtype !== 'ssh' && member.account.data.port !== 22"
+                                <!-- Ready-to-use RDP command line for Windows apps.
+                                     Opt-in via ``authtype: "rdp"`` in user_accounts;
+                                     without it nothing below changes for existing apps. -->
+                                <div v-if="member.account.data.authtype === 'rdp' && member.account.data.ip"
+                                    class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-full">
+                                    <span class="text-gray-400 font-sans text-[10px] uppercase tracking-wider flex-shrink-0">RDP:</span>
+                                    <span class="truncate">{{ rdpCommandFor(member.account.data) }}</span>
+                                    <button
+                                        @click="copyToClipboard(rdpCommandFor(member.account.data), 'rdp-' + member.account.key)"
+                                        class="text-gray-400 hover:text-amber-600 p-0.5 rounded hover:bg-gray-200 transition-colors flex-shrink-0"
+                                        :title="copiedKey === 'rdp-' + member.account.key ? 'Kopiert!' : 'RDP-Befehl kopieren'">
+                                        <component :is="copiedKey === 'rdp-' + member.account.key ? Check : Copy" :size="12" />
+                                    </button>
+                                </div>
+
+                                <div v-if="member.account.data.ip && member.account.data.port && member.account.data.type !== 'ssh_key' && member.account.data.authtype !== 'ssh' && member.account.data.authtype !== 'rdp' && member.account.data.port !== 22"
                                     class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-[280px]">
                                     <span class="text-gray-400 font-sans text-[10px] uppercase tracking-wider flex-shrink-0">URL:</span>
                                     <a :href="userUrlFor(member.account.data, team.vm?.url) ?? ''" target="_blank" rel="noopener noreferrer"
