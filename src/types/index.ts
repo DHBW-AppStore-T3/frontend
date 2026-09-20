@@ -201,7 +201,7 @@ export interface DeploymentUserAccount {
   port?: number;
   auth?: string;
   type?: 'password' | 'ssh_key' | 'oauth' | 'none' | string;
-  authtype?: 'ssh' | 'url' | string;
+  authtype?: 'ssh' | 'url' | 'rdp' | string;
   url?: string;
 }
 
