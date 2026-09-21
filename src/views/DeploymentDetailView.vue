@@ -414,6 +414,46 @@ const DELETE_STATUSES = [
   'success', 'failed', 'cancelled', 'paused', 'pause_failed', 'resume_failed',
 ]
 
+// Cancel is the only action offered while a deploy is still in flight.
+// The backend enforces the same rule; this just keeps the button from
+// appearing when it would only earn a 409.
+const CANCEL_STATUSES = ['pending', 'running']
+
+const canCancel = computed(() => {
+    if (!isOwnerView.value) return false
+    return CANCEL_STATUSES.includes(deployment.value?.status ?? '')
+})
+
+const cancelBusy = ref(false)
+
+// Cancel revokes the worker task and then runs a destroy that also
+// reaps the Packer build instance, so the response is the same 202
+// ``{task_id, status: "destroying"}`` shape the delete path returns and
+// the existing SSE plumbing takes over unchanged.
+const confirmCancel = async () => {
+    if (!deploymentId || cancelBusy.value) return
+    cancelBusy.value = true
+    try {
+        await deploymentStore.cancelDeployment(deploymentId)
+        showCancelModal.value = false
+        toastStore.addToast({
+            type: 'info',
+            message: t('DeploymentDetailView.stopStartedToast'),
+        })
+        await deploymentStore.fetchDeploymentById(deploymentId)
+        await loadTasks()
+    } catch (err) {
+        toastStore.addToast({
+            type: 'error',
+            message: extractErrorMessage(err, t('DeploymentDetailView.stopFailedToast')),
+        })
+    } finally {
+        cancelBusy.value = false
+    }
+}
+
+const showCancelModal = ref(false)
+
 const canDelete = computed(() => {
     if (!isOwnerView.value) return false
     return DELETE_STATUSES.includes(deployment.value?.status ?? '')
@@ -1315,6 +1355,15 @@ const deselectTask = () => {
                     </span>
                 </BaseButton>
 
+                <!-- Stop: only while a worker task is in flight. Revokes
+                     the task and cleans up everything it created, including
+                     the Packer build instance Terraform knows nothing about. -->
+                <BaseButton v-if="canCancel" @click="showCancelModal = true" :disabled="cancelBusy"
+                    class="flex items-center gap-2 px-4 py-2" variant="yellow">
+                    <StopCircle :size="18" />
+                    <span class="font-medium">{{ $t('DeploymentDetailView.deploymentStop') }}</span>
+                </BaseButton>
+
                 <!-- Single Delete button. The backend decides whether this
                      triggers a destroy task or a straight soft-delete based on
                      status. Hidden entirely for members. -->
@@ -2117,6 +2166,27 @@ const deselectTask = () => {
         </div>
 
         <!-- Delete Confirmation Modal -->
+        <!-- Stop Confirmation Modal. Worth a confirm: cancelling throws
+             away an in-flight build that may be 20 minutes in. -->
+        <Modal :show="showCancelModal" @close="showCancelModal = false">
+            <template #title>
+                {{ $t('DeploymentDetailView.confirmStopTitle') }}
+            </template>
+            <template #body>
+                <p class="text-gray-700" v-html="$t('DeploymentDetailView.confirmStopMessage', { name: deployment.name })"></p>
+            </template>
+            <template #footer>
+                <div class="flex justify-end gap-3">
+                    <BaseButton variant="ghost" @click="showCancelModal = false">
+                        {{ $t('DeploymentDetailView.cancelButton') }}
+                    </BaseButton>
+                    <BaseButton variant="yellow" :disabled="cancelBusy" @click="confirmCancel">
+                        {{ $t('DeploymentDetailView.confirmButton') }}
+                    </BaseButton>
+                </div>
+            </template>
+        </Modal>
+
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">
             <template #title>
                 {{ $t('DeploymentDetailView.confirmDeleteTitle') }}

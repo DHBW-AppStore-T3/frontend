@@ -141,6 +141,15 @@ export const useDeploymentStore = defineStore('deployment', {
      * it again under the new "paused" status. Status refresh comes
      * via the next list fetch or the SSE ``succeeded`` event.
      */
+    /**
+     * Cancel an in-flight deployment. Returns the 202
+     * ``{task_id, status: "destroying"}`` response so the detail view
+     * can attach the live stream and watch the cleanup run.
+     */
+    async cancelDeployment(id: string) {
+      return runRequest(this, () => deploymentApi.cancel(id), 'Failed to cancel deployment')
+    },
+
     async pauseDeployment(id: string) {
       return runRequest(this, () => deploymentApi.pause(id), 'Failed to pause deployment')
     },
