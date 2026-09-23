@@ -139,7 +139,7 @@ export const useAuthStore = defineStore('auth', {
 
     async setDevUser(email: string) {
       await keycloak.setDevUser(email)
-      this.user = {
+      const stub: User = {
         userId: `dev-${email}`,
         email,
         username: email,
@@ -147,6 +147,13 @@ export const useAuthStore = defineStore('auth', {
         courseId: null,
         created_at: new Date().toISOString(),
       } as User
+      this.user = stub
+      // Replace the stub with the real DB record — the role there may be
+      // higher than 'student' (e.g. TEACHER assigned via a prior Moodle LTI
+      // launch). On failure keep the stub so the UI never goes blank.
+      this.fetchMe().catch(() => {
+        if (!this.user) this.user = stub
+      })
     },
 
     async setLtiUser(email: string, token: string, role: UserRole = 'student') {
