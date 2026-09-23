@@ -36,6 +36,19 @@ const sshCommandFor = (data: { username?: string; ip?: string; port?: number }):
     return `ssh ${portFlag}${data.username}@${data.ip}`
 }
 
+// Wrap a bare IPv6 literal in brackets so it can be embedded in a
+// host:port string. IPv4 and hostnames pass through untouched.
+const bracketHost = (ip: string): string => (ip.includes(':') ? `[${ip}]` : ip)
+
+// Build a copy-paste RDP command from an account. Windows apps opt in by
+// publishing ``authtype: "rdp"``; only those reach this helper, so apps
+// that predate it keep their existing URL / SSH rendering unchanged.
+// ``mstsc`` needs the IPv6 literal bracketed, hence ``bracketHost``.
+const rdpCommandFor = (data: { username?: string; ip?: string; port?: number }): string => {
+    if (!data.ip) return ''
+    return `mstsc /v:${bracketHost(data.ip)}:${data.port ?? 3389}`
+}
+
 // Build a per-user URL from user_accounts (ip + port), preserving any path
 // suffix the team VM url carries (e.g. "/pgadmin4").
 const userUrlFor = (data: { ip?: string; port?: number }, teamVmUrl?: string): string | null => {
@@ -83,7 +96,7 @@ interface UserAccount {
     port: number
     auth: string
     type?: 'password' | 'ssh_key' | 'oauth' | 'none' | string
-    authtype?: 'ssh' | 'url' | string
+    authtype?: 'ssh' | 'url' | 'rdp' | string
     url?: string
 }
 
@@ -461,6 +474,46 @@ const executeRedeploy = async (address: string) => {
 const DELETE_STATUSES = [
   'success', 'failed', 'cancelled', 'paused', 'pause_failed', 'resume_failed',
 ]
+
+// Cancel is the only action offered while a deploy is still in flight.
+// The backend enforces the same rule; this just keeps the button from
+// appearing when it would only earn a 409.
+const CANCEL_STATUSES = ['pending', 'running']
+
+const canCancel = computed(() => {
+    if (!isOwnerView.value) return false
+    return CANCEL_STATUSES.includes(deployment.value?.status ?? '')
+})
+
+const cancelBusy = ref(false)
+
+// Cancel revokes the worker task and then runs a destroy that also
+// reaps the Packer build instance, so the response is the same 202
+// ``{task_id, status: "destroying"}`` shape the delete path returns and
+// the existing SSE plumbing takes over unchanged.
+const confirmCancel = async () => {
+    if (!deploymentId || cancelBusy.value) return
+    cancelBusy.value = true
+    try {
+        await deploymentStore.cancelDeployment(deploymentId)
+        showCancelModal.value = false
+        toastStore.addToast({
+            type: 'info',
+            message: t('DeploymentDetailView.stopStartedToast'),
+        })
+        await deploymentStore.fetchDeploymentById(deploymentId)
+        await loadTasks()
+    } catch (err: any) {
+        toastStore.addToast({
+            type: 'error',
+            message: err.response?.data?.detail || t('DeploymentDetailView.stopFailedToast'),
+        })
+    } finally {
+        cancelBusy.value = false
+    }
+}
+
+const showCancelModal = ref(false)
 
 const canDelete = computed(() => {
     if (!isOwnerView.value) return false
@@ -1564,6 +1617,15 @@ const deselectTask = () => {
                     </span>
                 </BaseButton>
 
+                <!-- Stop: only while a worker task is in flight. Revokes
+                     the task and cleans up everything it created, including
+                     the Packer build instance Terraform knows nothing about. -->
+                <BaseButton v-if="canCancel" @click="showCancelModal = true" :disabled="cancelBusy"
+                    class="flex items-center gap-2 px-4 py-2" variant="yellow">
+                    <StopCircle :size="18" />
+                    <span class="font-medium">{{ $t('DeploymentDetailView.deploymentStop') }}</span>
+                </BaseButton>
+
                 <!-- Single Delete button. The backend decides whether this
                      triggers a destroy task or a straight soft-delete based on
                      status. Hidden entirely for members. -->
@@ -1967,7 +2029,22 @@ const deselectTask = () => {
                                     </button>
                                 </div>
 
-                                <div v-if="member.account.data.ip && member.account.data.port && member.account.data.type !== 'ssh_key' && member.account.data.authtype !== 'ssh' && member.account.data.port !== 22"
+                                <!-- Ready-to-use RDP command line for Windows apps.
+                                     Opt-in via ``authtype: "rdp"`` in user_accounts;
+                                     without it nothing below changes for existing apps. -->
+                                <div v-if="member.account.data.authtype === 'rdp' && member.account.data.ip"
+                                    class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-full">
+                                    <span class="text-gray-400 font-sans text-[10px] uppercase tracking-wider flex-shrink-0">RDP:</span>
+                                    <span class="truncate">{{ rdpCommandFor(member.account.data) }}</span>
+                                    <button
+                                        @click="copyToClipboard(rdpCommandFor(member.account.data), 'rdp-' + member.account.key)"
+                                        class="text-gray-400 hover:text-amber-600 p-0.5 rounded hover:bg-gray-200 transition-colors flex-shrink-0"
+                                        :title="copiedKey === 'rdp-' + member.account.key ? 'Kopiert!' : 'RDP-Befehl kopieren'">
+                                        <component :is="copiedKey === 'rdp-' + member.account.key ? Check : Copy" :size="12" />
+                                    </button>
+                                </div>
+
+                                <div v-if="member.account.data.ip && member.account.data.port && member.account.data.type !== 'ssh_key' && member.account.data.authtype !== 'ssh' && member.account.data.authtype !== 'rdp' && member.account.data.port !== 22"
                                     class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-[280px]">
                                     <span class="text-gray-400 font-sans text-[10px] uppercase tracking-wider flex-shrink-0">URL:</span>
                                     <a :href="userUrlFor(member.account.data, team.vm?.url) ?? ''" target="_blank" rel="noopener noreferrer"
@@ -2467,6 +2544,27 @@ const deselectTask = () => {
         </div>
 
         <!-- Delete Confirmation Modal -->
+        <!-- Stop Confirmation Modal. Worth a confirm: cancelling throws
+             away an in-flight build that may be 20 minutes in. -->
+        <Modal :show="showCancelModal" @close="showCancelModal = false">
+            <template #title>
+                {{ $t('DeploymentDetailView.confirmStopTitle') }}
+            </template>
+            <template #body>
+                <p class="text-gray-700" v-html="$t('DeploymentDetailView.confirmStopMessage', { name: deployment.name })"></p>
+            </template>
+            <template #footer>
+                <div class="flex justify-end gap-3">
+                    <BaseButton variant="ghost" @click="showCancelModal = false">
+                        {{ $t('DeploymentDetailView.cancelButton') }}
+                    </BaseButton>
+                    <BaseButton variant="yellow" :disabled="cancelBusy" @click="confirmCancel">
+                        {{ $t('DeploymentDetailView.confirmButton') }}
+                    </BaseButton>
+                </div>
+            </template>
+        </Modal>
+
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">
             <template #title>
                 {{ $t('DeploymentDetailView.confirmDeleteTitle') }}
