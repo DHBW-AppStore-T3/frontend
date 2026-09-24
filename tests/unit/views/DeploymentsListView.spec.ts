@@ -8,7 +8,11 @@ import DeploymentsListView from '@/views/DeploymentsListView.vue' // Falls '@' z
 
 vi.mock('lucide-vue-next', () => ({
   BarChart3: { template: '<span class="icon-barchart" />' },
-  CircleArrowRight: { template: '<span class="icon-arrow" />' },
+  Plus: { template: '<span />' },
+  Inbox: { template: '<span class="icon-inbox" />' },
+  GitBranch: { template: '<span />' },
+  Box: { template: '<span />' },
+  Clock: { template: '<span />' },
   Loader2: { template: '<span class="icon-loader" />' }
 }))
 
@@ -41,7 +45,7 @@ vi.mock('@/stores/app.store', () => ({
 // TODO: Tests gegen die neue View-Struktur neu schreiben (main hat
 // die Liste auf PageHeader + EntityListState + Card umgebaut). Bis
 // dahin geskippt.
-describe.skip('DeploymentsListView.vue', () => {
+describe('DeploymentsListView.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -57,9 +61,8 @@ describe.skip('DeploymentsListView.vue', () => {
           $t: (key: string, vars?: any) => vars ? `${key} ${JSON.stringify(vars)}` : key
         },
         stubs: {
-          RouterLink: true,
+          RouterLink: { template: '<a><slot /></a>' },
           BaseButton: { template: '<button><slot /></button>' },
-          BackCard: { template: '<div><slot /></div>' }
         }
       }
     })

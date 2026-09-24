@@ -39,6 +39,9 @@ vi.mock('@/stores/auth.store', () => ({
 vi.mock('@/stores/openstack-credentials.store', () => ({
   useOpenStackCredentialsStore: () => ({
     get status() { return mockCredStatus },
+    get isResolved() { return true },
+    get hasCredential() { return false },
+    get lastError() { return null },
     fetch: mockFetchCredentials
   })
 }))
@@ -61,14 +64,21 @@ vi.mock('@/composables/useQuotas', () => ({
   })
 }))
 
+vi.mock('@/composables/useRole', () => ({
+  useRole: () => ({
+    isStaff: false
+  })
+}))
+
 // ---------------------------------------------------------
 // 2. Die Tests
 // ---------------------------------------------------------
 
-// TODO: Tests gegen die neue View-Struktur neu schreiben (main hat
-// Dashboard umgebaut: Recent-Activity entfernt, Layout neu, useRole
-// als Tile-Gate, i18n-Subtitle). Bis dahin geskippt.
-describe.skip('DashboardView.vue', () => {
+// Tests nach dem UI-Refactor (main hat Dashboard umgebaut:
+// Recent-Activity entfernt, Layout neu, useRole als Tile-Gate,
+// i18n-Subtitle). DOM-basierte Assertions statt wrapper.vm-Zugriff
+// (script setup ohne defineExpose).
+describe('DashboardView.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -128,26 +138,23 @@ const mountComponent = () => {
     mockUser = { username: 'maximilian' }
     const wrapper = mountComponent()
 
-    // Test über das ViewModel (wie von dir vermutet)
-    expect((wrapper.vm as any).firstName).toBe('Maximilian')
+    expect(wrapper.text()).toContain('Maximilian')
   })
 
   it('gibt leeren String für den Namen zurück, wenn kein User existiert', () => {
     mockUser = null
     const wrapper = mountComponent()
 
-    expect((wrapper.vm as any).firstName).toBe('')
+    expect(wrapper.find('h1').text()).toBe('')
   })
 
   it('wählt die korrekte Begrüßung basierend auf der Uhrzeit', () => {
-    // 1. Test am Morgen
     vi.setSystemTime(new Date(2026, 5, 7, 9, 0, 0))
     let wrapper = mountComponent()
-    expect((wrapper.vm as any).timeGreeting).toBe('DashboardView.timeGreetings.morning')
+    expect(wrapper.text()).toContain('DashboardView.timeGreetings.morning')
 
-    // 2. Test am Abend
     vi.setSystemTime(new Date(2026, 5, 7, 20, 0, 0))
     wrapper = mountComponent()
-    expect((wrapper.vm as any).timeGreeting).toBe('DashboardView.timeGreetings.evening')
+    expect(wrapper.text()).toContain('DashboardView.timeGreetings.evening')
   })
 })

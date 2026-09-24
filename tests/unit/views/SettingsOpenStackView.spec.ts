@@ -84,10 +84,19 @@ const mockConfirm = vi.fn()
 // 2. Die Tests
 // ---------------------------------------------------------
 
-// TODO: Tests gegen die neue View-Struktur neu schreiben (i18n
-// rework + UI-Refactor von PR #77 hat die DOM-Selektoren der Tests
-// gebrochen). Bis dahin geskippt.
-describe.skip('SettingsOpenStackView.vue', () => {
+// Lucide Icons stubben
+vi.mock('lucide-vue-next', () => ({
+    CheckCircle2: { template: '<span />' },
+    XCircle: { template: '<span />' },
+    CircleHelp: { template: '<span />' },
+    Cloud: { template: '<span />' },
+    KeyRound: { template: '<span />' },
+    Trash2: { template: '<span />' },
+    RefreshCw: { template: '<span />' },
+    Upload: { template: '<span />' },
+}))
+
+describe('SettingsOpenStackView.vue', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -162,7 +171,7 @@ describe.skip('SettingsOpenStackView.vue', () => {
         expect(input.attributes('disabled')).toBeDefined()
 
         // Speichern Button muss disabled sein
-        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Speichern'))!
+        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('SettingsOpenStackView.save'))!
         expect(saveBtn.attributes('disabled')).toBeDefined()
     })
 
@@ -173,10 +182,10 @@ describe.skip('SettingsOpenStackView.vue', () => {
         await flushPromises()
 
         // Klick auf Speichern ohne etwas einzugeben
-        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Speichern'))!
+        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('SettingsOpenStackView.save'))!
         await saveBtn.trigger('click')
 
-        expect(mockToastError).toHaveBeenCalledWith('Bitte fülle alle Pflichtfelder aus.')
+        expect(mockToastError).toHaveBeenCalledWith('SettingsOpenStackView.errors.missingFields')
         expect(mockSave).not.toHaveBeenCalled()
     })
 
@@ -194,7 +203,7 @@ describe.skip('SettingsOpenStackView.vue', () => {
         const pwdInput = wrapper.find('input[type="password"]')
         await pwdInput.setValue('my-secret-key')
 
-        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Speichern'))!
+        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('SettingsOpenStackView.save'))!
         await saveBtn.trigger('click')
         await flushPromises()
 
@@ -207,7 +216,7 @@ describe.skip('SettingsOpenStackView.vue', () => {
             identifier: 'my-app-id',
             secret: 'my-secret-key'
         })
-        expect(mockToastSuccess).toHaveBeenCalledWith('OpenStack-Credentials gespeichert und validiert.')
+        expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.toasts.saveSuccess')
     })
 
     // --- 4. Tab Wechsel (Password Credentials) ---
@@ -217,7 +226,7 @@ describe.skip('SettingsOpenStackView.vue', () => {
         await flushPromises()
 
         // Tab wechseln
-        const pwdTab = wrapper.findAll('button').find(b => b.text().includes('Username & Passwort'))!
+        const pwdTab = wrapper.findAll('button').find(b => b.text().includes('SettingsOpenStackView.tabs.password'))!
         await pwdTab.trigger('click')
         await flushPromises()
 
@@ -233,7 +242,7 @@ describe.skip('SettingsOpenStackView.vue', () => {
         const pwdInput = wrapper.find('input[type="password"]')
         await pwdInput.setValue('super-secret')
 
-        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Speichern'))!
+        const saveBtn = wrapper.findAll('button').find(b => b.text().includes('SettingsOpenStackView.save'))!
         await saveBtn.trigger('click')
         await flushPromises()
 
@@ -261,7 +270,7 @@ describe.skip('SettingsOpenStackView.vue', () => {
         const wrapper = mountComponent()
         await flushPromises()
 
-        const deleteBtn = wrapper.findAll('button').find(b => b.text().includes('Löschen'))!
+        const deleteBtn = wrapper.findAll('button').find(b => b.text().includes('SettingsOpenStackView.status.delete'))!
         await deleteBtn.trigger('click')
 
         expect(mockConfirm).toHaveBeenCalled()
@@ -275,12 +284,12 @@ describe.skip('SettingsOpenStackView.vue', () => {
         const wrapper = mountComponent()
         await flushPromises()
 
-        const deleteBtn = wrapper.findAll('button').find(b => b.text().includes('Löschen'))!
+        const deleteBtn = wrapper.findAll('button').find(b => b.text().includes('SettingsOpenStackView.status.delete'))!
         await deleteBtn.trigger('click')
         await flushPromises()
 
         expect(mockRemove).toHaveBeenCalledTimes(1)
-        expect(mockToastSuccess).toHaveBeenCalledWith('Credentials gelöscht.')
+        expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.status.deleteSuccess')
     })
 
     // --- 6. Datei Upload (clouds.yaml) ---
@@ -307,7 +316,7 @@ describe.skip('SettingsOpenStackView.vue', () => {
         await flushPromises()
 
         expect(parseCloudsYaml).toHaveBeenCalledWith('dummy yaml content')
-        expect(mockToastSuccess).toHaveBeenCalledWith('Daten aus clouds.yaml übernommen — bitte prüfen und speichern.')
+        expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.cloudsYamlImported')
 
         // HIER KORRIGIERT: Type Casting als HTMLInputElement
         const urlInput = wrapper.find('input[type="url"]')
