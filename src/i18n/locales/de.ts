@@ -633,6 +633,7 @@ export default {
       groupPrefix: 'Gruppe', // Wird zu "Gruppe 1", "Gruppe 2" etc.
       unassigned: 'Nicht zugewiesen', // Optional
       removeAll: 'Alle entfernen',
+      removeStudent: 'Student aus Gruppe entfernen',
       moveAllHere: 'Alle hierhin verschieben',
       removeAllTooltip: 'Alle aus dieser Gruppe entfernen',
       moveAllTooltip: 'Verschiebt alle Studenten in diese Gruppe',
