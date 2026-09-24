@@ -31,4 +31,20 @@ describe('extractErrorMessage', () => {
     expect(extractErrorMessage({})).toBe('Unknown error')
     expect(extractErrorMessage(null)).toBe('Unknown error')
   })
+
+  it('uses a caller-supplied fallback when nothing is available', () => {
+    expect(extractErrorMessage({}, 'Failed to load apps')).toBe('Failed to load apps')
+    expect(extractErrorMessage(null, 'Failed to load apps')).toBe('Failed to load apps')
+  })
+
+  it('prefers a real message over the supplied fallback', () => {
+    expect(extractErrorMessage({ message: 'Network Error' }, 'Fallback')).toBe('Network Error')
+    const err = { response: { data: { detail: 'Boom' } } }
+    expect(extractErrorMessage(err, 'Fallback')).toBe('Boom')
+  })
+
+  it('ignores an empty string detail and falls through', () => {
+    const err = { response: { data: { detail: '' } }, message: 'Network Error' }
+    expect(extractErrorMessage(err, 'Fallback')).toBe('Network Error')
+  })
 })

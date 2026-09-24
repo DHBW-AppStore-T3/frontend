@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { credentialsApi } from '@/api/credentials.api'
+import { extractErrorMessage } from '@/utils/http-error'
 import type {
   OpenStackCredentialFromYaml,
   OpenStackCredentialResponse,
@@ -15,20 +16,25 @@ interface State {
 
 const LOCKED_REASON = 'openstack_credentials_locked'
 
+/**
+ * Adds the one message this store renders specially on top of the shared
+ * extractor: a 409 `openstack_credentials_locked` carries the number of
+ * deployments still holding the credentials, which is the whole point of
+ * the message. Everything else delegates to `extractErrorMessage`, which
+ * used to be duplicated here.
+ */
 function extractError(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
     const detail = err.response?.data?.detail
-    if (typeof detail === 'string') return detail
     if (detail && typeof detail === 'object') {
       const reason = (detail as { reason?: string }).reason
       if (reason === LOCKED_REASON) {
         const n = (detail as { active_deployments?: number }).active_deployments ?? 0
         return `Credentials gesperrt — ${n} aktive(s) Deployment(s)`
       }
-      if (reason) return String(reason)
     }
   }
-  return fallback
+  return extractErrorMessage(err, fallback)
 }
 
 function isLockedError(err: unknown): boolean {

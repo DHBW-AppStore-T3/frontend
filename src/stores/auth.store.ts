@@ -36,6 +36,12 @@ export const useAuthStore = defineStore('auth', {
     userId: (state) => state.user?.userId || null,
   },
 
+  // These actions deliberately do NOT use `runRequest` from ./_request.
+  // They wrap Keycloak/OIDC calls, not axios calls: the useful text is on
+  // `err.message`, there is no `response.data.detail` to extract, and
+  // `initialize`/`fetchMe` are promise-cached and log rather than setting
+  // `error`. Routing them through the shared helper would replace real
+  // Keycloak error messages with a generic fallback.
   actions: {
     async initialize() {
       if (initializePromise) return initializePromise
@@ -125,6 +131,59 @@ export const useAuthStore = defineStore('auth', {
         await keycloak.logout()
       } catch (error) {
         console.error('Logout failed:', error)
+      }
+    },
+
+    /**
+     * Dev-only bridge: inject a pre-authenticated user via ?sso_handoff=email
+     * without a running self-service-ui or Keycloak flow. Never the
+     * production self-service-ui path — see setHandoffUser for that.
+     */
+    async setDevUser(email: string) {
+      await keycloak.setDevUser(email)
+      this.user = this.buildStubUser(email, 'student')
+      this.fetchMe().catch(() => {
+        this.user = this.buildStubUser(email, 'student')
+      })
+    },
+
+    /**
+     * Authenticate from a Moodle LTI 1.3 launch. Backend already validated
+     * the launch and JIT-provisioned/promoted the user; a stub is shown
+     * immediately so the UI isn't blank while fetchMe() loads the real
+     * record. If fetchMe() fails, the stub stays — better than bouncing an
+     * LTI-launched user back to an unauthenticated state.
+     */
+    async setLtiUser(email: string, token: string, role: UserRole = 'student') {
+      await keycloak.setLtiUser(email, token)
+      this.user = this.buildStubUser(email, role)
+      this.fetchMe().catch(() => {
+        this.user = this.buildStubUser(email, role)
+      })
+    },
+
+    /**
+     * Authenticate from a self-service-ui handoff. Backend already
+     * validated self-service-ui's Keycloak bearer and minted a handoff
+     * token; role is unknown until fetchMe() resolves, so the stub defaults
+     * to 'student' and is replaced (or kept, on failure) same as LTI.
+     */
+    async setHandoffUser(email: string, token: string) {
+      await keycloak.setHandoffUser(email, token)
+      this.user = this.buildStubUser(email, 'student')
+      this.fetchMe().catch(() => {
+        this.user = this.buildStubUser(email, 'student')
+      })
+    },
+
+    buildStubUser(email: string, role: UserRole): User {
+      return {
+        userId: email,
+        email,
+        username: email,
+        role,
+        courseId: null,
+        created_at: new Date().toISOString(),
       }
     },
 

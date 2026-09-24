@@ -2,9 +2,6 @@ import api from './axios'
 import type {
   User,
   UserWithCourse,
-  UserUpdate,
-  UserPasswordUpdate,
-  UserStatistics,
   UserQueryParams,
 } from '@/types'
 
@@ -40,31 +37,17 @@ export const userApi = {
     return api.get<UserWithCourse>(`/users/${userId}`)
   },
 
-  /**
-   * Get user statistics
-   */
-  getStatistics: (userId: string) => {
-    return api.get<UserStatistics>(`/users/${userId}/statistics`)
-  },
-
-  /**
-   * Update user
-   */
-  update: (userId: string, data: UserUpdate) => {
-    return api.put<User>(`/users/${userId}`, data)
-  },
-
-  /**
-   * Change password
-   */
-  changePassword: (userId: string, data: UserPasswordUpdate) => {
-    return api.post(`/users/${userId}/password`, data)
-  },
-
-  /**
-   * Delete user (ADMIN only)
-   */
-  delete: (userId: string) => {
-    return api.delete(`/users/${userId}`)
-  },
 }
+
+// Removed: getStatistics, update, changePassword, delete.
+//
+// changePassword called POST /users/{id}/password and delete called
+// DELETE /users/{id}; neither route exists on the backend, so both were
+// a 404/405 waiting for a caller. Keycloak owns credentials and the
+// users.password column was dropped in migration 2026_01_25_1609.
+//
+// getStatistics and update map to real routes (GET
+// /users/{id}/statistics, PUT /users/{id}) but had no call site. The
+// contract lives in the backend's OpenAPI schema, not in unused
+// wrappers here -- re-add them from src/types/api.generated.ts when a
+// view actually needs them.

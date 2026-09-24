@@ -29,7 +29,7 @@ vi.mock('@/composables/useToast', () => ({
 }))
 
 // Rechteverwaltung (Permissions) flexibel mocken
-let mockCan = {
+const mockCan = {
     createCourse: { value: true },
     editCourse: { value: true },
     deleteCourse: { value: true }

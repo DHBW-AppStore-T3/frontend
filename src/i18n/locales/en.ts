@@ -269,6 +269,11 @@ export default {
     deploymentDelete: "Delete",
     deploymentPause: "Pause",
     deploymentResume: "Resume",
+    deploymentStop: 'Stop',
+    confirmStopTitle: 'Stop deployment?',
+    confirmStopMessage: 'This stops <strong>{name}</strong> and removes everything it has created so far, including the image build instance. Work done so far is lost.',
+    stopStartedToast: 'Stopping the deployment and cleaning up…',
+    stopFailedToast: 'Could not stop the deployment',
     confirmDeleteTitle: "Delete deployment",
     confirmDeleteMessage: "Delete deployment <strong>{name}</strong>? If OpenStack resources still exist they will be torn down via Terraform first (live progress below).",
     confirmPauseTitle: "Pause deployment",
@@ -516,8 +521,6 @@ export default {
     roleLabel: "Role",
     roleAdmin: "Administrator",
 
-    passwordLabel: "Password",
-    changePassword: "Change Password",
   },
 
   AppVersionStatusBadge: {

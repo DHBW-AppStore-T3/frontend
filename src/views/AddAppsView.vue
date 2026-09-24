@@ -102,7 +102,7 @@ const handleDrop = (event: DragEvent) => {
 }
 
 const isValidGitUrl = (url: string) => {
-  const regex = /^(https?:\/\/|git@)[\w.-]+[\/:].+/
+  const regex = /^(https?:\/\/|git@)[\w.-]+[/:].+/
   return regex.test(url)
 }
 

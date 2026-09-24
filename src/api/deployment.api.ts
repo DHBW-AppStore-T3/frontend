@@ -64,6 +64,23 @@ export const deploymentApi = {
    * with ``{task_id, status: "pausing"}``; the frontend should attach
    * to the SSE stream just like for delete/destroy.
    */
+  /**
+   * Cancel an in-flight deployment and clean up after it.
+   *
+   * Owner-only, and the only action allowed while status is ``pending``
+   * or ``running``. The backend revokes the worker task and then runs a
+   * destroy that additionally reaps the Packer build instance - which
+   * lives outside Terraform state and would otherwise keep running.
+   *
+   * Returns 202 with ``{task_id, status: "destroying"}``, so the caller
+   * attaches to the SSE stream exactly as it does for destroy.
+   */
+  cancel: (deploymentId: string) => {
+    return api.post<{ task_id: string; status: 'destroying' }>(
+      `/deployments/${deploymentId}/cancel`,
+    )
+  },
+
   pause: (deploymentId: string) => {
     return api.post<{ task_id: string; status: 'pausing' }>(
       `/deployments/${deploymentId}/pause`,

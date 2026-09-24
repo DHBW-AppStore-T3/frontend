@@ -268,6 +268,11 @@ export default {
     deploymentDelete: "Löschen",
     deploymentPause: "Pausieren",
     deploymentResume: "Fortsetzen",
+    deploymentStop: 'Stoppen',
+    confirmStopTitle: 'Deployment stoppen?',
+    confirmStopMessage: 'Stoppt <strong>{name}</strong> und entfernt alles bisher Erzeugte, einschließlich der Build-Instanz des Images. Der bisherige Fortschritt geht verloren.',
+    stopStartedToast: 'Deployment wird gestoppt und aufgeräumt…',
+    stopFailedToast: 'Deployment konnte nicht gestoppt werden',
     confirmDeleteTitle: "Deployment löschen",
     confirmDeleteMessage: "Das Deployment <strong>{name}</strong> löschen? Falls noch OpenStack-Ressourcen existieren, werden sie zuerst automatisch via Terraform abgebaut (Live-Fortschritt im Anschluss).",
     confirmPauseTitle: "Deployment pausieren",
@@ -519,8 +524,6 @@ export default {
     roleLabel: "Rolle",
     roleAdmin: "Administrator",
 
-    passwordLabel: "Passwort",
-    changePassword: "Passwort ändern",
   },
 
   AppVersionStatusBadge: {

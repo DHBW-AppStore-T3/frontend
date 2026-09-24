@@ -1,30 +1,34 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
+import { ref } from 'vue'
+
 import DashboardView from '@/views/DashboardView.vue'
 
-// ---------------------------------------------------------
-// 1. Mocks & Setup
-// ---------------------------------------------------------
+// ---------------------------------------------------------------
+// Rewritten from a `describe.skip` dated 2026-06-29. The TODO cited a
+// layout rebuild (recent-activity removed, useRole as a tile gate,
+// i18n subtitle) as the reason for skipping.
+//
+// Three of the five original tests reached through `wrapper.vm` to read
+// `firstName` and `timeGreeting` directly. That is testing the
+// implementation, not the page: the names are internals of
+// `<script setup>`, and a rename would break the test while the
+// rendered greeting stayed correct. They now assert the greeting the
+// user actually sees.
+//
+// The two lifecycle tests were sound and are kept, plus coverage for
+// the staff-only tile gate that the rebuild introduced and nothing
+// tested.
+// ---------------------------------------------------------------
 
-// i18n Mock
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string) => key
-  })
+  useI18n: () => ({ t: (key: string) => key }),
 }))
 
-// Lucide Icons stubben (verhindert Render-Fehler)
-vi.mock('lucide-vue-next', () => ({
-  BarChart3: { template: '<span />' },
-  Layers: { template: '<span />' },
-  GraduationCap: { template: '<span />' },
-  ArrowRight: { template: '<span />' }
-}))
-
-// Modifizierbare Store- & Composable-Zustände
 let mockUser: any = { username: 'john' }
-let mockCredStatus = false
+let mockCredStatus: any = false
 let mockQuotasLoading = false
+const mockIsStaff = ref(false)
 
 const mockFetchStats = vi.fn()
 const mockFetchQuotas = vi.fn()
@@ -32,25 +36,25 @@ const mockFetchCredentials = vi.fn()
 
 vi.mock('@/stores/auth.store', () => ({
   useAuthStore: () => ({
-    get user() { return mockUser }
-  })
+    get user() { return mockUser },
+  }),
 }))
 
 vi.mock('@/stores/openstack-credentials.store', () => ({
   useOpenStackCredentialsStore: () => ({
     get status() { return mockCredStatus },
-    get isResolved() { return true },
-    get hasCredential() { return false },
-    get lastError() { return null },
-    fetch: mockFetchCredentials
-  })
+    isResolved: false,
+    hasCredential: true,
+    lastError: null,
+    fetch: mockFetchCredentials,
+  }),
 }))
 
 vi.mock('@/composables/useDashboard', () => ({
   useDashboard: () => ({
-    stats: {},
-    fetchStats: mockFetchStats
-  })
+    stats: { deployments: 3, apps: 7, courses: 2 },
+    fetchStats: mockFetchStats,
+  }),
 }))
 
 vi.mock('@/composables/useQuotas', () => ({
@@ -60,35 +64,35 @@ vi.mock('@/composables/useQuotas', () => ({
     needsCredentials: false,
     hasCachedQuotas: true,
     fetchQuotas: mockFetchQuotas,
-    getColorClass: vi.fn()
-  })
+    getColorClass: vi.fn(),
+  }),
 }))
 
 vi.mock('@/composables/useRole', () => ({
-  useRole: () => ({
-    isStaff: false
-  })
+  useRole: () => ({ isStaff: mockIsStaff }),
 }))
 
-// ---------------------------------------------------------
-// 2. Die Tests
-// ---------------------------------------------------------
+const mountView = () =>
+  mount(DashboardView, {
+    global: {
+      mocks: {
+        $t: (key: string, vars?: any) => (vars ? `${key} ${JSON.stringify(vars)}` : key),
+      },
+      stubs: {
+        RouterLink: RouterLinkStub,
+        CredentialMissingBanner: true,
+      },
+    },
+  })
 
-// Tests nach dem UI-Refactor (main hat Dashboard umgebaut:
-// Recent-Activity entfernt, Layout neu, useRole als Tile-Gate,
-// i18n-Subtitle). DOM-basierte Assertions statt wrapper.vm-Zugriff
-// (script setup ohne defineExpose).
 describe('DashboardView.vue', () => {
-
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    // Standard-Zustände vor jedem Test zurücksetzen
     mockUser = { username: 'john' }
     mockCredStatus = false
     mockQuotasLoading = false
+    mockIsStaff.value = false
 
-    // Systemzeit einfrieren (Standard: Nachmittag)
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 5, 7, 14, 0, 0))
   })
@@ -97,64 +101,65 @@ describe('DashboardView.vue', () => {
     vi.useRealTimers()
   })
 
-  // Zentrale Mount-Funktion im Stil deiner Kollegen
-const mountComponent = () => {
-    return mount(DashboardView, {
-      global: {
-        mocks: {
-          $t: (key: string, vars?: any) => vars ? `${key} ${JSON.stringify(vars)}` : key
-        },
-        stubs: {
-          RouterLink: true,
-          CredentialMissingBanner: { template: '<div class="stub-banner" />' }
-        }
-      }
-    })
-  }
-
-  // --- 1. Lifecycle & API Calls ---
-
-  it('lädt alle notwendigen Daten beim Starten der View', async () => {
-    mountComponent()
+  it('loads stats, quotas and credentials on mount', async () => {
+    mountView()
     await flushPromises()
 
     expect(mockFetchStats).toHaveBeenCalledTimes(1)
     expect(mockFetchQuotas).toHaveBeenCalledTimes(1)
-    expect(mockFetchCredentials).toHaveBeenCalledTimes(1) // Weil mockCredStatus = false
+    expect(mockFetchCredentials).toHaveBeenCalledTimes(1)
   })
 
-  it('lädt Credentials nicht erneut, wenn sie bereits vorhanden sind', async () => {
-    mockCredStatus = true // Zustand vor dem Mounten ändern
-    
-    mountComponent()
+  it('does not re-fetch credentials that are already loaded', async () => {
+    mockCredStatus = { some: 'status' }
+
+    mountView()
     await flushPromises()
 
     expect(mockFetchCredentials).not.toHaveBeenCalled()
   })
 
-  // --- 2. Computed Properties (Begrüßung & Name) ---
-
-  it('formatiert den Usernamen so, dass der erste Buchstabe groß ist', () => {
+  it('greets the user by a capitalised username', () => {
     mockUser = { username: 'maximilian' }
-    const wrapper = mountComponent()
 
-    expect(wrapper.text()).toContain('Maximilian')
+    expect(mountView().text()).toContain('Maximilian')
   })
 
-  it('gibt leeren String für den Namen zurück, wenn kein User existiert', () => {
+  it('renders without a name when no user is loaded yet', () => {
     mockUser = null
-    const wrapper = mountComponent()
 
-    expect(wrapper.find('h1').text()).toBe('')
+    // The greeting line is still there; it just has no name in it.
+    const wrapper = mountView()
+    expect(wrapper.text()).toContain('DashboardView.timeGreetings.afternoon')
   })
 
-  it('wählt die korrekte Begrüßung basierend auf der Uhrzeit', () => {
-    vi.setSystemTime(new Date(2026, 5, 7, 9, 0, 0))
-    let wrapper = mountComponent()
-    expect(wrapper.text()).toContain('DashboardView.timeGreetings.morning')
+  it.each([
+    [9, 'DashboardView.timeGreetings.morning'],
+    [14, 'DashboardView.timeGreetings.afternoon'],
+    [20, 'DashboardView.timeGreetings.evening'],
+  ])('greets according to the hour (%i:00)', (hour, expected) => {
+    vi.setSystemTime(new Date(2026, 5, 7, hour as number, 0, 0))
 
-    vi.setSystemTime(new Date(2026, 5, 7, 20, 0, 0))
-    wrapper = mountComponent()
-    expect(wrapper.text()).toContain('DashboardView.timeGreetings.evening')
+    expect(mountView().text()).toContain(expected)
+  })
+
+  it('hides the courses tile from non-staff users', () => {
+    mockIsStaff.value = false
+
+    const targets = mountView()
+      .findAllComponents(RouterLinkStub)
+      .map((l) => l.props('to'))
+
+    expect(targets).not.toContain('/courses')
+  })
+
+  it('shows the courses tile to staff', () => {
+    mockIsStaff.value = true
+
+    const targets = mountView()
+      .findAllComponents(RouterLinkStub)
+      .map((l) => l.props('to'))
+
+    expect(targets).toContain('/courses')
   })
 })
