@@ -20,33 +20,21 @@ export const useAppStore = defineStore('app', {
 
   actions: {
     async fetchApps(userId?: string) {
-      const ctx = {
-        setLoading: (v: boolean) => { this.isLoading = v },
-        setError: (e: string | null) => { this.error = e },
-      }
-      await runRequest(ctx, async () => {
+      await runRequest(this, async () => {
         const { data } = await appApi.list({ userId })
         this.apps = data
       }, 'Failed to fetch apps', { rethrow: false })
     },
 
     async fetchAppById(appId: string) {
-      const ctx = {
-        setLoading: (v: boolean) => { this.isLoading = v },
-        setError: (e: string | null) => { this.error = e },
-      }
-      await runRequest(ctx, async () => {
+      await runRequest(this, async () => {
         const { data } = await appApi.getById(appId)
         this.currentApp = data
       }, 'Failed to fetch app', { rethrow: false })
     },
 
     async createApp(data: AppCreate) {
-      const ctx = {
-        setLoading: (v: boolean) => { this.isLoading = v },
-        setError: (e: string | null) => { this.error = e },
-      }
-      return runRequest(ctx, async () => {
+      return runRequest(this, async () => {
         const { data: app } = await appApi.create(data)
         this.apps.push(app)
         return app
@@ -54,11 +42,7 @@ export const useAppStore = defineStore('app', {
     },
 
     async updateApp(appId: string, data: AppUpdate) {
-      const ctx = {
-        setLoading: (v: boolean) => { this.isLoading = v },
-        setError: (e: string | null) => { this.error = e },
-      }
-      return runRequest(ctx, async () => {
+      return runRequest(this, async () => {
         const { data: app } = await appApi.update(appId, data)
         const index = this.apps.findIndex((a) => a.appId === appId)
         if (index !== -1) {
@@ -69,11 +53,7 @@ export const useAppStore = defineStore('app', {
     },
 
     async deleteApp(appId: string) {
-      const ctx = {
-        setLoading: (v: boolean) => { this.isLoading = v },
-        setError: (e: string | null) => { this.error = e },
-      }
-      await runRequest(ctx, async () => {
+      await runRequest(this, async () => {
         await appApi.delete(appId)
         this.apps = this.apps.filter((a) => a.appId !== appId)
       }, 'Failed to delete app')

@@ -14,7 +14,9 @@ import {
 } from 'lucide-vue-next'
 import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
+import type { User } from '@/types'
 import { useToast } from '@/composables/useToast'
+import { extractErrorMessage } from '@/utils/http-error'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import CredentialMissingBanner from '@/components/CredentialMissingBanner.vue'
 
@@ -31,7 +33,7 @@ const allStudents = ref<any[]>([])
 const students = ref<any[]>([])
 
 // Cache map for every student ever seen (stable, keyed by keycloak_id).
-const studentCache = ref(new Map<string, any>())
+const studentCache = ref(new Map<string, User>())
 
 const studentSearchQuery = ref('')
 const loadingCourses = ref(false)
@@ -44,7 +46,7 @@ const activeTab = ref<'courses' | 'individuals'>('courses')
 
 // Helper: store students in the cache (keyed by keycloak_id). Only overwrite
 // when the new object has more info (e.g. firstName).
-function cacheStudents(list: any[]) {
+function cacheStudents(list: User[]) {
   for (const s of list || []) {
     if (!s?.keycloak_id || typeof s.keycloak_id !== 'string' || !s.keycloak_id.trim()) continue
     const existing = studentCache.value.get(s.keycloak_id)
@@ -72,14 +74,14 @@ const filteredStudents = computed(() => {
 })
 
 // Selected students: always resolved from the cache (stable, keyed by keycloak_id).
-const selectedStudents = computed(() => {
+const selectedStudents = computed<User[]>(() => {
   return store.draft.studentIds
     .map((kid: string) => studentCache.value.get(kid))
-    .filter(Boolean)
+    .filter((s): s is User => s !== undefined)
 })
 
 // Cache for students per course (lazy loading).
-const courseStudentsCache = ref(new Map<string, any[]>())
+const courseStudentsCache = ref(new Map<string, User[]>())
 
 // Helper: return all student IDs of a course (lazy loading).
 async function getStudentIdsForCourse(courseId: string): Promise<string[]> {
@@ -217,7 +219,7 @@ async function loadCourses() {
   try {
     const res = await courseApi.list(0, 200)
     courses.value = res.data || []
-  } catch (err) {
+  } catch (_err) {
     coursesError.value = t('CoursesView.toasts.loadError')
     toast.error(coursesError.value)
   } finally {
@@ -234,7 +236,7 @@ async function loadAllStudents() {
     allStudents.value = res.data || []
     students.value = allStudents.value
     cacheStudents(allStudents.value)
-  } catch (err) {
+  } catch (_err) {
     studentsError.value = t('CourseDetailView.toasts.loadUsersError')
     toast.error(studentsError.value)
   } finally {
@@ -272,7 +274,7 @@ watch(studentSearchQuery, (val) => {
     } catch (err) {
       console.error('User search error:', err)
       const e: any = err
-      const msg = e?.response?.data?.detail || e?.message || t('CourseDetailView.toasts.loadUsersError')
+      const msg = extractErrorMessage(e, t('CourseDetailView.toasts.loadUsersError'))
       toast.error(msg)
     } finally {
       loadingStudents.value = false
@@ -405,7 +407,7 @@ onMounted(async () => {
               <div class="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 max-h-[350px] overflow-y-auto">
                 <div 
                   v-for="student in filteredStudents"
-                  :key="student.keycloak_id"
+                  :key="student.keycloak_id ?? student.userId"
                   @click="toggleStudent(student.keycloak_id)"
                   :data-testid="`student-${student.keycloak_id}`"
                   class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-gray-200 transition-colors select-none"
@@ -419,7 +421,7 @@ onMounted(async () => {
                   <span class="text-gray-700 font-medium">
                     {{ (student.firstName || student.lastName) 
                         ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
-                        : (student.username || student.email || student.name || student.keycloak_id) }}
+                        : (student.username || student.email || student.keycloak_id) }}
                   </span>
                 </div>
                 
@@ -443,19 +445,19 @@ onMounted(async () => {
               <div v-else class="space-y-2">
                 <div
                   v-for="student in selectedStudents"
-                  :key="student.keycloak_id"
+                  :key="student.keycloak_id ?? student.userId"
                   class="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200"
                 >
                   <span class="text-gray-700 font-medium">
                     {{ (student.firstName || student.lastName) 
                         ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
-                        : (student.username || student.email || student.name || student.keycloak_id) }}
+                        : (student.username || student.email || student.keycloak_id) }}
                   </span>
                   <button 
-                    @click="toggleStudent(student.keycloak_id)" 
+                    @click="toggleStudent(student.keycloak_id ?? '')" 
                     class="text-red-500 hover:text-red-700 font-bold text-lg leading-none"
                     :title="t('CourseDetailView.removeModal.remove')"
-                    :data-testid="`remove-${student.keycloak_id}`"
+                    :data-testid="`remove-${student.keycloak_id ?? student.userId}`"
                   >
                     ×
                   </button>

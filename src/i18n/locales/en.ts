@@ -521,8 +521,6 @@ export default {
     roleLabel: "Role",
     roleAdmin: "Administrator",
 
-    passwordLabel: "Password",
-    changePassword: "Change Password",
   },
 
   AppVersionStatusBadge: {

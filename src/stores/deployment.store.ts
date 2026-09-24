@@ -2,8 +2,11 @@ import { defineStore } from 'pinia'
 import { deploymentApi } from '@/api/deployment.api'
 import { useAppStore } from './app.store'
 import { useAuthStore } from './auth.store'
+import { runRequest } from './_request'
 
 import type {
+  User,
+  Course,
   Deployment,
   DeploymentWithRelations,
   DeploymentCreate,
@@ -46,9 +49,13 @@ export const useDeploymentStore = defineStore('deployment', {
     // The wizard state (draft).
     draft: JSON.parse(JSON.stringify(defaultDraft)) as DeploymentDraft,
 
-    // Global cache for students and courses (userId/courseId → object).
-    studentCache: new Map<string, any>(),
-    courseCache: new Map<string, any>(),
+    // Global cache for students and courses (keycloak_id/courseId → object).
+    // These were `Map<string, any>` because the hand-written `User` type
+    // was missing keycloak_id / firstName / lastName, which the backend
+    // does return. `User` is derived from the OpenAPI schema now, so the
+    // cache can say what it actually holds.
+    studentCache: new Map<string, User>(),
+    courseCache: new Map<string, Course>(),
   }),
 
   getters: {
@@ -70,51 +77,39 @@ export const useDeploymentStore = defineStore('deployment', {
   },
   actions: {
     async fetchDeployments(params?: { userId?: string; appId?: string; status?: DeploymentStatus }) {
-      this.isLoading = true; this.error = null
-      try {
+      await runRequest(this, async () => {
         const response = await deploymentApi.list(params)
         this.deployments = response.data
-      } catch (err: any) {
-        this.error = err.response?.data?.detail || 'Failed to fetch deployments'
-      } finally {
-        this.isLoading = false
-      }
+      }, 'Failed to fetch deployments', { rethrow: false })
     },
 
     async fetchDeploymentById(id: string) {
-      this.isLoading = true; this.error = null
-      try {
-        const response = await deploymentApi.getById(id)
-        this.currentDeployment = response.data
-      } catch (err: any) {
-        // 404 = deployment was soft-deleted upstream (e.g. after a successful
-        // destroy). This is not a UI error state: the DetailView's stream-ended
-        // watcher checks ``currentDeployment === null`` as a soft-delete signal
-        // and navigates to the list with a success toast. Other status codes
-        // (5xx, network timeout) keep the error path intact.
-        const status = err?.response?.status
-        if (status === 404) {
-          this.currentDeployment = null
-        } else {
-          this.error = err.response?.data?.detail || 'Failed to fetch deployment'
+      await runRequest(this, async () => {
+        try {
+          const response = await deploymentApi.getById(id)
+          this.currentDeployment = response.data
+        } catch (err) {
+          // 404 = deployment was soft-deleted upstream (e.g. after a successful
+          // destroy). This is not a UI error state: the DetailView's stream-ended
+          // watcher checks ``currentDeployment === null`` as a soft-delete signal
+          // and navigates to the list with a success toast. Swallowed here so
+          // runRequest never sees it; other status codes (5xx, network timeout)
+          // are re-thrown and take the normal error path.
+          if ((err as { response?: { status?: number } })?.response?.status === 404) {
+            this.currentDeployment = null
+            return
+          }
+          throw err
         }
-      } finally {
-        this.isLoading = false
-      }
+      }, 'Failed to fetch deployment', { rethrow: false })
     },
 
     async createDeployment(data: DeploymentCreate) {
-      this.isLoading = true; this.error = null
-      try {
+      return runRequest(this, async () => {
         const response = await deploymentApi.create(data)
         this.deployments.push(response.data)
         return response.data
-      } catch (err: any) {
-        this.error = err.response?.data?.detail || 'Failed to create deployment'
-        throw err
-      } finally {
-        this.isLoading = false
-      }
+      }, 'Failed to create deployment')
     },
 
     /**
@@ -129,17 +124,11 @@ export const useDeploymentStore = defineStore('deployment', {
      * the live progress lives in the detail view that issued the call.
      */
     async deleteDeployment(id: string) {
-      this.isLoading = true; this.error = null
-      try {
+      return runRequest(this, async () => {
         const response = await deploymentApi.delete(id)
-        this.deployments = this.deployments.filter((d: any) => d.deploymentId !== id)
+        this.deployments = this.deployments.filter((d) => d.deploymentId !== id)
         return response
-      } catch (err: any) {
-        this.error = err.response?.data?.detail || 'Failed to delete deployment'
-        throw err
-      } finally {
-        this.isLoading = false
-      }
+      }, 'Failed to delete deployment')
     },
 
     /**
@@ -158,27 +147,11 @@ export const useDeploymentStore = defineStore('deployment', {
      * can attach the live stream and watch the cleanup run.
      */
     async cancelDeployment(id: string) {
-      this.isLoading = true; this.error = null
-      try {
-        return await deploymentApi.cancel(id)
-      } catch (err: any) {
-        this.error = err.response?.data?.detail || 'Failed to cancel deployment'
-        throw err
-      } finally {
-        this.isLoading = false
-      }
+      return runRequest(this, () => deploymentApi.cancel(id), 'Failed to cancel deployment')
     },
 
     async pauseDeployment(id: string) {
-      this.isLoading = true; this.error = null
-      try {
-        return await deploymentApi.pause(id)
-      } catch (err: any) {
-        this.error = err.response?.data?.detail || 'Failed to pause deployment'
-        throw err
-      } finally {
-        this.isLoading = false
-      }
+      return runRequest(this, () => deploymentApi.pause(id), 'Failed to pause deployment')
     },
 
     /**
@@ -187,15 +160,7 @@ export const useDeploymentStore = defineStore('deployment', {
      * the detail view can attach the live stream.
      */
     async resumeDeployment(id: string) {
-      this.isLoading = true; this.error = null
-      try {
-        return await deploymentApi.resume(id)
-      } catch (err: any) {
-        this.error = err.response?.data?.detail || 'Failed to resume deployment'
-        throw err
-      } finally {
-        this.isLoading = false
-      }
+      return runRequest(this, () => deploymentApi.resume(id), 'Failed to resume deployment')
     },
 
     resetDraft() {
@@ -259,7 +224,7 @@ export const useDeploymentStore = defineStore('deployment', {
       }))
 
       // userInputVar: { packer: {...}, terraform: {...} }
-      let userInputVarObj: any = { packer: {}, terraform: {} }
+      const userInputVarObj: any = { packer: {}, terraform: {} }
       if (this.draft.variables && typeof this.draft.variables === 'object') {
         // Detect multi-image Packer layout: such apps store Packer values nested
         // under ``draft.variables.packer[<template_key>][<name>]`` rather than

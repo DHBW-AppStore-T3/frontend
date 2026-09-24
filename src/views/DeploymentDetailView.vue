@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { CircleArrowLeft, Loader2, Users, Settings, Terminal, ChevronDown, Trash2, GitBranch, User, Calendar, Clock, Package, AlertCircle, CheckCircle, XCircle, StopCircle, Flame, Copy, Check, Send, PauseCircle, PlayCircle, RefreshCw, Server, Network, Shield } from 'lucide-vue-next'
+import { CircleArrowLeft, Loader2, Users, Settings, Terminal, ChevronDown, Trash2, GitBranch, User, Calendar, Clock, Package, AlertCircle, CheckCircle, XCircle, StopCircle, Flame, Copy, Check, Send, PauseCircle, PlayCircle } from 'lucide-vue-next'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -13,11 +13,14 @@ import { taskApi } from '@/api/task.api'
 import { deploymentApi } from '@/api/deployment.api'
 import type { Task, DeploymentResource } from '@/types'
 import { useDeploymentStream } from '@/composables/useDeploymentStream'
-import InfrastructureVmCard from '@/components/InfrastructureVmCard.vue'
+import { useDeploymentPhases, DEFAULT_PHASE_COUNT } from '@/composables/useDeploymentPhases'
+import DeploymentInfrastructurePanel from '@/components/DeploymentInfrastructurePanel.vue'
 import InfrastructureVmDrawer from '@/components/InfrastructureVmDrawer.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { formatDateTime } from '@/utils/format'
 import { extractErrorMessage } from '@/utils/http-error'
+import { sshCommandFor, rdpCommandFor, userUrlFor } from '@/utils/connection-commands'
+import { highlightJson, prettyJson } from '@/utils/json-view'
 
 import { Eye, EyeOff } from 'lucide-vue-next'
 
@@ -28,39 +31,6 @@ const togglePasswordVisibility = (key: string | number) => {
     visiblePasswords.value[key] = !visiblePasswords.value[key]
 }
 
-// Build a copy-paste SSH command from an account. Skips ``-p`` for the
-// default port 22 so the line stays short for the common case.
-const sshCommandFor = (data: { username?: string; ip?: string; port?: number }): string => {
-    if (!data.username || !data.ip) return ''
-    const portFlag = data.port && data.port !== 22 ? `-p ${data.port} ` : ''
-    return `ssh ${portFlag}${data.username}@${data.ip}`
-}
-
-// Wrap a bare IPv6 literal in brackets so it can be embedded in a
-// host:port string. IPv4 and hostnames pass through untouched.
-const bracketHost = (ip: string): string => (ip.includes(':') ? `[${ip}]` : ip)
-
-// Build a copy-paste RDP command from an account. Windows apps opt in by
-// publishing ``authtype: "rdp"``; only those reach this helper, so apps
-// that predate it keep their existing URL / SSH rendering unchanged.
-// ``mstsc`` needs the IPv6 literal bracketed, hence ``bracketHost``.
-const rdpCommandFor = (data: { username?: string; ip?: string; port?: number }): string => {
-    if (!data.ip) return ''
-    return `mstsc /v:${bracketHost(data.ip)}:${data.port ?? 3389}`
-}
-
-// Build a per-user URL from user_accounts (ip + port), preserving any path
-// suffix the team VM url carries (e.g. "/pgadmin4").
-const userUrlFor = (data: { ip?: string; port?: number }, teamVmUrl?: string): string | null => {
-    if (!data.ip || !data.port) return null
-    let path = ''
-    if (teamVmUrl) {
-        try {
-            path = new URL(teamVmUrl).pathname.replace(/\/$/, '')
-        } catch { /* ignore malformed url */ }
-    }
-    return `http://${data.ip}:${data.port}${path}`
-}
 
 
 const route = useRoute()
@@ -140,15 +110,16 @@ const typedUserAccounts = computed<Record<string, UserAccount> | null>(() => {
 
 
 const enrichedTeams = computed(() => {
-    const currentDeployment = deployment && 'value' in deployment
-        ? deployment.value
-        : deployment;
+    // Both of these are computed()s, so `.value` is always the right
+    // read. This used to be a `'value' in x ? x.value : x` ternary that
+    // could never take its else branch -- eslint flagged reading the ref
+    // as an operand, and its autofix turned the dead branch into a live
+    // one that handed back the ref itself.
+    const currentDeployment = deployment.value;
 
     if (!currentDeployment?.teams) return [];
 
-    const accounts = typedUserAccounts && 'value' in typedUserAccounts
-        ? typedUserAccounts.value
-        : typedUserAccounts;
+    const accounts = typedUserAccounts.value;
 
     // Team-level VM metadata from terraform's ``team_vms`` output. Apps
     // that serve a Web-UI publish ``url`` here; SSH-only apps don't.
@@ -296,38 +267,6 @@ const tfResourcesCount = computed(() => {
     }
 })
 
-// Lightweight, safe syntax highlighting for JSON.
-const highlightJson = (jsonString: string): string => {
-    if (!jsonString) return ''
-
-    let safeStr = jsonString
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-
-    return safeStr.replace(
-        /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
-        (match) => {
-            let cls = 'text-amber-400'
-
-            if (/^"/.test(match)) {
-                if (/:$/.test(match)) {
-                    cls = 'text-blue-500 font-medium' // keys
-                } else {
-                    cls = 'text-emerald-500' // string values
-                }
-            } else if (/true|false/.test(match)) {
-                cls = 'text-purple-500 font-bold' // booleans
-            } else if (/null/.test(match)) {
-                cls = 'text-gray-500 italic' // null
-            } else {
-                cls = 'text-cyan-500' // numbers
-            }
-
-            return `<span class="${cls}">${match}</span>`
-        }
-    )
-}
 
 // Owner-view vs member-view — mirrors backend/app/utils/permissions.py
 // ``is_deployment_owner_view``. Drives every gated UI element on
@@ -503,10 +442,10 @@ const confirmCancel = async () => {
         })
         await deploymentStore.fetchDeploymentById(deploymentId)
         await loadTasks()
-    } catch (err: any) {
+    } catch (err) {
         toastStore.addToast({
             type: 'error',
-            message: err.response?.data?.detail || t('DeploymentDetailView.stopFailedToast'),
+            message: extractErrorMessage(err, t('DeploymentDetailView.stopFailedToast')),
         })
     } finally {
         cancelBusy.value = false
@@ -702,170 +641,14 @@ const historyTasks = computed<Task[]>(() => {
     return list.filter((t) => t.taskId !== active.taskId)
 })
 
-// Phase stepper — N dots based on the live ``totalPhases`` reported by the
-// worker. Phase names live in the worker (different sets for deploy/destroy),
-// so the frontend stays task-type-agnostic for the dot count. Label tables for
-// the deploy/destroy presets render meaningful labels under each dot when the
-// totals match a known shape; an unknown count falls back to numbered labels.
-//
-// Default to a conservative 11-dot view before the first event arrives so the
-// layout doesn't jump when the worker reports its real phase count.
-const DEFAULT_PHASE_COUNT = 11
-
-const PHASE_LABELS_DEPLOY_FULL = [
-    'STARTING',
-    'OPENSTACK_SETUP',
-    'GIT_CLONE',
-    'CREDS_MATERIALISE',
-    'PACKER_INIT',
-    'PACKER_VALIDATE',
-    'PACKER_BUILD',
-    'TERRAFORM_INIT',
-    'TERRAFORM_PLAN',
-    'TERRAFORM_APPLY',
-    'OUTPUTS_AND_CLEANUP',
-] as const
-
-const PHASE_LABELS_DEPLOY_NO_PACKER = [
-    'STARTING',
-    'OPENSTACK_SETUP',
-    'GIT_CLONE',
-    'CREDS_MATERIALISE',
-    'TERRAFORM_INIT',
-    'TERRAFORM_PLAN',
-    'TERRAFORM_APPLY',
-    'OUTPUTS_AND_CLEANUP',
-] as const
-
-const PHASE_LABELS_DESTROY = [
-    'STARTING',
-    'OPENSTACK_SETUP',
-    'GIT_CLONE',
-    'CREDS_MATERIALISE',
-    'TERRAFORM_INIT',
-    'TERRAFORM_DESTROY',
-    'CLEANUP',
-] as const
-
-// Pause/Resume share the destroy preamble (clone + clouds + tf init to allow a
-// state-pull) but their hot phase is a CLI-driven server stop/start, not a
-// terraform destroy. Same length as ``PHASE_LABELS_DESTROY`` (7), so tables are
-// picked by task type first and only fall back to length-matching when the type
-// is unknown (e.g. live-stream attached before tasks were loaded).
-const PHASE_LABELS_PAUSE = [
-    'STARTING',
-    'OPENSTACK_SETUP',
-    'GIT_CLONE',
-    'CREDS_MATERIALISE',
-    'TERRAFORM_INIT',
-    'SERVER_STOP',
-    'CLEANUP',
-] as const
-
-const PHASE_LABELS_RESUME = [
-    'STARTING',
-    'OPENSTACK_SETUP',
-    'GIT_CLONE',
-    'CREDS_MATERIALISE',
-    'TERRAFORM_INIT',
-    'SERVER_START',
-    'CLEANUP',
-] as const
-
-// Per-VM redeploy reuses the destroy preamble (clone, clouds.yaml,
-// init) and then runs ``terraform apply -replace=… -target=…`` for
-// the single targeted resource. Phase shape mirrors
-// ``worker/app/tasks.py:_PHASES_REDEPLOY``.
-const PHASE_LABELS_REDEPLOY = [
-    'STARTING',
-    'OPENSTACK_SETUP',
-    'GIT_CLONE',
-    'CREDS_MATERIALISE',
-    'TERRAFORM_INIT',
-    'TERRAFORM_APPLY',
-    'CLEANUP',
-] as const
-
-// Stepper labels: the worker sends the full phase sequence as ``phase_names``
-// with every progress event — the authoritative source, since multi-image
-// deploys have a dynamic sequence whose template keys the frontend can't guess.
-// Before the first progress event, we fall back to the static tables below,
-// which cover the fixed shapes (single-image deploy / destroy / pause / resume
-// / redeploy); multi-image slots show generic numbers until ``phase_names`` lands.
-
-const phaseStepCount = computed<number>(() => {
-    return streamTotalPhases.value > 0 ? streamTotalPhases.value : DEFAULT_PHASE_COUNT
-})
-
-// Return the label for a given 0-based index. Order of precedence:
-//   1. ``streamPhaseNames`` — authoritative, ships from the worker on
-//      every progress event for every real task (deploy / destroy /
-//      pause / resume / redeploy). Contains the exact phase names
-//      including ``:<template_key>`` suffixes for multi-image builds.
-//   2. Static table picked by ``activeTask.type`` — used in the brief
-//      window between page-load and the first progress event, and
-//      always for legacy Single-Image-Deploy where the worker's
-//      sequence is byte-identical to ``PHASE_LABELS_DEPLOY_FULL``.
-//   3. Numeric slot index — empty-slot guard so the stepper height
-//      doesn't collapse during the loading flicker.
-const phaseStepLabel = (idx: number): string => {
-    // 1. Worker-authoritative list.
-    const fromStream = streamPhaseNames.value
-    if (Array.isArray(fromStream) && idx >= 0 && idx < fromStream.length) {
-        return phaseLabel(fromStream[idx])
-    }
-
-    // 2. Static fallback by active task type. Used until the first
-    //    progress event lands.
-    let table: readonly string[] | null = null
-    const activeType = activeTask.value?.type
-    if (activeType === 'pause') {
-        table = PHASE_LABELS_PAUSE
-    } else if (activeType === 'resume') {
-        table = PHASE_LABELS_RESUME
-    } else if (activeType === 'destroy') {
-        table = PHASE_LABELS_DESTROY
-    } else if (activeType === 'redeploy') {
-        table = PHASE_LABELS_REDEPLOY
-    } else if (activeType === 'deploy') {
-        // Without the worker's ``phase_names`` we can't tell legacy
-        // (11) apart from multi-image (14, 17, ...). The total is
-        // already known from the stream though, so pick the matching
-        // table when it fits exactly — otherwise leave ``table = null``
-        // and let the loop fall through to numeric slot indices.
-        // Once the first progress event arrives, ``phase_names`` takes
-        // over and the predicted slots are replaced with real labels.
-        if (streamTotalPhases.value === PHASE_LABELS_DEPLOY_NO_PACKER.length) {
-            table = PHASE_LABELS_DEPLOY_NO_PACKER
-        } else if (streamTotalPhases.value === PHASE_LABELS_DEPLOY_FULL.length) {
-            table = PHASE_LABELS_DEPLOY_FULL
-        }
-    }
-    // Length-based last resort (no active task type known yet).
-    if (!table) {
-        const total = streamTotalPhases.value
-        if (total === PHASE_LABELS_DEPLOY_FULL.length) table = PHASE_LABELS_DEPLOY_FULL
-        else if (total === PHASE_LABELS_DEPLOY_NO_PACKER.length) table = PHASE_LABELS_DEPLOY_NO_PACKER
-        else if (total === PHASE_LABELS_DESTROY.length) table = PHASE_LABELS_DESTROY
-    }
-    if (table && idx >= 0 && idx < table.length) {
-        return phaseLabel(table[idx])
-    }
-    // 3. Numeric placeholder so the slot has a non-empty label.
-    return String(idx + 1)
-}
-
-// 0-based index of the active dot. Prefer the worker's authoritative
-// ``phase_index`` (1-based) from the SSE payload — only fall back to
-// rounding ``progress_pct`` if no progress event has arrived yet.
-const currentPhaseIndex = computed<number>(() => {
-    if (streamCurrentPhaseIndex.value !== null && streamCurrentPhaseIndex.value > 0) {
-        return streamCurrentPhaseIndex.value - 1
-    }
-    if (streamProgress.value === null) return -1
-    const total = phaseStepCount.value
-    const pct = Math.max(0, Math.min(100, streamProgress.value))
-    return Math.max(0, Math.min(total - 1, Math.round((pct / 100) * total) - 1))
+// Phase stepper. The label tables and the worker-authoritative
+// resolution order live in the composable — see its module docs.
+const { phaseStepCount, phaseStepLabel, currentPhaseIndex, phaseLabel } = useDeploymentPhases({
+    streamTotalPhases,
+    streamPhaseNames,
+    streamCurrentPhaseIndex,
+    streamProgress,
+    activeTask,
 })
 
 // Initialise progress bar + stepper from whatever the DB has on the
@@ -1027,35 +810,6 @@ onBeforeUnmount(() => {
 // The helper unifies those into a 2-space-indented JSON dump when the
 // payload parses, and falls back to the raw text otherwise so we never
 // clobber a non-JSON string by trying to parse it.
-const prettyJson = (value: unknown): string => {
-    if (value === null || value === undefined) return ''
-    if (typeof value === 'object') {
-        try {
-            return JSON.stringify(value, null, 2)
-        } catch {
-            return String(value)
-        }
-    }
-    if (typeof value === 'string') {
-        const trimmed = value.trim()
-        // Cheap pre-check: only attempt JSON.parse on strings that look
-        // like JSON. Saves a try/catch round-trip for ordinary log
-        // text and avoids accidentally parsing a bare number or "null"
-        // string into something the consumer didn't expect.
-        if (
-            (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-            (trimmed.startsWith('[') && trimmed.endsWith(']'))
-        ) {
-            try {
-                return JSON.stringify(JSON.parse(trimmed), null, 2)
-            } catch {
-                return value
-            }
-        }
-        return value
-    }
-    return String(value)
-}
 
 // Copy-to-clipboard state. Each "card" (logs/state/outputs) tags its
 // copy button with a unique key; the key of whichever was last
@@ -1093,22 +847,6 @@ const copyToClipboard = async (text: string, key: string) => {
     } catch (err) {
         console.error('Copy failed:', err)
     }
-}
-
-const phaseLabel = (phase: unknown): string => {
-    if (typeof phase !== 'string' || !phase) return ''
-    // Worker-emitted multi-image phases carry the template key as a ``:<key>``
-    // suffix (e.g. ``PACKER_BUILD:database``). Split the suffix off, title-case
-    // the base name, and append the sub-key as ``[<key>]`` so the stepper reads
-    // ``Packer Build [database]`` instead of ``Packer Build:database``.
-    const colonIdx = phase.indexOf(':')
-    const base = colonIdx === -1 ? phase : phase.slice(0, colonIdx)
-    const subKey = colonIdx === -1 ? '' : phase.slice(colonIdx + 1).trim()
-    const formattedBase = base
-        .split('_')
-        .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
-        .join(' ')
-    return subKey ? `${formattedBase} [${subKey}]` : formattedBase
 }
 
 // Count of log entries inside ``selectedTask.logs`` for the badge in
@@ -1629,7 +1367,7 @@ const deselectTask = () => {
                 <!-- Single Delete button. The backend decides whether this
                      triggers a destroy task or a straight soft-delete based on
                      status. Hidden entirely for members. -->
-                <BaseButton v-if="isOwnerView" @click="canDelete && (showDeleteModal = true)" :disabled="!canDelete"
+                <BaseButton v-if="isOwnerView" data-testid="btn-delete-deployment" @click="canDelete && (showDeleteModal = true)" :disabled="!canDelete"
                     :title="deleteDisabledReason" class="flex items-center gap-2 px-4 py-2" variant="red">
                     <Trash2 :size="18" />
                     <span class="font-medium">{{ $t('DeploymentDetailView.deploymentDelete') }}</span>
@@ -1792,7 +1530,7 @@ const deselectTask = () => {
                 </div>
 
                 <div v-else key="overview" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div v-for="group in groups" :key="group.index" @click="selectGroup(group.index)"
+                    <div v-for="group in groups" :key="group.index" data-testid="group-card" @click="selectGroup(group.index)"
                         class="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 hover:border-primary/30">
                         <div class="flex items-center gap-3 mb-2">
                             <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -2147,137 +1885,21 @@ const deselectTask = () => {
             </div>
         </div>
 
-        <!-- Infrastructure section — per-VM cards + read-only listings.
-             Owner-only (the backend gates it the same way); members
-             skip the section entirely so they don't see an empty/
-             permission-error panel. Visually mirrors the other
-             page sections (Teams, Tasks, Outputs): same
-             ``bg-white rounded-xl border ... p-6 shadow-sm`` shell,
-             same icon-tile header, same sub-section spacing. -->
-        <div v-if="isOwnerView"
-             class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
-            <div class="flex items-center justify-between mb-5 gap-3 flex-wrap">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-gray-100 rounded-lg">
-                        <Server :size="20" class="text-gray-600" />
-                    </div>
-                    <span class="text-lg font-semibold text-gray-900">Infrastruktur</span>
-                </div>
-                <button
-                    @click="loadResources()"
-                    :disabled="resourcesLoading"
-                    class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-1.5 transition-colors"
-                    title="Live-Status neu abfragen"
-                >
-                    <RefreshCw :size="13" :class="resourcesLoading ? 'animate-spin' : ''" />
-                    Aktualisieren
-                </button>
-            </div>
-
-            <div
-                v-if="resourcesError"
-                class="text-sm p-3 rounded-lg border bg-red-50 text-red-800 border-red-200 mb-4 flex items-start gap-2"
-            >
-                <AlertCircle :size="16" class="mt-0.5 shrink-0" />
-                <p>{{ resourcesError }}</p>
-            </div>
-
-            <!-- VMs — primary section, cards inherit their own visual
-                 styling from ``InfrastructureVmCard``. -->
-            <section class="mb-6">
-                <div class="flex items-center gap-2 mb-3">
-                    <Server :size="14" class="text-gray-400" />
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-600">
-                        Virtuelle Maschinen
-                    </h3>
-                    <span
-                        v-if="vmResources.length > 0"
-                        class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-bold rounded"
-                    >
-                        {{ vmResources.length }}
-                    </span>
-                </div>
-                <div
-                    v-if="resourcesLoading && vmResources.length === 0"
-                    class="text-sm text-gray-500 italic px-4 py-6 bg-gray-50 rounded-lg border border-gray-100 text-center"
-                >
-                    Lade VMs…
-                </div>
-                <div
-                    v-else-if="vmResources.length === 0"
-                    class="text-sm text-gray-500 italic px-4 py-6 bg-gray-50 rounded-lg border border-gray-100 text-center"
-                >
-                    Keine VMs im aktuellen Terraform-State.
-                </div>
-                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <InfrastructureVmCard
-                        v-for="vm in vmResources"
-                        :key="vm.address"
-                        :resource="vm"
-                        :redeploying="redeployInFlight.has(vm.address)"
-                        :is-expanded="openDrawerAddress === vm.address"
-                        @open-details="openVmDrawer"
-                        @redeploy="redeployVm"
-                    />
-                </div>
-            </section>
-
-            <!-- Networks / Subnets / Floating IPs (read-only) -->
-            <section v-if="networkResources.length > 0" class="mb-6">
-                <div class="flex items-center gap-2 mb-3">
-                    <Network :size="14" class="text-gray-400" />
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-600">
-                        Netzwerk
-                    </h3>
-                    <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-bold rounded">
-                        {{ networkResources.length }}
-                    </span>
-                </div>
-                <ul class="space-y-1.5 text-xs">
-                    <li
-                        v-for="res in networkResources"
-                        :key="res.address"
-                        class="px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-between"
-                    >
-                        <div class="min-w-0">
-                            <p class="font-semibold text-gray-900 truncate">
-                                {{ res.display_name }}
-                            </p>
-                            <p class="text-gray-500 font-mono truncate" :title="res.address">
-                                {{ res.address }}
-                            </p>
-                        </div>
-                        <span class="text-[10px] uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-gray-300 text-gray-600 ml-2 shrink-0">
-                            {{ res.category }}
-                        </span>
-                    </li>
-                </ul>
-            </section>
-
-            <!-- Security Groups (read-only) -->
-            <section v-if="securityResources.length > 0">
-                <div class="flex items-center gap-2 mb-3">
-                    <Shield :size="14" class="text-gray-400" />
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-600">
-                        Sicherheit
-                    </h3>
-                    <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-bold rounded">
-                        {{ securityResources.length }}
-                    </span>
-                </div>
-                <ul class="space-y-1.5 text-xs">
-                    <li
-                        v-for="res in securityResources"
-                        :key="res.address"
-                        class="px-3 py-2 bg-gray-50 rounded-lg border border-gray-100"
-                    >
-                        <p class="font-semibold text-gray-900">{{ res.display_name }}</p>
-                        <p class="text-gray-500 font-mono">{{ res.address }}</p>
-                    </li>
-                </ul>
-            </section>
-        </div>
-
+        <!-- Infrastructure — owner-only; the backend gates the underlying
+             endpoint the same way, so members never mount it. -->
+        <DeploymentInfrastructurePanel
+            v-if="isOwnerView"
+            :vm-resources="vmResources"
+            :network-resources="networkResources"
+            :security-resources="securityResources"
+            :resources-loading="resourcesLoading"
+            :resources-error="resourcesError"
+            :redeploy-in-flight="redeployInFlight"
+            :open-drawer-address="openDrawerAddress"
+            @refresh="loadResources()"
+            @open-vm="openVmDrawer"
+            @redeploy-vm="redeployVm"
+        />
         <!-- Tasks / Logs Section — history of finished tasks. The active
              task (if any) is rendered above in its own card, so the
              list filters it out to avoid double-rendering.
@@ -2328,7 +1950,7 @@ const deselectTask = () => {
                 </div>
 
                 <div v-else class="space-y-2">
-                    <div v-for="task in historyTasks" :key="task.taskId" @click="selectTask(task)"
+                    <div v-for="task in historyTasks" :key="task.taskId" data-testid="task-row" @click="selectTask(task)"
                         class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200 hover:border-primary/30">
                         <div class="flex items-center gap-4 flex-1">
                             <component :is="getStatusStyles(task.status).icon" :size="18" :class="task.status === 'success' ? 'text-green-600' :
@@ -2577,7 +2199,7 @@ const deselectTask = () => {
                     <BaseButton variant="ghost" @click="showDeleteModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
-                    <BaseButton variant="red" @click="confirmDelete">
+                    <BaseButton variant="red" data-testid="btn-confirm-delete" @click="confirmDelete">
                         {{ $t('DeploymentDetailView.confirmButton') }}
                     </BaseButton>
                 </div>

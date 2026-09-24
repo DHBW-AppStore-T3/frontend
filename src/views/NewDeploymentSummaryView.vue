@@ -2,6 +2,7 @@
 import { userApi } from '@/api/user.api'
 import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { extractErrorMessage } from '@/utils/http-error'
 import { useRouter } from 'vue-router'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
@@ -289,7 +290,7 @@ function renderOsValue(
   if (val === null || val === undefined || val === '') return '-'
 
   // Split the value — may be a string, CSV, or array. Same as in the picker.
-  let parts: string[] = []
+  let parts: string[]
   if (Array.isArray(val)) {
     parts = val.map((v) => String(v).trim()).filter(Boolean)
   } else if (typeof val === 'string') {
@@ -314,7 +315,7 @@ function renderOsValue(
 const formatValue = (val: any): string => {
   if (typeof val === 'boolean') return val ? t('deployment.summary.yes') : t('deployment.summary.no')
   if (Array.isArray(val)) return val.map(item => String(item).replace(/^"|"$/g, '')).join(', ')
-  if (typeof val === 'string') return val.replace(/^["'\[]+|["'\]]+$/g, '')
+  if (typeof val === 'string') return val.replace(/^["'[]+|["'\]]+$/g, '')
   if (val === null || val === undefined || val === '') return '-'
   return String(val)
 }
@@ -476,7 +477,7 @@ const handleDeploy = async () => {
       const res = await userApi.list()
       backendUsers = res.data || []
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.message || t('deployment.summary.fetchUsersError')
+      const detail = extractErrorMessage(err, t('deployment.summary.fetchUsersError'))
       toastStore.addToast({ message: detail, type: 'error' })
       return
     }
