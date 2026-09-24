@@ -32,6 +32,7 @@ const mockStreamTotalPhases = ref(11)
 const mockStreamLiveLogs = ref([])
 const mockStreamTotalLogCount = ref(0)
 const mockStreamConnectionState = ref<'idle' | 'connecting' | 'live' | 'reconnecting' | 'ended' | 'error'>('idle')
+const mockStreamPhaseNames = ref<string[]>([])
 
 vi.mock('lucide-vue-next', () => {
   const icon = (className: string) => ({ template: `<span class="${className}" />` })
@@ -108,6 +109,8 @@ vi.mock('@/api/deployment.api', () => ({
   deploymentApi: {
     resendAccess: vi.fn(),
     getMyAccess: mocks.mockGetMyAccess,
+    listResources: vi.fn().mockResolvedValue({ data: { resources: [] } }),
+    redeployResource: vi.fn(),
   },
 }))
 
@@ -117,6 +120,7 @@ vi.mock('@/composables/useDeploymentStream', () => ({
     currentPhase: mockStreamCurrentPhase,
     currentPhaseIndex: mockStreamCurrentPhaseIndex,
     totalPhases: mockStreamTotalPhases,
+    phaseNames: mockStreamPhaseNames,
     liveLogs: mockStreamLiveLogs,
     totalLogCount: mockStreamTotalLogCount,
     connectionState: mockStreamConnectionState,
@@ -211,11 +215,9 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
 // 2. Die Tests
 // ---------------------------------------------------------
 
-// TODO: Tests gegen die neue View-Struktur neu schreiben (main hat
-// die Detail-Seite umgebaut: Infrastructure-Panel, MarkdownRenderer,
-// canResendAccess-Gate, neue Failure-Headline-Logik im Log-Viewer,
-// drawer-Wrapper). Bis dahin geskippt.
-describe.skip('DeploymentDetailView.vue', () => {
+// Updated for the rebuilt view: Infrastructure panel, MarkdownRenderer,
+// drawer wrapper, new failure-headline split in the log viewer.
+describe('DeploymentDetailView.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -227,6 +229,7 @@ describe.skip('DeploymentDetailView.vue', () => {
     mockStreamCurrentPhase.value = null
     mockStreamCurrentPhaseIndex.value = null
     mockStreamTotalPhases.value = 11
+    mockStreamPhaseNames.value = []
     mockStreamLiveLogs.value = []
     mockStreamTotalLogCount.value = 0
     mockStreamConnectionState.value = 'idle'
@@ -239,27 +242,37 @@ describe.skip('DeploymentDetailView.vue', () => {
     mocks.mockDeleteDeployment.mockResolvedValue({ status: 204 })
     mocks.mockListTasksByDeployment.mockResolvedValue({ data: [baseTask()] })
     mocks.mockGetTaskById.mockResolvedValue({ data: baseTask() })
+    mocks.mockGetMyAccess.mockResolvedValue({ data: { user_accounts: null, team_vms: null } })
   })
 
-  const mountComponent = () => {
-    return mount(DeploymentDetailView, {
+  const mountComponent = () =>
+    mount(DeploymentDetailView, {
       global: {
         mocks: {
-          $t: (key: string, vars?: Record<string, unknown>) => {
-            return vars ? `${key} ${JSON.stringify(vars)}` : key
-          },
+          $t: (key: string, vars?: Record<string, unknown>) =>
+            vars ? `${key} ${JSON.stringify(vars)}` : key,
         },
         stubs: {
           RouterLink: true,
           BaseButton: { template: '<button><slot /></button>' },
           Modal: {
             props: ['show'],
-            template: '<div v-if="$props.show" class="modal"><slot name="title" /><slot /></div>',
+            template: `<div v-if="$props.show" class="modal">
+              <slot name="title" />
+              <slot name="body" />
+              <slot name="footer" />
+            </div>`,
+          },
+          // New components added in the infrastructure / markdown refactor.
+          InfrastructureVmCard: { template: '<div class="vm-card-stub" />' },
+          InfrastructureVmDrawer: { template: '<div class="vm-drawer-stub" />' },
+          MarkdownRenderer: {
+            props: ['source'],
+            template: '<div class="markdown-stub">{{ source }}</div>',
           },
         },
       },
     })
-  }
 
   // --- 1. Lifecycle & Datenladen ---
 
@@ -274,19 +287,25 @@ describe.skip('DeploymentDetailView.vue', () => {
     expect(wrapper.text()).toContain('owner@example.com')
   })
 
+  // --- 2. Gruppen, Variablen und Teams ---
+
   it('zeigt Gruppen-, Variablen- und Teamdaten aus dem Deployment', async () => {
     const wrapper = mountComponent()
     await flushPromises()
 
+    // Groups section: group card renders the name.
     expect(wrapper.text()).toContain('Group A')
+    // Teams & Members section.
     expect(wrapper.text()).toContain('Team Alpha')
     expect(wrapper.text()).toContain('member.one')
+    // Variables: comment stripped by cleanVariableValue().
     expect(wrapper.text()).toContain('ubuntu:22.04')
     expect(wrapper.text()).not.toContain('# default image')
 
-   const groupCard = wrapper.findAll('div.cursor-pointer')[0]
-    expect(groupCard?.text()).toContain('Group A')
-
+    // Clicking a group card navigates to the student list.
+    const groupCard = wrapper.findAll('div.cursor-pointer')
+      .find(el => el.text().includes('Group A'))
+    expect(groupCard).toBeTruthy()
     await groupCard!.trigger('click')
     await nextTick()
 
@@ -294,60 +313,77 @@ describe.skip('DeploymentDetailView.vue', () => {
     expect(wrapper.text()).toContain('student-2')
   })
 
-  // --- 2. Rollen- und Sichtbarkeitslogik ---
+  // --- 3. Rollen- und Sichtbarkeitslogik ---
 
   it('blendet Tasks und Löschaktion für Nicht-Besitzer aus', async () => {
     mockIsTeacherOrAdmin.value = false
     mockAuthUserId.value = 'student-1'
+    // Deployment is owned by someone else → isOwnerView = false.
     mockDeployment.value = baseDeployment({ userId: 'user-owner' })
 
     const wrapper = mountComponent()
     await flushPromises()
 
+    // Owner-only task list endpoint must NOT be called.
     expect(mocks.mockListTasksByDeployment).not.toHaveBeenCalled()
+    // Placeholder "owner only" message is shown instead of the task list.
     expect(wrapper.text()).toContain('DeploymentDetailView.tasksOwnerOnly')
+    // Delete button is hidden entirely for non-owners.
     expect(wrapper.text()).not.toContain('DeploymentDetailView.deploymentDelete')
   })
 
-  // --- 3. Task-Details & Aktionen ---
+  // --- 4. Task-Details öffnen ---
 
-  it('lädt und zeigt Task-Details, wenn ein Task aus der Historie geöffnet wird', async () => {
+  it('lädt und zeigt Task-Details, wenn ein Task aus der Liste geöffnet wird', async () => {
     const wrapper = mountComponent()
     await flushPromises()
 
-    const taskRow = wrapper.findAll('div.cursor-pointer')[wrapper.findAll('div.cursor-pointer').length - 1]
-    expect(taskRow?.text()).toContain('deploy')
+    // Find the task row in the history list. Note: findAll('div.cursor-pointer')
+    // would also match group cards whose i18n key "deploymentStudentCount"
+    // contains "deploy" as a substring, so use the task-list container instead.
+    const taskRow = wrapper.find('.space-y-2 div.cursor-pointer')
+    expect(taskRow).toBeTruthy()
 
     await taskRow!.trigger('click')
     await flushPromises()
+    await nextTick()
 
     expect(mocks.mockGetTaskById).toHaveBeenCalledWith('task-1')
+    // Task metadata panel.
     expect(wrapper.text()).toContain('Task ID')
     expect(wrapper.text()).toContain('celery-1')
+    // Log content rendered via prettyJson / highlightJson.
     expect(wrapper.text()).toContain('hello from the worker')
+    // logEntryCount badge: logs.logs has 1 entry.
     expect(wrapper.text()).toContain('1 entries')
   })
+
+  // --- 5. Delete-Flow ---
 
   it('öffnet den Delete-Dialog und löst den Lösch-Flow aus', async () => {
     const wrapper = mountComponent()
     await flushPromises()
 
-    const buttons = wrapper.findAll('button')
-    const deleteButton = buttons.find((button) => button.text().includes('DeploymentDetailView.deploymentDelete'))
-
+    const deleteButton = wrapper.findAll('button')
+      .find(b => b.text().includes('DeploymentDetailView.deploymentDelete'))
     expect(deleteButton).toBeTruthy()
+
     await deleteButton!.trigger('click')
     await nextTick()
 
+    // Modal is now open.
     expect(wrapper.find('.modal').exists()).toBe(true)
 
-    const confirmButton = wrapper.findAll('.modal button').find((button) => button.text().includes('DeploymentDetailView.confirmButton'))
+    // Confirm button lives inside the modal's #footer slot.
+    const confirmButton = wrapper.findAll('.modal button')
+      .find(b => b.text().includes('DeploymentDetailView.confirmButton'))
     expect(confirmButton).toBeTruthy()
 
     await confirmButton!.trigger('click')
     await flushPromises()
 
     expect(mocks.mockDeleteDeployment).toHaveBeenCalledWith('dep-1')
+    // 204 → soft-delete, success toast + redirect.
     expect(mocks.mockAddToast).toHaveBeenCalledWith({
       type: 'success',
       message: 'DeploymentDetailView.deleteSuccessToast',
