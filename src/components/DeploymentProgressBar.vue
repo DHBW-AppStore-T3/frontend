@@ -57,7 +57,7 @@ const getTextAlignmentClass = (step: number, total: number) => {
             class="flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-bold z-10 transition-all duration-300 bg-white"
             :class="[
               currentStep >= item.step
-                ? 'border-emerald-600 text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                ? 'border-emerald-600 text-emerald-600 shadow-[0_0_10px_rgb(var(--color-success)/0.4)]'
                 : 'border-gray-300 text-gray-400',
               // Fill the circle green once the step is done.
               currentStep > item.step ? '!bg-emerald-600 !text-white' : '',
@@ -94,11 +94,11 @@ const getTextAlignmentClass = (step: number, total: number) => {
 @keyframes step-pulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 10px rgb(var(--color-success) / 0.4);
   }
   50% {
     transform: scale(1.18);
-    box-shadow: 0 0 14px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 14px rgb(var(--color-success) / 0.6);
   }
 }
 

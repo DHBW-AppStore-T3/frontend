@@ -78,7 +78,7 @@ onMounted(() => {
     <!-- KPI row -->
     <div class="kpi-row">
       <RouterLink :to="{ name: 'deployments.list' }" class="kpi-item group">
-        <div class="kpi-icon-wrap" style="background:rgba(49,113,83,0.10)">
+        <div class="kpi-icon-wrap" style="background:rgb(var(--color-primary) / 0.10)">
           <BarChart3 :size="16" class="text-primary" />
         </div>
         <div>
@@ -91,7 +91,7 @@ onMounted(() => {
       <div class="kpi-divider" />
 
       <RouterLink to="/apps" class="kpi-item group">
-        <div class="kpi-icon-wrap" style="background:rgba(228,140,42,0.10)">
+        <div class="kpi-icon-wrap" style="background:rgb(var(--color-accent-yellow) / 0.10)">
           <Layers :size="16" class="text-accentYellow" />
         </div>
         <div>
@@ -107,7 +107,7 @@ onMounted(() => {
       <div class="kpi-divider" />
 
       <RouterLink to="/courses" class="kpi-item group">
-        <div class="kpi-icon-wrap" style="background:rgba(59,130,246,0.08)">
+        <div class="kpi-icon-wrap" style="background:rgb(var(--color-info) / 0.08)">
           <GraduationCap :size="16" class="text-blue-500" />
         </div>
         <div>
@@ -194,7 +194,7 @@ onMounted(() => {
 <style scoped>
 /* Hero */
 .hero-banner {
-  background: linear-gradient(135deg, #317153 0%, #1e4a32 60%, #173325 100%);
+  background: linear-gradient(135deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-deep)) 60%, rgb(var(--color-primary-darkest)) 100%);
   border-radius: 20px;
   padding: 28px 32px;
   display: flex;
@@ -211,7 +211,7 @@ onMounted(() => {
   right: -40px;
   width: 200px;
   height: 200px;
-  background: rgba(255,255,255,0.04);
+  background: rgb(var(--color-on-dark) / 0.04);
   border-radius: 50%;
 }
 
@@ -222,7 +222,7 @@ onMounted(() => {
   right: 80px;
   width: 160px;
   height: 160px;
-  background: rgba(255,255,255,0.03);
+  background: rgb(var(--color-on-dark) / 0.03);
   border-radius: 50%;
 }
 
@@ -238,9 +238,9 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: rgba(255,255,255,0.15);
+  background: rgb(var(--color-on-dark) / 0.15);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid rgb(var(--color-on-dark) / 0.25);
   color: white;
   font-size: 0.875rem;
   font-weight: 600;
@@ -251,15 +251,15 @@ onMounted(() => {
 }
 
 .hero-cta:hover {
-  background: rgba(255,255,255,0.22);
-  border-color: rgba(255,255,255,0.35);
+  background: rgb(var(--color-on-dark) / 0.22);
+  border-color: rgb(var(--color-on-dark) / 0.35);
 }
 
 /* KPI row */
 .kpi-row {
   background: white;
   border-radius: 16px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid rgb(var(--color-border-subtle));
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;
@@ -276,12 +276,12 @@ onMounted(() => {
 }
 
 .kpi-item:hover {
-  background: #fafafa;
+  background: rgb(var(--color-surface-muted));
 }
 
 .kpi-divider {
   width: 1px;
-  background: #f0f0f0;
+  background: rgb(var(--color-border-subtle));
   margin: 12px 0;
 }
 
@@ -298,7 +298,7 @@ onMounted(() => {
 .kpi-num {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #111827;
+  color: rgb(var(--color-text-heading));
   line-height: 1;
 }
 
@@ -307,7 +307,7 @@ onMounted(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #9ca3af;
+  color: rgb(var(--color-text-faint));
   margin-top: 3px;
 }
 </style>

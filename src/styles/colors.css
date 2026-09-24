@@ -1,0 +1,34 @@
+:root {
+  --color-primary: 49 113 83;
+  --color-primary-dark: 51 106 74;
+  --color-primary-light: 78 125 103;
+  --color-light-green: 185 212 192;
+  --color-ultra-light-green: 219 229 222;
+  --color-accent-yellow: 228 140 42;
+  --color-light-yellow: 251 230 207;
+  --color-accent-red: 231 53 1;
+  --color-light-red: 248 214 204;
+  --color-bg-soft: 244 247 245;
+  --color-primary-deep: 30 74 50;
+  --color-primary-darkest: 23 51 37;
+  --color-button-green: 46 92 70;
+  --color-button-green-hover: 35 74 54;
+  --color-surface-tint: 239 245 242;
+  --color-surface-muted: 250 250 250;
+  --color-surface-page: 248 250 249;
+  --color-surface-dark: 30 45 38;
+  --color-border-subtle: 240 240 240;
+  --color-on-dark: 255 255 255;
+  --color-success: 16 185 129;
+  --color-danger: 239 68 68;
+  --color-warning: 245 158 11;
+  --color-info: 59 130 246;
+  --color-status-green: 34 197 94;
+  --color-status-yellow: 234 179 8;
+  --color-status-orange: 249 115 22;
+  --color-status-slate: 148 163 184;
+  --color-text-strong: 31 41 55;
+  --color-text-heading: 17 24 39;
+  --color-text-muted: 107 114 128;
+  --color-text-faint: 156 163 175;
+}

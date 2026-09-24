@@ -426,7 +426,7 @@ onMounted(async () => {
 
       <!-- App header -->
       <div class="flex items-start gap-6 mb-6 border-b border-gray-100 pb-6">
-        <div class="bg-[#EFF5F2] p-4 rounded-xl shadow-sm text-primary flex items-center justify-center w-[88px] h-[88px] flex-shrink-0">
+        <div class="bg-surfaceTint p-4 rounded-xl shadow-sm text-primary flex items-center justify-center w-[88px] h-[88px] flex-shrink-0">
           <img v-if="app.image" :src="app.image" :alt="app.name" class="w-full h-full object-contain" />
           <component v-else :is="getIconForApp(app.name)" :size="48" />
         </div>
@@ -570,7 +570,7 @@ onMounted(async () => {
         </div>
 
         <!-- Deploy sidebar -->
-        <div class="bg-[#FAFAFA] border border-gray-200 rounded-xl p-6 h-fit sticky top-6">
+        <div class="bg-surfaceMuted border border-gray-200 rounded-xl p-6 h-fit sticky top-6">
           <h2 class="text-lg font-semibold text-gray-900 mb-6">{{ $t('AppsDetailView.startDeploymentTitle') }}</h2>
 
           <div class="mb-6">
@@ -588,7 +588,7 @@ onMounted(async () => {
             @click="handleDeploy"
             :disabled="!selectedVersion || (credStore.isResolved && !credStore.hasCredential)"
             :title="credStore.isResolved && !credStore.hasCredential ? $t('AppsDetailView.missingCredsTitle') : ''"
-            class="w-full bg-gradient-to-r from-[#2E5C46] to-[#234a36] text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+            class="w-full bg-gradient-to-r from-buttonGreen to-buttonGreenHover text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
           >
             <Layers :size="18" />
             {{ $t('AppsDetailView.deployButton') }}
