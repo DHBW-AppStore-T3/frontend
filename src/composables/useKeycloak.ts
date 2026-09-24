@@ -44,6 +44,9 @@ const userManager = new UserManager({
 const user = ref<User | null>(null)
 const isLoading = ref(true)
 const isAuthenticated = ref(false)
+const devEmail = ref<string | null>(null)
+const ltiToken = ref<string | null>(null)
+const handoffToken = ref<string | null>(null)
 
 // ----------------------------------------------------------------
 // REFRESH SINGLE-FLIGHT
@@ -174,6 +177,9 @@ export function useKeycloak() {
    * refresh fails.
    */
   async function getAccessToken(): Promise<string | null> {
+    if (ltiToken.value) return ltiToken.value
+    if (handoffToken.value) return handoffToken.value
+    if (devEmail.value) return 'dev-sso-token'
     try {
       const currentUser = await userManager.getUser()
       if (!currentUser) return null
@@ -204,6 +210,9 @@ export function useKeycloak() {
    * All concurrent callers share a single signinSilent() round-trip.
    */
   async function ensureValidToken(): Promise<boolean> {
+    if (ltiToken.value) return true
+    if (handoffToken.value) return true
+    if (devEmail.value) return true
     try {
       const currentUser = await userManager.getUser()
       if (!currentUser) return false
@@ -215,6 +224,43 @@ export function useKeycloak() {
       console.error('Token refresh failed:', error)
       return false
     }
+  }
+
+  /**
+   * Dev-mode only: inject a pre-authenticated user without a Keycloak redirect.
+   */
+  async function setDevUser(email: string): Promise<void> {
+    devEmail.value = email
+    isAuthenticated.value = true
+    isLoading.value = false
+  }
+
+  /**
+   * Set the authenticated user from a Moodle LTI 1.3 launch. Backend has
+   * already validated the launch and issued a short-lived HS256 session
+   * token — no Keycloak flow needed for this path.
+   */
+  async function setLtiUser(email: string, token: string): Promise<void> {
+    ltiToken.value = token
+    devEmail.value = email
+    isAuthenticated.value = true
+    isLoading.value = false
+  }
+
+  /**
+   * Set the authenticated user from a self-service-ui handoff. Backend has
+   * already validated self-service-ui's Keycloak bearer and minted a
+   * short-lived HS256 handoff token — independent secret from the LTI path.
+   */
+  async function setHandoffUser(email: string, token: string): Promise<void> {
+    handoffToken.value = token
+    devEmail.value = email
+    isAuthenticated.value = true
+    isLoading.value = false
+  }
+
+  function getDevEmail(): string | null {
+    return devEmail.value
   }
 
   return {
@@ -231,5 +277,9 @@ export function useKeycloak() {
     getAccessToken,
     getUser,
     ensureValidToken,
+    setDevUser,
+    getDevEmail,
+    setLtiUser,
+    setHandoffUser,
   }
 }

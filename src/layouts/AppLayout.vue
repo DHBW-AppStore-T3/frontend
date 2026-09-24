@@ -59,7 +59,12 @@ const pageTitle = computed(() => {
 
 const changeLocale = (lang: string) => {
   locale.value = lang
-  localStorage.setItem('locale', lang)
+  try {
+    localStorage.setItem('locale', lang)
+  } catch {
+    // Storage is blocked when embedded in a third-party iframe (Moodle LTI);
+    // the locale still switches for this session, it just isn't persisted.
+  }
 }
 
 const navItems = computed(() => [
