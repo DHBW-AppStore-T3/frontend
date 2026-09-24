@@ -32,6 +32,7 @@ const mockStreamTotalPhases = ref(11)
 const mockStreamLiveLogs = ref([])
 const mockStreamTotalLogCount = ref(0)
 const mockStreamConnectionState = ref<'idle' | 'connecting' | 'live' | 'reconnecting' | 'ended' | 'error'>('idle')
+const mockStreamPhaseNames = ref<string[]>([])
 
 vi.mock('lucide-vue-next', () => {
   const icon = (className: string) => ({ template: `<span class="${className}" />` })
@@ -108,6 +109,8 @@ vi.mock('@/api/deployment.api', () => ({
   deploymentApi: {
     resendAccess: vi.fn(),
     getMyAccess: mocks.mockGetMyAccess,
+    listResources: vi.fn().mockResolvedValue({ data: { resources: [] } }),
+    redeployResource: vi.fn(),
   },
 }))
 
@@ -117,6 +120,7 @@ vi.mock('@/composables/useDeploymentStream', () => ({
     currentPhase: mockStreamCurrentPhase,
     currentPhaseIndex: mockStreamCurrentPhaseIndex,
     totalPhases: mockStreamTotalPhases,
+    phaseNames: mockStreamPhaseNames,
     liveLogs: mockStreamLiveLogs,
     totalLogCount: mockStreamTotalLogCount,
     connectionState: mockStreamConnectionState,
@@ -234,6 +238,7 @@ describe('DeploymentDetailView.vue', () => {
     mockStreamCurrentPhase.value = null
     mockStreamCurrentPhaseIndex.value = null
     mockStreamTotalPhases.value = 11
+    mockStreamPhaseNames.value = []
     mockStreamLiveLogs.value = []
     mockStreamTotalLogCount.value = 0
     mockStreamConnectionState.value = 'idle'
@@ -246,6 +251,7 @@ describe('DeploymentDetailView.vue', () => {
     mocks.mockDeleteDeployment.mockResolvedValue({ status: 204 })
     mocks.mockListTasksByDeployment.mockResolvedValue({ data: [baseTask()] })
     mocks.mockGetTaskById.mockResolvedValue({ data: baseTask() })
+    mocks.mockGetMyAccess.mockResolvedValue({ data: { user_accounts: null, team_vms: null } })
   })
 
   const mountComponent = () => {
@@ -268,6 +274,12 @@ describe('DeploymentDetailView.vue', () => {
               '<div v-if="$props.show" class="modal">' +
               '<slot name="title" /><slot /><slot name="footer" />' +
               '</div>',
+          },
+          InfrastructureVmCard: { template: '<div class="vm-card-stub" />' },
+          InfrastructureVmDrawer: { template: '<div class="vm-drawer-stub" />' },
+          MarkdownRenderer: {
+            props: ['source'],
+            template: '<div class="markdown-stub">{{ source }}</div>',
           },
         },
       },
