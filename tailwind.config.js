@@ -8,28 +8,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "rgb(var(--color-primary) / <alpha-value>)",        // Hauptgrün
+        // Brand roles: values come from the active theme (src/theme/)
+        primary: "rgb(var(--color-primary) / <alpha-value>)",
         primaryDark: "rgb(var(--color-primary-dark) / <alpha-value>)",
         primaryLight: "rgb(var(--color-primary-light) / <alpha-value>)",
-        lightGreen: "rgb(var(--color-light-green) / <alpha-value>)",
-        ultraLightGreen: "rgb(var(--color-ultra-light-green) / <alpha-value>)" ,
-
-        accentYellow: "rgb(var(--color-accent-yellow) / <alpha-value>)",   // Gelb aus Logo
-        lightYellow: "rgb(var(--color-light-yellow) / <alpha-value>)",
-
-        accentRed: "rgb(var(--color-accent-red) / <alpha-value>)",      // Rot aus Logo
-        lightRed: "rgb(var(--color-light-red) / <alpha-value>)",
-
-        bgSoft: "rgb(var(--color-bg-soft) / <alpha-value>)",
-
         primaryDeep: "rgb(var(--color-primary-deep) / <alpha-value>)",
         primaryDarkest: "rgb(var(--color-primary-darkest) / <alpha-value>)",
-        buttonGreen: "rgb(var(--color-button-green) / <alpha-value>)",
-        buttonGreenHover: "rgb(var(--color-button-green-hover) / <alpha-value>)",
+        primarySoft: "rgb(var(--color-primary-soft) / <alpha-value>)",
+        primaryFaint: "rgb(var(--color-primary-faint) / <alpha-value>)",
+        primaryAction: "rgb(var(--color-primary-action) / <alpha-value>)",
+        primaryActionHover: "rgb(var(--color-primary-action-hover) / <alpha-value>)",
+        brandAccent: "rgb(var(--color-brand-accent) / <alpha-value>)",
+        brandAccentSoft: "rgb(var(--color-brand-accent-soft) / <alpha-value>)",
+        bgSoft: "rgb(var(--color-bg-soft) / <alpha-value>)",
         surfaceTint: "rgb(var(--color-surface-tint) / <alpha-value>)",
-        surfaceMuted: "rgb(var(--color-surface-muted) / <alpha-value>)",
         surfacePage: "rgb(var(--color-surface-page) / <alpha-value>)",
         surfaceDark: "rgb(var(--color-surface-dark) / <alpha-value>)",
+
+        // Theme-independent
+        destructive: "rgb(var(--color-destructive) / <alpha-value>)",
+        destructiveSoft: "rgb(var(--color-destructive-soft) / <alpha-value>)",
+        surfaceMuted: "rgb(var(--color-surface-muted) / <alpha-value>)",
         borderSubtle: "rgb(var(--color-border-subtle) / <alpha-value>)",
         onDark: "rgb(var(--color-on-dark) / <alpha-value>)",
         success: "rgb(var(--color-success) / <alpha-value>)",

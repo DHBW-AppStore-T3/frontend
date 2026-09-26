@@ -20,8 +20,9 @@ import { useRole } from '@/composables/useRole'
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 
-import logo from '@/assets/Six7-white-withoutBackground.png'
+import { useTheme } from '@/theme/useTheme'
 
+const { logo } = useTheme()
 const { locale, t } = useI18n()
 const authStore = useAuthStore()
 const { logout } = useAuth()
@@ -89,7 +90,7 @@ const navItems = computed(() => [
       <!-- Logo area -->
       <div class="h-16 flex items-center border-b border-white/10 px-3" style="overflow: visible;">
         <RouterLink to="/" class="block" style="height: 48px; width: 100%; overflow: visible;">
-          <img :src="logo" alt="SIX7 Click'n Deploy" style="position: relative; z-index: 30; height: 96px; margin-top: -24px; margin-left: -8px; max-width: none;" />
+          <img :src="logo.src" :alt="logo.alt" :style="{ position: 'relative', zIndex: 30, height: `${logo.height}px`, marginTop: `${logo.offsetY}px`, marginLeft: `${logo.offsetX}px`, maxWidth: 'none' }" />
         </RouterLink>
       </div>
 
@@ -273,7 +274,7 @@ const navItems = computed(() => [
   transform: translateY(-50%) scaleY(0);
   width: 3px;
   height: 60%;
-  background: rgb(var(--color-accent-yellow));
+  background: rgb(var(--color-brand-accent));
   border-radius: 0 2px 2px 0;
   transition: transform 150ms ease;
 }

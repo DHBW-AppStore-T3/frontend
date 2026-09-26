@@ -3,6 +3,9 @@ import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import router from '@/router/index'
 import i18n from './i18n'
+import { env } from '@/env'
+import { applyTheme } from '@/theme/applyTheme'
+import { resolveTheme } from '@/theme'
 import { useAuthStore } from '@/stores/auth.store'
 import type { UserRole } from '@/types'
 
@@ -13,6 +16,8 @@ function mapLtiRole(role: string | null): UserRole {
 }
 
 ;(async () => {
+  applyTheme(resolveTheme(env.THEME))
+
   const app = createApp(App)
   app.use(createPinia())
   app.use(router)

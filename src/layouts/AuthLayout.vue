@@ -1,3 +1,9 @@
+<script setup lang="ts">
+import { useTheme } from '@/theme/useTheme'
+
+const { brand } = useTheme()
+</script>
+
 <template>
   <div class="min-h-screen flex items-center justify-center bg-primary">
 
@@ -6,9 +12,9 @@
 
       <!-- Logo / Titel -->
       <div class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-primary">SIX7</h1>
+        <h1 class="text-3xl font-bold text-primary">{{ brand.name }}</h1>
         <p class="text-gray-500 mt-2">
-          Click'n Deploy
+          {{ brand.tagline }}
         </p>
       </div>
 
