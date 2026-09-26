@@ -13,6 +13,8 @@ export interface Theme {
   id: string
   brand: { name: string; tagline: string; documentTitle: string }
   logo: { src: string; alt: string; height: number; offsetX: number; offsetY: number }
+  /** Optional logo for light surfaces (login card); falls back to brand.name text. */
+  authLogo?: { src: string; alt: string; height: number }
   favicon: string
   colors: Record<ThemeColorKey, Rgb>
 }

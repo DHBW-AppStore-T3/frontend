@@ -28,7 +28,11 @@ describe('layout branding', () => {
     it(`AuthLayout renders brand from theme ${id}`, () => {
       applyTheme(theme)
       const html = mountLayout(AuthLayout).html()
-      expect(html).toContain(theme.brand.name)
+      if (theme.authLogo) {
+        expect(html).toContain(theme.authLogo.src)
+      } else {
+        expect(html).toContain(theme.brand.name)
+      }
       expect(html).toContain(theme.brand.tagline)
       if (id !== 'default') expect(html).not.toContain('SIX7')
     })

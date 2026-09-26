@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTheme } from '@/theme/useTheme'
 
-const { brand } = useTheme()
+const { brand, authLogo } = useTheme()
 </script>
 
 <template>
@@ -12,7 +12,8 @@ const { brand } = useTheme()
 
       <!-- Logo / Titel -->
       <div class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-primary">{{ brand.name }}</h1>
+        <img v-if="authLogo" :src="authLogo.src" :alt="authLogo.alt" :style="{ height: `${authLogo.height}px` }" class="mx-auto" />
+        <h1 v-else class="text-3xl font-bold text-primary">{{ brand.name }}</h1>
         <p class="text-gray-500 mt-2">
           {{ brand.tagline }}
         </p>
