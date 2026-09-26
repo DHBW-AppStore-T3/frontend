@@ -3,7 +3,7 @@ export type Rgb = `${number} ${number} ${number}`
 export const THEME_COLOR_KEYS = [
   'primary', 'primary-dark', 'primary-light', 'primary-deep', 'primary-darkest',
   'primary-soft', 'primary-faint', 'primary-action', 'primary-action-hover',
-  'brand-accent', 'brand-accent-soft',
+  'brand-accent', 'brand-accent-soft', 'brand-indicator',
   'bg-soft', 'surface-tint', 'surface-page', 'surface-dark',
 ] as const
 

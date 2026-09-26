@@ -274,7 +274,7 @@ const navItems = computed(() => [
   transform: translateY(-50%) scaleY(0);
   width: 3px;
   height: 60%;
-  background: rgb(var(--color-brand-accent));
+  background: rgb(var(--color-brand-indicator));
   border-radius: 0 2px 2px 0;
   transition: transform 150ms ease;
 }

@@ -11,12 +11,12 @@ Ein Image kann so ohne Rebuild für verschiedene Hochschulen gebrandet werden.
 Unbekannter/leerer Name → `default` + `console.warn`. Templates lesen Logo/Name über `useTheme()` (Wert ändert sich zur Laufzeit nicht).
 
 ## Token-Rollen
-- **Themebar** (`THEME_COLOR_KEYS`): `primary*`, `primary-soft`, `primary-faint`, `primary-action(-hover)`, `brand-accent(-soft)`, `bg-soft`, `surface-tint|page|dark`. Nur in `src/theme/themes/*`, nicht in `colors.css`.
+- **Themebar** (`THEME_COLOR_KEYS`): `primary*`, `primary-soft`, `primary-faint`, `primary-action(-hover)`, `brand-accent(-soft)`, `brand-indicator` (Sidebar-Aktivmarker), `bg-soft`, `surface-tint|page|dark`. Nur in `src/theme/themes/*`, nicht in `colors.css`.
 - **Konstant** (`src/styles/colors.css`): Semantik (`success`, `warning`, `danger`, `info`, `status-*`), Text, Border, `on-dark`, `destructive(-soft)`.
 - Rollennamen statt Farbnamen (`primarySoft` statt `lightGreen` …); Guards in `tests/unit/styles/colors.spec.ts` verhindern alte Namen.
 
 ## Neues Theme anlegen
-1. `src/theme/themes/<id>.ts` mit `Theme` anlegen (alle 15 Farbschlüssel, Logo unter `src/theme/assets/`, Favicon unter `public/themes/<id>/`).
+1. `src/theme/themes/<id>.ts` mit `Theme` anlegen (alle 16 Farbschlüssel, Logo unter `src/theme/assets/`, Favicon unter `public/themes/<id>/`).
 2. In `src/theme/index.ts` in `THEMES` registrieren.
 3. `npm run test` — Struktur- und Kontrast-Guards (WCAG ≥ 4,5 für Weiß auf `primary`, `primary-deep`, `primary-action`) müssen grün sein.
 

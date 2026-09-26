@@ -19,6 +19,7 @@ export default {
         primaryAction: "rgb(var(--color-primary-action) / <alpha-value>)",
         primaryActionHover: "rgb(var(--color-primary-action-hover) / <alpha-value>)",
         brandAccent: "rgb(var(--color-brand-accent) / <alpha-value>)",
+        brandIndicator: "rgb(var(--color-brand-indicator) / <alpha-value>)",
         brandAccentSoft: "rgb(var(--color-brand-accent-soft) / <alpha-value>)",
         bgSoft: "rgb(var(--color-bg-soft) / <alpha-value>)",
         surfaceTint: "rgb(var(--color-surface-tint) / <alpha-value>)",

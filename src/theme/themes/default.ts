@@ -17,6 +17,7 @@ export const defaultTheme: Theme = {
     'primary-action': '46 92 70',
     'primary-action-hover': '35 74 54',
     'brand-accent': '228 140 42',
+    'brand-indicator': '228 140 42',
     'brand-accent-soft': '251 230 207',
     'bg-soft': '244 247 245',
     'surface-tint': '239 245 242',
