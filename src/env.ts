@@ -6,6 +6,7 @@ declare global {
       VITE_KEYCLOAK_CLIENT_ID?: string
       VITE_APP_URL?: string
       VITE_API_URL?: string
+      VITE_THEME?: string
     }
   }
 }
@@ -22,4 +23,5 @@ export const env = {
   KEYCLOAK_CLIENT_ID: getEnv('VITE_KEYCLOAK_CLIENT_ID', 'appstore-frontend'),
   APP_URL: getEnv('VITE_APP_URL', 'http://localhost:5173'),
   API_URL: getEnv('VITE_API_URL', 'http://localhost:8000'),
+  THEME: getEnv('VITE_THEME', 'default'),
 }

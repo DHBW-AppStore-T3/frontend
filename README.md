@@ -47,6 +47,19 @@ npx vue-tsc -b --noEmit
 
 Schritt 3 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die User-Typen bereits aus dem generierten Schema ab; die übrigen Blöcke sind noch handgepflegt und sollten bei Gelegenheit nachgezogen werden.
 
+## Theming
+
+Branding (Logo, Name, Titel, Favicon, Markenfarben) kommt aus `src/theme/`. Das Theme wählt `VITE_THEME`
+(`default` oder `t3-demo`; unbekannt → `default` mit Warnung):
+
+```bash
+VITE_THEME=t3-demo npm run dev
+```
+
+Im Container greift `VITE_THEME` über `env-config.js`/`envsubst`, ein Image genügt für alle Themes.
+`t3-demo` ist nur ein Demo-Theme, kein offizielles DHBW-Design. Neues Theme anlegen: siehe
+`claude_docs/decisions/2026-white-label-theming.md`.
+
 ## Technologie-Stack
 
 - **Vue 3** mit Composition API und TypeScript

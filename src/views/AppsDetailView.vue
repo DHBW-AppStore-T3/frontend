@@ -588,7 +588,7 @@ onMounted(async () => {
             @click="handleDeploy"
             :disabled="!selectedVersion || (credStore.isResolved && !credStore.hasCredential)"
             :title="credStore.isResolved && !credStore.hasCredential ? $t('AppsDetailView.missingCredsTitle') : ''"
-            class="w-full bg-gradient-to-r from-buttonGreen to-buttonGreenHover text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+            class="w-full bg-gradient-to-r from-primaryAction to-primaryActionHover text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
           >
             <Layers :size="18" />
             {{ $t('AppsDetailView.deployButton') }}

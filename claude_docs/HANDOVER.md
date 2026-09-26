@@ -34,6 +34,7 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-09-26 (White-Label-Theming, frontend#18):** `src/theme/` (Typen, Registry, `default` + `t3-demo`, `applyTheme` vor `app.mount()`), Auswahl via `VITE_THEME`. Brand-Tokens sind jetzt Rollennamen (`primarySoft`, `primaryAction`, `brandAccent`, `destructive` …) und leben nur im Theme. Details: `claude_docs/decisions/2026-white-label-theming.md`. **Offen:** `deployment` reicht `VITE_THEME` in den Compose-Dateien noch nicht durch (separates Issue); ohne Variable greift `default`.
 - **2026-09-24 (CSS-Farbvariablen, frontend#13):** Alle Farben zentral in `src/styles/colors.css` (RGB-Kanäle), `tailwind.config.js` referenziert sie via `rgb(var(--color-…) / <alpha-value>)`; Guard-Test `tests/unit/styles/colors.spec.ts` verhindert neue Literale. Tailwind-`white` bleibt unberührt (Token `on-dark`).
 - **2026-09-18 (Harness 2-Flow Reengineering):** `ci.yml` auf `dev`-Trunk umgestellt; Test Coverage Gate für `main` eingeführt; `CLAUDE.md` und `HANDOVER.md` standardisiert.
 - **2026-09-17:** Security Audit Fixes (js-yaml, nanoid) über PR #3 gemergt.

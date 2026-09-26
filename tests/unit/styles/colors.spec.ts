@@ -1,47 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
+import { THEME_COLOR_KEYS } from '@/theme/types'
 // @ts-expect-error -- plain JS config without type declarations
 import tailwindConfig from '../../../tailwind.config.js'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const SRC = path.join(ROOT, 'src')
 const COLORS_CSS = path.join(SRC, 'styles', 'colors.css')
-
-const EXPECTED: Record<string, string> = {
-  '--color-primary': '49 113 83',
-  '--color-primary-dark': '51 106 74',
-  '--color-primary-light': '78 125 103',
-  '--color-light-green': '185 212 192',
-  '--color-ultra-light-green': '219 229 222',
-  '--color-accent-yellow': '228 140 42',
-  '--color-light-yellow': '251 230 207',
-  '--color-accent-red': '231 53 1',
-  '--color-light-red': '248 214 204',
-  '--color-bg-soft': '244 247 245',
-  '--color-primary-deep': '30 74 50',
-  '--color-primary-darkest': '23 51 37',
-  '--color-button-green': '46 92 70',
-  '--color-button-green-hover': '35 74 54',
-  '--color-surface-tint': '239 245 242',
-  '--color-surface-muted': '250 250 250',
-  '--color-surface-page': '248 250 249',
-  '--color-surface-dark': '30 45 38',
-  '--color-border-subtle': '240 240 240',
-  '--color-on-dark': '255 255 255',
-  '--color-success': '16 185 129',
-  '--color-danger': '239 68 68',
-  '--color-warning': '245 158 11',
-  '--color-info': '59 130 246',
-  '--color-status-green': '34 197 94',
-  '--color-status-yellow': '234 179 8',
-  '--color-status-orange': '249 115 22',
-  '--color-status-slate': '148 163 184',
-  '--color-text-strong': '31 41 55',
-  '--color-text-heading': '17 24 39',
-  '--color-text-muted': '107 114 128',
-  '--color-text-faint': '156 163 175',
-}
 
 const themeColors = (tailwindConfig as { theme: { extend: { colors: Record<string, string> } } }).theme.extend.colors as Record<string, string>
 
@@ -75,11 +41,14 @@ describe('tailwind colors', () => {
 })
 
 describe('colors.css', () => {
-  it('defines a channel triple for every referenced variable', () => {
-    const css = fs.readFileSync(COLORS_CSS, 'utf8')
-    const defined: Record<string, string> = {}
-    for (const m of css.matchAll(/(--color-[a-z-]+):\s*(\d+ \d+ \d+);/g)) defined[m[1]!] = m[2]!
+  const css = fs.readFileSync(COLORS_CSS, 'utf8')
+  const defined = new Map<string, number>()
+  for (const m of css.matchAll(/(--color-[a-z-]+):\s*(\d+ \d+ \d+);/g)) {
+    defined.set(m[1]!, (defined.get(m[1]!) ?? 0) + 1)
+  }
+  const themeKeys = new Set(THEME_COLOR_KEYS.map((k) => `--color-${k}`))
 
+  it('defines a channel triple for every referenced variable unless the theme provides it', () => {
     const referenced = new Set<string>()
     const sources = [
       ...walk(SRC).filter((f) => f !== COLORS_CSS),
@@ -92,9 +61,60 @@ describe('colors.css', () => {
     for (const value of Object.values(themeColors)) {
       referenced.add(value.match(/var\((--color-[a-z-]+)\)/)![1]!)
     }
+    for (const name of referenced) {
+      expect(defined.has(name) || themeKeys.has(name), name).toBe(true)
+    }
+  })
 
-    for (const name of referenced) expect(defined, name).toHaveProperty(name)
-    expect(defined).toEqual(EXPECTED)
+  it('does not define any theme-provided brand key', () => {
+    for (const key of themeKeys) expect(defined.has(key), key).toBe(false)
+  })
+
+  it('defines no variable twice', () => {
+    for (const [name, count] of defined) expect(count, name).toBe(1)
+  })
+})
+
+describe('legacy tokens', () => {
+  it('no longer appear in source', () => {
+    const legacy = /accentYellow|lightYellow|buttonGreen|lightGreen|ultraLightGreen|accentRed|lightRed|--color-(accent-yellow|light-yellow|button-green|light-green|ultra-light-green|accent-red|light-red)/
+    const offenders: string[] = []
+    for (const file of [...walk(SRC), path.join(ROOT, 'tailwind.config.js')]) {
+      if (legacy.test(fs.readFileSync(file, 'utf8'))) offenders.push(path.relative(ROOT, file))
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('branding', () => {
+  it('keeps SIX7/Six7 strings and Six7 assets inside src/theme/', () => {
+    const THEME_DIR = path.join(SRC, 'theme')
+    const offenders: string[] = []
+    const files = [...walk(SRC), path.join(ROOT, 'index.html')]
+    for (const file of files) {
+      if (file.startsWith(THEME_DIR + path.sep)) continue
+      fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+        if (/SIX7|Six7/.test(line) && !/github\.com/i.test(line)) {
+          offenders.push(`${path.relative(ROOT, file)}:${i + 1}: ${line.trim()}`)
+        }
+      })
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('layout and base UI', () => {
+  it('use brand tokens instead of green/emerald/teal palette classes', () => {
+    const files = [
+      ...fs.readdirSync(path.join(SRC, 'layouts')).map((f) => path.join(SRC, 'layouts', f)),
+      ...['BaseButton', 'BaseInput', 'Card', 'Modal', 'PageHeader'].map((n) =>
+        path.join(SRC, 'components', 'ui', `${n}.vue`),
+      ),
+    ]
+    const offenders = files.filter((f) =>
+      /\b(bg|text|border|ring)-(green|emerald|teal)-/.test(fs.readFileSync(f, 'utf8')),
+    )
+    expect(offenders.map((f) => path.relative(ROOT, f))).toEqual([])
   })
 })
 

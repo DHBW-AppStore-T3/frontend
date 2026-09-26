@@ -3,7 +3,7 @@ export default {
     login: {
       title: "Login",
       emailLabel: "E-Mail",
-      emailPlaceholder: "name@six7.de",
+      emailPlaceholder: "name@example.org",
       userLabel: "Username",
       userPlaceholder: "your.username",
       passwordLabel: "Password",
@@ -150,7 +150,7 @@ export default {
   },
 
   DashboardView: {
-    title: "Welcome back to Six7!",
+    title: "Welcome back to {brand}!",
     subtitle: "Welcome back to your deployment environment.",
     timeGreetings: {
       morning: "Good morning",
@@ -516,7 +516,7 @@ export default {
     edit: "Edit Profile",
 
     emailLabel: "E-Mail",
-    emailValue: "eichberg@six7.de",
+    emailValue: "eichberg@example.org",
 
     roleLabel: "Role",
     roleAdmin: "Administrator",

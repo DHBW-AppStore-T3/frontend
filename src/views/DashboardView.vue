@@ -91,8 +91,8 @@ onMounted(() => {
       <div class="kpi-divider" />
 
       <RouterLink to="/apps" class="kpi-item group">
-        <div class="kpi-icon-wrap" style="background:rgb(var(--color-accent-yellow) / 0.10)">
-          <Layers :size="16" class="text-accentYellow" />
+        <div class="kpi-icon-wrap" style="background:rgb(var(--color-brand-accent) / 0.10)">
+          <Layers :size="16" class="text-brandAccent" />
         </div>
         <div>
           <p class="kpi-num">{{ stats.apps }}</p>

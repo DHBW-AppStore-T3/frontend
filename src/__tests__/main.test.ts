@@ -19,6 +19,9 @@ vi.mock('@/router/index', () => ({ default: {} }))
 vi.mock('../i18n', () => ({ default: {} }))
 vi.mock('@/style.css', () => ({}))
 
+const applyThemeMock = vi.fn()
+vi.mock('@/theme/applyTheme', () => ({ applyTheme: (...a: unknown[]) => applyThemeMock(...a) }))
+
 const authStoreMock = {
   setLtiUser: vi.fn(() => Promise.resolve()),
   setHandoffUser: vi.fn(() => Promise.resolve()),
@@ -39,6 +42,16 @@ describe('main.ts boot dispatch', () => {
     vi.resetModules()
     vi.clearAllMocks()
     setLocation('')
+  })
+
+  it('applies the theme before mounting the app', async () => {
+    await import('../main')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(applyThemeMock).toHaveBeenCalledTimes(1)
+    expect(applyThemeMock.mock.invocationCallOrder[0]).toBeLessThan(
+      mountMock.mock.invocationCallOrder[0]!,
+    )
   })
 
   it('boots into authenticated state when lti query params present', async () => {

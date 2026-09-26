@@ -378,7 +378,7 @@ const handleSubmit = async () => {
         <button
             @click="handleSubmit"
             :disabled="isLoading"
-            class="bg-buttonGreen hover:bg-buttonGreenHover text-white text-lg px-10 py-3 rounded-full font-medium transition-colors shadow-lg flex items-center justify-center w-full lg:w-auto"
+            class="bg-primaryAction hover:bg-primaryActionHover text-white text-lg px-10 py-3 rounded-full font-medium transition-colors shadow-lg flex items-center justify-center w-full lg:w-auto"
         >
           {{ isLoading ? $t('AppsCreateView.buttons.saving') : $t('AppsCreateView.buttons.add') }}
         </button>

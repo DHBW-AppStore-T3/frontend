@@ -8,12 +8,12 @@ import { ArrowLeft, User } from 'lucide-vue-next'
     <!-- Header -->
     <header
       class="h-16 bg-primary text-white flex items-center justify-between px-8
-             border-b-2 border-accentYellow"
+             border-b-2 border-brandAccent"
     >
       <div class="flex items-center gap-4">
         <RouterLink
           to="/dashboard"
-          class="hover:text-accentYellow transition flex items-center gap-2"
+          class="hover:text-brandAccent transition flex items-center gap-2"
         >
           <ArrowLeft :size="20" />
           {{ $t('action.back') }}
