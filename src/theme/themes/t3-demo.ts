@@ -5,7 +5,7 @@ import logo from '../assets/t3-white.png'
 export const t3DemoTheme: Theme = {
   id: 't3-demo',
   brand: { name: 'T3', tagline: 'AppStore', documentTitle: 'T3 AppStore' },
-  logo: { src: logo, alt: 'T3 AppStore', height: 60, offsetX: 4, offsetY: -6 },
+  logo: { src: logo, alt: 'T3 AppStore', height: 36, offsetX: 0, offsetY: 6 },
   favicon: '/themes/t3-demo/favicon.png',
   colors: {
     'primary': '200 16 46',
