@@ -4,6 +4,7 @@ import path from 'path'
 import { THEME_COLOR_KEYS } from '@/theme/types'
 // @ts-expect-error -- plain JS config without type declarations
 import tailwindConfig from '../../../tailwind.config.js'
+import { contrastRatio, type ContrastPair } from './contrast.helper'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const SRC = path.join(ROOT, 'src')
@@ -101,6 +102,37 @@ describe('branding', () => {
     }
     expect(offenders).toEqual([])
   })
+})
+
+describe('semantic color usage meets WCAG contrast per context', () => {
+  const css = fs.readFileSync(COLORS_CSS, 'utf8')
+  const white = '255 255 255'
+
+  function colorVar(name: string): string {
+    const m = css.match(new RegExp(`--color-${name}:\\s*(\\d+ \\d+ \\d+);`))
+    if (!m) throw new Error(`--color-${name} not found in colors.css`)
+    return m[1]!
+  }
+
+  // Real foreground/background combinations used by Badge.vue (text on tint) and
+  // Toast.vue (icon on white) — not every base color checked against white in isolation.
+  const pairs: ContrastPair[] = [
+    { name: 'Badge success text on success-tint', fg: colorVar('success'), bg: colorVar('success-tint'), usage: 'text' },
+    { name: 'Badge danger text on danger-tint', fg: colorVar('danger'), bg: colorVar('danger-tint'), usage: 'text' },
+    { name: 'Badge warning text on warning-tint', fg: colorVar('warning'), bg: colorVar('warning-tint'), usage: 'text' },
+    { name: 'Badge info text on info-tint', fg: colorVar('info'), bg: colorVar('info-tint'), usage: 'text' },
+    { name: 'Toast success icon on white', fg: colorVar('success'), bg: white, usage: 'non-text' },
+    { name: 'Toast danger icon on white', fg: colorVar('danger'), bg: white, usage: 'non-text' },
+    { name: 'Toast warning icon on white', fg: colorVar('warning'), bg: white, usage: 'non-text' },
+    { name: 'Toast info icon on white', fg: colorVar('info'), bg: white, usage: 'non-text' },
+  ]
+
+  for (const pair of pairs) {
+    it(`${pair.name} (${pair.usage}) meets threshold`, () => {
+      const threshold = pair.usage === 'text' ? 4.5 : 3
+      expect(contrastRatio(pair.fg, pair.bg)).toBeGreaterThanOrEqual(threshold)
+    })
+  }
 })
 
 describe('tailwind design tokens', () => {

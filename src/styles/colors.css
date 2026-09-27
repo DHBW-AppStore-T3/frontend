@@ -4,10 +4,14 @@
   --color-surface-muted: 250 250 250;
   --color-border-subtle: 240 240 240;
   --color-on-dark: 255 255 255;
-  --color-success: 16 185 129;
-  --color-danger: 239 68 68;
-  --color-warning: 245 158 11;
-  --color-info: 59 130 246;
+  --color-success: 4 120 87;
+  --color-success-tint: 209 250 229;
+  --color-danger: 185 28 28;
+  --color-danger-tint: 254 226 226;
+  --color-warning: 180 83 9;
+  --color-warning-tint: 254 243 199;
+  --color-info: 29 78 216;
+  --color-info-tint: 219 234 254;
   --color-status-green: 34 197 94;
   --color-status-yellow: 234 179 8;
   --color-status-orange: 249 115 22;
