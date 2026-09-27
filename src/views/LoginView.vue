@@ -30,12 +30,12 @@ onMounted(() => {
 
 <template>
   <div>
-    <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">
+    <h2 class="text-2xl font-bold text-center mb-6 text-textHeading">
       {{ $t('auth.login.title') }}
     </h2>
 
     <!-- Info Text -->
-    <div class="mb-6 text-center text-gray-600">
+    <div class="mb-6 text-center text-textMuted">
       <p>{{ $t('auth.login.keycloakInfo') }}</p>
     </div>
 
@@ -50,7 +50,7 @@ onMounted(() => {
     </button>
 
     <!-- Info about registration -->
-    <div class="mt-6 text-center text-sm text-gray-600">
+    <div class="mt-6 text-center text-sm text-textMuted">
       <p>{{ $t('auth.login.noAccount') }}</p>
     </div>
   </div>

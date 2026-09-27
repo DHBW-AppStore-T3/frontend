@@ -31,7 +31,7 @@ defineExpose({ isMobile })
 <template>
   <Drawer v-if="isMobile" :show="mobileOpen" side="left" @close="emit('close-mobile')">
     <aside class="sidebar-bg flex flex-col h-full w-full">
-      <div class="h-16 flex items-center border-b border-white/10 px-3" style="overflow: visible;">
+      <div class="logo-bg h-16 flex items-center px-3" style="overflow: visible;">
         <RouterLink to="/" class="block" style="height: 48px; width: 100%; overflow: visible;" @click="emit('close-mobile')">
           <img :src="logo.src" :alt="logo.alt" :style="{ position: 'relative', zIndex: 30, height: `${logo.height}px`, marginTop: `${logo.offsetY}px`, marginLeft: `${logo.offsetX}px`, maxWidth: 'none' }" />
         </RouterLink>
@@ -58,13 +58,13 @@ defineExpose({ isMobile })
     class="sidebar-bg flex flex-col h-full flex-shrink-0 transition-colors duration-200"
     :class="collapsed ? 'w-16' : 'w-60'"
   >
-    <div class="h-16 flex items-center border-b border-white/10 px-3" style="overflow: visible;">
+    <div class="logo-bg h-16 flex items-center px-3" style="overflow: visible;">
       <RouterLink to="/" class="block" style="height: 48px; width: 100%; overflow: visible;">
         <img :src="logo.src" :alt="logo.alt" :style="{ position: 'relative', zIndex: 30, height: `${logo.height}px`, marginTop: `${logo.offsetY}px`, marginLeft: `${logo.offsetX}px`, maxWidth: 'none' }" />
       </RouterLink>
     </div>
 
-    <div v-if="collapsed" class="px-2 py-2 border-b border-white/5">
+    <div v-if="collapsed" class="px-2 py-2 border-b border-borderSubtle">
       <button
         @click="emit('update:collapsed', false)"
         class="sidebar-toggle-btn"
@@ -97,7 +97,14 @@ defineExpose({ isMobile })
 
 <style scoped>
 .sidebar-bg {
-  background: linear-gradient(180deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-deep)) 100%);
+  background: rgb(var(--color-surface-page));
+  border-right: 1px solid rgb(var(--color-border-subtle));
+}
+
+/* The logo assets are white-on-transparent, drawn for a dark surface — keep this
+   strip on the brand color so the logo stays legible on the now-light sidebar. */
+.logo-bg {
+  background: rgb(var(--color-primary));
 }
 
 .nav-link {
@@ -109,19 +116,19 @@ defineExpose({ isMobile })
   border-radius: 10px;
   font-size: 1rem;
   font-weight: 500;
-  color: rgb(var(--color-on-dark) / 0.65);
+  color: rgb(var(--color-text-muted));
   transition: background-color 150ms, color 150ms;
   text-decoration: none;
 }
 
 .nav-link:hover {
-  background-color: rgb(var(--color-on-dark) / 0.08);
-  color: rgb(var(--color-on-dark) / 0.9);
+  background-color: rgb(var(--color-surface-muted));
+  color: rgb(var(--color-text-strong));
 }
 
 .nav-link-active {
-  background-color: rgb(var(--color-on-dark) / 0.12);
-  color: rgb(var(--color-on-dark));
+  background-color: rgb(var(--color-primary-faint));
+  color: rgb(var(--color-primary));
 }
 
 .nav-link-collapsed {
@@ -136,7 +143,7 @@ defineExpose({ isMobile })
   transform: translateY(-50%) scaleY(0);
   width: 3px;
   height: 60%;
-  background: rgb(var(--color-brand-indicator));
+  background: rgb(var(--color-primary));
   border-radius: 0 2px 2px 0;
   transition: transform 150ms ease;
 }
@@ -176,11 +183,11 @@ defineExpose({ isMobile })
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgb(var(--color-on-dark) / 0.65);
+  color: rgb(var(--color-text-muted));
   transition: background-color 150ms;
 }
 .sidebar-toggle-btn:hover {
-  background: rgb(var(--color-on-dark) / 0.04);
+  background: rgb(var(--color-surface-muted));
 }
 
 .w-16 > .px-2 > .sidebar-toggle-btn,

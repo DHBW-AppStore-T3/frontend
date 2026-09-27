@@ -85,7 +85,7 @@ onMounted(() => {
           <p class="kpi-num">{{ stats.deployments }}</p>
           <p class="kpi-lbl">{{ $t('DashboardView.deployments') }}</p>
         </div>
-        <ArrowRight :size="14" class="ml-auto text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+        <ArrowRight :size="14" class="ml-auto text-textFaint group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
       </RouterLink>
 
       <div class="kpi-divider" />
@@ -98,7 +98,7 @@ onMounted(() => {
           <p class="kpi-num">{{ stats.apps }}</p>
           <p class="kpi-lbl">{{ $t('DashboardView.apps') }}</p>
         </div>
-        <ArrowRight :size="14" class="ml-auto text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+        <ArrowRight :size="14" class="ml-auto text-textFaint group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
       </RouterLink>
 
       <!-- Courses tile: students have no courses access (staff-only route),
@@ -108,22 +108,22 @@ onMounted(() => {
 
       <RouterLink to="/courses" class="kpi-item group">
         <div class="kpi-icon-wrap" style="background:rgb(var(--color-info) / 0.08)">
-          <GraduationCap :size="16" class="text-blue-500" />
+          <GraduationCap :size="16" class="text-info" />
         </div>
         <div>
           <p class="kpi-num">{{ stats.courses }}</p>
           <p class="kpi-lbl">{{ $t('DashboardView.courses') }}</p>
         </div>
-        <ArrowRight :size="14" class="ml-auto text-gray-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+        <ArrowRight :size="14" class="ml-auto text-textFaint group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
       </RouterLink>
       </template>
     </div>
 
     <!-- Available resources — full width, two-column quotas list -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-50">
-        <h2 class="text-sm font-semibold text-gray-900">{{ $t('DashboardView.availableResources') }}</h2>
-        <span v-if="quotasLoading && hasCachedQuotas" class="flex items-center gap-1.5 text-xs text-gray-400">
+    <div class="bg-white rounded-xl border border-borderSubtle shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-borderSubtle">
+        <h2 class="text-sm font-semibold text-textHeading">{{ $t('DashboardView.availableResources') }}</h2>
+        <span v-if="quotasLoading && hasCachedQuotas" class="flex items-center gap-1.5 text-xs text-textFaint">
           <Loader2 :size="12" class="animate-spin" />
         </span>
       </div>
@@ -132,10 +132,10 @@ onMounted(() => {
       <div v-if="quotasLoading && !hasCachedQuotas" class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
         <div v-for="i in 6" :key="i" class="animate-pulse space-y-2">
           <div class="flex justify-between">
-            <div class="h-3 bg-gray-100 rounded w-20" />
-            <div class="h-3 bg-gray-100 rounded w-10" />
+            <div class="h-3 bg-surfaceMuted rounded w-20" />
+            <div class="h-3 bg-surfaceMuted rounded w-10" />
           </div>
-          <div class="h-1.5 bg-gray-100 rounded-full" />
+          <div class="h-1.5 bg-surfaceMuted rounded-full" />
         </div>
       </div>
 
@@ -144,17 +144,17 @@ onMounted(() => {
         <div v-for="quota in formattedQuotas" :key="quota.label">
           <div class="flex items-center justify-between mb-1.5">
             <div class="flex items-center gap-1.5">
-              <component :is="quota.icon" :size="13" class="text-gray-400" />
-              <span class="text-xs font-medium text-gray-700">{{ quota.label }}</span>
+              <component :is="quota.icon" :size="13" class="text-textFaint" />
+              <span class="text-xs font-medium text-textMuted">{{ quota.label }}</span>
             </div>
             <span
               class="text-xs font-semibold tabular-nums"
-              :class="quota.percentage >= 80 ? 'text-red-500' : quota.percentage >= 60 ? 'text-amber-500' : 'text-gray-600'"
+              :class="quota.percentage >= 80 ? 'text-danger' : quota.percentage >= 60 ? 'text-warning' : 'text-textMuted'"
             >
               {{ quota.used }}/{{ quota.limit }}{{ quota.unit }}
             </span>
           </div>
-          <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+          <div class="w-full bg-surfaceMuted rounded-full h-1.5 overflow-hidden">
             <div
               :class="getColorClass(quota.percentage)"
               class="h-1.5 rounded-full transition-all duration-700"
@@ -162,18 +162,18 @@ onMounted(() => {
             />
           </div>
           <div class="flex items-center justify-between mt-1.5">
-            <p class="text-xs text-gray-400">{{ t('DashboardView.quotaUsed', { percentage: quota.percentage }) }}</p>
-            <AlertCircle v-if="quota.percentage >= 80" :size="11" class="text-red-400" />
+            <p class="text-xs text-textFaint">{{ t('DashboardView.quotaUsed', { percentage: quota.percentage }) }}</p>
+            <AlertCircle v-if="quota.percentage >= 80" :size="11" class="text-danger" />
           </div>
         </div>
       </div>
       <!-- No credentials -->
       <div v-else-if="needsCredentials" class="px-6 py-12 text-center">
-        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-          <XCircle :size="22" class="text-gray-400" />
+        <div class="w-12 h-12 rounded-full bg-surfaceMuted flex items-center justify-center mx-auto mb-3">
+          <XCircle :size="22" class="text-textFaint" />
         </div>
-        <p class="text-sm font-medium text-gray-700">{{ t('DashboardView.noCredentialsTitle') }}</p>
-        <p class="text-xs text-gray-400 mt-1 mb-4">{{ t('DashboardView.noCredentialsHint') }}</p>
+        <p class="text-sm font-medium text-textMuted">{{ t('DashboardView.noCredentialsTitle') }}</p>
+        <p class="text-xs text-textFaint mt-1 mb-4">{{ t('DashboardView.noCredentialsHint') }}</p>
         <RouterLink
           to="/user/openstack"
           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primaryDark transition-colors"
@@ -184,7 +184,7 @@ onMounted(() => {
 
       <!-- Error / no data -->
       <div v-else class="px-6 py-12 text-center">
-        <p class="text-sm text-gray-400">{{ t('DashboardView.quotaLoadError') }}</p>
+        <p class="text-sm text-textFaint">{{ t('DashboardView.quotaLoadError') }}</p>
       </div>
     </div>
 
@@ -257,10 +257,10 @@ onMounted(() => {
 
 /* KPI row */
 .kpi-row {
-  background: white;
-  border-radius: 16px;
+  background: rgb(var(--color-on-dark));
+  border-radius: var(--radius-lg);
   border: 1px solid rgb(var(--color-border-subtle));
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: var(--shadow-sm);
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;
   overflow: hidden;
