@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { THEMES, resolveTheme } from '@/theme'
+import { THEMES, resolveTheme, LEGACY_THEME_ALIASES } from '@/theme'
 import { THEME_COLOR_KEYS } from '@/theme/types'
 
 describe('themes', () => {
@@ -18,16 +18,31 @@ describe('themes', () => {
   })
 
   it('resolves known ids', () => {
-    expect(resolveTheme('t3-demo').id).toBe('t3-demo')
+    expect(resolveTheme('t3').id).toBe('t3')
     expect(resolveTheme('default').id).toBe('default')
   })
 
-  it('falls back to default with a warning for unknown or empty ids', () => {
+  it('falls back to t3 with a warning for unknown or empty ids', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(resolveTheme('gibts-nicht').id).toBe('default')
-    expect(resolveTheme('').id).toBe('default')
-    expect(resolveTheme(undefined).id).toBe('default')
+    expect(resolveTheme('gibts-nicht').id).toBe('t3')
+    expect(resolveTheme('').id).toBe('t3')
+    expect(resolveTheme(undefined).id).toBe('t3')
     expect(warn).toHaveBeenCalledTimes(3)
     warn.mockRestore()
+  })
+
+  it('resolves legacy alias t3-demo to t3', () => {
+    expect(resolveTheme('t3-demo').id).toBe('t3')
+  })
+
+  it('does not warn for known aliases', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    resolveTheme('t3-demo')
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('LEGACY_THEME_ALIASES contains only t3-demo', () => {
+    expect(Object.keys(LEGACY_THEME_ALIASES)).toEqual(['t3-demo'])
   })
 })

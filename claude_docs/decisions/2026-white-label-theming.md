@@ -23,3 +23,12 @@ Unbekannter/leerer Name → `default` + `console.warn`. Templates lesen Logo/Nam
 ## Nicht-Ziele
 Laufzeit-API/`theme.json`, Theme-Switcher, Mandantenverwaltung, Backend-Speicherung, Layout-Umbau, Änderung semantischer Farben.
 `t3-demo` ist ein Demo-Theme und **kein** offizielles DHBW-Corporate-Design.
+
+## Update (frontend#21, T3-Redesign)
+`t3-demo` → `t3`: `t3` ist jetzt der kanonische Theme-Key mit der realen T3-Palette (Primary
+`#E2001A`, Primary Hover `#C3001B`, Secondary `#687260`). `t3-demo` bleibt als expliziter
+Eintrag in `LEGACY_THEME_ALIASES` (`src/theme/index.ts`) bestehen und löst weiterhin auf `t3`
+auf — kein Verhaltensbruch für ein bestehendes `VITE_THEME=t3-demo`. `resolveTheme()`s
+Fallback für unbekannte/fehlende `VITE_THEME`-Werte ist jetzt `t3` (vorher `default`/SIX7);
+`default.ts` (SIX7) bleibt unverändert im Code, nur nicht mehr Default. Neue Doku/Konfiguration
+verwendet ausschließlich `t3`.

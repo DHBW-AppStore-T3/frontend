@@ -20,26 +20,26 @@ describe('applyTheme', () => {
   })
 
   it('sets document title and creates the favicon link when missing', () => {
-    applyTheme(THEMES['t3-demo']!)
-    expect(document.title).toBe(THEMES['t3-demo']!.brand.documentTitle)
+    applyTheme(THEMES['t3']!)
+    expect(document.title).toBe(THEMES['t3']!.brand.documentTitle)
     const link = document.head.querySelector<HTMLLinkElement>('link[rel="icon"]')
     expect(link).not.toBeNull()
-    expect(link!.getAttribute('href')).toBe(THEMES['t3-demo']!.favicon)
+    expect(link!.getAttribute('href')).toBe(THEMES['t3']!.favicon)
   })
 
   it('a second call overrides everything and reuses the link', () => {
     applyTheme(THEMES['default']!)
-    applyTheme(THEMES['t3-demo']!)
+    applyTheme(THEMES['t3']!)
     expect(document.documentElement.style.getPropertyValue('--color-primary')).toBe(
-      THEMES['t3-demo']!.colors.primary,
+      THEMES['t3']!.colors.primary,
     )
-    expect(document.title).toBe(THEMES['t3-demo']!.brand.documentTitle)
+    expect(document.title).toBe(THEMES['t3']!.brand.documentTitle)
     expect(document.head.querySelectorAll('link[rel="icon"]')).toHaveLength(1)
   })
 
   it('useTheme returns the last applied theme', () => {
-    applyTheme(THEMES['t3-demo']!)
-    expect(useTheme().id).toBe('t3-demo')
+    applyTheme(THEMES['t3']!)
+    expect(useTheme().id).toBe('t3')
     applyTheme(THEMES['default']!)
     expect(useTheme().id).toBe('default')
   })

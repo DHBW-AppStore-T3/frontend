@@ -50,15 +50,16 @@ Schritt 3 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hie
 ## Theming
 
 Branding (Logo, Name, Titel, Favicon, Markenfarben) kommt aus `src/theme/`. Das Theme wählt `VITE_THEME`
-(`default` oder `t3-demo`; unbekannt → `default` mit Warnung):
+(`default` oder `t3`; unbekannt → `t3` mit Warnung):
 
 ```bash
-VITE_THEME=t3-demo npm run dev
+VITE_THEME=t3 npm run dev
 ```
 
 Im Container greift `VITE_THEME` über `env-config.js`/`envsubst`, ein Image genügt für alle Themes.
-`t3-demo` ist nur ein Demo-Theme, kein offizielles DHBW-Design. Neues Theme anlegen: siehe
-`claude_docs/decisions/2026-white-label-theming.md`.
+`t3-demo` bleibt als Kompatibilitäts-Alias auf `t3` bestehen (bestehende Deployments mit
+`VITE_THEME=t3-demo` funktionieren unverändert); neue Doku/Konfiguration verwendet nur `t3`.
+Neues Theme anlegen: siehe `claude_docs/decisions/2026-white-label-theming.md`.
 
 ## Technologie-Stack
 
