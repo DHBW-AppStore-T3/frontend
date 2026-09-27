@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { defineComponent, h, nextTick, ref } from 'vue'
+import { defineComponent, h, nextTick, ref, type Ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { useOverlay } from '@/composables/useOverlay'
 
-function makeHost(show: ReturnType<typeof ref<boolean>>, onClose: () => void) {
+function makeHost(show: Ref<boolean>, onClose: () => void) {
   return defineComponent({
     setup() {
       const { containerRef } = useOverlay({ show, onClose })

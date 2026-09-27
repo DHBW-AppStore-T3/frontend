@@ -19,7 +19,7 @@ const { containerRef } = useOverlay({
     @click.self="$emit('close')"
   >
     <div
-      ref="containerRef"
+      :ref="(el) => (containerRef = el as HTMLElement | null)"
       class="bg-white rounded-2xl shadow-2xl w-full max-w-[520px] animate-fade-in flex flex-col max-h-[90vh]"
       @click.stop
     >

@@ -20,7 +20,7 @@ const { containerRef } = useOverlay({
     @click.self="emit('close')"
   >
     <div
-      ref="containerRef"
+      :ref="(el) => (containerRef = el as HTMLElement | null)"
       data-drawer-panel
       :class="[
         'absolute top-0 h-full w-full max-w-xs bg-white shadow-xl flex flex-col animate-drawer-slide',
