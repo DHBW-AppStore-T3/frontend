@@ -103,6 +103,46 @@ describe('branding', () => {
   })
 })
 
+describe('tailwind design tokens', () => {
+  const extend = (tailwindConfig as {
+    theme: { extend: { borderRadius?: Record<string, string>; boxShadow?: Record<string, string>; spacing?: Record<string, string>; fontSize?: Record<string, unknown>; fontFamily?: Record<string, unknown> } }
+  }).theme.extend
+
+  it('binds borderRadius to --radius-* tokens', () => {
+    expect(extend.borderRadius, 'borderRadius').toBeTruthy()
+    for (const value of Object.values(extend.borderRadius!)) {
+      expect(value).toMatch(/^var\(--radius-[a-z0-9]+\)$/)
+    }
+  })
+
+  it('binds boxShadow to --shadow-* tokens', () => {
+    expect(extend.boxShadow, 'boxShadow').toBeTruthy()
+    for (const value of Object.values(extend.boxShadow!)) {
+      expect(value).toMatch(/^var\(--shadow-[a-z0-9]+\)$/)
+    }
+  })
+
+  it('binds spacing to --space-* tokens', () => {
+    expect(extend.spacing, 'spacing').toBeTruthy()
+    for (const value of Object.values(extend.spacing!)) {
+      expect(value).toMatch(/^var\(--space-[0-9]+\)$/)
+    }
+  })
+
+  it('binds fontFamily.sans to --font-family-sans', () => {
+    expect(extend.fontFamily?.sans).toEqual(['var(--font-family-sans)'])
+  })
+
+  it('binds fontSize entries to --text-* tokens', () => {
+    expect(extend.fontSize, 'fontSize').toBeTruthy()
+    for (const value of Object.values(extend.fontSize!)) {
+      expect(Array.isArray(value)).toBe(true)
+      const [size] = value as [string, unknown]
+      expect(size).toMatch(/^var\(--text-[a-z0-9-]+-size\)$/)
+    }
+  })
+})
+
 describe('layout and base UI', () => {
   it('use brand tokens instead of green/emerald/teal palette classes', () => {
     const files = [
@@ -120,7 +160,7 @@ describe('layout and base UI', () => {
 
 describe('source', () => {
   it('contains no hardcoded color literals', () => {
-    const skip = ['styles/colors.css', '__snapshots__', '__tests__', 'types'].map((p) =>
+    const skip = ['styles/colors.css', 'styles/tokens.css', '__snapshots__', '__tests__', 'types'].map((p) =>
       path.join(SRC, p),
     )
     const offenders: string[] = []
