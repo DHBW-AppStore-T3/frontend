@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { LogIn } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -30,28 +31,21 @@ onMounted(() => {
 
 <template>
   <div>
-    <h2 class="text-2xl font-bold text-center mb-6 text-textHeading">
+    <h2 class="text-headline-2 text-textHeading mb-2">
       {{ $t('auth.login.title') }}
     </h2>
 
-    <!-- Info Text -->
-    <div class="mb-6 text-center text-textMuted">
-      <p>{{ $t('auth.login.keycloakInfo') }}</p>
-    </div>
+    <p class="text-body text-textMuted mb-8">
+      {{ $t('auth.login.keycloakInfo') }}
+    </p>
 
-    <!-- Keycloak Login Button -->
-    <button
-      @click="loginWithKeycloak"
-      type="button"
-      class="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition"
-    >
+    <BaseButton variant="primary" class="w-full" @click="loginWithKeycloak">
       <LogIn :size="20" />
       {{ $t('auth.login.keycloakButton') }}
-    </button>
+    </BaseButton>
 
-    <!-- Info about registration -->
-    <div class="mt-6 text-center text-sm text-textMuted">
-      <p>{{ $t('auth.login.noAccount') }}</p>
-    </div>
+    <p class="mt-6 text-caption text-textMuted">
+      {{ $t('auth.login.noAccount') }}
+    </p>
   </div>
 </template>

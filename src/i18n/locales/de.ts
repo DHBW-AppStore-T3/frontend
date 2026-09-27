@@ -17,6 +17,10 @@ export default {
       failureMessage: "Anmeldung fehlgeschlagen!",
       missingCredentials: "Bitte Nutzernamen und Passwort eingeben."
     },
+    hero: {
+      title: "Anwendungen einfach bereitstellen",
+      subtitle: "Eine Plattform für Lehre, Forschung und Verwaltung."
+    },
   },
 
   nav: {

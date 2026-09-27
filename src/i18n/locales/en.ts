@@ -17,6 +17,10 @@ export default {
       failureMessage: "Login failed!",
       missingCredentials: "Please enter username and password."
     },
+    hero: {
+      title: "Deploy applications with ease",
+      subtitle: "One platform for teaching, research, and administration."
+    },
   },
 
   nav: {
