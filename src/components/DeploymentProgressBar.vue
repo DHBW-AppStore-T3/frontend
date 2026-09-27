@@ -58,7 +58,7 @@ const getTextAlignmentClass = (step: number, total: number) => {
             :class="[
               currentStep >= item.step
                 ? 'border-emerald-600 text-emerald-600 shadow-[0_0_10px_rgb(var(--color-success)/0.4)]'
-                : 'border-gray-300 text-gray-400',
+                : 'border-borderSubtle text-textFaint',
               // Fill the circle green once the step is done.
               currentStep > item.step ? '!bg-emerald-600 !text-white' : '',
               // Current step: pulse subtly so the user always sees where they are.
@@ -72,7 +72,7 @@ const getTextAlignmentClass = (step: number, total: number) => {
           <span 
             class="absolute top-10 text-xs font-bold uppercase tracking-wider transition-colors duration-300 whitespace-nowrap"
             :class="[
-              currentStep >= item.step ? 'text-emerald-700' : 'text-gray-400',
+              currentStep >= item.step ? 'text-emerald-700' : 'text-textFaint',
               getTextAlignmentClass(item.step, steps.length)
             ]"
           >

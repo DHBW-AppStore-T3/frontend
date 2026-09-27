@@ -97,18 +97,18 @@ onMounted(() => {
     <PageHeader :title="$t('AppsView.title')" :subtitle="$t('AppsView.subtitle')">
       <template #actions>
         <!-- Admin-only visibility filter -->
-        <div v-if="authStore.isAdmin" class="flex items-center bg-gray-100 rounded-lg p-1 gap-1 text-sm">
+        <div v-if="authStore.isAdmin" class="flex items-center bg-surfaceMuted rounded-lg p-1 gap-1 text-sm">
           <button
             @click="visibilityFilter = 'all'"
             class="px-3 py-1.5 rounded-md font-medium transition-colors"
-            :class="visibilityFilter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="visibilityFilter === 'all' ? 'bg-white text-textHeading shadow-sm' : 'text-textMuted hover:text-textMuted'"
           >
             {{ $t('AppsView.filterAll') }}
           </button>
           <button
             @click="visibilityFilter = 'public'"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors"
-            :class="visibilityFilter === 'public' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="visibilityFilter === 'public' ? 'bg-white text-textHeading shadow-sm' : 'text-textMuted hover:text-textMuted'"
           >
             <Globe :size="13" />
             {{ $t('AppsView.filterPublic') }}
@@ -116,7 +116,7 @@ onMounted(() => {
           <button
             @click="visibilityFilter = 'private'"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors"
-            :class="visibilityFilter === 'private' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="visibilityFilter === 'private' ? 'bg-white text-textHeading shadow-sm' : 'text-textMuted hover:text-textMuted'"
           >
             <Lock :size="13" />
             {{ $t('AppsView.filterPrivate') }}
@@ -160,11 +160,11 @@ onMounted(() => {
           </div>
 
           <div class="flex items-center gap-4 mb-4">
-            <div class="bg-gray-50 p-3 rounded-lg text-gray-700 group-hover:text-primary transition-colors flex items-center justify-center w-[56px] h-[56px] flex-shrink-0 border border-gray-100">
+            <div class="bg-surfaceMuted p-3 rounded-lg text-textMuted group-hover:text-primary transition-colors flex items-center justify-center w-[56px] h-[56px] flex-shrink-0 border border-borderSubtle">
               <img v-if="app.image" :src="app.image" :alt="app.name" class="w-full h-full object-contain" />
               <component v-else :is="getIconForApp(app)" :size="32" />
             </div>
-            <h3 class="font-bold text-xl text-gray-900 leading-tight pr-16">{{ app.name }}</h3>
+            <h3 class="font-bold text-xl text-textHeading leading-tight pr-16">{{ app.name }}</h3>
           </div>
 
           <div :lang="locale" class="text-sm mb-6 flex-grow text-left break-words hyphens-auto">
@@ -175,7 +175,7 @@ onMounted(() => {
               :clamp="3"
               :expandable="true"
             />
-            <p v-else class="text-gray-600 leading-relaxed">
+            <p v-else class="text-textMuted leading-relaxed">
               {{ $t('AppsView.noDescription') }}
             </p>
           </div>

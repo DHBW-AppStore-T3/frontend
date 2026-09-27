@@ -602,7 +602,7 @@ onBeforeUnmount(() => {
     <!-- ============================================================ -->
     <div v-if="isFreeTextMode" class="space-y-2">
       <div class="flex items-center justify-between">
-        <span class="text-xs text-gray-500 flex items-center gap-1">
+        <span class="text-xs text-textMuted flex items-center gap-1">
           <Pencil :size="12" />
           {{ t('openstackPicker.manualLabel', { mode: osMode === 'id' ? t('openstackPicker.modeUuid') : t('openstackPicker.modeName') }) }}
         </span>
@@ -619,7 +619,7 @@ onBeforeUnmount(() => {
         @input="onFreeTextInput(($event.target as HTMLInputElement).value)"
         type="text"
         :placeholder="multi ? t('openstackPicker.multiPlaceholder') : t('openstackPicker.enterValue', { type: osTypeLabel(), mode: osMode === 'id' ? t('openstackPicker.modeUuid') : t('openstackPicker.modeName') })"
-        class="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-emerald-500 outline-none font-mono text-sm"
+        class="w-full px-3 py-2 rounded-lg border-2 border-borderSubtle focus:border-emerald-500 outline-none font-mono text-sm"
       />
     </div>
 
@@ -654,13 +654,13 @@ onBeforeUnmount(() => {
             ref="triggerEl"
             @click="toggleDropdown"
             type="button"
-            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border-2 border-gray-200 bg-white hover:border-emerald-300 transition focus:border-emerald-500 outline-none text-left"
+            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border-2 border-borderSubtle bg-white hover:border-emerald-300 transition focus:border-emerald-500 outline-none text-left"
           >
             <div class="flex flex-wrap items-center gap-1.5 flex-grow min-w-0">
               <!-- Single -->
               <template v-if="!multi">
                 <template v-if="selectedDisplay.length === 0">
-                  <span class="text-gray-400 text-sm">{{ placeholderText }}</span>
+                  <span class="text-textFaint text-sm">{{ placeholderText }}</span>
                 </template>
                 <template v-else>
                   <!-- Selection pill: same accent as the highlight row in the
@@ -679,7 +679,7 @@ onBeforeUnmount(() => {
                        -loaded items). Shown as a grey, tooltip-capable pill. -->
                   <span
                     v-if="!selectedDisplay[0]?.known"
-                    class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200"
+                    class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-surfaceMuted text-textMuted border border-borderSubtle"
                     :title="t('openstackPicker.notInList')"
                   >
                     {{ t('openstackPicker.externalBadge') }}
@@ -690,7 +690,7 @@ onBeforeUnmount(() => {
               <!-- Multi: Chips -->
               <template v-else>
                 <template v-if="selectedDisplay.length === 0">
-                  <span class="text-gray-400 text-sm">{{ placeholderText }}</span>
+                  <span class="text-textFaint text-sm">{{ placeholderText }}</span>
                 </template>
                 <span
                   v-for="(entry, i) in selectedDisplay"
@@ -711,7 +711,7 @@ onBeforeUnmount(() => {
                 </span>
               </template>
             </div>
-            <component :is="isOpen ? ChevronUp : ChevronDown" :size="16" class="text-gray-400 flex-shrink-0" />
+            <component :is="isOpen ? ChevronUp : ChevronDown" :size="16" class="text-textFaint flex-shrink-0" />
           </button>
         </div>
 
@@ -719,7 +719,7 @@ onBeforeUnmount(() => {
           @click="handleRefresh"
           type="button"
           :disabled="isLoading"
-          class="flex-shrink-0 p-2 text-gray-500 hover:text-emerald-700 disabled:opacity-50 transition"
+          class="flex-shrink-0 p-2 text-textMuted hover:text-emerald-700 disabled:opacity-50 transition"
           :title="t('openstackPicker.refreshList')"
         >
           <RefreshCw :size="16" :class="isLoading ? 'animate-spin' : ''" />
@@ -733,12 +733,12 @@ onBeforeUnmount(() => {
         v-if="isOpen && !isFreeTextMode && errorReason !== 'credentials_missing'"
         ref="dropdownEl"
         :style="popupStyle"
-        class="border-2 border-gray-200 rounded-lg bg-white shadow-2xl overflow-hidden flex flex-col"
+        class="border-2 border-borderSubtle rounded-lg bg-white shadow-2xl overflow-hidden flex flex-col"
         @mousedown.stop
       >
         <!-- Search -->
-        <div class="relative border-b border-gray-100 p-2 flex-shrink-0">
-          <Search :size="14" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div class="relative border-b border-borderSubtle p-2 flex-shrink-0">
+          <Search :size="14" class="absolute left-4 top-1/2 -translate-y-1/2 text-textFaint" />
           <input
             ref="searchInputEl"
             v-model="searchQuery"
@@ -749,7 +749,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Loading -->
-        <div v-if="isLoading" class="p-6 text-center text-gray-400 text-sm">
+        <div v-if="isLoading" class="p-6 text-center text-textFaint text-sm">
           <div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600 mb-2"></div>
           <p>{{ t('openstackPicker.loading', { type: osTypeLabel() }) }}</p>
         </div>
@@ -775,7 +775,7 @@ onBeforeUnmount(() => {
               v-if="allowFreeText"
               @click="enableFreeText"
               type="button"
-              class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+              class="text-xs px-2 py-1 rounded bg-surfaceMuted text-textMuted hover:bg-gray-200"
             >
               {{ t('openstackPicker.enterManually') }}
             </button>
@@ -783,7 +783,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Empty -->
-        <div v-else-if="filteredItems.length === 0" class="p-6 text-center text-gray-500 text-sm">
+        <div v-else-if="filteredItems.length === 0" class="p-6 text-center text-textMuted text-sm">
           <p v-if="searchQuery">{{ t('openstackPicker.noHits', { query: searchQuery }) }}</p>
           <template v-else>
             <p class="mb-2">{{ t('openstackPicker.emptyProject', { type: osTypeLabel() }) }}</p>
@@ -813,7 +813,7 @@ onBeforeUnmount(() => {
               :class="
                 isSelected(item)
                   ? 'bg-emerald-500 border-emerald-500'
-                  : 'bg-white border-gray-300'
+                  : 'bg-white border-borderSubtle'
               "
             >
               <Check v-if="isSelected(item)" :size="12" class="text-white" />
@@ -821,20 +821,20 @@ onBeforeUnmount(() => {
 
             <div class="flex-grow min-w-0">
               <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-900 text-sm truncate">{{ item.name || t('openstackPicker.unnamed') }}</span>
+                <span class="font-medium text-textHeading text-sm truncate">{{ item.name || t('openstackPicker.unnamed') }}</span>
                 <span
                   v-if="item.tertiary"
-                  class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium flex-shrink-0"
+                  class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-surfaceMuted text-textMuted font-medium flex-shrink-0"
                 >
                   {{ item.tertiary }}
                 </span>
               </div>
-              <div v-if="item.secondary" class="text-xs text-gray-500 truncate">
+              <div v-if="item.secondary" class="text-xs text-textMuted truncate">
                 {{ item.secondary }}
               </div>
               <!-- Show the ID in id-mode as a secondary disambiguation hint;
                    the ``name`` remains the main label. -->
-              <div v-if="osMode === 'id' && item.id" class="text-[10px] text-gray-400 font-mono truncate">
+              <div v-if="osMode === 'id' && item.id" class="text-[10px] text-textFaint font-mono truncate">
                 {{ item.id }}
               </div>
             </div>
@@ -842,7 +842,7 @@ onBeforeUnmount(() => {
         </ul>
 
         <!-- Footer with mode hint -->
-        <div class="border-t border-gray-100 px-3 py-1.5 bg-gray-50 flex items-center justify-between text-[11px] text-gray-500 flex-shrink-0">
+        <div class="border-t border-borderSubtle px-3 py-1.5 bg-surfaceMuted flex items-center justify-between text-[11px] text-textMuted flex-shrink-0">
           <span>
             <template v-if="osMode === 'id'">{{ t('openstackPicker.hints.storesUuid') }}</template>
             <template v-else>{{ t('openstackPicker.hints.storesName') }}</template>

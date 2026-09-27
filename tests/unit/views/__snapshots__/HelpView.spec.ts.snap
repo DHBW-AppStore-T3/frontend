@@ -10,11 +10,11 @@ exports[`HelpView (de) > matches snapshot 1`] = `
       </svg>
       <div>
         <h1 class="text-2xl font-bold">Hilfe &amp; Q/A</h1>
-        <p class="text-sm text-gray-500">Support &amp; häufige Fragen.</p>
+        <p class="text-sm text-textMuted">Support &amp; häufige Fragen.</p>
       </div>
     </div>
   </div>
-  <p class="text-gray-600 leading-7 max-w-3xl mb-8">Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Du erhältst hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.</p>
+  <p class="text-textMuted leading-7 max-w-3xl mb-8">Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Du erhältst hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.</p>
   <div class="grid gap-4 lg:grid-cols-2">
     <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
       <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers-icon lucide-layers">
@@ -24,8 +24,8 @@ exports[`HelpView (de) > matches snapshot 1`] = `
         </svg>
         <h2 class="text-lg font-semibold">Wenn etwas nicht funktioniert</h2>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">Diese Checkliste hilft dir, die häufigsten Blocker schnell zu finden und zu verstehen, was du als nächstes prüfen solltest.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
+      <p class="text-textMuted leading-7 mb-4">Diese Checkliste hilft dir, die häufigsten Blocker schnell zu finden und zu verstehen, was du als nächstes prüfen solltest.</p>
+      <ul class="list-disc list-inside space-y-2 text-textMuted">
         <li>Prüfe, ob du dein Quota-Limit erreicht hast.</li>
         <li>Sieh dir die Deployment-Details und Logs an, um den Fehler einzugrenzen.</li>
       </ul>
@@ -38,29 +38,29 @@ exports[`HelpView (de) > matches snapshot 1`] = `
         <h2 class="text-lg font-semibold">Schritt-für-Schritt-Anleitung</h2>
       </div>
       <p class="text-sm font-semibold text-slate-700 mb-3">Deployment-Prozess</p>
-      <ol class="list-decimal list-inside space-y-3 text-gray-600">
+      <ol class="list-decimal list-inside space-y-3 text-textMuted">
         <li>Öffne die Deployments-Übersicht und starte ein neues Deployment.</li>
         <li>Wähle die gewünschte App und App-Version aus.</li>
         <li>Ordne das Deployment einem Kurs oder Team zu und passe die Einstellungen an.</li>
         <li>Kontrolliere deine aktuellen Quotas, bevor du das Deployment ausführst.</li>
         <li>Starte das Deployment und überwache den Status sowie die Logs in der Detailansicht.</li>
       </ol>
-      <div class="mt-6 space-y-4 text-gray-700">
+      <div class="mt-6 space-y-4 text-textMuted">
         <div>
           <h3 class="font-semibold text-base">Dashboard</h3>
-          <p class="text-gray-600">Schneller Überblick über Deployments, Systemstatus und verfügbare Ressourcen.</p>
+          <p class="text-textMuted">Schneller Überblick über Deployments, Systemstatus und verfügbare Ressourcen.</p>
         </div>
         <div>
           <h3 class="font-semibold text-base">Apps</h3>
-          <p class="text-gray-600">Apps prüfen, Versionen auswählen und neue Anwendungen bereitstellen.</p>
+          <p class="text-textMuted">Apps prüfen, Versionen auswählen und neue Anwendungen bereitstellen.</p>
         </div>
         <div>
           <h3 class="font-semibold text-base">Kurse</h3>
-          <p class="text-gray-600">Deployments mit Kursen verknüpfen und Teilnehmergruppen organisieren.</p>
+          <p class="text-textMuted">Deployments mit Kursen verknüpfen und Teilnehmergruppen organisieren.</p>
         </div>
         <div>
           <h3 class="font-semibold text-base">Deployments</h3>
-          <p class="text-gray-600">Neue Deployments anlegen, den Status prüfen und Fehler analysieren.</p>
+          <p class="text-textMuted">Neue Deployments anlegen, den Status prüfen und Fehler analysieren.</p>
         </div>
       </div>
     </article>
@@ -71,8 +71,8 @@ exports[`HelpView (de) > matches snapshot 1`] = `
         </svg>
         <h2 class="text-lg font-semibold">Nützliche Projektlinks</h2>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">Direkter Zugriff auf die relevanten GitHub-Repositories.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
+      <p class="text-textMuted leading-7 mb-4">Direkter Zugriff auf die relevanten GitHub-Repositories.</p>
+      <ul class="list-disc list-inside space-y-2 text-textMuted">
         <li><a href="https://github.com/six7-click-n-deploy/frontend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Frontend-Repository</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/backend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Backend-Repository</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/deployment" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Deployment-Repository</a></li>
@@ -89,8 +89,8 @@ exports[`HelpView (de) > matches snapshot 1`] = `
         </svg>
         <h2 class="text-lg font-semibold">Dokumentation</h2>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">Direkter Zugriff auf die relevanten Projekt-Dokumentationen.</p>
-      <ul class="list-disc list-inside space-y-3 text-gray-600">
+      <p class="text-textMuted leading-7 mb-4">Direkter Zugriff auf die relevanten Projekt-Dokumentationen.</p>
+      <ul class="list-disc list-inside space-y-3 text-textMuted">
         <li><a href="https://github.com/six7-click-n-deploy/deployment/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation bzgl. Installations und Administration</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/.github/blob/main/docs/technologiestack.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation bzgl. Technologiestack und Architektur</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/template-app/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation für App Entwickler: Entwicklung eines neuen App Templates</a></li>
@@ -110,11 +110,11 @@ exports[`HelpView (en) > matches snapshot 1`] = `
       </svg>
       <div>
         <h1 class="text-2xl font-bold">Help &amp; Q/A</h1>
-        <p class="text-sm text-gray-500">Support &amp; frequently asked questions.</p>
+        <p class="text-sm text-textMuted">Support &amp; frequently asked questions.</p>
       </div>
     </div>
   </div>
-  <p class="text-gray-600 leading-7 max-w-3xl mb-8">This page explains the most important steps for users who are already signed in. You get concrete guidance for deployments, quotas and next practical steps.</p>
+  <p class="text-textMuted leading-7 max-w-3xl mb-8">This page explains the most important steps for users who are already signed in. You get concrete guidance for deployments, quotas and next practical steps.</p>
   <div class="grid gap-4 lg:grid-cols-2">
     <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
       <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers-icon lucide-layers">
@@ -124,8 +124,8 @@ exports[`HelpView (en) > matches snapshot 1`] = `
         </svg>
         <h2 class="text-lg font-semibold">If something does not work</h2>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">This checklist helps you find the most common blockers quickly and understand what to check next.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
+      <p class="text-textMuted leading-7 mb-4">This checklist helps you find the most common blockers quickly and understand what to check next.</p>
+      <ul class="list-disc list-inside space-y-2 text-textMuted">
         <li>Check whether you have reached your quota limit.</li>
         <li>Look at deployment details and logs to narrow down the issue.</li>
       </ul>
@@ -138,29 +138,29 @@ exports[`HelpView (en) > matches snapshot 1`] = `
         <h2 class="text-lg font-semibold">Step-by-step guide</h2>
       </div>
       <p class="text-sm font-semibold text-slate-700 mb-3">Deployment process</p>
-      <ol class="list-decimal list-inside space-y-3 text-gray-600">
+      <ol class="list-decimal list-inside space-y-3 text-textMuted">
         <li>Open the deployments overview and start a new deployment.</li>
         <li>Choose the desired app and app version.</li>
         <li>Assign the deployment to a course or team and adjust the settings.</li>
         <li>Review your current quotas before launching the deployment.</li>
         <li>Start the deployment and monitor status and logs in the detail view.</li>
       </ol>
-      <div class="mt-6 space-y-4 text-gray-700">
+      <div class="mt-6 space-y-4 text-textMuted">
         <div>
           <h3 class="font-semibold text-base">Dashboard</h3>
-          <p class="text-gray-600">Quickly see active deployments, system health, and available resources.</p>
+          <p class="text-textMuted">Quickly see active deployments, system health, and available resources.</p>
         </div>
         <div>
           <h3 class="font-semibold text-base">Apps</h3>
-          <p class="text-gray-600">Verify the app you need or add new applications and versions.</p>
+          <p class="text-textMuted">Verify the app you need or add new applications and versions.</p>
         </div>
         <div>
           <h3 class="font-semibold text-base">Courses</h3>
-          <p class="text-gray-600">Link deployments to courses and organize participant groups.</p>
+          <p class="text-textMuted">Link deployments to courses and organize participant groups.</p>
         </div>
         <div>
           <h3 class="font-semibold text-base">Deployments</h3>
-          <p class="text-gray-600">Create deployments, check status, and investigate errors.</p>
+          <p class="text-textMuted">Create deployments, check status, and investigate errors.</p>
         </div>
       </div>
     </article>
@@ -171,8 +171,8 @@ exports[`HelpView (en) > matches snapshot 1`] = `
         </svg>
         <h2 class="text-lg font-semibold">Useful project links</h2>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">Quick access to the relevant GitHub repositories.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
+      <p class="text-textMuted leading-7 mb-4">Quick access to the relevant GitHub repositories.</p>
+      <ul class="list-disc list-inside space-y-2 text-textMuted">
         <li><a href="https://github.com/six7-click-n-deploy/frontend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: frontend repository</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/backend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: backend repository</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/deployment" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: deployment repository</a></li>
@@ -189,8 +189,8 @@ exports[`HelpView (en) > matches snapshot 1`] = `
         </svg>
         <h2 class="text-lg font-semibold">Documentation</h2>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">Direct access to the relevant project documentation.</p>
-      <ul class="list-disc list-inside space-y-3 text-gray-600">
+      <p class="text-textMuted leading-7 mb-4">Direct access to the relevant project documentation.</p>
+      <ul class="list-disc list-inside space-y-3 text-textMuted">
         <li><a href="https://github.com/six7-click-n-deploy/deployment/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation regarding Installation and Administration</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/.github/blob/main/docs/technologiestack.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation regarding Technology Stack and Architecture</a></li>
         <li><a href="https://github.com/six7-click-n-deploy/template-app/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation for App Developers: Creating a new App Template</a></li>

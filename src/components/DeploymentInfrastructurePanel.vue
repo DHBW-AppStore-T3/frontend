@@ -38,18 +38,18 @@ defineEmits<{
 <template>
     <!-- Visually mirrors the page's other sections (Teams, Tasks,
          Outputs): same shell, icon-tile header and sub-section spacing. -->
-    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-borderSubtle p-6 shadow-sm mb-8">
         <div class="flex items-center justify-between mb-5 gap-3 flex-wrap">
             <div class="flex items-center gap-3">
-                <div class="p-2 bg-gray-100 rounded-lg">
-                    <Server :size="20" class="text-gray-600" />
+                <div class="p-2 bg-surfaceMuted rounded-lg">
+                    <Server :size="20" class="text-textMuted" />
                 </div>
-                <span class="text-lg font-semibold text-gray-900">Infrastruktur</span>
+                <span class="text-lg font-semibold text-textHeading">Infrastruktur</span>
             </div>
             <button
                 @click="$emit('refresh')"
                 :disabled="resourcesLoading"
-                class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-1.5 transition-colors"
+                class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-borderSubtle hover:bg-surfaceMuted disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-1.5 transition-colors"
                 title="Live-Status neu abfragen"
             >
                 <RefreshCw :size="13" :class="resourcesLoading ? 'animate-spin' : ''" />
@@ -59,7 +59,7 @@ defineEmits<{
 
         <div
             v-if="resourcesError"
-            class="text-sm p-3 rounded-lg border bg-red-50 text-red-800 border-red-200 mb-4 flex items-start gap-2"
+            class="text-sm p-3 rounded-lg border bg-dangerTint text-red-800 border-danger/30 mb-4 flex items-start gap-2"
         >
             <AlertCircle :size="16" class="mt-0.5 shrink-0" />
             <p>{{ resourcesError }}</p>
@@ -69,26 +69,26 @@ defineEmits<{
              styling from ``InfrastructureVmCard``. -->
         <section class="mb-6">
             <div class="flex items-center gap-2 mb-3">
-                <Server :size="14" class="text-gray-400" />
-                <h3 class="text-sm font-bold uppercase tracking-wider text-gray-600">
+                <Server :size="14" class="text-textFaint" />
+                <h3 class="text-sm font-bold uppercase tracking-wider text-textMuted">
                     Virtuelle Maschinen
                 </h3>
                 <span
                     v-if="vmResources.length > 0"
-                    class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-bold rounded"
+                    class="px-2 py-0.5 bg-surfaceMuted text-textMuted text-xs font-bold rounded"
                 >
                     {{ vmResources.length }}
                 </span>
             </div>
             <div
                 v-if="resourcesLoading && vmResources.length === 0"
-                class="text-sm text-gray-500 italic px-4 py-6 bg-gray-50 rounded-lg border border-gray-100 text-center"
+                class="text-sm text-textMuted italic px-4 py-6 bg-surfaceMuted rounded-lg border border-borderSubtle text-center"
             >
                 Lade VMs…
             </div>
             <div
                 v-else-if="vmResources.length === 0"
-                class="text-sm text-gray-500 italic px-4 py-6 bg-gray-50 rounded-lg border border-gray-100 text-center"
+                class="text-sm text-textMuted italic px-4 py-6 bg-surfaceMuted rounded-lg border border-borderSubtle text-center"
             >
                 Keine VMs im aktuellen Terraform-State.
             </div>
@@ -108,11 +108,11 @@ defineEmits<{
         <!-- Networks / Subnets / Floating IPs (read-only) -->
         <section v-if="networkResources.length > 0" class="mb-6">
             <div class="flex items-center gap-2 mb-3">
-                <Network :size="14" class="text-gray-400" />
-                <h3 class="text-sm font-bold uppercase tracking-wider text-gray-600">
+                <Network :size="14" class="text-textFaint" />
+                <h3 class="text-sm font-bold uppercase tracking-wider text-textMuted">
                     Netzwerk
                 </h3>
-                <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-bold rounded">
+                <span class="px-2 py-0.5 bg-surfaceMuted text-textMuted text-xs font-bold rounded">
                     {{ networkResources.length }}
                 </span>
             </div>
@@ -120,17 +120,17 @@ defineEmits<{
                 <li
                     v-for="res in networkResources"
                     :key="res.address"
-                    class="px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-between"
+                    class="px-3 py-2 bg-surfaceMuted rounded-lg border border-borderSubtle flex items-center justify-between"
                 >
                     <div class="min-w-0">
-                        <p class="font-semibold text-gray-900 truncate">
+                        <p class="font-semibold text-textHeading truncate">
                             {{ res.display_name }}
                         </p>
-                        <p class="text-gray-500 font-mono truncate" :title="res.address">
+                        <p class="text-textMuted font-mono truncate" :title="res.address">
                             {{ res.address }}
                         </p>
                     </div>
-                    <span class="text-[10px] uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-gray-300 text-gray-600 ml-2 shrink-0">
+                    <span class="text-[10px] uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-borderSubtle text-textMuted ml-2 shrink-0">
                         {{ res.category }}
                     </span>
                 </li>
@@ -140,11 +140,11 @@ defineEmits<{
         <!-- Security Groups (read-only) -->
         <section v-if="securityResources.length > 0">
             <div class="flex items-center gap-2 mb-3">
-                <Shield :size="14" class="text-gray-400" />
-                <h3 class="text-sm font-bold uppercase tracking-wider text-gray-600">
+                <Shield :size="14" class="text-textFaint" />
+                <h3 class="text-sm font-bold uppercase tracking-wider text-textMuted">
                     Sicherheit
                 </h3>
-                <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-bold rounded">
+                <span class="px-2 py-0.5 bg-surfaceMuted text-textMuted text-xs font-bold rounded">
                     {{ securityResources.length }}
                 </span>
             </div>
@@ -152,10 +152,10 @@ defineEmits<{
                 <li
                     v-for="res in securityResources"
                     :key="res.address"
-                    class="px-3 py-2 bg-gray-50 rounded-lg border border-gray-100"
+                    class="px-3 py-2 bg-surfaceMuted rounded-lg border border-borderSubtle"
                 >
-                    <p class="font-semibold text-gray-900">{{ res.display_name }}</p>
-                    <p class="text-gray-500 font-mono">{{ res.address }}</p>
+                    <p class="font-semibold text-textHeading">{{ res.display_name }}</p>
+                    <p class="text-textMuted font-mono">{{ res.address }}</p>
                 </li>
             </ul>
         </section>

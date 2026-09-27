@@ -60,11 +60,11 @@ const sortedDeployments = computed(() =>
 // slate = paused.
 const getStatusColor = (status: string) => {
   const colors = {
-    'success': 'bg-green-100 text-green-800 border-green-300',
-    'failed': 'bg-red-100 text-red-800 border-red-300',
-    'running': 'bg-blue-100 text-blue-800 border-blue-300',
+    'success': 'bg-successTint text-green-800 border-green-300',
+    'failed': 'bg-dangerTint text-red-800 border-red-300',
+    'running': 'bg-infoTint text-blue-800 border-blue-300',
     'pending': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    'cancelled': 'bg-gray-100 text-gray-700 border-gray-300',
+    'cancelled': 'bg-surfaceMuted text-textMuted border-borderSubtle',
     'destroyed': 'bg-orange-100 text-orange-800 border-orange-300',
     'destroying': 'bg-orange-100 text-orange-700 border-orange-300',
     'pausing': 'bg-amber-100 text-amber-800 border-amber-300',
@@ -73,7 +73,7 @@ const getStatusColor = (status: string) => {
     'pause_failed': 'bg-amber-100 text-amber-900 border-amber-300',
     'resume_failed': 'bg-amber-100 text-amber-900 border-amber-300',
   }
-  return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-300'
+  return colors[status as keyof typeof colors] || 'bg-surfaceMuted text-textHeading border-borderSubtle'
 }
 </script>
 
@@ -122,10 +122,10 @@ const getStatusColor = (status: string) => {
                   <BarChart3 :size="20" class="text-primary" />
                 </div>
                 <div class="min-w-0">
-                  <h3 class="font-semibold text-gray-900 truncate" :title="deployment.name">
+                  <h3 class="font-semibold text-textHeading truncate" :title="deployment.name">
                     {{ deployment.name }}
                   </h3>
-                  <p class="text-xs text-gray-500 truncate mt-0.5">
+                  <p class="text-xs text-textMuted truncate mt-0.5">
                     <Box :size="11" class="inline-block mr-1 align-text-bottom" />
                     {{ getAppName(deployment.appId) }}
                   </p>
@@ -139,7 +139,7 @@ const getStatusColor = (status: string) => {
               </span>
             </div>
 
-            <div class="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <div class="mt-auto pt-3 border-t border-borderSubtle flex items-center justify-between text-xs text-textMuted">
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
                 <GitBranch :size="11" />
                 {{ deployment.releaseTag }}

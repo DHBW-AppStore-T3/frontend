@@ -176,16 +176,16 @@ const onList = () =>
 </script>
 
 <template>
-  <div class="w-full rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+  <div class="w-full rounded-lg border border-borderSubtle bg-white shadow-sm overflow-hidden">
     <!-- Tab bar -->
-    <div class="flex items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2">
+    <div class="flex items-center gap-0.5 border-b border-borderSubtle bg-surfaceMuted px-2">
       <button
         type="button"
         @click="mode = 'edit'"
         class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors -mb-px"
         :class="mode === 'edit'
           ? 'border-primary text-primary'
-          : 'border-transparent text-gray-500 hover:text-gray-800'"
+          : 'border-transparent text-textMuted hover:text-textHeading'"
       >
         <Pencil :size="12" />
         {{ t('markdownEditor.tabEdit') }}
@@ -196,7 +196,7 @@ const onList = () =>
         class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors -mb-px"
         :class="mode === 'preview'
           ? 'border-primary text-primary'
-          : 'border-transparent text-gray-500 hover:text-gray-800'"
+          : 'border-transparent text-textMuted hover:text-textHeading'"
       >
         <Eye :size="12" />
         {{ t('markdownEditor.tabPreview') }}
@@ -208,37 +208,37 @@ const onList = () =>
         class="ml-auto flex items-center gap-0.5 py-1"
       >
         <button type="button" @click="onBold" :title="t('markdownEditor.toolbar.bold')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <Bold :size="14" />
         </button>
         <button type="button" @click="onItalic" :title="t('markdownEditor.toolbar.italic')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <Italic :size="14" />
         </button>
         <span class="mx-1 h-4 w-px bg-gray-300"></span>
         <button type="button" @click="onH1" :title="t('markdownEditor.toolbar.h1')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <Heading1 :size="14" />
         </button>
         <button type="button" @click="onH2" :title="t('markdownEditor.toolbar.h2')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <Heading2 :size="14" />
         </button>
         <span class="mx-1 h-4 w-px bg-gray-300"></span>
         <button type="button" @click="onList" :title="t('markdownEditor.toolbar.list')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <List :size="14" />
         </button>
         <button type="button" @click="applyLink" :title="t('markdownEditor.toolbar.link')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <LinkIcon :size="14" />
         </button>
         <button type="button" @click="onInlineCode" :title="t('markdownEditor.toolbar.code')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <CodeIcon :size="14" />
         </button>
         <button type="button" @click="applyCodeBlock" :title="t('markdownEditor.toolbar.codeblock')"
-                class="p-1 rounded hover:bg-gray-200 text-gray-600">
+                class="p-1 rounded hover:bg-gray-200 text-textMuted">
           <Code2 :size="14" />
         </button>
       </div>
@@ -254,7 +254,7 @@ const onList = () =>
         @input="autoResize"
         @keydown="onKeydown"
         :style="{ minHeight: `${minHeightPx}px`, maxHeight: `${maxHeightPx}px` }"
-        class="block w-full resize-none rounded-md border border-transparent bg-white px-2 py-1.5 text-sm text-gray-700 focus:ring-2 focus:ring-primary focus:border-primary outline-none font-mono overflow-y-auto"
+        class="block w-full resize-none rounded-md border border-transparent bg-white px-2 py-1.5 text-sm text-textMuted focus:ring-2 focus:ring-primary focus:border-primary outline-none font-mono overflow-y-auto"
       />
       <div
         v-show="mode === 'preview'"
@@ -262,7 +262,7 @@ const onList = () =>
         :style="{ minHeight: `${minHeightPx}px` }"
       >
         <MarkdownRenderer v-if="local.trim()" :source="local" variant="full" />
-        <p v-else class="text-gray-400 italic">{{ t('markdownEditor.emptyPreview') }}</p>
+        <p v-else class="text-textFaint italic">{{ t('markdownEditor.emptyPreview') }}</p>
       </div>
     </div>
   </div>
