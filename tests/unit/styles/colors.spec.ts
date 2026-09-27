@@ -179,7 +179,7 @@ describe('layout and base UI', () => {
   it('use brand tokens instead of green/emerald/teal palette classes', () => {
     const files = [
       ...fs.readdirSync(path.join(SRC, 'layouts')).map((f) => path.join(SRC, 'layouts', f)),
-      ...['BaseButton', 'BaseInput', 'Card', 'Modal', 'PageHeader'].map((n) =>
+      ...['BaseButton', 'BaseInput', 'Card', 'Modal', 'PageHeader', 'Badge', 'AppVersionStatusBadge'].map((n) =>
         path.join(SRC, 'components', 'ui', `${n}.vue`),
       ),
     ]
