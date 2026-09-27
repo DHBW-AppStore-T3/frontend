@@ -444,11 +444,11 @@ onMounted(async () => {
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <BaseButton v-if="canDelete" @click="openEditModal" class="flex items-center gap-2 px-4 py-2" variant="ghost">
+              <BaseButton v-if="canDelete" @click="openEditModal" class="flex items-center gap-2 px-4 py-2" variant="text">
                 <Pencil :size="18" />
                 <span class="font-medium">{{ $t('AppsDetailView.editApp') }}</span>
               </BaseButton>
-              <BaseButton v-if="canDelete" @click="showDeleteModal = true" class="flex items-center gap-2 px-4 py-2" variant="red">
+              <BaseButton v-if="canDelete" @click="showDeleteModal = true" class="flex items-center gap-2 px-4 py-2" variant="destructive">
                 <Trash2 :size="18" />
                 <span class="font-medium">{{ $t('AppsDetailView.deleteApp') }}</span>
               </BaseButton>
@@ -737,10 +737,10 @@ onMounted(async () => {
       </template>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="showDeleteModal = false" :disabled="isDeleting">
+          <BaseButton variant="text" @click="showDeleteModal = false" :disabled="isDeleting">
             {{ $t('AppsDetailView.cancelButton') }}
           </BaseButton>
-          <BaseButton variant="red" @click="confirmDelete" :disabled="isDeleting">
+          <BaseButton variant="destructive" @click="confirmDelete" :disabled="isDeleting">
             {{ isDeleting ? $t('AppsDetailView.deletingButton') : $t('AppsDetailView.confirmButton') }}
           </BaseButton>
         </div>
@@ -827,7 +827,7 @@ onMounted(async () => {
       </template>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="closeEditModal" :disabled="isSavingEdit">
+          <BaseButton variant="text" @click="closeEditModal" :disabled="isSavingEdit">
             {{ $t('AppsDetailView.cancelButton') }}
           </BaseButton>
           <BaseButton variant="primary" @click="submitEdit" :disabled="isSavingEdit">
@@ -874,7 +874,7 @@ onMounted(async () => {
       </template>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="showSubmitModal = false" :disabled="isSubmitting">
+          <BaseButton variant="text" @click="showSubmitModal = false" :disabled="isSubmitting">
             {{ $t('AppsDetailView.cancelButton') }}
           </BaseButton>
           <BaseButton variant="primary" @click="confirmSubmit" :disabled="isSubmitting">

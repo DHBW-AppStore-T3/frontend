@@ -271,7 +271,7 @@ const roleClass = (role: string | undefined) => {
             <BaseButton @click="saveName" class="!p-2" :title="$t('CourseDetailView.save')">
               <Check :size="18" />
             </BaseButton>
-            <BaseButton variant="ghost" @click="cancelEditName" class="!p-2" :title="$t('CourseDetailView.cancel')">
+            <BaseButton variant="text" @click="cancelEditName" class="!p-2" :title="$t('CourseDetailView.cancel')">
               <CloseIcon :size="18" />
             </BaseButton>
           </div>
@@ -430,7 +430,7 @@ const roleClass = (role: string | undefined) => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="closeAddModal" :disabled="isAddingMembers">
+          <BaseButton variant="text" @click="closeAddModal" :disabled="isAddingMembers">
             {{ $t('CourseDetailView.addModal.cancel') }}
           </BaseButton>
           <BaseButton
@@ -459,10 +459,10 @@ const roleClass = (role: string | undefined) => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="closeRemoveModal" :disabled="!!removingId">
+          <BaseButton variant="text" @click="closeRemoveModal" :disabled="!!removingId">
             {{ $t('CourseDetailView.removeModal.cancel') }}
           </BaseButton>
-          <BaseButton variant="red" @click="confirmRemoveMember" :disabled="!!removingId">
+          <BaseButton variant="destructive" @click="confirmRemoveMember" :disabled="!!removingId">
             {{ removingId ? $t('CourseDetailView.removeModal.removing') : $t('CourseDetailView.removeModal.remove') }}
           </BaseButton>
         </div>

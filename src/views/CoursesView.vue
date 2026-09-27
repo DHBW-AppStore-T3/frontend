@@ -180,7 +180,7 @@ const goToDetail = (courseId: string) => {
 
           <div class="mt-auto">
             <BaseButton
-                variant="green"
+                variant="secondary"
                 class="w-full flex items-center justify-center gap-2"
                 @click.stop="goToDetail(course.courseId)"
             >
@@ -212,7 +212,7 @@ const goToDetail = (courseId: string) => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="showModal = false">
+          <BaseButton variant="text" @click="showModal = false">
             {{ $t('CoursesView.createModal.cancel') }}
           </BaseButton>
           <BaseButton @click="saveCourse" :disabled="!formData.name">
@@ -238,10 +238,10 @@ const goToDetail = (courseId: string) => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="closeDeleteModal" :disabled="isDeleting">
+          <BaseButton variant="text" @click="closeDeleteModal" :disabled="isDeleting">
             {{ $t('CoursesView.deleteModal.cancel') }}
           </BaseButton>
-          <BaseButton variant="red" @click="confirmDelete" :disabled="isDeleting">
+          <BaseButton variant="destructive" @click="confirmDelete" :disabled="isDeleting">
             {{ isDeleting ? $t('CoursesView.deleteModal.deleting') : $t('CoursesView.deleteModal.delete') }}
           </BaseButton>
         </div>

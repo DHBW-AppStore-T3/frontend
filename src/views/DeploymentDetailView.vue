@@ -1359,7 +1359,7 @@ const deselectTask = () => {
                      the task and cleans up everything it created, including
                      the Packer build instance Terraform knows nothing about. -->
                 <BaseButton v-if="canCancel" @click="showCancelModal = true" :disabled="cancelBusy"
-                    class="flex items-center gap-2 px-4 py-2" variant="yellow">
+                    class="flex items-center gap-2 px-4 py-2" variant="primary">
                     <StopCircle :size="18" />
                     <span class="font-medium">{{ $t('DeploymentDetailView.deploymentStop') }}</span>
                 </BaseButton>
@@ -1368,7 +1368,7 @@ const deselectTask = () => {
                      triggers a destroy task or a straight soft-delete based on
                      status. Hidden entirely for members. -->
                 <BaseButton v-if="isOwnerView" data-testid="btn-delete-deployment" @click="canDelete && (showDeleteModal = true)" :disabled="!canDelete"
-                    :title="deleteDisabledReason" class="flex items-center gap-2 px-4 py-2" variant="red">
+                    :title="deleteDisabledReason" class="flex items-center gap-2 px-4 py-2" variant="destructive">
                     <Trash2 :size="18" />
                     <span class="font-medium">{{ $t('DeploymentDetailView.deploymentDelete') }}</span>
                 </BaseButton>
@@ -2177,10 +2177,10 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showCancelModal = false">
+                    <BaseButton variant="text" @click="showCancelModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
-                    <BaseButton variant="yellow" :disabled="cancelBusy" @click="confirmCancel">
+                    <BaseButton variant="primary" :disabled="cancelBusy" @click="confirmCancel">
                         {{ $t('DeploymentDetailView.confirmButton') }}
                     </BaseButton>
                 </div>
@@ -2196,10 +2196,10 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showDeleteModal = false">
+                    <BaseButton variant="text" @click="showDeleteModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
-                    <BaseButton variant="red" data-testid="btn-confirm-delete" @click="confirmDelete">
+                    <BaseButton variant="destructive" data-testid="btn-confirm-delete" @click="confirmDelete">
                         {{ $t('DeploymentDetailView.confirmButton') }}
                     </BaseButton>
                 </div>
@@ -2229,10 +2229,10 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showRedeployModal = false">
+                    <BaseButton variant="text" @click="showRedeployModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
-                    <BaseButton variant="red" @click="confirmRedeploy">
+                    <BaseButton variant="destructive" @click="confirmRedeploy">
                         Redeploy
                     </BaseButton>
                 </div>
@@ -2256,7 +2256,7 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showPauseResumeModal = false">
+                    <BaseButton variant="text" @click="showPauseResumeModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
                     <BaseButton

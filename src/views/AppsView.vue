@@ -182,7 +182,7 @@ onMounted(() => {
 
           <div class="mt-auto">
             <BaseButton
-              variant="green"
+              variant="secondary"
               class="w-full flex items-center justify-center gap-2"
               @click.stop="handleDeploy(app)"
             >

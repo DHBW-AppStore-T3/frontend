@@ -344,10 +344,10 @@ const handleSubmit = async () => {
           </div>
 
           <!-- Preview button — same look as on the app overview
-               (BaseButton variant="green"), not clickable since it's a preview. -->
+               (BaseButton variant="secondary"), not clickable since it's a preview. -->
           <div class="mt-auto">
             <BaseButton
-                variant="green"
+                variant="secondary"
                 class="w-full flex items-center justify-center gap-2 cursor-default opacity-80"
                 @click.prevent
             >

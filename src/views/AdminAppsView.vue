@@ -479,11 +479,11 @@ onMounted(loadAll)
       </template>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="showRejectModal = false" :disabled="isRejecting">
+          <BaseButton variant="text" @click="showRejectModal = false" :disabled="isRejecting">
             {{ $t('AdminAppsView.rejectModal.cancel') }}
           </BaseButton>
           <BaseButton
-            variant="red"
+            variant="destructive"
             @click="handleReject"
             :disabled="!rejectionReason.trim() || isRejecting"
           >
@@ -518,7 +518,7 @@ onMounted(loadAll)
       </template>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="showRevokeModal = false" :disabled="isRevoking">
+          <BaseButton variant="text" @click="showRevokeModal = false" :disabled="isRevoking">
             {{ $t('AdminAppsView.revokeModal.cancel') }}
           </BaseButton>
           <BaseButton
