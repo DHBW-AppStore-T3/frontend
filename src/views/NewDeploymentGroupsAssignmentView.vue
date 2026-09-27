@@ -5,11 +5,14 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar.vue'
-import { Plus, Minus, Users, ArrowLeft, ArrowRight, GripVertical, Trash2, UserPlus, Shuffle, X } from 'lucide-vue-next'
+import { Plus, Minus, Users, ArrowLeft, ArrowRight, GripVertical, Trash2, UserPlus, Shuffle, X, AlertTriangle } from 'lucide-vue-next'
+import { useDeploymentConstraints } from '@/composables/useDeploymentConstraints'
 
 const { t } = useI18n()
 const router = useRouter()
 const store = useDeploymentStore()
+
+const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(computed(() => store.draftAppDetails))
 
 // --- Reactive cache wrapper ---
 const studentCacheMap = store.studentCache ?? new Map<string, any>()
@@ -125,10 +128,15 @@ onMounted(async () => {
     store.draft.groupCount = 1
   }
   ensureAssignmentArrays()
-  
+
   // Ensure all groups have names.
   ensureDefaultGroupNames()
-  
+
+  // Windows apps must always use individual assignment.
+  if (forcedGroupMode.value === 'eachUser') {
+    setEachUser()
+  }
+
   const assignments = store.draft.assignments as string[][]
   const assignedIds: string[] = assignments 
     ? ([] as string[]).concat(...assignments.filter((arr): arr is string[] => Array.isArray(arr) && arr.length > 0))
@@ -379,25 +387,31 @@ const handleBack = () => router.push({ name: 'deployment.config' })
           
           <!-- Mode Selection -->
           <div class="flex gap-2">
-            <button @click="setOneGroup" 
+            <button @click="setOneGroup"
+              :disabled="forcedGroupMode !== null"
               class="px-5 py-2.5 rounded-xl font-semibold transition-all text-sm border-2"
-              :class="mode === 'one' 
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30' 
-                : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'">
+              :class="mode === 'one'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30'
+                : forcedGroupMode !== null
+                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'">
               {{ t('deployment.groups.one') }}
             </button>
-            <button @click="setEachUser" 
+            <button @click="setEachUser"
               class="px-5 py-2.5 rounded-xl font-semibold transition-all text-sm border-2"
-              :class="mode === 'eachUser' 
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30' 
+              :class="mode === 'eachUser'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30'
                 : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'">
               {{ t('deployment.groups.eachUser') }}
             </button>
-            <button @click="setCustom" 
+            <button @click="setCustom"
+              :disabled="forcedGroupMode !== null"
               class="px-5 py-2.5 rounded-xl font-semibold transition-all text-sm border-2"
-              :class="mode === 'custom' 
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30' 
-                : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'">
+              :class="mode === 'custom'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30'
+                : forcedGroupMode !== null
+                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'">
               {{ t('deployment.groups.custom') }}
             </button>
           </div>
@@ -445,6 +459,17 @@ const handleBack = () => router.push({ name: 'deployment.config' })
           <div>
             <p class="font-semibold text-blue-900 mb-1">{{ t('deployment.assignment.dragDropTitle') }}</p>
             <p class="text-sm text-blue-700">{{ t('deployment.assignment.dragDropText') }}</p>
+          </div>
+        </div>
+
+        <!-- Windows Constraint Banner -->
+        <div v-if="forcedGroupMode !== null" class="mt-3 bg-amber-50 border-2 border-amber-300 rounded-xl p-4 flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <AlertTriangle :size="16" class="text-white" />
+          </div>
+          <div>
+            <p class="font-semibold text-amber-900 mb-1">{{ t('deployment.assignment.windowsConstraintTitle') }}</p>
+            <p class="text-sm text-amber-800">{{ groupModeReason ? t(groupModeReason) : '' }}</p>
           </div>
         </div>
       </div>
