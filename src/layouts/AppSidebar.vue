@@ -5,7 +5,7 @@ import { PanelLeftOpen } from 'lucide-vue-next'
 import { useTheme } from '@/theme/useTheme'
 import Drawer from '@/components/ui/Drawer.vue'
 
-const props = defineProps<{
+defineProps<{
   collapsed: boolean
   navItems: { to: string | RouteLocationRaw; label: string; icon: Component }[]
   mobileOpen: boolean
