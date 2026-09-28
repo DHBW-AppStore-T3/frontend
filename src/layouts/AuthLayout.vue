@@ -61,9 +61,13 @@ const features = computed(() => [
     <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
       <!-- Large, extremely subtle backdrop shape behind the whole column — a single big
            rotated square with softened (blurred) edges, off-white. Matches the isolated
-           reference swatch exactly: one large diamond, not a faceted polygon mesh. -->
+           reference swatch exactly: one large diamond, not a faceted polygon mesh.
+           Uses borderSubtle, not surfaceMuted: surfaceMuted (250 250 250) turned out to
+           be within 1 unit of this page's own background (251 249 249) — invisible in
+           practice. borderSubtle (240 240 240) is the closest existing token that still
+           reads as a real, if soft, shape at this size. -->
       <div
-        class="absolute w-[46rem] h-[46rem] rounded-3xl bg-surfaceMuted blur-sm rotate-45 pointer-events-none -left-56 top-16"
+        class="absolute w-[46rem] h-[46rem] rounded-3xl bg-borderSubtle blur-sm rotate-45 pointer-events-none -left-56 top-16"
         aria-hidden="true"
       />
 
