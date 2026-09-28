@@ -648,6 +648,8 @@ export default {
       reset: 'Reset',
       dragDropTitle: 'Drag & Drop enabled',
       dragDropText: 'Drag and drop students between teams and the unassigned area.',
+      windowsConstraintTitle: 'Windows licensing active',
+      windowsConstraintText: 'Windows licensing requires individual assignment. Each student will receive their own VM.',
       allAssigned: 'All students are assigned to teams.',
       dropZone: 'Drop students here',
       progress: 'Progress',
