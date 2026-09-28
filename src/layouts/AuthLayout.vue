@@ -34,6 +34,9 @@ function changeLocale(lang: string) {
   }
 }
 
+// Split into an explicit two-line break (lead words / last word) instead of letting
+// the browser wrap naturally — the reference's line break is a deliberate part of the
+// composition, not just whatever happens to fit the container width.
 const heroTitleWords = computed(() => t('auth.hero.title').split(' '))
 const heroTitleLead = computed(() => heroTitleWords.value.slice(0, -1).join(' '))
 const heroTitleLast = computed(() => heroTitleWords.value[heroTitleWords.value.length - 1])
@@ -48,38 +51,35 @@ const features = computed(() => [
 <template>
   <div class="min-h-screen relative overflow-hidden bg-surfacePage" :style="t3Vars">
     <!-- The entire background — campus photo, diagonal seam and the geometric shape —
-         is one reference image, desktop only. Content sits directly on top of it (no
-         separate white panel underneath); on mobile the image is hidden and the page
-         falls back to a plain surfacePage background from the wrapper above.
-
-         Capping this at its native resolution (bg-auto) to avoid upscaling left a
-         visibly blurred gap on wide viewports, which looked worse than the mild
-         softness from stretching — so back to a plain full-bleed cover. -->
+         is one final, approved reference image (do not edit its content/geometry/colors).
+         Desktop/tablet only. Content sits directly on top of it (no separate white panel
+         underneath); on mobile the image is hidden and the page falls back to a plain
+         surfacePage background from the wrapper above. bg-cover preserves the image's
+         own aspect ratio (crops, never stretches/distorts it) at any viewport size. -->
     <div
       class="hidden md:block absolute inset-0 bg-cover bg-left"
+      aria-hidden="true"
       :style="{ backgroundImage: `url(${bgImage})` }"
     />
 
     <div class="relative z-10 w-full md:w-[44%] min-h-screen flex flex-col">
-        <header class="flex items-start justify-between gap-4 px-6 pt-8 md:pl-[7.25rem] md:pr-10 md:pt-12">
+        <header class="flex items-start justify-between gap-4 px-6 pt-6 md:pl-10 md:pr-8 md:pt-10 lg:pl-[7.25rem] lg:pr-10 lg:pt-12">
           <!-- Recolored via mask instead of swapping to a raw literal color: the logo's own
                silhouette (t3Theme.logo) is masked and filled with the "primary" token, so it
-               follows whatever theme is scoped onto this page instead of a baked-in PNG tint. -->
-          <div>
-            <div
-              class="auth-logo-mark bg-primary"
-              role="img"
-              :aria-label="t3Theme.brand.name"
-              :style="{
-                height: `${t3Theme.authLogo!.height}px`,
-                aspectRatio: `${logoAspectRatio}`,
-                '--logo-mask-url': `url(${t3Theme.logo.src})`,
-              }"
-            />
-            <p class="mt-1 text-caption text-textMuted">{{ t3Theme.brand.tagline }}</p>
-          </div>
+               follows whatever theme is scoped onto this page instead of a baked-in PNG tint.
+               T3 mark only — no tagline/kicker underneath. -->
+          <div
+            class="auth-logo-mark bg-primary"
+            role="img"
+            :aria-label="t3Theme.brand.name"
+            :style="{
+              height: `${t3Theme.authLogo!.height}px`,
+              aspectRatio: `${logoAspectRatio}`,
+              '--logo-mask-url': `url(${t3Theme.logo.src})`,
+            }"
+          />
 
-          <div class="flex flex-shrink-0 items-center gap-1 rounded-full bg-surfacePage shadow-sm p-1 text-caption">
+          <div class="flex flex-shrink-0 items-center gap-0.5 text-caption">
             <button
               type="button"
               data-testid="locale-de"
@@ -99,18 +99,18 @@ const features = computed(() => [
 
         <!-- Anchored below the header at a fixed offset (not vertically centered) so the
              headline lands at the same height as the reference regardless of viewport. -->
-        <main class="px-6 md:pl-[7.25rem] md:pr-10 pt-12 md:pt-16 max-w-lg">
+        <main class="px-6 md:pl-10 md:pr-8 lg:pl-[7.25rem] lg:pr-10 pt-10 md:pt-14 lg:pt-16 max-w-lg">
           <h1 class="text-display-1 text-textHeading mb-6">
-            {{ heroTitleLead }} <span class="text-primary">{{ heroTitleLast }}</span>
+            <span class="block">{{ heroTitleLead }}</span><span class="block text-primary">{{ heroTitleLast }}</span>
           </h1>
 
           <slot />
         </main>
 
-        <footer class="mt-auto px-6 md:pl-[7.25rem] md:pr-10 pb-10 pt-10">
-          <div class="border-t border-borderSubtle pt-6 grid grid-cols-3 gap-4">
+        <footer class="mt-auto px-6 md:pl-10 md:pr-8 lg:pl-[7.25rem] lg:pr-10 pb-8 md:pb-10 pt-8 md:pt-10">
+          <div class="border-t border-borderSubtle pt-6 grid grid-cols-3 gap-3 md:gap-4">
             <div v-for="feature in features" :key="feature.label" class="flex flex-col gap-2">
-              <component :is="feature.icon" :size="20" class="text-textMuted" />
+              <component :is="feature.icon" :size="20" :stroke-width="2" aria-hidden="true" class="text-textMuted" />
               <span class="text-caption text-textMuted leading-snug">{{ feature.label }}</span>
             </div>
           </div>

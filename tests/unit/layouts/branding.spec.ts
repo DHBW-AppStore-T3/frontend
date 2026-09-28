@@ -33,11 +33,11 @@ describe('layout branding', () => {
       applyTheme(theme)
       const html = mountLayout(AuthLayout).html()
       // The logo mark is a masked silhouette (theme.logo), tinted via the
-      // "primary" token — not a raw <img src> — with the "AppStore" tagline
-      // underneath, per the approved component reference.
+      // "primary" token — not a raw <img src>. Just the "T3" mark, no
+      // "AppStore" tagline or other subtitle underneath.
       expect(html).toContain(t3Theme.logo.src)
       expect(html).toContain(t3Theme.brand.name)
-      expect(html).toContain(t3Theme.brand.tagline)
+      expect(html).not.toContain(t3Theme.brand.tagline)
       expect(html).not.toContain('SIX7')
     })
 

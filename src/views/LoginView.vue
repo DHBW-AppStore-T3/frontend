@@ -36,7 +36,7 @@ onMounted(() => {
     </p>
 
     <BaseButton variant="solid" @click="loginWithKeycloak">
-      <LogIn :size="20" />
+      <LogIn :size="20" aria-hidden="true" />
       {{ $t('auth.login.keycloakButton') }}
     </BaseButton>
 
