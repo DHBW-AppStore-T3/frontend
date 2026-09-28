@@ -9,12 +9,14 @@
  *   * ``outline``     — bordered, low-emphasis action.
  *   * ``text``        — very subtle action (cancel in modals).
  *   * ``destructive`` — destructive action (delete, reject, reset).
+ *   * ``solid``       — always-solid primary color (no soft default state);
+ *                       for standalone CTAs like the login button.
  *
  * Disabled: all variants drop the hover effect and switch to
  * ``opacity-50 + cursor-not-allowed``, set centrally here.
  */
 withDefaults(defineProps<{
-  variant?: 'primary' | 'secondary' | 'outline' | 'text' | 'destructive'
+  variant?: 'primary' | 'secondary' | 'outline' | 'text' | 'destructive' | 'solid'
 }>(), {
   variant: 'primary',
 })
@@ -37,6 +39,8 @@ withDefaults(defineProps<{
         ? 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-300 shadow-none'
         : variant === 'destructive'
         ? 'bg-destructiveSoft text-destructive hover:bg-destructive hover:text-white focus:ring-destructive/60'
+        : variant === 'solid'
+        ? 'bg-primary text-onDark hover:bg-primaryDark focus:ring-primary/60'
         : ''
     ]"
   >

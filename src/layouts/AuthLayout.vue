@@ -12,16 +12,12 @@ const { locale, t } = useI18n()
 // theme (VITE_THEME) — everything else in the app keeps switching normally.
 // Scoping the CSS color variables to this subtree keeps every existing token
 // class (bg-primary, text-textMuted, ...) working unchanged while pinning them
-// to T3's palette here. brand-accent is pointed at T3's primary red (instead of
-// t3Theme's own olive brand-accent) so the shared BaseButton "primary" variant
-// renders the solid red CTA from the reference design.
+// to T3's palette here.
 const t3Vars = computed(() => {
   const vars: Record<string, string> = {}
   for (const key of THEME_COLOR_KEYS) {
     vars[`--color-${key}`] = t3Theme.colors[key]
   }
-  vars['--color-brand-accent'] = t3Theme.colors.primary
-  vars['--color-brand-accent-soft'] = t3Theme.colors['primary-soft']
   return vars
 })
 
@@ -35,7 +31,9 @@ function changeLocale(lang: string) {
   }
 }
 
-const heroWords = computed(() => t('auth.hero.title').split(' '))
+const heroTitleWords = computed(() => t('auth.hero.title').split(' '))
+const heroTitleLead = computed(() => heroTitleWords.value.slice(0, -1).join(' '))
+const heroTitleLast = computed(() => heroTitleWords.value[heroTitleWords.value.length - 1])
 
 const features = computed(() => [
   { icon: Package, label: t('auth.login.features.diverse') },
@@ -60,7 +58,7 @@ const features = computed(() => [
           <p class="mt-1 text-caption text-textMuted">{{ t3Theme.brand.tagline }}</p>
         </div>
 
-        <div class="flex flex-shrink-0 rounded-full bg-surfaceMuted p-1 text-caption">
+        <div class="flex flex-shrink-0 items-center gap-1 text-caption">
           <button
             type="button"
             data-testid="locale-de"
@@ -83,10 +81,7 @@ const features = computed(() => [
           {{ t('auth.hero.eyebrow') }}
         </p>
         <h1 class="text-headline-1 text-textHeading leading-[1.05] mb-6">
-          <template v-for="(word, i) in heroWords" :key="i">
-            <span :class="i === heroWords.length - 1 ? 'text-primary' : ''">{{ word }}</span
-            ><span v-if="i < heroWords.length - 1"> </span>
-          </template>
+          {{ heroTitleLead }} <span class="text-primary">{{ heroTitleLast }}</span>
         </h1>
 
         <slot />
