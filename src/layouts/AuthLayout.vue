@@ -47,64 +47,63 @@ const features = computed(() => [
 
 <template>
   <div class="min-h-screen relative overflow-hidden bg-surfacePage" :style="t3Vars">
-    <!-- Campus hero photo: full-bleed, desktop only. A blurred, scaled-up copy fills the
-         frame as a backdrop so the sharp photo on top can sit at "contain" size (zoomed
-         out, nothing cropped) without leaving hard empty bars at the top/bottom. -->
+    <!-- Campus hero photo: full-bleed, desktop only. Anchored to the left of its own
+         frame so the trees/low sun near the diagonal seam stay in view instead of a
+         center crop that loses them. -->
     <div class="hidden md:block absolute inset-0 overflow-hidden">
       <div
-        class="absolute inset-0 bg-cover bg-center scale-110 blur-2xl"
-        :style="{ backgroundImage: `url(${heroImage})` }"
-      />
-      <div
-        class="absolute inset-0 bg-contain bg-center bg-no-repeat"
+        class="absolute inset-0 bg-cover bg-left"
         :style="{ backgroundImage: `url(${heroImage})` }"
       />
     </div>
 
     <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
     <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
-      <header class="flex items-start justify-between gap-4 px-8 pt-8 md:px-14 md:pt-12">
-        <!-- Recolored via mask instead of swapping to a raw literal color: the logo's own
-             silhouette (t3Theme.logo) is masked and filled with the "primary" token, so it
-             follows whatever theme is scoped onto this page instead of a baked-in PNG tint. -->
-        <div
-          class="auth-logo-mark bg-primary"
-          role="img"
-          :aria-label="t3Theme.brand.name"
-          :style="{
-            height: `${t3Theme.authLogo!.height}px`,
-            aspectRatio: `${logoAspectRatio}`,
-            '--logo-mask-url': `url(${t3Theme.logo.src})`,
-          }"
-        />
+      <!-- Large, extremely subtle faceted backdrop running behind the whole column
+           (logo, headline, supporting text, CTA) — built from the existing neutral
+           surface tokens (never brand/primary), purely decorative. -->
+      <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div class="absolute inset-y-0 left-0 w-[95%] bg-surfaceMuted" style="clip-path: polygon(0 0%, 88% 0%, 62% 100%, 0% 100%)" />
+        <div class="absolute inset-y-0 left-0 w-[95%] bg-borderSubtle opacity-60" style="clip-path: polygon(0 22%, 66% 6%, 84% 48%, 40% 100%, 0% 100%)" />
+      </div>
 
-        <div class="flex flex-shrink-0 items-center gap-1 text-caption">
-          <button
-            type="button"
-            data-testid="locale-de"
-            @click="changeLocale('de')"
-            :class="locale === 'de' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
-            class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >DE</button>
-          <button
-            type="button"
-            data-testid="locale-en"
-            @click="changeLocale('en')"
-            :class="locale === 'en' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
-            class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >EN</button>
-        </div>
-      </header>
+      <div class="relative flex flex-col min-h-screen">
+        <header class="flex items-start justify-between gap-4 px-8 pt-8 md:px-14 md:pt-12">
+          <!-- Recolored via mask instead of swapping to a raw literal color: the logo's own
+               silhouette (t3Theme.logo) is masked and filled with the "primary" token, so it
+               follows whatever theme is scoped onto this page instead of a baked-in PNG tint. -->
+          <div
+            class="auth-logo-mark bg-primary"
+            role="img"
+            :aria-label="t3Theme.brand.name"
+            :style="{
+              height: `${t3Theme.authLogo!.height}px`,
+              aspectRatio: `${logoAspectRatio}`,
+              '--logo-mask-url': `url(${t3Theme.logo.src})`,
+            }"
+          />
 
-      <!-- Large, extremely subtle faceted backdrop behind the hero copy — built from the
-           existing neutral surface tokens (never brand/primary), purely decorative. -->
-      <div class="relative flex-1 flex flex-col overflow-hidden">
-        <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div class="absolute inset-y-0 left-0 w-[95%] bg-surfaceMuted" style="clip-path: polygon(0 0%, 88% 0%, 62% 100%, 0% 100%)" />
-          <div class="absolute inset-y-0 left-0 w-[95%] bg-borderSubtle opacity-60" style="clip-path: polygon(0 22%, 66% 6%, 84% 48%, 40% 100%, 0% 100%)" />
-        </div>
+          <div class="flex flex-shrink-0 items-center gap-1 text-caption">
+            <button
+              type="button"
+              data-testid="locale-de"
+              @click="changeLocale('de')"
+              :class="locale === 'de' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
+              class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >DE</button>
+            <button
+              type="button"
+              data-testid="locale-en"
+              @click="changeLocale('en')"
+              :class="locale === 'en' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
+              class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >EN</button>
+          </div>
+        </header>
 
-        <main class="relative flex-1 flex flex-col justify-center px-8 md:px-14 py-10 max-w-lg">
+        <!-- Anchored below the header at a fixed offset (not vertically centered) so the
+             headline lands at the same height as the reference regardless of viewport. -->
+        <main class="px-8 md:px-14 pt-16 md:pt-20 max-w-lg">
           <h1 class="text-display-1 text-textHeading mb-6">
             {{ heroTitleLead }} <span class="text-primary">{{ heroTitleLast }}</span>
           </h1>
@@ -112,7 +111,7 @@ const features = computed(() => [
           <slot />
         </main>
 
-        <footer class="relative px-8 md:px-14 pb-10">
+        <footer class="mt-auto px-8 md:px-14 pb-10 pt-10">
           <div class="border-t border-borderSubtle pt-6 grid grid-cols-3 gap-4">
             <div v-for="feature in features" :key="feature.label" class="flex flex-col gap-2">
               <component :is="feature.icon" :size="20" class="text-textMuted" />
