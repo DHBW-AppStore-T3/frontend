@@ -206,4 +206,167 @@ describe('deployment.store — submitDraft', () => {
     expect(payload.userInputVar.terraform).not.toHaveProperty('my_file')
     expect(payload.userInputVar.terraform).toHaveProperty('region', 'eu-west-1')
   })
+
+  it('uses releaseTag.name when .version is absent', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    ;(store.draft as any).releaseTag = { name: 'v3.0' }  // no .version field
+    store.draft.variableDefinitions = []
+
+    await store.submitDraft()
+
+    const payload = mockApi.create.mock.calls[0][0]
+    expect(payload.releaseTag).toBe('v3.0')
+  })
+
+  it('falls back to terraform when variableDefinitions is not an array', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    ;(store.draft.variableDefinitions as any) = null
+    ;(store.draft.variables as any) = { region: 'us-east-1', size: 'medium' }
+
+    await store.submitDraft()
+
+    const payload = mockApi.create.mock.calls[0][0]
+    expect(payload.userInputVar.terraform).toEqual({ region: 'us-east-1', size: 'medium' })
+  })
+
+  it('builds teams from groupNames + assignments', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    store.draft.variableDefinitions = []
+    store.draft.groupNames = ['Team-A', 'Team-B']
+    ;(store.draft.assignments as any) = [['u-1', 'u-2'], ['u-3']]
+
+    await store.submitDraft()
+
+    const { teams } = mockApi.create.mock.calls[0][0]
+    expect(teams).toEqual([
+      { name: 'Team-A', userIds: ['u-1', 'u-2'] },
+      { name: 'Team-B', userIds: ['u-3'] },
+    ])
+  })
+
+  it('falls back to missing assignment slot → empty userIds', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    store.draft.variableDefinitions = []
+    store.draft.groupNames = ['Team-A', 'Team-B']
+    ;(store.draft.assignments as any) = [['u-1']]  // Team-B slot missing
+
+    await store.submitDraft()
+
+    const { teams } = mockApi.create.mock.calls[0][0]
+    expect(teams[1]).toEqual({ name: 'Team-B', userIds: [] })
+  })
+
+  it('auto-splits studentIds into teams when groupNames is empty', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    store.draft.variableDefinitions = []
+    store.draft.groupNames = []
+    store.draft.assignments = []
+    store.draft.studentIds = ['u-1', 'u-2', 'u-3', 'u-4', 'u-5']
+    store.draft.groupCount = 2
+
+    await store.submitDraft()
+
+    const { teams } = mockApi.create.mock.calls[0][0]
+    // 5 students / 2 groups: remainder=1 → group-0 gets 3, group-1 gets 2
+    expect(teams).toHaveLength(2)
+    expect(teams[0]).toEqual({ name: 'Team-1', userIds: ['u-1', 'u-2', 'u-3'] })
+    expect(teams[1]).toEqual({ name: 'Team-2', userIds: ['u-4', 'u-5'] })
+  })
+
+  it('skips scoped variable (team/user) with empty object value', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    store.draft.variableDefinitions = [
+      { name: 'user_cfg', source: 'terraform', osType: 'object', varScope: 'user' } as any,
+      { name: 'region', source: 'terraform', osType: 'string' } as any,
+    ]
+    ;(store.draft.variables as any) = { user_cfg: {}, region: 'eu-west-1' }
+
+    await store.submitDraft()
+
+    const payload = mockApi.create.mock.calls[0][0]
+    expect(payload.userInputVar.terraform).not.toHaveProperty('user_cfg')
+    expect(payload.userInputVar.terraform).toHaveProperty('region', 'eu-west-1')
+  })
+
+  it('multi-image packer: routes nested packer vars under template_key', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    store.draft.variableDefinitions = [
+      { name: 'image_name', source: 'packer', osType: 'string', template_key: 'ubuntu' } as any,
+    ]
+    // Multi-image layout: variables.packer is an object whose values are objects
+    ;(store.draft.variables as any) = {
+      packer: { ubuntu: { image_name: 'my-ubuntu-22.04' } },
+    }
+
+    await store.submitDraft()
+
+    const payload = mockApi.create.mock.calls[0][0]
+    expect(payload.userInputVar.packer).toEqual({ ubuntu: { image_name: 'my-ubuntu-22.04' } })
+  })
+
+  it('file uploads: only slots with content_b64 included; empty map → no files key', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    store.draft.variableDefinitions = []
+    ;(store.draft.fileUploads as any) = {
+      ssh_key: {
+        global: { content_b64: 'abc123', filename: 'key.pem' },
+        empty_slot: null,  // no content_b64 → filtered out
+      },
+      never_filled: {},  // all slots empty → entire var dropped
+    }
+
+    await store.submitDraft()
+
+    const payload = mockApi.create.mock.calls[0][0]
+    expect(payload.files).toBeDefined()
+    expect(payload.files.ssh_key).toEqual({ global: { content_b64: 'abc123', filename: 'key.pem' } })
+    expect(payload.files.ssh_key).not.toHaveProperty('empty_slot')
+    expect(payload.files).not.toHaveProperty('never_filled')
+  })
+
+  it('payload.files is omitted entirely when no uploads have content_b64', async () => {
+    mockApi.create.mockResolvedValue({ data: D1 })
+    const store = useDeploymentStore()
+    store.draft.appId = 'app-1'
+    store.draft.name = 'Deploy'
+    store.draft.releaseTag = 'v1.0'
+    store.draft.variableDefinitions = []
+    ;(store.draft.fileUploads as any) = { ssh_key: { global: null } }
+
+    await store.submitDraft()
+
+    const payload = mockApi.create.mock.calls[0][0]
+    expect(payload).not.toHaveProperty('files')
+  })
 })
