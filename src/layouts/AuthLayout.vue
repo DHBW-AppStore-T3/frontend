@@ -59,52 +59,47 @@ const features = computed(() => [
 
     <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
     <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
-      <!-- Large, extremely subtle faceted backdrop structuring the whole column (logo,
-           headline, supporting text, CTA) — one dominant huge diagonal plane spanning
-           almost the full height, plus a single smaller accent facet near the top for
-           minimal fold depth. Tone steps are deliberately tiny (white → ~250 → ~246)
-           so it reads as structure, not as visible gray shapes. Built from the existing
-           neutral surface tokens (never brand/primary), pure SVG. -->
-      <svg
-        class="absolute inset-0 w-full h-full pointer-events-none"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
+      <!-- Large, extremely subtle backdrop shape behind the whole column — a single big
+           rotated square with softened (blurred) edges, off-white. Matches the isolated
+           reference swatch exactly: one large diamond, not a faceted polygon mesh. -->
+      <div
+        class="absolute w-[46rem] h-[46rem] rounded-3xl bg-surfaceMuted blur-sm rotate-45 pointer-events-none -left-56 top-16"
         aria-hidden="true"
-      >
-        <polygon points="-10,-10 85,-10 35,115 -10,115" fill="rgb(var(--color-surface-muted))" />
-        <polygon points="-10,-10 60,-10 20,60 -10,45" fill="rgb(var(--color-border-subtle))" opacity="0.4" />
-      </svg>
+      />
 
       <div class="relative flex flex-col min-h-screen">
         <header class="flex items-start justify-between gap-4 px-6 pt-8 md:pl-[7.25rem] md:pr-10 md:pt-12">
           <!-- Recolored via mask instead of swapping to a raw literal color: the logo's own
                silhouette (t3Theme.logo) is masked and filled with the "primary" token, so it
                follows whatever theme is scoped onto this page instead of a baked-in PNG tint. -->
-          <div
-            class="auth-logo-mark bg-primary"
-            role="img"
-            :aria-label="t3Theme.brand.name"
-            :style="{
-              height: `${t3Theme.authLogo!.height}px`,
-              aspectRatio: `${logoAspectRatio}`,
-              '--logo-mask-url': `url(${t3Theme.logo.src})`,
-            }"
-          />
+          <div>
+            <div
+              class="auth-logo-mark bg-primary"
+              role="img"
+              :aria-label="t3Theme.brand.name"
+              :style="{
+                height: `${t3Theme.authLogo!.height}px`,
+                aspectRatio: `${logoAspectRatio}`,
+                '--logo-mask-url': `url(${t3Theme.logo.src})`,
+              }"
+            />
+            <p class="mt-1 text-caption text-textMuted">{{ t3Theme.brand.tagline }}</p>
+          </div>
 
-          <div class="flex flex-shrink-0 items-center gap-1 text-caption">
+          <div class="flex flex-shrink-0 items-center gap-1 rounded-full bg-surfacePage shadow-sm p-1 text-caption">
             <button
               type="button"
               data-testid="locale-de"
               @click="changeLocale('de')"
-              :class="locale === 'de' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
-              class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+              :class="locale === 'de' ? 'bg-primarySoft text-primary font-semibold' : 'text-textMuted hover:text-textStrong'"
+              class="px-3 py-1.5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
             >DE</button>
             <button
               type="button"
               data-testid="locale-en"
               @click="changeLocale('en')"
-              :class="locale === 'en' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
-              class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+              :class="locale === 'en' ? 'bg-primarySoft text-primary font-semibold' : 'text-textMuted hover:text-textStrong'"
+              class="px-3 py-1.5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
             >EN</button>
           </div>
         </header>
