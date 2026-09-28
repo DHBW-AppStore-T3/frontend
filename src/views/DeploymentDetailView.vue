@@ -502,6 +502,17 @@ const pauseResumeBusy = ref(false)
 
 onMounted(async () => {
     await deploymentStore.fetchDeploymentById(deploymentId)
+
+    if (!deploymentStore.currentDeployment) {
+        toastStore.error(
+            deploymentStore.error
+                ? 'Du hast keinen Zugriff auf dieses Deployment.'
+                : 'Deployment nicht gefunden.'
+        )
+        router.push({ name: 'deployments.list' })
+        return
+    }
+
     await loadTasks() // Loads the history into tasks.value
 
     if (isOwnerView.value) {
