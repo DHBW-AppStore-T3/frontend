@@ -20,8 +20,9 @@ import { useRole } from '@/composables/useRole'
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 
-import logo from '@/assets/Six7-white-withoutBackground.png'
+import { useTheme } from '@/theme/useTheme'
 
+const { logo } = useTheme()
 const { locale, t } = useI18n()
 const authStore = useAuthStore()
 const { logout } = useAuth()
@@ -59,7 +60,12 @@ const pageTitle = computed(() => {
 
 const changeLocale = (lang: string) => {
   locale.value = lang
-  localStorage.setItem('locale', lang)
+  try {
+    localStorage.setItem('locale', lang)
+  } catch {
+    // Storage is blocked when embedded in a third-party iframe (Moodle LTI);
+    // the locale still switches for this session, it just isn't persisted.
+  }
 }
 
 const navItems = computed(() => [
@@ -84,7 +90,7 @@ const navItems = computed(() => [
       <!-- Logo area -->
       <div class="h-16 flex items-center border-b border-white/10 px-3" style="overflow: visible;">
         <RouterLink to="/" class="block" style="height: 48px; width: 100%; overflow: visible;">
-          <img :src="logo" alt="SIX7 Click'n Deploy" style="position: relative; z-index: 30; height: 96px; margin-top: -24px; margin-left: -8px; max-width: none;" />
+          <img :src="logo.src" :alt="logo.alt" :style="{ position: 'relative', zIndex: 30, height: `${logo.height}px`, marginTop: `${logo.offsetY}px`, marginLeft: `${logo.offsetX}px`, maxWidth: 'none' }" />
         </RouterLink>
       </div>
 
@@ -222,11 +228,11 @@ const navItems = computed(() => [
 
 <style scoped>
 .sidebar-bg {
-  background: linear-gradient(180deg, #317153 0%, #1e4a32 100%);
+  background: linear-gradient(180deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-deep)) 100%);
 }
 
 .header-bg {
-  background: #317153;
+  background: rgb(var(--color-primary));
 }
 
 /* Nav link base */
@@ -239,19 +245,19 @@ const navItems = computed(() => [
   border-radius: 10px;
   font-size: 1rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgb(var(--color-on-dark) / 0.65);
   transition: background-color 150ms, color 150ms;
   text-decoration: none;
 }
 
 .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.9);
+  background-color: rgb(var(--color-on-dark) / 0.08);
+  color: rgb(var(--color-on-dark) / 0.9);
 }
 
 .nav-link-active {
-  background-color: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  background-color: rgb(var(--color-on-dark) / 0.12);
+  color: rgb(var(--color-on-dark));
 }
 
 /* Collapsed: center icons */
@@ -268,7 +274,7 @@ const navItems = computed(() => [
   transform: translateY(-50%) scaleY(0);
   width: 3px;
   height: 60%;
-  background: #E48C2A;
+  background: rgb(var(--color-brand-indicator));
   border-radius: 0 2px 2px 0;
   transition: transform 150ms ease;
 }
@@ -283,8 +289,8 @@ const navItems = computed(() => [
   left: calc(100% + 10px);
   top: 50%;
   transform: translateY(-50%);
-  background: #1e2d26;
-  color: #fff;
+  background: rgb(var(--color-surface-dark));
+  color: rgb(var(--color-on-dark));
   font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
@@ -302,12 +308,12 @@ const navItems = computed(() => [
 
 /* Mesh background */
 .mesh-gradient-bg {
-  background-color: #f8faf9;
+  background-color: rgb(var(--color-surface-page));
   background-image:
-    radial-gradient(at top left, rgba(49, 113, 83, 0.18) 0px, transparent 50%),
-    radial-gradient(at bottom right, rgba(49, 113, 83, 0.22) 0px, transparent 55%),
-    radial-gradient(at top right, rgba(255, 255, 255, 0.6) 0px, transparent 45%),
-    radial-gradient(at bottom left, rgba(16, 185, 129, 0.10) 0px, transparent 50%);
+    radial-gradient(at top left, rgb(var(--color-primary) / 0.18) 0px, transparent 50%),
+    radial-gradient(at bottom right, rgb(var(--color-primary) / 0.22) 0px, transparent 55%),
+    radial-gradient(at top right, rgb(var(--color-on-dark) / 0.6) 0px, transparent 45%),
+    radial-gradient(at bottom left, rgb(var(--color-success) / 0.10) 0px, transparent 50%);
 }
 
 /* Logo text fade */
@@ -336,11 +342,11 @@ const navItems = computed(() => [
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgb(var(--color-on-dark) / 0.65);
   transition: background-color 150ms;
 }
 .sidebar-toggle-btn:hover {
-  background: rgba(255,255,255,0.04);
+  background: rgb(var(--color-on-dark) / 0.04);
 }
 
 /* Header title centered in viewport */

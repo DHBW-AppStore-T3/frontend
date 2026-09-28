@@ -566,10 +566,11 @@ const handleBack = () => router.push({ name: 'deployment.config' })
                           })()
                         }}
                       </span>
-                      <button 
+                      <button
                         @click="removeFromGroup(studentId, index)"
+                        data-testid="btn-remove-student"
                         class="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-red-100 rounded-lg"
-                        :title="t('CourseDetailView.removeModal.remove')">
+                        :title="t('deployment.assignment.removeStudent')">
                         <X :size="14" class="text-red-600" />
                       </button>
                     </div>
@@ -584,8 +585,9 @@ const handleBack = () => router.push({ name: 'deployment.config' })
 
       <!-- Footer -->
       <div class="flex justify-between items-center p-6 pt-4 bg-white border-t-2 border-gray-200">
-        <button 
+        <button
           @click="handleBack"
+          data-testid="btn-back"
           class="flex items-center gap-2 px-8 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-all shadow-md">
           <ArrowLeft :size="20" />
           {{ t('deployment.actions.back') }}
@@ -598,8 +600,9 @@ const handleBack = () => router.push({ name: 'deployment.config' })
           </p>
         </div>
         
-        <button 
+        <button
           @click="handleNext"
+          data-testid="btn-next"
           :disabled="unassignedStudents.length > 0 || (store.draft.assignments as string[][]).slice(0, groupCount).some((g: string[]) => !g || g.length === 0) || groupNames.slice(0, groupCount).some((name: string) => !name || name.trim() === '')"
           class="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed">
           {{ t('deployment.actions.next') }}

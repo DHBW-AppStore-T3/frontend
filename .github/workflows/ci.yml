@@ -36,6 +36,34 @@ jobs:
         run: npx vue-tsc -b --noEmit
 
   # ================================================================
+  # 🧹 LINT
+  # ================================================================
+  # vue-tsc above covers types. ESLint covers what a type-checker
+  # cannot see: a template referencing something <script setup> never
+  # declared, a v-for without :key, a mutated prop, an unused import
+  # left behind by a refactor. Warnings are not fatal (there are ~157,
+  # mostly `any`s forced by the hand-maintained API types); errors are.
+  lint:
+    name: "🧹 Lint"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # ================================================================
   # 🧪 TEST
   # ================================================================
   test:
@@ -69,7 +97,19 @@ jobs:
       - name: Test Coverage Gate (enforce on main)
         if: (github.ref == 'refs/heads/main' || github.base_ref == 'main') && always()
         run: |
-          MIN_COVERAGE=60.0
+          # Recalibrated 2026-09 when the coverage provider moved from
+          # v8 to istanbul. v8 reported 63.45% by remapping compiled-SFC
+          # coverage back through source maps, which credited whole
+          # <script setup> bodies to the module-level statements that run
+          # on import -- three views whose suites were entirely
+          # describe.skip read as 100% covered. istanbul instruments the
+          # source, and the same test run measured 43.14%.
+          #
+          # Rewriting those four suites (26 tests that had been skipped
+          # since 2026-06-29) brought the honest figure to 47.6%. The gate
+          # sits just under it so it ratchets from reality rather than
+          # from an artefact -- raise it whenever real coverage moves up.
+          MIN_COVERAGE=46.0
           PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
           echo "Current frontend coverage: ${PCT}%, required minimum: ${MIN_COVERAGE}%"
           node -e "const p = Number(require('./coverage/coverage-summary.json').total.lines.pct); if (p < $MIN_COVERAGE) { console.error('❌ Coverage Gate Failed: ' + p + '% < $MIN_COVERAGE%'); process.exit(1); } else { console.log('✅ Coverage Gate Passed: ' + p + '% >= $MIN_COVERAGE%'); }"
@@ -168,7 +208,7 @@ jobs:
   build:
     name: "🐳 Build"
     runs-on: ubuntu-latest
-    needs: [typecheck, test, security]
+    needs: [typecheck, lint, test, security]
     # Guard against a hung build burning the full 6h job budget. A
     # healthy amd64 image build finishes in a few minutes; anything
     # past 20 min is a hang, not slow progress.

@@ -3,7 +3,7 @@ export default {
     login: {
       title: "Login",
       emailLabel: "E-Mail",
-      emailPlaceholder: "name@six7.de",
+      emailPlaceholder: "name@example.org",
       userLabel: "Benutzername",
       userPlaceholder: "dein.username",
       passwordLabel: "Passwort",
@@ -150,7 +150,7 @@ export default {
   },
 
   DashboardView: {
-    title: "Willkommen zurück zu Six7!",
+    title: "Willkommen zurück zu {brand}!",
     subtitle: "Willkommen zurück in deiner Deployment-Umgebung.",
     timeGreetings: {
       morning: "Guten Morgen",
@@ -519,13 +519,11 @@ export default {
     edit: "Profil bearbeiten",
 
     emailLabel: "E-Mail",
-    emailValue: "eichberg@six7.de",
+    emailValue: "eichberg@example.org",
 
     roleLabel: "Rolle",
     roleAdmin: "Administrator",
 
-    passwordLabel: "Passwort",
-    changePassword: "Passwort ändern",
   },
 
   AppVersionStatusBadge: {
@@ -635,6 +633,7 @@ export default {
       groupPrefix: 'Gruppe', // Wird zu "Gruppe 1", "Gruppe 2" etc.
       unassigned: 'Nicht zugewiesen', // Optional
       removeAll: 'Alle entfernen',
+      removeStudent: 'Student aus Gruppe entfernen',
       moveAllHere: 'Alle hierhin verschieben',
       removeAllTooltip: 'Alle aus dieser Gruppe entfernen',
       moveAllTooltip: 'Verschiebt alle Studenten in diese Gruppe',

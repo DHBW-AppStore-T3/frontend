@@ -270,7 +270,7 @@ const normalizeValue = (val: any, type: string) => {
   }
 
   if (isList(type)) {
-    let arr: any[] = []
+    let arr: unknown[]
     if (Array.isArray(val)) {
       arr = val
     } else if (typeof val === 'string') {

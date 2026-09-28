@@ -4,12 +4,26 @@
  * Every store action follows the same shape: flip a loading flag, clear the
  * error, run an API call, map a failure to a fallback error message, and reset
  * the loading flag in a `finally` block. This helper captures that shape while
- * keeping the exact per-action semantics (loading transitions, error fallback
- * string, and whether the error is re-thrown) under the caller's control.
+ * keeping the exact per-action semantics (error fallback string, and whether
+ * the error is re-thrown) under the caller's control.
+ *
+ * It takes the store itself. The previous signature took a
+ * `{ setLoading, setError }` adapter, which meant every call site opened with
+ * four lines of closure building that adapter -- the same amount of
+ * boilerplate the helper was meant to remove. Two of the five stores adopted
+ * it; the rest kept hand-rolling try/catch/finally, which is how the error
+ * extraction below ended up duplicated across the codebase.
+ *
+ * Inside a Pinia options-store action, `this` is the store instance, so the
+ * call is `runRequest(this, ...)`.
  */
-export interface RequestContext {
-  setLoading: (value: boolean) => void
-  setError: (message: string | null) => void
+
+import { extractErrorMessage } from '@/utils/http-error'
+
+/** Any store exposing the conventional loading/error pair. */
+export interface LoadingErrorState {
+  isLoading: boolean
+  error: string | null
 }
 
 export interface RunRequestOptions {
@@ -21,41 +35,41 @@ export interface RunRequestOptions {
  * Runs `fn`, mirroring the store actions' loading/error/finally behavior.
  *
  * - Sets loading to `true` and clears the error before running.
- * - On failure, stores `err.response?.data?.detail || fallbackMsg` as the error.
+ * - On failure, stores `extractErrorMessage(err, fallbackMsg)` as the error.
  * - Always resets loading to `false` in a `finally` block.
  * - Re-throws by default (return type `Promise<T>`); pass `{ rethrow: false }`
  *   to swallow the error, in which case the result may be `undefined`.
  */
 export async function runRequest<T>(
-  ctx: RequestContext,
+  store: LoadingErrorState,
   fn: () => Promise<T>,
   fallbackMsg: string,
 ): Promise<T>
 export async function runRequest<T>(
-  ctx: RequestContext,
+  store: LoadingErrorState,
   fn: () => Promise<T>,
   fallbackMsg: string,
   options: { rethrow: false },
 ): Promise<T | undefined>
 export async function runRequest<T>(
-  ctx: RequestContext,
+  store: LoadingErrorState,
   fn: () => Promise<T>,
   fallbackMsg: string,
   options: RunRequestOptions = {},
 ): Promise<T | undefined> {
   const { rethrow = true } = options
-  ctx.setLoading(true)
-  ctx.setError(null)
+  store.isLoading = true
+  store.error = null
 
   try {
     return await fn()
-  } catch (err: any) {
-    ctx.setError(err.response?.data?.detail || fallbackMsg)
+  } catch (err) {
+    store.error = extractErrorMessage(err, fallbackMsg)
     if (rethrow) {
       throw err
     }
     return undefined
   } finally {
-    ctx.setLoading(false)
+    store.isLoading = false
   }
 }

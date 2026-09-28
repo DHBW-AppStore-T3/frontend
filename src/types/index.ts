@@ -1,11 +1,33 @@
 // ================================================================
-// Backend Model Types - Synced with FastAPI Backend
+// Backend Model Types
 // ================================================================
+//
+// The types in the USER block below are DERIVED from the backend's
+// OpenAPI schema (`api.generated.ts`, regenerate with
+// `npm run gen:api-types`). They are not hand-written and must not be
+// edited here.
+//
+// Everything else in this file is still hand-maintained, which is a
+// known source of drift. Before this change the whole file was, and it
+// had drifted in both directions: `UserUpdate` offered `email` and
+// `username` that the backend stopped accepting when profile fields
+// moved to Keycloak, while `User` was missing `keycloak_id`,
+// `firstName` and `lastName` that the backend does return -- so the
+// code needing those fields fell back to `any`. `UserCreate.password`
+// and `UserPasswordUpdate` outlived the column that migration
+// 2026_01_25_1609 dropped.
+//
+// Migrate the remaining blocks the same way as they are touched.
+// ================================================================
+
+import type { components } from './api.generated'
+
+type Schemas = components['schemas']
 
 // ----------------------------------------------------------------
 // ENUMS
 // ----------------------------------------------------------------
-export type UserRole = 'student' | 'teacher' | 'admin'
+export type UserRole = Schemas['UserRole']
 
 export type DeploymentStatus = 'pending' | 'running' | 'success' | 'failed' | 'destroying' | 'destroyed' | 'cancelled' | 'pausing' | 'paused' | 'resuming' | 'pause_failed' | 'resume_failed'
 
@@ -16,46 +38,22 @@ export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancell
 // ----------------------------------------------------------------
 // USER TYPES
 // ----------------------------------------------------------------
-export interface User {
-  userId: string
-  email: string
-  username: string
-  role: UserRole
-  courseId: string | null
-  created_at: string
-}
+// Derived from the schema -- see the note at the top of this file.
+// `User` carries keycloak_id / firstName / lastName, which the backend
+// has always returned and the hand-written version omitted.
+export type User = Schemas['UserResponse']
+export type UserWithCourse = Schemas['UserWithCourse']
+export type UserStatistics = Schemas['UserStatistics']
 
-export interface UserWithCourse extends User {
-  course: Course | null
-}
+// Profile fields live in Keycloak; role and courseId are the only
+// things this API updates, and role is admin-only.
+export type UserUpdate = Schemas['UserUpdate']
 
-export interface UserStatistics {
-  total_apps: number
-  total_deployments: number
-  successful_deployments: number
-  failed_deployments: number
-  pending_deployments: number
-}
-
-export interface UserCreate {
-  email: string
-  password: string
-  username: string
-  role?: UserRole
-  courseId?: string | null
-}
-
-export interface UserUpdate {
-  email?: string
-  username?: string
-  role?: UserRole
-  courseId?: string | null
-}
-
-export interface UserPasswordUpdate {
-  current_password: string
-  new_password: string
-}
+// `UserCreate` and `UserPasswordUpdate` used to sit here. The backend
+// has no create-user or change-password endpoint -- Keycloak owns both,
+// and the users.password column was dropped in migration
+// 2026_01_25_1609. Their only consumers were the dead api/auth.api.ts
+// and userApi.changePassword.
 
 // ----------------------------------------------------------------
 // COURSE TYPES

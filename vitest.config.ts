@@ -8,7 +8,17 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     coverage: {
-      provider: 'v8',
+      // istanbul, not v8. The v8 provider reports coverage on the
+      // compiled SFC output and remaps it back through source maps,
+      // and for Vue `<script setup>` that remapping collapses the
+      // whole setup body onto the module-level statements that run at
+      // import time. The practical effect was that three views whose
+      // entire test suites are `describe.skip` still reported 100%
+      // line coverage -- 687 lines counted as covered purely because a
+      // skipped spec file imported them. istanbul instruments the
+      // source directly, so a file that is never mounted reads as
+      // uncovered.
+      provider: 'istanbul',
       reporter: ['text', 'html', 'json-summary'],
       reportsDirectory: 'coverage',
       include: ['src/**/*.{ts,vue}'],
