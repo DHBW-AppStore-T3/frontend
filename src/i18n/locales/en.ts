@@ -23,7 +23,6 @@ export default {
       }
     },
     hero: {
-      eyebrow: "Click'n Deploy",
       title: "Deploy applications with ease",
       subtitle: "One platform for teaching, research, and administration."
     },

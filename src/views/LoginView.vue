@@ -31,7 +31,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <p class="text-body text-textMuted mb-8 max-w-md">
+    <p class="text-lead text-textMuted mb-8 max-w-md">
       {{ $t('auth.login.keycloakInfo') }}
     </p>
 

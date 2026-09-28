@@ -30,12 +30,16 @@
   /* Typography */
   --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 
+  --text-display-1-size: 2.5rem;
+  --text-display-1-line-height: 2.75rem;
   --text-headline-1-size: 2.25rem;
   --text-headline-1-line-height: 2.75rem;
   --text-headline-2-size: 1.75rem;
   --text-headline-2-line-height: 2.25rem;
   --text-headline-3-size: 1.25rem;
   --text-headline-3-line-height: 1.75rem;
+  --text-lead-size: 1.125rem;
+  --text-lead-line-height: 1.75rem;
   --text-body-size: 1rem;
   --text-body-line-height: 1.5rem;
   --text-caption-size: 0.875rem;
@@ -44,4 +48,15 @@
   --font-weight-bold: 700;
   --font-weight-semibold: 600;
   --font-weight-regular: 400;
+}
+
+/* display-1 is a large, compact-leading display size for standalone hero
+   headlines (distinct from headline-1, which many ordinary page headers use)
+   — it scales up on wider viewports instead of needing a responsive class
+   at every call site. */
+@media (min-width: 768px) {
+  :root {
+    --text-display-1-size: 4rem;
+    --text-display-1-line-height: 4rem;
+  }
 }

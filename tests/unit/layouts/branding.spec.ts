@@ -32,8 +32,12 @@ describe('layout branding', () => {
     it(`AuthLayout renders the fixed T3 brand regardless of active theme (${id})`, () => {
       applyTheme(theme)
       const html = mountLayout(AuthLayout).html()
-      expect(html).toContain(t3Theme.authLogo!.src)
-      expect(html).toContain(t3Theme.brand.tagline)
+      // The logo mark is a masked silhouette (theme.logo), tinted via the
+      // "primary" token — not a raw <img src>, and no "AppStore" wordmark
+      // anywhere (not even in an accessible name).
+      expect(html).toContain(t3Theme.logo.src)
+      expect(html).toContain(t3Theme.brand.name)
+      expect(html).not.toContain(t3Theme.brand.tagline)
       expect(html).not.toContain('SIX7')
     })
 

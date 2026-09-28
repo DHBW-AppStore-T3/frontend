@@ -21,6 +21,9 @@ const t3Vars = computed(() => {
   return vars
 })
 
+// Intrinsic size of the t3-white/t3-red logo mark PNGs (both share the same silhouette).
+const logoAspectRatio = 182 / 151
+
 function changeLocale(lang: string) {
   locale.value = lang
   try {
@@ -61,10 +64,19 @@ const features = computed(() => [
     <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
     <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
       <header class="flex items-start justify-between gap-4 px-8 pt-8 md:px-14 md:pt-12">
-        <div>
-          <img :src="t3Theme.authLogo!.src" :alt="t3Theme.authLogo!.alt" :style="{ height: `${t3Theme.authLogo!.height}px` }" class="block" />
-          <p class="mt-1 text-caption text-textMuted">{{ t3Theme.brand.tagline }}</p>
-        </div>
+        <!-- Recolored via mask instead of swapping to a raw literal color: the logo's own
+             silhouette (t3Theme.logo) is masked and filled with the "primary" token, so it
+             follows whatever theme is scoped onto this page instead of a baked-in PNG tint. -->
+        <div
+          class="auth-logo-mark bg-primary"
+          role="img"
+          :aria-label="t3Theme.brand.name"
+          :style="{
+            height: `${t3Theme.authLogo!.height}px`,
+            aspectRatio: `${logoAspectRatio}`,
+            '--logo-mask-url': `url(${t3Theme.logo.src})`,
+          }"
+        />
 
         <div class="flex flex-shrink-0 items-center gap-1 text-caption">
           <button
@@ -84,25 +96,31 @@ const features = computed(() => [
         </div>
       </header>
 
-      <main class="flex-1 flex flex-col justify-center px-8 md:px-14 py-10 max-w-lg">
-        <p class="text-caption font-semibold uppercase tracking-[0.2em] text-primary mb-4">
-          {{ t('auth.hero.eyebrow') }}
-        </p>
-        <h1 class="text-headline-1 text-textHeading leading-[1.05] mb-6">
-          {{ heroTitleLead }} <span class="text-primary">{{ heroTitleLast }}</span>
-        </h1>
-
-        <slot />
-      </main>
-
-      <footer class="px-8 md:px-14 pb-10">
-        <div class="border-t border-borderSubtle pt-6 grid grid-cols-3 gap-4">
-          <div v-for="feature in features" :key="feature.label" class="flex flex-col gap-2">
-            <component :is="feature.icon" :size="20" class="text-textMuted" />
-            <span class="text-caption text-textMuted leading-snug">{{ feature.label }}</span>
-          </div>
+      <!-- Large, extremely subtle faceted backdrop behind the hero copy — built from the
+           existing neutral surface tokens (never brand/primary), purely decorative. -->
+      <div class="relative flex-1 flex flex-col overflow-hidden">
+        <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div class="absolute inset-y-0 left-0 w-[95%] bg-surfaceMuted" style="clip-path: polygon(0 0%, 88% 0%, 62% 100%, 0% 100%)" />
+          <div class="absolute inset-y-0 left-0 w-[95%] bg-borderSubtle opacity-60" style="clip-path: polygon(0 22%, 66% 6%, 84% 48%, 40% 100%, 0% 100%)" />
         </div>
-      </footer>
+
+        <main class="relative flex-1 flex flex-col justify-center px-8 md:px-14 py-10 max-w-lg">
+          <h1 class="text-display-1 text-textHeading mb-6">
+            {{ heroTitleLead }} <span class="text-primary">{{ heroTitleLast }}</span>
+          </h1>
+
+          <slot />
+        </main>
+
+        <footer class="relative px-8 md:px-14 pb-10">
+          <div class="border-t border-borderSubtle pt-6 grid grid-cols-3 gap-4">
+            <div v-for="feature in features" :key="feature.label" class="flex flex-col gap-2">
+              <component :is="feature.icon" :size="20" class="text-textMuted" />
+              <span class="text-caption text-textMuted leading-snug">{{ feature.label }}</span>
+            </div>
+          </div>
+        </footer>
+      </div>
     </div>
   </div>
 </template>
@@ -113,5 +131,18 @@ const features = computed(() => [
   .auth-panel {
     clip-path: polygon(0 0, 100% 0, 76% 100%, 0 100%);
   }
+}
+
+/* Recolors the logo silhouette (--logo-mask-url, set inline) via the "bg-primary"
+   token instead of a raw baked-in PNG tint. */
+.auth-logo-mark {
+  -webkit-mask-image: var(--logo-mask-url);
+  mask-image: var(--logo-mask-url);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: left center;
+  mask-position: left center;
 }
 </style>

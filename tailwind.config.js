@@ -81,9 +81,11 @@ export default {
         sans: ["var(--font-family-sans)"],
       },
       fontSize: {
+        'display-1': ["var(--text-display-1-size)", { lineHeight: "var(--text-display-1-line-height)", fontWeight: "var(--font-weight-bold)" }],
         'headline-1': ["var(--text-headline-1-size)", { lineHeight: "var(--text-headline-1-line-height)", fontWeight: "var(--font-weight-bold)" }],
         'headline-2': ["var(--text-headline-2-size)", { lineHeight: "var(--text-headline-2-line-height)", fontWeight: "var(--font-weight-semibold)" }],
         'headline-3': ["var(--text-headline-3-size)", { lineHeight: "var(--text-headline-3-line-height)", fontWeight: "var(--font-weight-semibold)" }],
+        lead: ["var(--text-lead-size)", { lineHeight: "var(--text-lead-line-height)", fontWeight: "var(--font-weight-regular)" }],
         body: ["var(--text-body-size)", { lineHeight: "var(--text-body-line-height)", fontWeight: "var(--font-weight-regular)" }],
         caption: ["var(--text-caption-size)", { lineHeight: "var(--text-caption-line-height)", fontWeight: "var(--font-weight-regular)" }],
       },

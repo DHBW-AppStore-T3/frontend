@@ -23,7 +23,6 @@ export default {
       }
     },
     hero: {
-      eyebrow: "Click'n Deploy",
       title: "Anwendungen einfach bereitstellen",
       subtitle: "Eine Plattform für Lehre, Forschung und Verwaltung."
     },
