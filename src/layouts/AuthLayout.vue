@@ -44,11 +44,19 @@ const features = computed(() => [
 
 <template>
   <div class="min-h-screen relative overflow-hidden bg-surfacePage" :style="t3Vars">
-    <!-- Campus hero photo: full-bleed, desktop only -->
-    <div
-      class="hidden md:block absolute inset-0 bg-cover bg-center"
-      :style="{ backgroundImage: `url(${heroImage})` }"
-    />
+    <!-- Campus hero photo: full-bleed, desktop only. A blurred, scaled-up copy fills the
+         frame as a backdrop so the sharp photo on top can sit at "contain" size (zoomed
+         out, nothing cropped) without leaving hard empty bars at the top/bottom. -->
+    <div class="hidden md:block absolute inset-0 overflow-hidden">
+      <div
+        class="absolute inset-0 bg-cover bg-center scale-110 blur-2xl"
+        :style="{ backgroundImage: `url(${heroImage})` }"
+      />
+      <div
+        class="absolute inset-0 bg-contain bg-center bg-no-repeat"
+        :style="{ backgroundImage: `url(${heroImage})` }"
+      />
+    </div>
 
     <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
     <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
