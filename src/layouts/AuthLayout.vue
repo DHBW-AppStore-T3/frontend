@@ -52,21 +52,13 @@ const features = computed(() => [
          separate white panel underneath); on mobile the image is hidden and the page
          falls back to a plain surfacePage background from the wrapper above.
 
-         The sharp layer is capped at "auto" (the image's native 1672px resolution) so
-         it's never stretched past its own pixels and stays crisp — on any viewport
-         wider than that it would otherwise get upscaled and go soft. A blurred, scaled
-         copy sits behind it to cover whatever native-size leaves uncovered instead of a
-         hard edge or empty bar. -->
-    <div class="hidden md:block absolute inset-0 overflow-hidden">
-      <div
-        class="absolute inset-0 bg-cover bg-left scale-110 blur-2xl"
-        :style="{ backgroundImage: `url(${bgImage})` }"
-      />
-      <div
-        class="absolute inset-0 bg-auto bg-no-repeat bg-left"
-        :style="{ backgroundImage: `url(${bgImage})` }"
-      />
-    </div>
+         Capping this at its native resolution (bg-auto) to avoid upscaling left a
+         visibly blurred gap on wide viewports, which looked worse than the mild
+         softness from stretching — so back to a plain full-bleed cover. -->
+    <div
+      class="hidden md:block absolute inset-0 bg-cover bg-left"
+      :style="{ backgroundImage: `url(${bgImage})` }"
+    />
 
     <div class="relative z-10 w-full md:w-[44%] min-h-screen flex flex-col">
         <header class="flex items-start justify-between gap-4 px-6 pt-8 md:pl-[7.25rem] md:pr-10 md:pt-12">
