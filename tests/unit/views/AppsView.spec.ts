@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import AppsView from '@/views/AppsView.vue'
-import { Server, Globe, Box, Layers } from 'lucide-vue-next'
+import { Code2, Database, Box } from 'lucide-vue-next'
 
 // ---------------------------------------------------------
 // 1. Abhängigkeiten (Dependencies) "mocken"
@@ -91,8 +91,8 @@ describe('AppsView.vue', () => {
 
     it('zeigt eine Liste von Apps an, wenn die API Daten liefert', async () => {
         const mockApps = [
-                { id: '1', name: 'Meine erste Vue App', description: 'Frontend' },
-                { id: '2', name: 'NodeJS Backend', description: 'API' }
+                { appId: '1', name: 'Meine erste Vue App', description: 'Frontend' },
+                { appId: '2', name: 'NodeJS Backend', description: 'API' }
             ]
         ;(appApi.list as any).mockResolvedValue({ data: mockApps })
 
@@ -113,20 +113,21 @@ describe('AppsView.vue', () => {
     })
 
     it('navigiert zur Detailseite, wenn auf "Details" geklickt wird', async () => {
-        const mockApps = [{ id: 'app-999', name: 'Test App' }]
+        const mockApps = [{ appId: 'app-999', name: 'Test App' }]
         ;(appApi.list as any).mockResolvedValue({ data: mockApps })
 
         const wrapper = mountComponent()
         await flushPromises()
 
         const buttons = wrapper.findAll('button')
-        const detailButton = buttons.find(b => b.text().includes('AppsView.detailsDeploy'))
+        const detailButton = buttons.find(b => b.text().includes('workspace.details'))
 
         await detailButton!.trigger('click')
 
         expect(mockPush).toHaveBeenCalledWith({
             name: 'apps.detail',
-            params: { id: 'app-999' }
+            params: { id: 'app-999' },
+            hash: ''
         })
     })
 
@@ -153,20 +154,19 @@ describe('AppsView.vue', () => {
 
     it('Icons: rendert das richtige Icon basierend auf dem App-Namen', async () => {
         const mockApps = [
-                { id: '1', name: 'Meine Node App' },     // Sollte 'Server' Icon auslösen
-                { id: '2', name: 'React Dashboard' },    // Sollte 'Globe' Icon auslösen
-                { id: '3', name: 'Python Skript' },      // Sollte 'Box' Icon auslösen
-                { id: '4', name: 'Unbekannte App' }      // Sollte 'Layers' Icon (Default) auslösen
+                { appId: '1', name: 'Meine Node App' },     // Sollte 'Server' Icon auslösen
+                { appId: '2', name: 'React Dashboard' },    // Sollte 'Globe' Icon auslösen
+                { appId: '3', name: 'Python Skript' },      // Sollte 'Box' Icon auslösen
+                { appId: '4', name: 'Unbekannte App' }      // Sollte 'Layers' Icon (Default) auslösen
             ]
         ;(appApi.list as any).mockResolvedValue({ data: mockApps })
 
         const wrapper = mountComponent()
         await flushPromises()
 
-        expect(wrapper.findComponent(Server).exists()).toBe(true)
-        expect(wrapper.findComponent(Globe).exists()).toBe(true)
+        expect(wrapper.findComponent(Code2).exists()).toBe(true)
+        expect(wrapper.findComponent(Database).exists()).toBe(true)
         expect(wrapper.findComponent(Box).exists()).toBe(true)
-        expect(wrapper.findComponent(Layers).exists()).toBe(true)
     })
 
     it('zeigt einen Lade-Text/Spinner an, während die Daten geladen werden', async () => {
@@ -184,7 +184,7 @@ describe('AppsView.vue', () => {
 
     it('zeigt ein Bild anstelle eines Icons, wenn die App ein eigenes Bild hat', async () => {
         const mockApps = [{
-                id: 'custom-img',
+                appId: 'custom-img',
                 name: 'App mit Logo',
                 image: 'https://mein-server.de/logo.png'
             }]
