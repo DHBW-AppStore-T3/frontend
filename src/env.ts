@@ -17,9 +17,7 @@ function getEnv(key: keyof Window['__ENV__'], fallback: string): string {
   return (import.meta.env[key] as string) || fallback
 }
 
-// No string fallback here: an unset/unsubstituted VITE_THEME must stay `undefined` so
-// resolveTheme() applies its own fallback, instead of this module silently forcing the
-// legacy `default` theme before resolveTheme ever sees a missing value.
+// Missing or unsubstituted configuration lets resolveTheme() select T3.
 function getThemeEnv(): string | undefined {
   const val = window.__ENV__?.VITE_THEME
   if (val && !val.startsWith('$')) return val

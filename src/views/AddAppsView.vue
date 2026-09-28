@@ -162,9 +162,9 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl p-10 border min-h-[600px] flex flex-col">
+  <div class="app-page wizard-page flex flex-col">
 
-    <h1 class="text-4xl font-bold text-textHeading mb-12">{{ $t('AppsCreateView.title') }}</h1>
+    <h1 class="page-heading mb-8">{{ $t('AppsCreateView.title') }}</h1>
 
     <div class="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-16 items-start mb-8">
 
@@ -172,20 +172,20 @@ const handleSubmit = async () => {
 
         <div class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <IdCard class="text-green-800" :size="28" />
+            <IdCard class="text-primary" :size="28" />
           </div>
           <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.nameLabel') }}</div>
           <input
               v-model="form.name"
               type="text"
               :placeholder="$t('AppsCreateView.form.namePlaceholder')"
-              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-green-600 outline-none text-textMuted shadow-sm mx-2"
+              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-primary outline-none text-textMuted shadow-sm mx-2"
           />
         </div>
 
         <div class="bg-surfaceMuted rounded-lg p-3 flex items-start shadow-sm">
           <div class="p-2 mt-0.5">
-            <MessageSquare class="text-green-800" :size="28" />
+            <MessageSquare class="text-primary" :size="28" />
           </div>
           <div class="font-bold text-textHeading w-48 pl-2 mt-2">{{ $t('AppsCreateView.form.descLabel') }}</div>
           <div class="flex-1 min-w-0 mx-2">
@@ -201,12 +201,12 @@ const handleSubmit = async () => {
 
         <div class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <ImageIcon class="text-green-800" :size="28" />
+            <ImageIcon class="text-primary" :size="28" />
           </div>
           <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.logoLabel') }}</div>
           <div
               class="flex-1 bg-white rounded py-1.5 px-3 outline-none text-textMuted shadow-sm mx-2 border-2 transition-all cursor-pointer flex items-center min-h-[36px]"
-              :class="isDragging ? 'border-green-500 bg-successTint border-dashed' : 'border-transparent hover:border-borderSubtle border-dashed'"
+              :class="isDragging ? 'border-primary bg-successTint border-dashed' : 'border-transparent hover:border-borderSubtle border-dashed'"
               @dragover.prevent="isDragging = true"
               @dragleave.prevent="isDragging = false"
               @drop.prevent="handleDrop"
@@ -230,21 +230,21 @@ const handleSubmit = async () => {
         </div>
         <div class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <LinkIcon class="text-green-800" :size="28" />
+            <LinkIcon class="text-primary" :size="28" />
           </div>
           <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.repoLabel') }}</div>
           <input
               v-model="form.repoUrl"
               type="text"
               :placeholder="$t('AppsCreateView.form.repoPlaceholder')"
-              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-green-600 outline-none text-textMuted shadow-sm mx-2"
+              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-primary outline-none text-textMuted shadow-sm mx-2"
           />
         </div>
 
         <!-- Visibility Toggle -->
         <div class="bg-surfaceMuted rounded-lg p-3 flex items-start shadow-sm">
           <div class="p-2">
-            <component :is="form.isPrivate ? Lock : Globe" class="text-green-800" :size="28" />
+            <component :is="form.isPrivate ? Lock : Globe" class="text-primary" :size="28" />
           </div>
           <div class="font-bold text-textHeading w-48 pl-2 pt-1">{{ $t('AppsCreateView.form.visibilityLabel') }}</div>
           <div class="flex-1 mx-2">
@@ -253,7 +253,7 @@ const handleSubmit = async () => {
                 type="button"
                 @click="form.isPrivate = false"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all"
-                :class="!form.isPrivate ? 'border-green-600 bg-successTint text-green-800' : 'border-borderSubtle bg-white text-textMuted hover:border-textFaint'"
+                :class="!form.isPrivate ? 'border-primary bg-successTint text-primary' : 'border-borderSubtle bg-white text-textMuted hover:border-textFaint'"
               >
                 <Globe :size="16" />
                 {{ $t('AppsCreateView.form.visibilityPublic') }}
@@ -277,7 +277,7 @@ const handleSubmit = async () => {
         <!-- Submit all versions toggle (public only) -->
         <div v-if="!form.isPrivate" class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <Send class="text-green-800" :size="28" />
+            <Send class="text-primary" :size="28" />
           </div>
           <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.submitAllLabel') }}</div>
           <div class="flex-1 mx-2 flex items-center justify-between">
@@ -286,7 +286,7 @@ const handleSubmit = async () => {
               type="button"
               @click="form.submitAllVersions = !form.submitAllVersions"
               class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ml-4"
-              :class="form.submitAllVersions ? 'bg-green-600' : 'bg-gray-300'"
+              :class="form.submitAllVersions ? 'bg-primary' : 'bg-gray-300'"
             >
               <span
                 class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
@@ -367,8 +367,8 @@ const handleSubmit = async () => {
           <div>
             <span class="font-semibold block mb-1">{{ $t('AppsCreateView.info.important') }}</span>
             <span v-html="$t('AppsCreateView.info.inviteText')"></span><br>
-            <a href="https://github.com/six7clickndeploy" target="_blank" class="text-blue-700 underline hover:text-info break-all">
-              https://github.com/six7clickndeploy
+            <a href="https://github.com/DHBW-AppStore-T3" target="_blank" class="text-blue-700 underline hover:text-info break-all">
+              https://github.com/DHBW-AppStore-T3
             </a>
           </div>
         </div>

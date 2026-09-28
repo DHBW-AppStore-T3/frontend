@@ -25,6 +25,7 @@ withDefaults(defineProps<{
 <template>
   <button
     :class="[
+      `ui-button ui-button--${variant}`,
       'inline-flex items-center justify-center gap-2',
       'font-medium text-sm transition duration-150 shadow-sm',
       'focus:outline-none focus:ring-2 focus:ring-offset-2',

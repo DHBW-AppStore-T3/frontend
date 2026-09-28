@@ -1,6 +1,65 @@
 export default {
+  workspace: {
+    "profile": "Profile",
+    "logout": "Sign out",
+    "navigation": "Main navigation",
+    "openMenu": "Open menu",
+    "openSidebar": "Open sidebar",
+    "closeSidebar": "Close sidebar",
+    "searchApps": "Search apps…",
+    "filters": "Filters",
+    "details": "Details",
+    "deploy": "Deploy",
+    "favorite": "Mark {name} as a favorite",
+    "categories": {
+      "label": "App categories",
+      "all": "All",
+      "productivity": "Productivity",
+      "development": "Development",
+      "data": "Data & AI",
+      "other": "Other",
+      "favorites": "Favorites"
+    },
+    "searchCourses": "Search courses…",
+    "allCourses": "All courses",
+    "deploymentStatus": "Deployment status",
+    "statusTabs": {
+      "active": "Active",
+      "building": "Deploying",
+      "stopped": "Stopped",
+      "all": "All"
+    },
+    "personalInformation": "Personal information",
+    "profileSubtitle": "Manage your profile and display preferences.",
+    "name": "Name",
+    "accountManaged": "Your name and email are managed through your university account.",
+    "save": "Save",
+    "preferencesSaved": "Display preferences saved.",
+    "languages": {
+      "de": "Deutsch (DE)",
+      "en": "English (EN)"
+    },
+    "searchHelp": "Search help…",
+    "help": {
+      "documentation": "Documentation",
+      "documentationDescription": "Detailed guides and tutorials.",
+      "faq": "FAQ",
+      "faqDescription": "Frequently asked questions and answers.",
+      "support": "Support",
+      "supportDescription": "Contact your administrator for further assistance."
+    },
+    "quotas": {
+      "instances": "VMs / Instances",
+      "vcpus": "vCPUs",
+      "ram": "RAM",
+      "volumes": "Volumes",
+      "storage": "Storage",
+      "floatingIps": "Floating IPs"
+    }
+  },
   auth: {
     login: {
+      language: "Language",
       title: "Login",
       emailLabel: "E-Mail",
       emailPlaceholder: "name@example.org",
@@ -23,7 +82,9 @@ export default {
       }
     },
     hero: {
-      title: "Deploy applications with ease",
+      steps: { configure: "Configure app", deploy: "Deploy environment", start: "Get started" },
+      eyebrow: "CLICK'N DEPLOY",
+      heading: { lead: "Deploy\napplications with", accent: "ease" },
       subtitle: "One platform for teaching, research, and administration."
     },
   },
@@ -402,7 +463,7 @@ export default {
     },
     info: {
       important: "Important:",
-      inviteText: "Please invite the git user <strong>six7clickndeploy</strong> as a collaborator to the repo."
+      inviteText: "Ask your administrator which <strong>GitHub account</strong> must be invited to the repository as a collaborator."
     },
     buttons: {
       saving: "Saving...",

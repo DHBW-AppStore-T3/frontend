@@ -29,7 +29,7 @@ function setStudentCache(id: string, val: any) {
 }
 
 // --- State ---
-const activeGroupIndex = ref(0) 
+const activeGroupIndex = ref(0)
 const draggedStudent = ref<string | null>(null)
 const dragOverGroup = ref<number | null>(null)
 const dragOverUnassigned = ref(false)
@@ -67,7 +67,7 @@ function ensureDefaultGroupNames() {
   groupNames.value = []
   for (let i = 0; i < groupCount.value; i++) {
     const currentName = currentNames[i]
-    
+
     // Keep existing names (even if they are default names).
     if (currentName && currentName.trim() !== '') {
       groupNames.value[i] = currentName
@@ -89,7 +89,7 @@ const ensureAssignmentArrays = () => {
 // --- Watchers ---
 watch(groupCount, (newCount, oldCount) => {
   ensureAssignmentArrays()
-  
+
   // Add default names only for new groups.
   if (typeof oldCount === 'number' && newCount > oldCount) {
     for (let i = oldCount; i < newCount; i++) {
@@ -98,7 +98,7 @@ watch(groupCount, (newCount, oldCount) => {
       }
     }
   }
-  
+
   if (activeGroupIndex.value >= newCount) activeGroupIndex.value = Math.max(0, newCount - 1)
 
   if (typeof oldCount === 'number' && oldCount > newCount) {
@@ -125,21 +125,21 @@ onMounted(async () => {
     store.draft.groupCount = 1
   }
   ensureAssignmentArrays()
-  
+
   // Ensure all groups have names.
   ensureDefaultGroupNames()
-  
+
   const assignments = store.draft.assignments as string[][]
-  const assignedIds: string[] = assignments 
+  const assignedIds: string[] = assignments
     ? ([] as string[]).concat(...assignments.filter((arr): arr is string[] => Array.isArray(arr) && arr.length > 0))
     : []
-    
+
   const allIds = Array.from(new Set<string>([
     ...(store.draft.studentIds ?? []),
     ...assignedIds,
     ...unassignedStudents.value
   ]))
-  
+
   const missingIds: string[] = []
   for (const id of allIds) {
     const cached = studentCache[id]
@@ -161,7 +161,7 @@ onMounted(async () => {
       }
     }
   }
-  
+
   if (missingIds.length > 0) {
     const results = await Promise.all(missingIds.map(id => userApi.getById(id).then(res => res.data).catch(() => null)))
     results.forEach((user) => {
@@ -180,7 +180,7 @@ const setOneGroup = () => {
   activeGroupIndex.value = 0
   const assignments = store.draft.assignments as string[][]
   assignments[0] = [...store.draft.studentIds]
-  
+
   // Keep the existing name or set a default.
   const defaultName = t('deployment.assignment.vmDefaultName', { index: 1 })
   if (!groupNames.value[0] || groupNames.value[0].trim() === '' || groupNames.value[0].startsWith('Team')) {
@@ -323,7 +323,7 @@ const removeFromGroup = (studentId: string, groupIndex: number) => {
 
 const shuffleStudents = () => {
   const allStudents = [...store.draft.studentIds]
-  
+
   // Fisher-Yates shuffle with explicit null check.
   for (let i = allStudents.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -331,10 +331,10 @@ const shuffleStudents = () => {
     allStudents[i] = allStudents[j] ?? ''
     allStudents[j] = temp ?? ''
   }
-  
+
   const studentsPerGroup = Math.floor(allStudents.length / store.draft.groupCount)
   const remainder = allStudents.length % store.draft.groupCount
-  
+
   const assignments = store.draft.assignments as string[][]
   let currentIndex = 0
   for (let i = 0; i < store.draft.groupCount; i++) {
@@ -351,22 +351,22 @@ const clearAllAssignments = () => {
   }
 }
 
-const handleNext = () => router.push({ name: 'deployment.variables' }) 
+const handleNext = () => router.push({ name: 'deployment.variables' })
 const handleBack = () => router.push({ name: 'deployment.config' })
 </script>
 
 <template>
-  <div class="max-w-[1800px] mx-auto w-full px-4">
-    
-    <div class="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-borderSubtle shadow-xl min-h-[700px] flex flex-col overflow-hidden">
-      
+  <div class="app-page wizard-page">
+
+    <div class="wizard-surface flex flex-col">
+
       <!-- Header -->
       <div class="p-8 pb-6 bg-white border-b-2 border-borderSubtle">
         <div class="flex items-center gap-3 mb-4">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primaryDark flex items-center justify-center shadow-lg">
             <Users :size="28" class="text-white" />
           </div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          <h1 class="text-3xl font-bold text-textHeading">
             {{ t('deployment.title') }}
           </h1>
         </div>
@@ -376,36 +376,36 @@ const handleBack = () => router.push({ name: 'deployment.config' })
       <!-- Controls Section -->
       <div class="p-6 bg-white border-b-2 border-borderSubtle">
         <div class="flex flex-wrap items-center justify-between gap-4">
-          
+
           <!-- Mode Selection -->
           <div class="flex gap-2">
-            <button @click="setOneGroup" 
+            <button @click="setOneGroup"
               class="px-5 py-2.5 rounded-xl font-semibold transition-all text-sm border-2"
-              :class="mode === 'one' 
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30' 
-                : 'bg-white text-textMuted border-borderSubtle hover:border-emerald-300 hover:bg-emerald-50'">
+              :class="mode === 'one'
+                ? 'bg-primary text-white border-primaryDark shadow-none'
+                : 'bg-white text-textMuted border-borderSubtle hover:border-primary/30 hover:bg-primaryFaint'">
               {{ t('deployment.groups.one') }}
             </button>
-            <button @click="setEachUser" 
+            <button @click="setEachUser"
               class="px-5 py-2.5 rounded-xl font-semibold transition-all text-sm border-2"
-              :class="mode === 'eachUser' 
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30' 
-                : 'bg-white text-textMuted border-borderSubtle hover:border-emerald-300 hover:bg-emerald-50'">
+              :class="mode === 'eachUser'
+                ? 'bg-primary text-white border-primaryDark shadow-none'
+                : 'bg-white text-textMuted border-borderSubtle hover:border-primary/30 hover:bg-primaryFaint'">
               {{ t('deployment.groups.eachUser') }}
             </button>
-            <button @click="setCustom" 
+            <button @click="setCustom"
               class="px-5 py-2.5 rounded-xl font-semibold transition-all text-sm border-2"
-              :class="mode === 'custom' 
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-600/30' 
-                : 'bg-white text-textMuted border-borderSubtle hover:border-emerald-300 hover:bg-emerald-50'">
+              :class="mode === 'custom'
+                ? 'bg-primary text-white border-primaryDark shadow-none'
+                : 'bg-white text-textMuted border-borderSubtle hover:border-primary/30 hover:bg-primaryFaint'">
               {{ t('deployment.groups.custom') }}
             </button>
           </div>
 
           <!-- Team Counter -->
           <div v-if="showControls" class="flex items-center gap-3 bg-surfaceMuted px-4 py-2 rounded-xl border-2 border-borderSubtle">
-            <button @click="decrement" 
-              class="w-9 h-9 rounded-lg bg-white border border-borderSubtle hover:border-red-400 hover:bg-dangerTint flex items-center justify-center transition-all text-danger disabled:opacity-40 disabled:cursor-not-allowed" 
+            <button @click="decrement"
+              class="w-9 h-9 rounded-lg bg-white border border-borderSubtle hover:border-red-400 hover:bg-dangerTint flex items-center justify-center transition-all text-danger disabled:opacity-40 disabled:cursor-not-allowed"
               :disabled="groupCount <= 1">
               <Minus :size="18" />
             </button>
@@ -413,8 +413,8 @@ const handleBack = () => router.push({ name: 'deployment.config' })
               <span class="text-3xl font-bold text-textHeading w-12 text-center tabular-nums">{{ groupCount }}</span>
               <span class="text-sm font-semibold text-textMuted">{{ t('deployment.assignment.teamsLabel') }}</span>
             </div>
-            <button @click="increment" 
-              class="w-9 h-9 rounded-lg bg-white border border-borderSubtle hover:border-emerald-400 hover:bg-emerald-50 flex items-center justify-center transition-all text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed" 
+            <button @click="increment"
+              class="w-9 h-9 rounded-lg bg-white border border-borderSubtle hover:border-primary hover:bg-primaryFaint flex items-center justify-center transition-all text-primary disabled:opacity-40 disabled:cursor-not-allowed"
               :disabled="groupCount >= totalStudents">
               <Plus :size="18" />
             </button>
@@ -422,13 +422,13 @@ const handleBack = () => router.push({ name: 'deployment.config' })
 
           <!-- Action Buttons -->
           <div class="flex gap-2">
-            <button @click="shuffleStudents" 
+            <button @click="shuffleStudents"
               class="px-4 py-2.5 rounded-xl bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition-all flex items-center gap-2 border-2 border-purple-200"
               :title="t('deployment.assignment.shuffleTooltip')">
               <Shuffle :size="18" />
               {{ t('deployment.assignment.shuffle') }}
             </button>
-            <button @click="clearAllAssignments" 
+            <button @click="clearAllAssignments"
               class="px-4 py-2.5 rounded-xl bg-dangerTint text-red-700 font-semibold hover:bg-red-200 transition-all flex items-center gap-2 border-2 border-danger/30"
               :title="t('deployment.assignment.resetTooltip')">
               <Trash2 :size="18" />
@@ -452,7 +452,7 @@ const handleBack = () => router.push({ name: 'deployment.config' })
       <!-- Main Content Grid -->
       <div class="flex-grow p-6 overflow-hidden">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-          
+
           <!-- Unassigned Students Pool -->
           <div class="lg:col-span-1">
             <div class="h-full flex flex-col bg-white rounded-xl border-2 border-borderSubtle overflow-hidden shadow-lg">
@@ -465,22 +465,22 @@ const handleBack = () => router.push({ name: 'deployment.config' })
                   {{ unassignedStudents.length }}
                 </span>
               </div>
-              
-              <div 
+
+              <div
                 class="flex-grow p-3 overflow-y-auto bg-surfaceMuted"
                 :class="dragOverUnassigned ? 'bg-gray-200 ring-4 ring-gray-400' : ''"
                 @dragover="handleDragOver"
                 @dragenter="handleDragEnterUnassigned"
                 @dragleave="handleDragLeaveUnassigned"
                 @drop="handleDropOnUnassigned">
-                
-                <div v-if="unassignedStudents.length === 0" 
+
+                <div v-if="unassignedStudents.length === 0"
                   class="h-full flex items-center justify-center text-textFaint text-sm italic text-center px-4 border-2 border-dashed border-borderSubtle rounded-lg bg-white">
                   {{ t('deployment.assignment.allAssigned') }}
                 </div>
-                
+
                 <div v-else class="space-y-2">
-                  <div v-for="studentId in unassignedStudents" 
+                  <div v-for="studentId in unassignedStudents"
                     :key="studentId"
                     draggable="true"
                     @dragstart="(e) => handleDragStart(studentId, e)"
@@ -508,52 +508,52 @@ const handleBack = () => router.push({ name: 'deployment.config' })
           <!-- Teams Grid -->
           <div class="lg:col-span-3">
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 h-full overflow-y-auto pr-2">
-              <div v-for="(assignments, index) in (store.draft.assignments as string[][]).slice(0, groupCount)" 
+              <div v-for="(assignments, index) in (store.draft.assignments as string[][]).slice(0, groupCount)"
                 :key="index"
                 class="flex flex-col bg-white rounded-xl border-2 shadow-lg overflow-hidden transition-all"
-                :class="dragOverGroup === index 
-                  ? 'border-emerald-500 ring-4 ring-emerald-200 shadow-2xl scale-[1.02]' 
-                  : 'border-borderSubtle hover:border-emerald-300 hover:shadow-xl'">
-                
+                :class="dragOverGroup === index
+                  ? 'border-primary ring-4 ring-primary/20 shadow-2xl scale-[1.02]'
+                  : 'border-borderSubtle hover:border-primary/30 hover:shadow-xl'">
+
                 <!-- Team Header -->
                 <div class="bg-white px-4 py-3 border-b-2 border-borderSubtle">
-                  <input 
+                  <input
                     type="text"
                     v-model="groupNames[index]"
                     :placeholder="t('deployment.assignment.vmDefaultName', { index: index + 1 })"
-                    class="w-full bg-surfaceMuted text-textHeading placeholder-gray-400 px-3 py-2 rounded-lg border-2 border-borderSubtle focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none font-bold text-center transition-all"
+                    class="w-full bg-surfaceMuted text-textHeading placeholder-gray-400 px-3 py-2 rounded-lg border-2 border-borderSubtle focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none font-bold text-center transition-all"
                   />
-                  <div class="mt-2 flex items-center justify-center gap-2 bg-emerald-50 rounded-lg px-3 py-1.5">
-                    <Users :size="16" class="text-emerald-600" />
-                    <span class="text-sm font-semibold text-emerald-700">
+                  <div class="mt-2 flex items-center justify-center gap-2 bg-primaryFaint rounded-lg px-3 py-1.5">
+                    <Users :size="16" class="text-primary" />
+                    <span class="text-sm font-semibold text-primaryDark">
                       {{ t('DeploymentDetailView.deploymentStudentCount', assignments?.length || 0) }}
                     </span>
                   </div>
                 </div>
 
                 <!-- Drop Zone -->
-                <div 
+                <div
                   class="flex-grow p-3 min-h-[200px] overflow-y-auto"
-                  :class="dragOverGroup === index ? 'bg-emerald-50' : 'bg-surfaceMuted'"
+                  :class="dragOverGroup === index ? 'bg-primaryFaint' : 'bg-surfaceMuted'"
                   @dragover="handleDragOver"
                   @dragenter="() => handleDragEnterGroup(index)"
                   @dragleave="handleDragLeaveGroup"
                   @drop="(e) => handleDropOnGroup(index, e)">
-                  
-                  <div v-if="!assignments || assignments.length === 0" 
+
+                  <div v-if="!assignments || assignments.length === 0"
                     class="h-full flex flex-col items-center justify-center text-textFaint text-sm italic border-2 border-dashed border-borderSubtle rounded-lg p-4 bg-white">
                     <UserPlus :size="32" class="mb-2 opacity-50" />
                     <p>{{ t('deployment.assignment.dropZone') }}</p>
                   </div>
-                  
+
                   <div v-else class="space-y-2">
-                    <div v-for="studentId in assignments" 
+                    <div v-for="studentId in assignments"
                       :key="studentId"
                       draggable="true"
                       @dragstart="(e) => handleDragStart(studentId, e)"
                       @dragend="handleDragEnd"
-                      class="group bg-white rounded-lg px-3 py-2.5 border-2 border-borderSubtle cursor-move hover:border-emerald-400 hover:shadow-lg hover:scale-[1.02] transition-all flex items-center gap-2">
-                      <GripVertical :size="16" class="text-textFaint group-hover:text-emerald-600 transition-colors flex-shrink-0" />
+                      class="group bg-white rounded-lg px-3 py-2.5 border-2 border-borderSubtle cursor-move hover:border-primary hover:shadow-lg hover:scale-[1.02] transition-all flex items-center gap-2">
+                      <GripVertical :size="16" class="text-textFaint group-hover:text-primary transition-colors flex-shrink-0" />
                       <span class="font-semibold text-textMuted group-hover:text-textHeading flex-1 text-sm transition-colors">
                         {{
                           (() => {
@@ -592,19 +592,19 @@ const handleBack = () => router.push({ name: 'deployment.config' })
           <ArrowLeft :size="20" />
           {{ t('deployment.actions.back') }}
         </button>
-        
+
         <div class="text-center">
           <p class="text-sm text-textMuted mb-1">{{ t('deployment.assignment.progress') }}</p>
-          <p class="text-lg font-bold text-emerald-600">
+          <p class="text-lg font-bold text-primary">
             {{ t('deployment.assignment.assignedCount', { assigned: totalStudents - unassignedStudents.length, total: totalStudents }) }}
           </p>
         </div>
-        
+
         <button
           @click="handleNext"
           data-testid="btn-next"
           :disabled="unassignedStudents.length > 0 || (store.draft.assignments as string[][]).slice(0, groupCount).some((g: string[]) => !g || g.length === 0) || groupNames.slice(0, groupCount).some((name: string) => !name || name.trim() === '')"
-          class="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed">
+          class="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-primary to-primaryDark text-white font-bold hover:from-primaryDark hover:to-primaryDark transition-all shadow-none disabled:opacity-50 disabled:cursor-not-allowed">
           {{ t('deployment.actions.next') }}
           <ArrowRight :size="20" />
         </button>

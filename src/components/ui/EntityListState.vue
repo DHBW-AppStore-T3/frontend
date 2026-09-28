@@ -53,7 +53,7 @@ defineProps<{
 
   <!-- Empty: icon + message + optional CTA. Icon is muted so the
        primary visual is still the message + action. -->
-  <div v-else-if="isEmpty" class="flex flex-col items-center justify-center py-12 text-center">
+  <div v-else-if="isEmpty" class="entity-empty flex flex-col items-center justify-center text-center">
     <component
       v-if="icon"
       :is="icon"

@@ -542,14 +542,14 @@ const handleBack = () => {
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl p-10 border shadow-sm max-w-7xl mx-auto min-h-[600px] flex flex-col">
+  <div class="app-page wizard-page flex flex-col">
 
     <div class="mb-8">
       <div class="flex items-center gap-3 mb-6">
         <h1 class="text-3xl font-bold text-textHeading">
           {{ t('deployment.title') }}
         </h1>
-        <BarChart3 :size="32" class="text-emerald-600" />
+        <BarChart3 :size="32" class="text-primary" />
       </div>
 
       <DeploymentProgressBar :current-step="4" />
@@ -564,7 +564,7 @@ const handleBack = () => {
     </div>
 
     <div v-if="isLoadingVariables" class="flex flex-col items-center justify-center py-12 gap-3">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       <span class="text-textMuted text-sm">{{ t('deployment.summary.loadingConfig') }}</span>
     </div>
 
@@ -572,7 +572,7 @@ const handleBack = () => {
       
       <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border-2 border-emerald-200">
         <div class="flex items-center gap-3 mb-4">
-          <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">1</div>
+          <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">1</div>
           <h3 class="text-xl font-bold text-textHeading">{{ t('deployment.summary.baseConfigTitle') }}</h3>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -589,7 +589,7 @@ const handleBack = () => {
                 :alt="selectedApp.name"
                 class="w-7 h-7 object-contain rounded"
               />
-              <p class="text-lg font-bold text-emerald-700">{{ selectedApp?.name || t('deployment.summary.appNotFound') }}</p>
+              <p class="text-lg font-bold text-primaryDark">{{ selectedApp?.name || t('deployment.summary.appNotFound') }}</p>
             </div>
           </div>
           <div class="bg-white rounded-lg p-4 border border-emerald-100">
@@ -601,7 +601,7 @@ const handleBack = () => {
             <p class="text-xs text-textMuted mb-2 uppercase tracking-wider font-semibold">{{ t('deployment.summary.selectedStudents', { count: deploymentStore.draft.studentIds.length }) }}</p>
             <div class="flex flex-wrap gap-2">
               <span v-for="studentId in deploymentStore.draft.studentIds" :key="studentId" 
-                class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium border border-emerald-200">
+                class="px-3 py-1 bg-primarySoft text-emerald-800 rounded-full text-sm font-medium border border-emerald-200">
                 {{
                   (deploymentStore.studentCache.get(studentId)?.firstName || deploymentStore.studentCache.get(studentId)?.lastName)
                     ? `${deploymentStore.studentCache.get(studentId)?.firstName || ''} ${deploymentStore.studentCache.get(studentId)?.lastName || ''}`.trim()
@@ -772,7 +772,7 @@ const handleBack = () => {
 
       <button @click="handleDeploy"
         :disabled="isLoadingVariables || isSubmitting || deploymentStore.isLoading"
-        class="flex items-center gap-3 px-10 py-3 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xl shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
+        class="flex items-center gap-3 px-10 py-3 rounded-full bg-gradient-to-r from-primary to-primaryDark text-white font-bold hover:from-primaryDark hover:to-primaryDark transition-all shadow-xl shadow-statusGreen/30 disabled:opacity-50 disabled:cursor-not-allowed">
 
         <span v-if="isSubmitting || deploymentStore.isLoading" class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></span>
         <span v-if="isSubmitting || deploymentStore.isLoading">{{ t('deployment.summary.creating') }}</span>

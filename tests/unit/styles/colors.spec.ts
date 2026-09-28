@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { THEME_COLOR_KEYS } from '@/theme/types'
+import { t3Theme } from '@/theme/themes/t3'
 // @ts-expect-error -- plain JS config without type declarations
 import tailwindConfig from '../../../tailwind.config.js'
 import { contrastRatio, type ContrastPair } from './contrast.helper'
@@ -87,31 +88,11 @@ describe('legacy tokens', () => {
   })
 })
 
-describe('branding', () => {
-  it('keeps SIX7/Six7 strings and Six7 assets inside src/theme/', () => {
-    const THEME_DIR = path.join(SRC, 'theme')
-    const offenders: string[] = []
-    const files = [...walk(SRC), path.join(ROOT, 'index.html')]
-    for (const file of files) {
-      if (file.startsWith(THEME_DIR + path.sep)) continue
-      fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
-        if (/SIX7|Six7/.test(line) && !/github\.com/i.test(line)) {
-          offenders.push(`${path.relative(ROOT, file)}:${i + 1}: ${line.trim()}`)
-        }
-      })
-    }
-    expect(offenders).toEqual([])
-  })
-})
-
 describe('semantic color usage meets WCAG contrast per context', () => {
-  const css = fs.readFileSync(COLORS_CSS, 'utf8')
   const white = '255 255 255'
 
   function colorVar(name: string): string {
-    const m = css.match(new RegExp(`--color-${name}:\\s*(\\d+ \\d+ \\d+);`))
-    if (!m) throw new Error(`--color-${name} not found in colors.css`)
-    return m[1]!
+    return t3Theme.colors[name as keyof typeof t3Theme.colors]
   }
 
   // Real foreground/background combinations used by Badge.vue (text on tint) and

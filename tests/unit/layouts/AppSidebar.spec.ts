@@ -33,7 +33,7 @@ function setViewportWidth(width: number) {
 
 describe('AppSidebar', () => {
   beforeEach(() => {
-    applyTheme(THEMES['default']!)
+    applyTheme(THEMES.t3!)
   })
 
   afterEach(() => {
@@ -50,7 +50,7 @@ describe('AppSidebar', () => {
     setViewportWidth(1024)
     const wrapper = mountSidebar()
     const img = wrapper.find('img')
-    expect(img.attributes('src')).toBe(THEMES['default']!.logo.src)
+    expect(img.attributes('src')).toBe(THEMES.t3!.logo.src)
   })
 
   it('renders nav items with their translation key label', () => {

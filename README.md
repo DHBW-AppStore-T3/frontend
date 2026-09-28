@@ -49,17 +49,15 @@ Schritt 3 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hie
 
 ## Theming
 
-Branding (Logo, Name, Titel, Favicon, Markenfarben) kommt aus `src/theme/`. Das Theme wählt `VITE_THEME`
-(`default` oder `t3`; unbekannt → `t3` mit Warnung):
+Branding (Logo, Name, Titel, Favicon, Farben und Login-Bild) kommt aus `src/theme/`.
+Ohne `VITE_THEME` wird `t3` geladen. Ein unbekannter Wert f?llt mit Warnung auf `t3` zur?ck.
 
 ```bash
 VITE_THEME=t3 npm run dev
 ```
 
-Im Container greift `VITE_THEME` über `env-config.js`/`envsubst`, ein Image genügt für alle Themes.
-`t3-demo` bleibt als Kompatibilitäts-Alias auf `t3` bestehen (bestehende Deployments mit
-`VITE_THEME=t3-demo` funktionieren unverändert); neue Doku/Konfiguration verwendet nur `t3`.
-Neues Theme anlegen: siehe `claude_docs/decisions/2026-white-label-theming.md`.
+Im Container wird `VITE_THEME` ?ber `env-config.js`/`envsubst` gesetzt.
+Neue Themes: [docs/themes.md](docs/themes.md).
 
 ## Technologie-Stack
 

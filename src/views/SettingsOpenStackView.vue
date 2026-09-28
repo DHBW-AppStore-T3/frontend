@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/components/ui/PageHeader.vue'
 import { onMounted, reactive, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -6,7 +7,6 @@ import {
   CheckCircle2,
   XCircle,
   CircleHelp,
-  Cloud,
   KeyRound,
   Trash2,
   RefreshCw,
@@ -235,17 +235,8 @@ const maybeReturnToWizard = () => {
 </script>
 
 <template>
-  <div class="p-6 max-w-4xl mx-auto">
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-textHeading mb-1 flex items-center gap-2">
-        <Cloud :size="28" class="text-primary" />
-        {{ t('SettingsOpenStackView.title') }}
-      </h1>
-      <p class="text-textMuted">
-        {{ t('SettingsOpenStackView.intro') }}
-      </p>
-    </div>
+  <div class="app-page max-w-4xl">
+    <PageHeader :eyebrow="t('UserView.settings.title')" :title="t('SettingsOpenStackView.title')" :subtitle="t('SettingsOpenStackView.intro')" />
 
     <!-- Lock banner -->
     <CredentialMissingBanner

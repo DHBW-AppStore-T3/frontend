@@ -97,6 +97,7 @@ describe('CoursesView.vue', () => {
                     $t: (key: string, vars?: any) => vars ? `${key} ${JSON.stringify(vars)}` : key
                 },
                 stubs: {
+                    RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
                     Card: { template: '<div class="stub-card" @click="$emit(\'click\')"><slot /></div>' },
                     BaseButton: { template: '<button><slot /></button>' },
                     BaseInput: {
@@ -167,10 +168,7 @@ describe('CoursesView.vue', () => {
         const wrapper = mountComponent()
         await flushPromises()
 
-        const card = wrapper.find('.stub-card')
-        await card.trigger('click')
-
-        expect(mockPush).toHaveBeenCalledWith({ path: '/courses/c-99' })
+        expect(wrapper.get('.course-link').attributes('href')).toBe('/courses/c-99')
     })
 
     // --- 3. Rechteverwaltung (Permissions) ---
@@ -195,7 +193,7 @@ describe('CoursesView.vue', () => {
         await flushPromises()
 
         expect(courseApi.listMembers).not.toHaveBeenCalled()
-        expect(wrapper.find('button[title="CoursesView.deleteTitle"]').exists()).toBe(false)
+        expect(wrapper.find('button[aria-label="CoursesView.deleteTitle"]').exists()).toBe(false)
         expect(wrapper.text()).not.toContain('CoursesView.memberPlural')
     })
 
@@ -211,7 +209,7 @@ describe('CoursesView.vue', () => {
         await createBtn.trigger('click')
         await nextTick()
 
-        const input = wrapper.find('input')
+        const input = wrapper.find('.modal input')
         await input.setValue('Mein neuer Kurs')
 
         const saveBtn = wrapper.findAll('.modal button').find(b => b.text().includes('CoursesView.createModal.create'))!
@@ -246,7 +244,7 @@ describe('CoursesView.vue', () => {
         const wrapper = mountComponent()
         await flushPromises()
 
-        const deleteBtn = wrapper.find('button[title="CoursesView.deleteTitle"]')
+        const deleteBtn = wrapper.find('button[aria-label="CoursesView.deleteTitle"]')
         await deleteBtn.trigger('click')
         await nextTick()
 

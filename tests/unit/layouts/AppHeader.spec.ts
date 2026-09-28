@@ -32,7 +32,7 @@ describe('AppHeader', () => {
 
   it('emits toggle-sidebar when the sidebar toggle button is clicked', async () => {
     const wrapper = mountHeader({ sidebarCollapsed: false })
-    await wrapper.find('[aria-label="Close sidebar"]').trigger('click')
+    await wrapper.find('[aria-label="workspace.closeSidebar"]').trigger('click')
     expect(wrapper.emitted('toggle-sidebar')).toHaveLength(1)
   })
 

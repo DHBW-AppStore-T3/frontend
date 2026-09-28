@@ -3,7 +3,7 @@ import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   BarChart3, Layers, GraduationCap, ArrowRight,
-  XCircle, Loader2, AlertCircle, Rocket
+  XCircle, Loader2, AlertCircle
 } from 'lucide-vue-next'
 import { useDashboard } from '@/composables/useDashboard'
 import { useQuotas } from '@/composables/useQuotas'
@@ -39,7 +39,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="dashboard-page">
 
     <!-- Banners -->
     <CredentialMissingBanner
@@ -62,17 +62,11 @@ onMounted(() => {
     <!-- Hero banner -->
     <div class="hero-banner">
       <div class="hero-content">
-        <p class="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">{{ timeGreeting }}</p>
-        <h1 class="text-white text-3xl font-bold mb-1">{{ firstName }}</h1>
-        <p class="text-white/60 text-sm">{{ $t('DashboardView.subtitle') }}</p>
+        <p class="page-eyebrow">{{ timeGreeting }}</p>
+        <h1 class="dashboard-name">{{ firstName }}</h1>
+        <p class="dashboard-subtitle">{{ $t('DashboardView.subtitle') }}</p>
       </div>
-      <RouterLink
-        :to="{ name: 'apps' }"
-        class="hero-cta group"
-      >
-        <Rocket :size="16" class="group-hover:translate-x-0.5 transition-transform" />
-        {{ $t('DashboardView.deploymentNew') }}
-      </RouterLink>
+
     </div>
 
     <!-- KPI row -->
@@ -88,7 +82,7 @@ onMounted(() => {
         <ArrowRight :size="14" class="ml-auto text-textFaint group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
       </RouterLink>
 
-      <div class="kpi-divider" />
+
 
       <RouterLink to="/apps" class="kpi-item group">
         <div class="kpi-icon-wrap" style="background:rgb(var(--color-brand-accent) / 0.10)">
@@ -104,7 +98,7 @@ onMounted(() => {
       <!-- Courses tile: students have no courses access (staff-only route),
            so hide the tile via RoleGate instead of 404 on click. -->
       <template v-if="isStaff">
-      <div class="kpi-divider" />
+
 
       <RouterLink to="/courses" class="kpi-item group">
         <div class="kpi-icon-wrap" style="background:rgb(var(--color-info) / 0.08)">
@@ -120,7 +114,7 @@ onMounted(() => {
     </div>
 
     <!-- Available resources — full width, two-column quotas list -->
-    <div class="bg-white rounded-xl border border-borderSubtle shadow-sm overflow-hidden">
+    <div class="dashboard-resources ui-card">
       <div class="flex items-center justify-between px-6 py-4 border-b border-borderSubtle">
         <h2 class="text-sm font-semibold text-textHeading">{{ $t('DashboardView.availableResources') }}</h2>
         <span v-if="quotasLoading && hasCachedQuotas" class="flex items-center gap-1.5 text-xs text-textFaint">
@@ -129,7 +123,7 @@ onMounted(() => {
       </div>
 
       <!-- Skeleton (initial load) -->
-      <div v-if="quotasLoading && !hasCachedQuotas" class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+      <div v-if="quotasLoading && !hasCachedQuotas" class="quota-grid">
         <div v-for="i in 6" :key="i" class="animate-pulse space-y-2">
           <div class="flex justify-between">
             <div class="h-3 bg-surfaceMuted rounded w-20" />
@@ -140,12 +134,13 @@ onMounted(() => {
       </div>
 
       <!-- Quotas: two columns on >= md -->
-      <div v-else-if="formattedQuotas.length > 0" class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-        <div v-for="quota in formattedQuotas" :key="quota.label">
+      <div v-else-if="formattedQuotas.length > 0" class="quota-grid">
+        <div v-for="quota in formattedQuotas" :key="quota.label" class="quota-item">
+          <component :is="quota.icon" :size="28" :stroke-width="1.5" class="quota-icon" aria-hidden="true" />
+          <div class="quota-content">
           <div class="flex items-center justify-between mb-1.5">
             <div class="flex items-center gap-1.5">
-              <component :is="quota.icon" :size="13" class="text-textFaint" />
-              <span class="text-xs font-medium text-textMuted">{{ quota.label }}</span>
+              <span class="text-sm font-semibold text-textHeading">{{ quota.label }}</span>
             </div>
             <span
               class="text-xs font-semibold tabular-nums"
@@ -164,6 +159,7 @@ onMounted(() => {
           <div class="flex items-center justify-between mt-1.5">
             <p class="text-xs text-textFaint">{{ t('DashboardView.quotaUsed', { percentage: quota.percentage }) }}</p>
             <AlertCircle v-if="quota.percentage >= 80" :size="11" class="text-danger" />
+          </div>
           </div>
         </div>
       </div>
@@ -192,122 +188,23 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Hero */
-.hero-banner {
-  background: linear-gradient(135deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-deep)) 60%, rgb(var(--color-primary-darkest)) 100%);
-  border-radius: 20px;
-  padding: 28px 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-}
-
-.hero-banner::before {
-  content: '';
-  position: absolute;
-  top: -40px;
-  right: -40px;
-  width: 200px;
-  height: 200px;
-  background: rgb(var(--color-on-dark) / 0.04);
-  border-radius: 50%;
-}
-
-.hero-banner::after {
-  content: '';
-  position: absolute;
-  bottom: -60px;
-  right: 80px;
-  width: 160px;
-  height: 160px;
-  background: rgb(var(--color-on-dark) / 0.03);
-  border-radius: 50%;
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-}
-
-.hero-cta {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: rgb(var(--color-on-dark) / 0.15);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgb(var(--color-on-dark) / 0.25);
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 12px;
-  text-decoration: none;
-  transition: background 150ms, border-color 150ms;
-  white-space: nowrap;
-}
-
-.hero-cta:hover {
-  background: rgb(var(--color-on-dark) / 0.22);
-  border-color: rgb(var(--color-on-dark) / 0.35);
-}
-
-/* KPI row */
-.kpi-row {
-  background: rgb(var(--color-on-dark));
-  border-radius: var(--radius-lg);
-  border: 1px solid rgb(var(--color-border-subtle));
-  box-shadow: var(--shadow-sm);
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
-  overflow: hidden;
-}
-
-.kpi-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 24px;
-  text-decoration: none;
-  transition: background 150ms;
-}
-
-.kpi-item:hover {
-  background: rgb(var(--color-surface-muted));
-}
-
-.kpi-divider {
-  width: 1px;
-  background: rgb(var(--color-border-subtle));
-  margin: 12px 0;
-}
-
-.kpi-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.kpi-num {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: rgb(var(--color-text-heading));
-  line-height: 1;
-}
-
-.kpi-lbl {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgb(var(--color-text-faint));
-  margin-top: 3px;
-}
+.dashboard-page { display: flex; flex-direction: column; gap: 28px; }
+.hero-banner { min-height: 230px; display: flex; align-items: center; position: relative; }
+.hero-content { max-width: 440px; padding-bottom: 16px; }
+.dashboard-name { font-size: clamp(34px, 3vw, 50px); font-weight: 750; letter-spacing: -.045em; color: rgb(var(--color-text-heading)); line-height: 1.2; margin-bottom: 8px; }
+.dashboard-subtitle { color: rgb(var(--color-text-muted)); font-size: 19px; line-height: 1.5; max-width: 380px; }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px; }
+.kpi-item { display: flex; align-items: center; gap: 20px; padding: 24px; border: 1px solid rgb(var(--color-border-subtle)); border-radius: var(--workspace-card-radius); background: var(--workspace-surface); box-shadow: var(--workspace-card-shadow); backdrop-filter: blur(12px); }
+.kpi-item:hover { border-color: rgb(var(--color-primary) / .3); }
+.kpi-icon-wrap { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 9px; flex-shrink: 0; }
+.kpi-icon-wrap svg { width: 24px; height: 24px; stroke-width: 1.5; }
+.kpi-num { font-size: 32px; font-weight: 700; line-height: 1.2; color: rgb(var(--color-text-heading)); }
+.kpi-lbl { font-size: 15px; color: rgb(var(--color-text-muted)); margin-top: 2px; }
+.dashboard-resources { padding: 0; overflow: hidden; }
+.quota-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 64px; padding: 28px 32px; }
+.quota-item { display: flex; gap: 28px; align-items: flex-start; }
+.quota-icon { color: rgb(var(--color-text-muted)); flex-shrink: 0; margin-top: 2px; }
+.quota-content { flex: 1; min-width: 0; }
+@media (max-width: 1100px) { .hero-content { max-width: 340px; } .dashboard-subtitle { font-size: 17px; } .kpi-item { padding: 20px; gap: 14px; } .quota-grid { gap: 26px; padding: 24px; } .quota-item { gap: 16px; } }
+@media (max-width: 767px) { .hero-banner { min-height: 190px; } .kpi-row { grid-template-columns: 1fr; gap: 12px; } .kpi-item { padding: 16px 20px; } .quota-grid { grid-template-columns: 1fr; } }
 </style>

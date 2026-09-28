@@ -3,12 +3,11 @@ import { mount } from '@vue/test-utils'
 import Card from '@/components/ui/Card.vue'
 
 describe('Card', () => {
-  it('uses the token radius/shadow scale', () => {
-    const wrapper = mount(Card)
-    const classes = wrapper.classes().join(' ')
-    expect(classes).toContain('rounded-xl')
-    expect(classes).toContain('shadow-sm')
-    expect(classes).toContain('hover:shadow-md')
-    expect(classes).not.toContain('rounded-2xl')
+  it('uses the shared surface and preserves content and caller attributes', () => {
+    const wrapper = mount(Card, { attrs: { class: 'catalog-card', 'aria-label': 'Application' }, slots: { default: '<h2>JupyterLab</h2>' } })
+    expect(wrapper.classes()).toContain('ui-card')
+    expect(wrapper.classes()).toContain('catalog-card')
+    expect(wrapper.attributes('aria-label')).toBe('Application')
+    expect(wrapper.get('h2').text()).toBe('JupyterLab')
   })
 })

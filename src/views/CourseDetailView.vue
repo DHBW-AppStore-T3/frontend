@@ -235,7 +235,7 @@ const roleClass = (role: string | undefined) => {
 </script>
 
 <template>
-  <div class="p-6 max-w-5xl mx-auto">
+  <div class="app-page">
     <button
         @click="router.push('/courses')"
         class="flex items-center gap-2 text-textMuted hover:text-textHeading mb-4 text-sm"
@@ -359,7 +359,7 @@ const roleClass = (role: string | undefined) => {
                 v-model="searchQuery"
                 type="text"
                 :placeholder="$t('CourseDetailView.addModal.searchPlaceholder')"
-                class="w-full pl-9 pr-3 py-2 border border-borderSubtle rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                class="w-full pl-9 pr-3 py-2 border border-borderSubtle rounded-lg focus:ring-2 focus:ring-primary outline-none"
             />
           </div>
 
@@ -367,10 +367,10 @@ const roleClass = (role: string | undefined) => {
             <span
                 v-for="user in Array.from(selectedToAdd.values())"
                 :key="user.userId"
-                class="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-sm px-2 py-1 rounded"
+                class="flex items-center gap-1 bg-primaryFaint text-primary text-sm px-2 py-1 rounded"
             >
               {{ user.username }}
-              <button @click="removeSelection(user.userId)" class="hover:text-emerald-900">
+              <button @click="removeSelection(user.userId)" class="hover:text-primaryDark">
                 <X :size="14" />
               </button>
             </span>
@@ -418,7 +418,7 @@ const roleClass = (role: string | undefined) => {
                         type="checkbox"
                         :checked="selectedToAdd.has(user.userId)"
                         @change="toggleSelection(user)"
-                        class="w-4 h-4 text-emerald-600 rounded border-borderSubtle focus:ring-emerald-500 cursor-pointer"
+                        class="w-4 h-4 text-primary rounded border-borderSubtle focus:ring-primary cursor-pointer"
                     />
                   </template>
                 </div>

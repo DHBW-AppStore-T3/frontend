@@ -613,13 +613,13 @@ watch(
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl p-10 border shadow-sm max-w-5xl mx-auto min-h-[600px] flex flex-col">
+  <div class="app-page wizard-page flex flex-col">
 
     <div class="mb-6">
       <DeploymentProgressBar :current-step="3" class="mb-8" />
       <div class="text-center">
         <h1 class="text-3xl font-bold text-textHeading">{{ t('deployment.summary.variablesConfigTitle') }}</h1>
-        <p class="text-emerald-600 font-medium mt-2 text-lg">
+        <p class="text-primary font-medium mt-2 text-lg">
           {{ t('deployment.summary.appLabel') }}: {{ deploymentStore.draft.name || t('deployment.variables.unnamed') }}
         </p>
       </div>
@@ -628,7 +628,7 @@ watch(
     <div class="flex-grow w-full max-w-7xl mx-auto mt-6">
       
       <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-3"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
         <span class="text-textFaint">{{ t('deployment.variables.loading') }}</span>
       </div>
 
@@ -1086,7 +1086,7 @@ watch(
         :class="[
           'flex items-center gap-2 px-8 py-2.5 rounded-full font-bold transition-colors shadow-lg',
           canSubmit
-            ? 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-emerald-700/20'
+            ? 'bg-success text-white hover:bg-successHover shadow-success/20'
             : 'bg-gray-300 text-textMuted cursor-not-allowed shadow-none',
         ]"
       >

@@ -3,6 +3,7 @@ import { applyTheme } from '@/theme/applyTheme'
 import { useTheme } from '@/theme/useTheme'
 import { THEMES } from '@/theme'
 import { THEME_COLOR_KEYS } from '@/theme/types'
+import type { Theme } from '@/theme/types'
 
 describe('applyTheme', () => {
   beforeEach(() => {
@@ -11,10 +12,10 @@ describe('applyTheme', () => {
   })
 
   it('writes every color as --color-* on the root', () => {
-    applyTheme(THEMES['default']!)
+    applyTheme(THEMES.t3!)
     for (const key of THEME_COLOR_KEYS) {
       expect(document.documentElement.style.getPropertyValue(`--color-${key}`)).toBe(
-        THEMES['default']!.colors[key],
+        THEMES.t3!.colors[key],
       )
     }
   })
@@ -28,8 +29,14 @@ describe('applyTheme', () => {
   })
 
   it('a second call overrides everything and reuses the link', () => {
-    applyTheme(THEMES['default']!)
-    applyTheme(THEMES['t3']!)
+    const alternative: Theme = {
+      ...THEMES.t3!,
+      id: 'alternative',
+      brand: { ...THEMES.t3!.brand, documentTitle: 'Alternative' },
+      colors: { ...THEMES.t3!.colors, primary: '1 2 3' },
+    }
+    applyTheme(alternative)
+    applyTheme(THEMES.t3!)
     expect(document.documentElement.style.getPropertyValue('--color-primary')).toBe(
       THEMES['t3']!.colors.primary,
     )
@@ -38,9 +45,10 @@ describe('applyTheme', () => {
   })
 
   it('useTheme returns the last applied theme', () => {
-    applyTheme(THEMES['t3']!)
+    const alternative: Theme = { ...THEMES.t3!, id: 'alternative' }
+    applyTheme(alternative)
+    expect(useTheme().id).toBe('alternative')
+    applyTheme(THEMES.t3!)
     expect(useTheme().id).toBe('t3')
-    applyTheme(THEMES['default']!)
-    expect(useTheme().id).toBe('default')
   })
 })

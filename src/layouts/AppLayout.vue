@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {
-  LayoutDashboard,
-  BarChart3,
+  House,
+  LayoutGrid,
+  User,
+
   Layers,
   GraduationCap,
   HelpCircle,
@@ -12,15 +14,18 @@ import { useI18n } from 'vue-i18n'
 import { useRole } from '@/composables/useRole'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useTheme } from '@/theme/useTheme'
 
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
+import '@/theme/workspace.css'
 
 const { t } = useI18n()
 const { isAdmin, isStaff } = useRole()
 const route = useRoute()
+const theme = useTheme()
 
-const isMeshBgActive = computed(() => route.name === 'dashboard' || route.path === '/')
+const isDashboard = computed(() => route.name === 'dashboard' || route.path === '/')
 
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
@@ -40,17 +45,18 @@ const pageTitle = computed(() => {
 })
 
 const navItems = computed(() => [
-  { to: '/', label: 'nav.dashboard', icon: LayoutDashboard },
-  { to: { name: 'deployments.list' }, label: 'nav.deployments', icon: BarChart3 },
-  { to: '/apps', label: 'nav.apps', icon: Layers },
+  { to: '/', label: 'nav.dashboard', icon: House },
+  { to: { name: 'deployments.list' }, label: 'nav.deployments', icon: Layers },
+  { to: '/apps', label: 'nav.apps', icon: LayoutGrid },
   { to: '/courses', label: 'nav.courses', icon: GraduationCap, visible: isStaff.value },
   { to: '/admin/apps', label: 'nav.approvals', icon: ShieldCheck, visible: isAdmin.value },
+  { to: '/user', label: 'workspace.profile', icon: User, visible: route.path.startsWith('/user') },
   { to: '/help', label: 'nav.help', icon: HelpCircle },
 ].filter(item => item.visible !== false))
 </script>
 
 <template>
-  <div class="h-screen flex bg-bgSoft overflow-x-visible">
+  <div class="app-shell">
     <AppSidebar
       v-model:collapsed="sidebarCollapsed"
       :nav-items="navItems"
@@ -58,7 +64,7 @@ const navItems = computed(() => [
       @close-mobile="mobileMenuOpen = false"
     />
 
-    <div class="flex-1 flex flex-col h-full min-w-0">
+    <div class="app-workspace" :class="{ 'app-workspace--dashboard': isDashboard }" :style="theme.loginBackground ? { '--workspace-dashboard-image': `url(${theme.loginBackground})` } : undefined">
       <AppHeader
         :page-title="pageTitle"
         :sidebar-collapsed="sidebarCollapsed"
@@ -67,22 +73,10 @@ const navItems = computed(() => [
       />
 
       <main
-        class="flex-1 overflow-y-auto px-8 pt-6 pb-8"
-        :class="isMeshBgActive ? 'mesh-gradient-bg' : 'bg-bgSoft'"
+        class="app-main"
       >
         <slot />
       </main>
     </div>
   </div>
 </template>
-
-<style scoped>
-.mesh-gradient-bg {
-  background-color: rgb(var(--color-surface-page));
-  background-image:
-    radial-gradient(at top left, rgb(var(--color-primary) / 0.18) 0px, transparent 50%),
-    radial-gradient(at bottom right, rgb(var(--color-primary) / 0.22) 0px, transparent 55%),
-    radial-gradient(at top right, rgb(var(--color-on-dark) / 0.6) 0px, transparent 45%),
-    radial-gradient(at bottom left, rgb(var(--color-success) / 0.10) 0px, transparent 50%);
-}
-</style>

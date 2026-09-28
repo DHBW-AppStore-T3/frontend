@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 
 import {
   BarChart3,
   Plus,
-  Inbox,
   GitBranch,
   Box,
   Clock,
@@ -56,6 +55,20 @@ const sortedDeployments = computed(() =>
   })
 )
 
+const statusFilter = ref('active')
+const statusGroups: Record<string, string[]> = {
+  active: ['success'],
+  building: ['pending', 'running', 'resuming', 'destroying', 'pausing'],
+  stopped: ['paused', 'failed', 'cancelled', 'destroyed', 'pause_failed', 'resume_failed'],
+}
+const statusTabs = computed(() => [
+  ...Object.entries(statusGroups).map(([key, statuses]) => ({ key, count: sortedDeployments.value.filter(item => statuses.includes(item.status)).length })),
+  { key: 'all', count: sortedDeployments.value.length },
+])
+const filteredDeployments = computed(() => sortedDeployments.value.filter(item =>
+  statusFilter.value === 'all' || statusGroups[statusFilter.value]?.includes(item.status),
+))
+
 // Status pills. Color semantics: orange = destroy, amber = lifecycle-pending,
 // slate = paused.
 const getStatusColor = (status: string) => {
@@ -79,8 +92,8 @@ const getStatusColor = (status: string) => {
 
 
 <template>
-  <div class="p-6">
-    <PageHeader :title="$t('DeploymentsView.title')" :subtitle="$t('DeploymentsView.subtitle')">
+  <div class="app-page">
+    <PageHeader :eyebrow="$t('nav.deployments')" :title="$t('DeploymentsView.title')" :subtitle="$t('DeploymentsView.subtitle')">
       <template #actions>
         <RouterLink :to="{ name: 'apps' }">
           <BaseButton class="flex items-center gap-2">
@@ -91,10 +104,15 @@ const getStatusColor = (status: string) => {
       </template>
     </PageHeader>
 
+    <div class="catalog-tabs" :aria-label="$t('workspace.deploymentStatus')">
+      <button v-for="tab in statusTabs" :key="tab.key" type="button" class="catalog-tab" :aria-pressed="statusFilter === tab.key" @click="statusFilter = tab.key">
+        {{ $t(`workspace.statusTabs.${tab.key}`) }} <span class="catalog-count">{{ tab.count }}</span>
+      </button>
+    </div>
     <EntityListState
       :is-loading="deploymentStore.isLoading && deploymentStore.deployments.length === 0"
-      :is-empty="!deploymentStore.isLoading && deploymentStore.deployments.length === 0"
-      :icon="Inbox"
+      :is-empty="!deploymentStore.isLoading && filteredDeployments.length === 0"
+      :icon="Box"
       :empty-message="$t('DeploymentsView.deploymentsMissingMessage')"
     >
       <template #empty-action>
@@ -110,12 +128,12 @@ const getStatusColor = (status: string) => {
            release tag, creation date). Click opens the detail; newest first. -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <RouterLink
-          v-for="deployment in sortedDeployments"
+          v-for="deployment in filteredDeployments"
           :key="deployment.deploymentId"
           :to="{ name: 'deployments.detail', params: { id: deployment.deploymentId } }"
           class="block"
         >
-          <Card class="flex flex-col h-full cursor-pointer hover:border-emerald-200 transition">
+          <Card class="flex flex-col h-full cursor-pointer hover:border-primary/30 transition">
             <div class="flex items-start justify-between gap-3 mb-3">
               <div class="flex items-center gap-3 min-w-0">
                 <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

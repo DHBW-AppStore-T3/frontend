@@ -225,9 +225,9 @@ onMounted(loadAll)
 </script>
 
 <template>
-  <div class="p-6">
+  <div class="app-page">
 
-    <PageHeader :title="$t('AdminAppsView.title')" :subtitle="$t('AdminAppsView.subtitle')">
+    <PageHeader :eyebrow="$t('nav.approvals')" :title="$t('AdminAppsView.title')" :subtitle="$t('AdminAppsView.subtitle')">
       <template #actions>
         <!-- Filter toggle as the page action (page-specific, so it's a slot
              rather than hard-wired). -->
@@ -236,7 +236,7 @@ onMounted(loadAll)
           <button
             @click="onlyWithSubmissions = !onlyWithSubmissions"
             class="relative inline-flex h-5 w-10 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none"
-            :class="onlyWithSubmissions ? 'bg-green-600' : 'bg-gray-300'"
+            :class="onlyWithSubmissions ? 'bg-primary' : 'bg-gray-300'"
           >
             <span
               class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200"

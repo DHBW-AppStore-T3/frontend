@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { appApi } from '@/api/app.api'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import {
-  Layers, Server, Box, Database, Terminal,
-  Globe, LayoutTemplate, Shield, ArrowLeft, GitBranch,
+  Layers, Globe, ArrowLeft, GitBranch,
   Trash2, AlertCircle, Clock, Send, ShoppingBag, Lock, Undo2,
   Pencil, Image as ImageIcon,
 } from 'lucide-vue-next'
@@ -15,6 +14,7 @@ import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.sto
 import { useAuthStore } from '@/stores/auth.store'
 import { useRole } from '@/composables/useRole'
 import { formatDate, MAX_IMAGE_BYTES } from '@/utils/format'
+import AppLogo from '@/components/ui/AppLogo.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Modal from '@/components/ui/Modal.vue'
 import AppVersionStatusBadge from '@/components/ui/AppVersionStatusBadge.vue'
@@ -35,6 +35,7 @@ const isLoading = ref(false)
 const app = ref<any>(null)
 const selectedVersion = ref('')
 const activeTab = ref<'overview' | 'store'>('overview')
+const deploymentOptions = ref<HTMLElement | null>(null)
 
 const showDeleteModal = ref(false)
 const isDeleting = ref(false)
@@ -147,18 +148,6 @@ const hasVersionInfo = computed(() => {
 // ----------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------
-const getIconForApp = (appName: string) => {
-  const name = (appName || '').toLowerCase()
-  if (name.includes('node')) return Server
-  if (name.includes('vue') || name.includes('front')) return LayoutTemplate
-  if (name.includes('react')) return Globe
-  if (name.includes('python') || name.includes('jupyter') || name.includes('fastapi')) return Box
-  if (name.includes('postgres') || name.includes('sql') || name.includes('data')) return Database
-  if (name.includes('docker') || name.includes('container')) return Terminal
-  if (name.includes('security') || name.includes('pen')) return Shield
-  return Layers
-}
-
 // ----------------------------------------------------------------
 // API calls
 // ----------------------------------------------------------------
@@ -173,7 +162,7 @@ const fetchAppDetails = async () => {
     }
   } catch {
     toast.error(t('AppsDetailView.toasts.loadError'))
-    if (!app.value) router.push({ name: 'apps.index' })
+    if (!app.value) router.push({ name: 'apps' })
   } finally {
     isLoading.value = false
   }
@@ -398,11 +387,16 @@ const confirmDelete = async () => {
 onMounted(async () => {
   await fetchAppDetails()
   if (canManageVersions.value) await fetchApprovals()
+  if (route.hash === '#deployment-options') {
+    await nextTick()
+    deploymentOptions.value?.scrollIntoView({ block: 'center' })
+    deploymentOptions.value?.querySelector('select')?.focus({ preventScroll: true })
+  }
 })
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl p-10 border min-h-[600px]">
+  <div class="app-page app-detail-page">
 
     <!-- Back -->
     <div class="mb-6">
@@ -422,14 +416,11 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-else-if="app" class="max-w-4xl mx-auto">
+    <div v-else-if="app" class="app-detail-content">
 
       <!-- App header -->
-      <div class="flex items-start gap-6 mb-6 border-b border-borderSubtle pb-6">
-        <div class="bg-surfaceTint p-4 rounded-xl shadow-sm text-primary flex items-center justify-center w-[88px] h-[88px] flex-shrink-0">
-          <img v-if="app.image" :src="app.image" :alt="app.name" class="w-full h-full object-contain" />
-          <component v-else :is="getIconForApp(app.name)" :size="48" />
-        </div>
+      <div class="app-detail-heading">
+        <AppLogo :name="app.name" :image="app.image" class="detail-app-logo" />
         <div class="flex-grow">
           <div class="flex justify-between items-start">
             <div>
@@ -490,9 +481,9 @@ onMounted(async () => {
       <!-- ============================================================ -->
       <!-- TAB 1: OVERVIEW                                               -->
       <!-- ============================================================ -->
-      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div v-if="activeTab === 'overview'" class="app-detail-grid">
 
-        <div class="lg:col-span-2 space-y-6">
+        <div class="detail-surface space-y-6">
 
           <div>
             <h2 class="text-xl font-semibold text-textHeading mb-3">{{ $t('AppsDetailView.descriptionTitle') }}</h2>
@@ -570,7 +561,7 @@ onMounted(async () => {
         </div>
 
         <!-- Deploy sidebar -->
-        <div class="bg-surfaceMuted border border-borderSubtle rounded-xl p-6 h-fit sticky top-6">
+        <div id="deployment-options" ref="deploymentOptions" class="detail-surface deployment-options">
           <h2 class="text-lg font-semibold text-textHeading mb-6">{{ $t('AppsDetailView.startDeploymentTitle') }}</h2>
 
           <div class="mb-6">
@@ -886,3 +877,13 @@ onMounted(async () => {
 
   </div>
 </template>
+
+<style scoped>
+.detail-app-logo { width: 72px; height: 72px; }
+.app-detail-heading { display: flex; align-items: flex-start; gap: 24px; margin-bottom: 32px; }
+.app-detail-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 28px; }
+.deployment-options { align-self: start; scroll-margin-top: 24px; }
+@media (max-width: 1100px) { .app-detail-grid { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .detail-app-logo { width: 72px; height: 72px; }
+.app-detail-heading { flex-wrap: wrap; } }
+</style>
