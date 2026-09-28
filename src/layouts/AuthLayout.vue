@@ -59,22 +59,24 @@ const features = computed(() => [
 
     <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
     <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
-      <!-- Large, extremely subtle faceted backdrop running behind the whole column
-           (logo, headline, supporting text, CTA). One connected folded-plane shape
-           (two facets sharing an edge, not separate floating triangles) — built from
-           the existing neutral surface tokens (never brand/primary), pure SVG. -->
+      <!-- Large, extremely subtle faceted backdrop structuring the whole column (logo,
+           headline, supporting text, CTA) — one dominant huge diagonal plane spanning
+           almost the full height, plus a single smaller accent facet near the top for
+           minimal fold depth. Tone steps are deliberately tiny (white → ~250 → ~246)
+           so it reads as structure, not as visible gray shapes. Built from the existing
+           neutral surface tokens (never brand/primary), pure SVG. -->
       <svg
         class="absolute inset-0 w-full h-full pointer-events-none"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        <polygon points="-10,-10 82,-10 58,52 -10,38" fill="rgb(var(--color-surface-muted))" />
-        <polygon points="-10,38 58,52 42,112 -10,88" fill="rgb(var(--color-border-subtle))" opacity="0.55" />
+        <polygon points="-10,-10 85,-10 35,115 -10,115" fill="rgb(var(--color-surface-muted))" />
+        <polygon points="-10,-10 60,-10 20,60 -10,45" fill="rgb(var(--color-border-subtle))" opacity="0.4" />
       </svg>
 
       <div class="relative flex flex-col min-h-screen">
-        <header class="flex items-start justify-between gap-4 px-6 pt-8 md:px-[7.25rem] md:pt-12">
+        <header class="flex items-start justify-between gap-4 px-6 pt-8 md:pl-[7.25rem] md:pr-10 md:pt-12">
           <!-- Recolored via mask instead of swapping to a raw literal color: the logo's own
                silhouette (t3Theme.logo) is masked and filled with the "primary" token, so it
                follows whatever theme is scoped onto this page instead of a baked-in PNG tint. -->
@@ -109,7 +111,7 @@ const features = computed(() => [
 
         <!-- Anchored below the header at a fixed offset (not vertically centered) so the
              headline lands at the same height as the reference regardless of viewport. -->
-        <main class="px-6 md:px-[7.25rem] pt-12 md:pt-16 max-w-lg">
+        <main class="px-6 md:pl-[7.25rem] md:pr-10 pt-12 md:pt-16 max-w-lg">
           <h1 class="text-display-1 text-textHeading mb-6">
             {{ heroTitleLead }} <span class="text-primary">{{ heroTitleLast }}</span>
           </h1>
@@ -117,7 +119,7 @@ const features = computed(() => [
           <slot />
         </main>
 
-        <footer class="mt-auto px-6 md:px-[7.25rem] pb-10 pt-10">
+        <footer class="mt-auto px-6 md:pl-[7.25rem] md:pr-10 pb-10 pt-10">
           <div class="border-t border-borderSubtle pt-6 grid grid-cols-3 gap-4">
             <div v-for="feature in features" :key="feature.label" class="flex flex-col gap-2">
               <component :is="feature.icon" :size="20" class="text-textMuted" />
