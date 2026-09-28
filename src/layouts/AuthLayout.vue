@@ -1,9 +1,29 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useTheme } from '@/theme/useTheme'
+import { Package, Layers, ShieldCheck } from 'lucide-vue-next'
+import { t3Theme } from '@/theme/themes/t3'
+import { THEME_COLOR_KEYS } from '@/theme/types'
+import heroImage from '@/assets/auth-hero.jpg'
 
-const { brand, authLogo, logo } = useTheme()
 const { locale, t } = useI18n()
+
+// The login page is now a fixed T3 design, independent of the active white-label
+// theme (VITE_THEME) — everything else in the app keeps switching normally.
+// Scoping the CSS color variables to this subtree keeps every existing token
+// class (bg-primary, text-textMuted, ...) working unchanged while pinning them
+// to T3's palette here. brand-accent is pointed at T3's primary red (instead of
+// t3Theme's own olive brand-accent) so the shared BaseButton "primary" variant
+// renders the solid red CTA from the reference design.
+const t3Vars = computed(() => {
+  const vars: Record<string, string> = {}
+  for (const key of THEME_COLOR_KEYS) {
+    vars[`--color-${key}`] = t3Theme.colors[key]
+  }
+  vars['--color-brand-accent'] = t3Theme.colors.primary
+  vars['--color-brand-accent-soft'] = t3Theme.colors['primary-soft']
+  return vars
+})
 
 function changeLocale(lang: string) {
   locale.value = lang
@@ -14,67 +34,81 @@ function changeLocale(lang: string) {
     // the locale still switches for this session, it just isn't persisted.
   }
 }
+
+const heroWords = computed(() => t('auth.hero.title').split(' '))
+
+const features = computed(() => [
+  { icon: Package, label: t('auth.login.features.diverse') },
+  { icon: Layers, label: t('auth.login.features.preconfigured') },
+  { icon: ShieldCheck, label: t('auth.login.features.secure') },
+])
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-surfacePage">
-    <!-- Login panel: full-width on mobile/tablet (the only view there), ~43-44% on desktop -->
-    <div class="w-full md:w-[43%] lg:w-[44%] flex flex-col min-w-0">
-      <header class="flex items-start justify-between gap-4 px-6 py-6 md:px-12 md:py-10">
+  <div class="min-h-screen relative overflow-hidden bg-surfacePage" :style="t3Vars">
+    <!-- Campus hero photo: full-bleed, desktop only -->
+    <div
+      class="hidden md:block absolute inset-0 bg-cover bg-center"
+      :style="{ backgroundImage: `url(${heroImage})` }"
+    />
+
+    <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
+    <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
+      <header class="flex items-start justify-between gap-4 px-8 pt-8 md:px-14 md:pt-12">
         <div>
-          <img v-if="authLogo" :src="authLogo.src" :alt="authLogo.alt" :style="{ height: `${authLogo.height}px` }" class="block" />
-          <span v-else class="text-headline-3 text-primary font-bold">{{ brand.name }}</span>
-          <p class="mt-1 text-caption text-textMuted">{{ brand.tagline }}</p>
+          <img :src="t3Theme.authLogo!.src" :alt="t3Theme.authLogo!.alt" :style="{ height: `${t3Theme.authLogo!.height}px` }" class="block" />
+          <p class="mt-1 text-caption text-textMuted">{{ t3Theme.brand.tagline }}</p>
         </div>
 
-        <div class="flex flex-shrink-0 rounded-md overflow-hidden border border-borderSubtle text-caption">
+        <div class="flex flex-shrink-0 rounded-full bg-surfaceMuted p-1 text-caption">
           <button
             type="button"
             data-testid="locale-de"
             @click="changeLocale('de')"
-            :class="locale === 'de' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:bg-surfaceMuted'"
-            class="px-2.5 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+            :class="locale === 'de' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
+            class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
           >DE</button>
           <button
             type="button"
             data-testid="locale-en"
             @click="changeLocale('en')"
-            :class="locale === 'en' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:bg-surfaceMuted'"
-            class="px-2.5 py-1 transition-colors border-l border-borderSubtle focus:outline-none focus:ring-2 focus:ring-primary/50"
+            :class="locale === 'en' ? 'bg-primarySoft text-primary' : 'text-textMuted hover:text-textStrong'"
+            class="px-3 py-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
           >EN</button>
         </div>
       </header>
 
-      <main class="flex-1 flex items-center justify-center px-6 md:px-12 pb-16">
-        <div class="w-full max-w-sm">
-          <slot />
-        </div>
+      <main class="flex-1 flex flex-col justify-center px-8 md:px-14 py-10 max-w-lg">
+        <p class="text-caption font-semibold uppercase tracking-[0.2em] text-primary mb-4">
+          {{ t('auth.hero.eyebrow') }}
+        </p>
+        <h1 class="text-headline-1 text-textHeading leading-[1.05] mb-6">
+          <template v-for="(word, i) in heroWords" :key="i">
+            <span :class="i === heroWords.length - 1 ? 'text-primary' : ''">{{ word }}</span
+            ><span v-if="i < heroWords.length - 1"> </span>
+          </template>
+        </h1>
+
+        <slot />
       </main>
-    </div>
 
-    <!-- Hero panel: desktop-only, ~56-57%. Built from theme tokens (no photo asset in the
-         repo), kept white-label-safe — every color and the watermark logo come from the
-         active theme. Red stays a deliberate accent, never a full-bleed fill. -->
-    <div class="hidden md:flex md:w-[57%] lg:w-[56%] relative flex-col justify-end overflow-hidden bg-surfaceDark p-10 lg:p-16">
-      <div
-        class="pointer-events-none absolute inset-0 text-onDark opacity-[0.06] bg-[radial-gradient(currentColor_1px,transparent_1px)] bg-[length:28px_28px]"
-      />
-      <div class="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-primary/25 blur-3xl" />
-      <img
-        v-if="logo"
-        :src="logo.src"
-        alt=""
-        class="pointer-events-none absolute -bottom-12 -right-12 w-2/3 max-w-md opacity-[0.07] select-none"
-      />
-
-      <div class="relative max-w-md">
-        <div class="flex items-center gap-3 mb-6">
-          <span class="h-2 w-2 rounded-full bg-primary" />
-          <span class="h-px w-10 bg-primary/50" />
+      <footer class="px-8 md:px-14 pb-10">
+        <div class="border-t border-borderSubtle pt-6 grid grid-cols-3 gap-4">
+          <div v-for="feature in features" :key="feature.label" class="flex flex-col gap-2">
+            <component :is="feature.icon" :size="20" class="text-textMuted" />
+            <span class="text-caption text-textMuted leading-snug">{{ feature.label }}</span>
+          </div>
         </div>
-        <h1 class="text-headline-1 text-onDark">{{ t('auth.hero.title') }}</h1>
-        <p class="mt-4 text-body text-onDark/70 max-w-sm">{{ t('auth.hero.subtitle') }}</p>
-      </div>
+      </footer>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Diagonal split only on desktop — a straight edge would just look clipped on mobile. */
+@media (min-width: 768px) {
+  .auth-panel {
+    clip-path: polygon(0 0, 100% 0, 76% 100%, 0 100%);
+  }
+}
+</style>

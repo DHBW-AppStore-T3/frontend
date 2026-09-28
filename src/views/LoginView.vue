@@ -31,15 +31,11 @@ onMounted(() => {
 
 <template>
   <div>
-    <h1 class="text-headline-1 text-textHeading mb-3">
-      {{ $t('auth.login.welcomeTitle') }}
-    </h1>
-
-    <p class="text-body text-textMuted mb-10">
+    <p class="text-body text-textMuted mb-8 max-w-md">
       {{ $t('auth.login.keycloakInfo') }}
     </p>
 
-    <BaseButton variant="primary" class="w-full" @click="loginWithKeycloak">
+    <BaseButton variant="primary" @click="loginWithKeycloak">
       <LogIn :size="20" />
       {{ $t('auth.login.keycloakButton') }}
     </BaseButton>

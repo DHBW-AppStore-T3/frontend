@@ -2,7 +2,6 @@ export default {
   auth: {
     login: {
       title: "Login",
-      welcomeTitle: "Welcome back",
       emailLabel: "E-Mail",
       emailPlaceholder: "name@example.org",
       userLabel: "Username",
@@ -11,14 +10,20 @@ export default {
       passwordPlaceholder: "••••••••",
       submit: "Login",
       keycloakButton: "Sign in with DHBW",
-      keycloakInfo: "Sign in with your DHBW account",
+      keycloakInfo: "The DHBW AppStore provides preconfigured applications and environments for teaching, research, and administration.",
       noAccount: "No account? Contact your administrator.",
       toRegister: "No account yet? Register",
       successMessage: "Successfully logged in!",
       failureMessage: "Login failed!",
-      missingCredentials: "Please enter username and password."
+      missingCredentials: "Please enter username and password.",
+      features: {
+        diverse: "Diverse Applications",
+        preconfigured: "Preconfigured Environments",
+        secure: "Secure & University-Internal"
+      }
     },
     hero: {
+      eyebrow: "Click'n Deploy",
       title: "Deploy applications with ease",
       subtitle: "One platform for teaching, research, and administration."
     },
