@@ -5,6 +5,7 @@ import { Package, Layers, ShieldCheck } from 'lucide-vue-next'
 import { t3Theme } from '@/theme/themes/t3'
 import { THEME_COLOR_KEYS } from '@/theme/types'
 import heroImage from '@/assets/auth-hero.jpg'
+import shapeImage from '@/assets/auth-shape.png'
 
 const { locale, t } = useI18n()
 
@@ -59,16 +60,16 @@ const features = computed(() => [
 
     <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
     <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
-      <!-- Large, extremely subtle backdrop shape behind the whole column — a single big
-           rotated square with softened (blurred) edges, off-white. Matches the isolated
-           reference swatch exactly: one large diamond, not a faceted polygon mesh.
-           Uses borderSubtle, not surfaceMuted: surfaceMuted (250 250 250) turned out to
-           be within 1 unit of this page's own background (251 249 249) — invisible in
-           practice. borderSubtle (240 240 240) is the closest existing token that still
-           reads as a real, if soft, shape at this size. -->
-      <div
-        class="absolute w-[46rem] h-[46rem] rounded-3xl bg-borderSubtle blur-sm rotate-45 pointer-events-none -left-56 top-16"
+      <!-- Large, extremely subtle backdrop shape behind the whole column. This is the
+           actual reference asset (its isolated "08 – Geometrische Hintergrundform"
+           swatch, cropped and exported with near-white pixels made transparent) used
+           directly as an image instead of a CSS/SVG approximation, so the shape itself
+           is pixel-identical to the reference rather than a guess at recreating it. -->
+      <img
+        :src="shapeImage"
+        alt=""
         aria-hidden="true"
+        class="absolute w-[44rem] h-auto pointer-events-none select-none -left-40 -top-16"
       />
 
       <div class="relative flex flex-col min-h-screen">
