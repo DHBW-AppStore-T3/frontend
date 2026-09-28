@@ -721,6 +721,8 @@ export default {
       reset: 'Zurücksetzen',
       dragDropTitle: 'Drag & Drop aktiviert',
       dragDropText: 'Ziehen Sie Studenten per Drag & Drop zwischen den Teams und dem Nicht-zugewiesenen Bereich hin und her.',
+      windowsConstraintTitle: 'Windows-Lizenzierung aktiv',
+      windowsConstraintText: 'Windows-Lizenzierung erfordert individuelle Zuweisung. Jeder Studierende erhält eine eigene VM.',
       allAssigned: 'Alle Studenten sind Teams zugewiesen',
       dropZone: 'Studenten hier ablegen',
       progress: 'Fortschritt',

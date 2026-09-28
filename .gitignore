@@ -36,3 +36,6 @@ vitest.config.d.ts
 
 # Vitest coverage output
 coverage/
+
+# Claude Code skills (symlinks to deployment repo — local only)
+.claude/skills/
