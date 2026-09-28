@@ -2,6 +2,7 @@ export default {
   auth: {
     login: {
       title: "Login",
+      welcomeTitle: "Welcome back",
       emailLabel: "E-Mail",
       emailPlaceholder: "name@example.org",
       userLabel: "Username",

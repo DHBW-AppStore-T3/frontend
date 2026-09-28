@@ -2,7 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { useTheme } from '@/theme/useTheme'
 
-const { brand, authLogo } = useTheme()
+const { brand, authLogo, logo } = useTheme()
 const { locale, t } = useI18n()
 
 function changeLocale(lang: string) {
@@ -18,23 +18,9 @@ function changeLocale(lang: string) {
 
 <template>
   <div class="min-h-screen flex bg-surfacePage">
-    <!-- Brand panel: desktop split-screen only. Geometric accents built from theme
-         tokens stand in for photography (no asset), while keeping the treatment
-         white-label-safe — every color here comes from the active theme. -->
-    <div class="hidden md:flex md:w-2/5 lg:w-1/2 relative flex-col justify-end overflow-hidden bg-primaryDeep p-10 lg:p-14">
-      <div class="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-primary/40 blur-3xl" />
-      <div class="pointer-events-none absolute top-10 left-10 w-16 h-16 rounded-2xl border border-onDark/20 rotate-12" />
-      <div class="pointer-events-none absolute bottom-16 right-12 w-28 h-28 rounded-full border border-onDark/15" />
-
-      <div class="relative">
-        <h1 class="text-headline-1 text-onDark max-w-md">{{ t('auth.hero.title') }}</h1>
-        <p class="mt-4 text-body text-onDark/75 max-w-sm">{{ t('auth.hero.subtitle') }}</p>
-      </div>
-    </div>
-
-    <!-- Content panel -->
-    <div class="flex-1 flex flex-col min-w-0">
-      <header class="flex items-start justify-between gap-4 px-6 py-6 md:px-12 md:py-8">
+    <!-- Login panel: full-width on mobile/tablet (the only view there), ~43-44% on desktop -->
+    <div class="w-full md:w-[43%] lg:w-[44%] flex flex-col min-w-0">
+      <header class="flex items-start justify-between gap-4 px-6 py-6 md:px-12 md:py-10">
         <div>
           <img v-if="authLogo" :src="authLogo.src" :alt="authLogo.alt" :style="{ height: `${authLogo.height}px` }" class="block" />
           <span v-else class="text-headline-3 text-primary font-bold">{{ brand.name }}</span>
@@ -64,6 +50,31 @@ function changeLocale(lang: string) {
           <slot />
         </div>
       </main>
+    </div>
+
+    <!-- Hero panel: desktop-only, ~56-57%. Built from theme tokens (no photo asset in the
+         repo), kept white-label-safe — every color and the watermark logo come from the
+         active theme. Red stays a deliberate accent, never a full-bleed fill. -->
+    <div class="hidden md:flex md:w-[57%] lg:w-[56%] relative flex-col justify-end overflow-hidden bg-surfaceDark p-10 lg:p-16">
+      <div
+        class="pointer-events-none absolute inset-0 text-onDark opacity-[0.06] bg-[radial-gradient(currentColor_1px,transparent_1px)] bg-[length:28px_28px]"
+      />
+      <div class="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-primary/25 blur-3xl" />
+      <img
+        v-if="logo"
+        :src="logo.src"
+        alt=""
+        class="pointer-events-none absolute -bottom-12 -right-12 w-2/3 max-w-md opacity-[0.07] select-none"
+      />
+
+      <div class="relative max-w-md">
+        <div class="flex items-center gap-3 mb-6">
+          <span class="h-2 w-2 rounded-full bg-primary" />
+          <span class="h-px w-10 bg-primary/50" />
+        </div>
+        <h1 class="text-headline-1 text-onDark">{{ t('auth.hero.title') }}</h1>
+        <p class="mt-4 text-body text-onDark/70 max-w-sm">{{ t('auth.hero.subtitle') }}</p>
+      </div>
     </div>
   </div>
 </template>

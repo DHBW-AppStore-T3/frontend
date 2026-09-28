@@ -31,11 +31,11 @@ onMounted(() => {
 
 <template>
   <div>
-    <h2 class="text-headline-2 text-textHeading mb-2">
-      {{ $t('auth.login.title') }}
-    </h2>
+    <h1 class="text-headline-1 text-textHeading mb-3">
+      {{ $t('auth.login.welcomeTitle') }}
+    </h1>
 
-    <p class="text-body text-textMuted mb-8">
+    <p class="text-body text-textMuted mb-10">
       {{ $t('auth.login.keycloakInfo') }}
     </p>
 
