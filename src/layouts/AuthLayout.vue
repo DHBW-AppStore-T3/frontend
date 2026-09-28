@@ -4,8 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { Package, Layers, ShieldCheck } from 'lucide-vue-next'
 import { t3Theme } from '@/theme/themes/t3'
 import { THEME_COLOR_KEYS } from '@/theme/types'
-import heroImage from '@/assets/auth-hero.jpg'
-import shapeImage from '@/assets/auth-shape.png'
+import bgImage from '@/assets/auth-bg.jpg'
 
 const { locale, t } = useI18n()
 
@@ -48,31 +47,16 @@ const features = computed(() => [
 
 <template>
   <div class="min-h-screen relative overflow-hidden bg-surfacePage" :style="t3Vars">
-    <!-- Campus hero photo: full-bleed, desktop only. Anchored to the left of its own
-         frame so the trees/low sun near the diagonal seam stay in view instead of a
-         center crop that loses them. -->
-    <div class="hidden md:block absolute inset-0 overflow-hidden">
-      <div
-        class="absolute inset-0 bg-cover bg-left"
-        :style="{ backgroundImage: `url(${heroImage})` }"
-      />
-    </div>
+    <!-- The entire background — campus photo, diagonal seam and the geometric shape —
+         is one reference image, desktop only. Content sits directly on top of it (no
+         separate white panel underneath); on mobile the image is hidden and the page
+         falls back to a plain surfacePage background from the wrapper above. -->
+    <div
+      class="hidden md:block absolute inset-0 bg-cover bg-left"
+      :style="{ backgroundImage: `url(${bgImage})` }"
+    />
 
-    <!-- Login panel: white, diagonally cut on desktop, full-bleed on mobile -->
-    <div class="auth-panel relative z-10 w-full md:w-[44%] min-h-screen bg-surfacePage flex flex-col">
-      <!-- Large, extremely subtle backdrop shape behind the whole column. This is the
-           actual reference asset (its isolated "08 – Geometrische Hintergrundform"
-           swatch, cropped and exported with near-white pixels made transparent) used
-           directly as an image instead of a CSS/SVG approximation, so the shape itself
-           is pixel-identical to the reference rather than a guess at recreating it. -->
-      <img
-        :src="shapeImage"
-        alt=""
-        aria-hidden="true"
-        class="absolute w-[44rem] h-auto pointer-events-none select-none -left-40 -top-16"
-      />
-
-      <div class="relative flex flex-col min-h-screen">
+    <div class="relative z-10 w-full md:w-[44%] min-h-screen flex flex-col">
         <header class="flex items-start justify-between gap-4 px-6 pt-8 md:pl-[7.25rem] md:pr-10 md:pt-12">
           <!-- Recolored via mask instead of swapping to a raw literal color: the logo's own
                silhouette (t3Theme.logo) is masked and filled with the "primary" token, so it
@@ -127,19 +111,11 @@ const features = computed(() => [
             </div>
           </div>
         </footer>
-      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Diagonal split only on desktop — a straight edge would just look clipped on mobile. */
-@media (min-width: 768px) {
-  .auth-panel {
-    clip-path: polygon(0 0, 100% 0, 76% 100%, 0 100%);
-  }
-}
-
 /* Recolors the logo silhouette (--logo-mask-url, set inline) via the "bg-primary"
    token instead of a raw baked-in PNG tint. */
 .auth-logo-mark {
