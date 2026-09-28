@@ -56,7 +56,10 @@
    at every call site. */
 @media (min-width: 768px) {
   :root {
-    --text-display-1-size: 4.5rem;
-    --text-display-1-line-height: 4.25rem;
+    /* Measured off the reference screenshot: ~77px cap-derived font size against a
+       ~60px baseline-to-baseline line pitch — a deliberately tight, slightly negative
+       leading typical of large display headlines. */
+    --text-display-1-size: 4.75rem;
+    --text-display-1-line-height: 3.75rem;
   }
 }
