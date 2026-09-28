@@ -240,13 +240,28 @@ describe('handleEvent: terminal events', () => {
 // ===========================================================================
 describe('pushLog ring buffer', () => {
   it('caps liveLogs at 100 entries and keeps incrementing totalLogCount', async () => {
-    const frames = Array.from({ length: 105 }, (_, i) =>
-      sseFrame('log', { iso_timestamp: '2024-01-01T00:00:00Z', level: 'INFO', message: `msg-${i}` }),
-    )
-    mockOkFetch(frames)
+    // Deliver all 105 frames in ONE stream chunk so they are processed
+    // synchronously inside a single buffer.split() pass — otherwise each frame
+    // would need its own async reader.read() cycle, requiring 300+ drain steps.
+    const allFrames =
+      Array.from({ length: 105 }, (_, i) =>
+        sseFrame('log', { iso_timestamp: '2024-01-01T00:00:00Z', level: 'INFO', message: `msg-${i}` }),
+      ).join('\n\n') + '\n\n'
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream<Uint8Array>({
+        start(ctrl) {
+          ctrl.enqueue(encoder.encode(allFrames))
+          ctrl.close()
+        },
+      }),
+    } as unknown as Response)
+
     const { liveLogs, totalLogCount, start } = useDeploymentStream(ref('d-1'))
     start()
-    await drain(20)  // 105 microtask-chained reads need extra cycles
+    await drain(20)
     expect(liveLogs.value).toHaveLength(100)
     expect(totalLogCount.value).toBe(105)
     // Oldest 5 were evicted; buffer window starts at msg-5
