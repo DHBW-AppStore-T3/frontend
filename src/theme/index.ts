@@ -1,8 +1,10 @@
 import type { Theme } from './types'
 import { t3Theme } from './themes/t3'
+import { mannheimTheme } from './themes/mannheim'
 
 export const THEMES: Record<string, Theme> = {
   [t3Theme.id]: t3Theme,
+  [mannheimTheme.id]: mannheimTheme,
 }
 
 export function resolveTheme(id: string | undefined): Theme {
