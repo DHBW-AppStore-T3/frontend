@@ -25,9 +25,12 @@ export const THEME_COLOR_KEYS = [
 
 export type ThemeColorKey = (typeof THEME_COLOR_KEYS)[number]
 
+/** Optional presentation tokens; shared CSS supplies the default appearance. */
+export const THEME_STYLE_KEYS = ['dashboard-scrim', 'dashboard-position'] as const
+
 export interface Theme {
   id: string
-  brand: { name: string; tagline: string; documentTitle: string }
+  brand: { name: string; tagline: string; documentTitle: string; institution?: string }
   logo: { src: string; alt: string; height: number; offsetX: number; offsetY: number }
   /** Optional logo for light surfaces; falls back to the main logo. */
   authLogo?: { src: string; alt: string; height: number }
@@ -35,4 +38,5 @@ export interface Theme {
   loginBackground?: string
   favicon: string
   colors: Record<ThemeColorKey, Rgb>
+  styles?: Partial<Record<(typeof THEME_STYLE_KEYS)[number], string>>
 }

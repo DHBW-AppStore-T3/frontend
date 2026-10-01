@@ -1,15 +1,19 @@
 import type { Theme } from '../types'
 import { t3Theme } from './t3'
 import logo from '../assets/mannheim-logo.png'
-import loginBackground from '../assets/mannheim-schloss.jpg'
+import loginBackground from '../assets/mannheim-schloss-abendlicht.png'
 
 export const mannheimTheme: Theme = {
   id: 'mannheim',
-  brand: { name: 'Universität Mannheim', tagline: 'AppStore', documentTitle: 'Universität Mannheim AppStore' },
+  brand: { name: 'Universität Mannheim', tagline: 'AppStore', documentTitle: 'Universität Mannheim AppStore', institution: 'Uni Mannheim' },
   logo: { src: logo, alt: 'Universität Mannheim', height: 36, offsetX: 0, offsetY: 6 },
   authLogo: { src: logo, alt: 'Universität Mannheim', height: 72 },
   loginBackground,
   favicon: '/themes/mannheim/favicon.png',
+  styles: {
+    'dashboard-scrim': 'linear-gradient(90deg, rgb(var(--color-bg-soft) / .98) 0%, rgb(var(--color-bg-soft) / .96) 28%, rgb(var(--color-bg-soft) / .8) 40%, transparent 70%)',
+    'dashboard-position': 'center 58%',
+  },
   colors: {
     ...t3Theme.colors,
     'primary': '0 47 86',
@@ -28,7 +32,25 @@ export const mannheimTheme: Theme = {
     'brand-accent': '90 100 112',
     'brand-accent-soft': '226 230 235',
     'surface-tint': '240 244 248',
+    'bg-soft': '246 248 250',
+    'background': '246 248 250',
+    'surface-page': '246 248 250',
+    'surface-muted': '239 243 247',
+    'border-subtle': '222 229 236',
+    'border': '222 229 236',
+    'text-heading': '19 38 56',
+    'text-strong': '30 48 65',
+    'text-muted': '83 103 122',
+    'text-faint': '110 128 145',
+    'workspace-fold': '241 244 247',
     'auth-accent': '0 47 86',
+    'auth-muted': '89 108 126',
+    'auth-heading': '19 38 56',
+    'auth-surface': '250 251 252',
+    'auth-fold': '245 247 249',
+    'auth-divider': '225 232 238',
+    'auth-feature-icon': '70 94 116',
+    'auth-card-text': '44 64 82',
     'auth-accent-hover': '0 34 64',
     'auth-language-selected': '214 226 239',
     'auth-language-hover': '232 238 245',

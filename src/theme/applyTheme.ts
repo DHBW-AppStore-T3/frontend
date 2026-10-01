@@ -1,4 +1,5 @@
 import type { Theme } from './types'
+import { THEME_STYLE_KEYS } from './types'
 import { setActiveTheme } from './useTheme'
 
 export function applyTheme(
@@ -8,6 +9,11 @@ export function applyTheme(
 ): void {
   for (const [key, value] of Object.entries(theme.colors)) {
     root.style.setProperty(`--color-${key}`, value)
+  }
+  for (const key of THEME_STYLE_KEYS) {
+    const value = theme.styles?.[key]
+    if (value) root.style.setProperty(`--theme-${key}`, value)
+    else root.style.removeProperty(`--theme-${key}`)
   }
   doc.title = theme.brand.documentTitle
 

@@ -51,4 +51,12 @@ describe('applyTheme', () => {
     applyTheme(THEMES.t3!)
     expect(useTheme().id).toBe('t3')
   })
+
+  it('clears Mannheim presentation overrides when returning to T3', () => {
+    applyTheme(THEMES.mannheim!)
+    expect(document.documentElement.style.getPropertyValue('--theme-dashboard-scrim')).toContain('linear-gradient')
+    applyTheme(THEMES.t3!)
+    expect(document.documentElement.style.getPropertyValue('--theme-dashboard-scrim')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-dashboard-position')).toBe('')
+  })
 })

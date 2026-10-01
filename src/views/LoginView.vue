@@ -4,6 +4,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { LogIn } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import { useTheme } from '@/theme/useTheme'
+
+const institution = useTheme().brand.institution ?? 'DHBW'
 
 const router = useRouter()
 const route = useRoute()
@@ -32,12 +35,12 @@ onMounted(() => {
 <template>
   <div>
     <p class="login-description">
-      {{ $t('auth.login.keycloakInfo') }}
+      {{ $t('auth.login.keycloakInfo', { institution }) }}
     </p>
 
     <BaseButton variant="solid" class="login-button" @click="loginWithKeycloak">
       <LogIn aria-hidden="true" />
-      {{ $t('auth.login.keycloakButton') }}
+      {{ $t('auth.login.keycloakButton', { institution }) }}
     </BaseButton>
 
     <p class="login-help">
