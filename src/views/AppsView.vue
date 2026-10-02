@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import AppLogo from '@/components/ui/AppLogo.vue'
 import Card from '@/components/ui/Card.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EntityListState from '@/components/ui/EntityListState.vue'
@@ -9,13 +10,12 @@ import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { useRouter } from 'vue-router'
 import { appApi } from '@/api/app.api'
 import { useI18n } from 'vue-i18n'
-import {
-  Layers, Server, Box, Database, Terminal,
-  Globe, LayoutTemplate, Shield, Inbox, Plus, Lock
-} from 'lucide-vue-next'
+import { Inbox, Plus, Globe, Lock, Search, SlidersHorizontal, Star } from 'lucide-vue-next'
+import { APP_CATEGORIES, appPresentation, type AppCategory } from '@/config/app-catalog'
+import { useFavorites } from '@/composables/useFavorites'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
-import type { AppVersionApproval } from '@/types'
+import type { App, AppVersionApproval } from '@/types'
 
 const { t, locale } = useI18n()
 const toast = useToast()
@@ -23,33 +23,33 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const isLoading = ref(false)
-const apps = ref<any[]>([])
+const apps = ref<App[]>([])
 const approvalsMap = ref<Record<string, AppVersionApproval[]>>({})
 
 // Admin-only filter
 const visibilityFilter = ref<'all' | 'public' | 'private'>('all')
 
-const filteredApps = computed(() => {
-  if (!authStore.isAdmin || visibilityFilter.value === 'all') return apps.value
-  if (visibilityFilter.value === 'private') return apps.value.filter(a => a.is_private)
-  return apps.value.filter(a => !a.is_private)
-})
+const searchQuery = ref('')
+const selectedCategory = ref<AppCategory | 'all' | 'favorites'>('all')
+const showFilters = ref(false)
+const { favorites, toggleFavorite } = useFavorites(computed(() => authStore.userId))
+const visibleApps = computed(() => apps.value.filter(app =>
+  (!authStore.isAdmin || visibilityFilter.value === 'all' || (visibilityFilter.value === 'private' ? app.is_private : !app.is_private)) &&
+  `${app.name} ${app.description ?? ''}`.toLocaleLowerCase().includes(searchQuery.value.trim().toLocaleLowerCase()),
+))
+const categories = computed(() => [
+  { key: 'all' as const, count: visibleApps.value.length },
+  ...APP_CATEGORIES.map(key => ({ key, count: visibleApps.value.filter(app => appPresentation(app.name).category === key).length })),
+  { key: 'favorites' as const, count: visibleApps.value.filter(app => favorites.value.includes(app.appId)).length },
+])
+const filteredApps = computed(() => visibleApps.value.filter(app =>
+  selectedCategory.value === 'all' ||
+  (selectedCategory.value === 'favorites' ? favorites.value.includes(app.appId) : appPresentation(app.name).category === selectedCategory.value),
+))
 
-const getIconForApp = (app: any) => {
-  const name = (app.name || '').toLowerCase()
-  if (name.includes('node')) return Server
-  if (name.includes('vue') || name.includes('front')) return LayoutTemplate
-  if (name.includes('react')) return Globe
-  if (name.includes('python') || name.includes('jupyter') || name.includes('fastapi')) return Box
-  if (name.includes('postgres') || name.includes('sql') || name.includes('data')) return Database
-  if (name.includes('docker') || name.includes('container')) return Terminal
-  if (name.includes('security') || name.includes('pen')) return Shield
-  return Layers
-}
+const isOwnApp = (app: App) => String(app.userId) === String(authStore.userId)
 
-const isOwnApp = (app: any) => String(app.userId) === String(authStore.userId)
-
-const badgeStatusForApp = (app: any) => {
+const badgeStatusForApp = (app: App) => {
   if (!isOwnApp(app)) return null
   if (app.is_private) return 'private'
   const approvals = approvalsMap.value[app.appId] ?? []
@@ -83,8 +83,8 @@ const fetchApps = async () => {
   }
 }
 
-const handleDeploy = (app: any) => {
-  router.push({ name: 'apps.detail', params: { id: app.id || app._id || app.appId } })
+const handleDeploy = (app: App, configure = false) => {
+  router.push({ name: 'apps.detail', params: { id: app.appId }, hash: configure ? '#deployment-options' : '' })
 }
 
 onMounted(() => {
@@ -93,22 +93,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6">
-    <PageHeader :title="$t('AppsView.title')" :subtitle="$t('AppsView.subtitle')">
+  <div class="app-page">
+    <PageHeader :eyebrow="$t('nav.apps')" :title="$t('AppsView.title')" :subtitle="$t('AppsView.subtitle')">
       <template #actions>
+        <label class="search-field">
+          <Search :size="16" aria-hidden="true" />
+          <input v-model="searchQuery" :placeholder="t('workspace.searchApps')" :aria-label="t('workspace.searchApps')" type="search" />
+        </label>
+        <button v-if="authStore.isAdmin" type="button" class="icon-button" :aria-label="t('workspace.filters')" :aria-expanded="showFilters" @click="showFilters = !showFilters"><SlidersHorizontal :size="16" /></button>
         <!-- Admin-only visibility filter -->
-        <div v-if="authStore.isAdmin" class="flex items-center bg-gray-100 rounded-lg p-1 gap-1 text-sm">
+        <div v-if="authStore.isAdmin && showFilters" class="flex items-center bg-surfaceMuted rounded-lg p-1 gap-1 text-sm">
           <button
             @click="visibilityFilter = 'all'"
             class="px-3 py-1.5 rounded-md font-medium transition-colors"
-            :class="visibilityFilter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="visibilityFilter === 'all' ? 'bg-white text-textHeading shadow-sm' : 'text-textMuted hover:text-textMuted'"
           >
             {{ $t('AppsView.filterAll') }}
           </button>
           <button
             @click="visibilityFilter = 'public'"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors"
-            :class="visibilityFilter === 'public' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="visibilityFilter === 'public' ? 'bg-white text-textHeading shadow-sm' : 'text-textMuted hover:text-textMuted'"
           >
             <Globe :size="13" />
             {{ $t('AppsView.filterPublic') }}
@@ -116,7 +121,7 @@ onMounted(() => {
           <button
             @click="visibilityFilter = 'private'"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors"
-            :class="visibilityFilter === 'private' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="visibilityFilter === 'private' ? 'bg-white text-textHeading shadow-sm' : 'text-textMuted hover:text-textMuted'"
           >
             <Lock :size="13" />
             {{ $t('AppsView.filterPrivate') }}
@@ -131,6 +136,13 @@ onMounted(() => {
         </RouterLink>
       </template>
     </PageHeader>
+
+    <div class="catalog-tabs" :aria-label="t('workspace.categories.label')">
+      <button v-for="category in categories" :key="category.key" type="button" class="catalog-tab"
+        :aria-pressed="selectedCategory === category.key" @click="selectedCategory = category.key">
+        {{ t(`workspace.categories.${category.key}`) }} <span class="catalog-count">{{ category.count }}</span>
+      </button>
+    </div>
 
     <EntityListState
       :is-loading="isLoading && apps.length === 0"
@@ -148,49 +160,41 @@ onMounted(() => {
         </RouterLink>
       </template>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card
-          v-for="app in filteredApps"
-          :key="app.appId || app.id"
-          class="flex flex-col group h-full relative cursor-pointer hover:border-emerald-200"
-          @click="handleDeploy(app)"
-        >
-          <div v-if="badgeStatusForApp(app)" class="absolute top-3 right-3">
-            <AppVersionStatusBadge :status="badgeStatusForApp(app)!" />
+      <div class="app-catalog-grid">
+        <Card v-for="app in filteredApps" :key="app.appId" class="catalog-card">
+          <div class="catalog-card-top">
+            <AppLogo :name="app.name" :image="app.image" />
+            <button type="button" class="favorite-button" :aria-label="t('workspace.favorite', { name: app.name })"
+              :aria-pressed="favorites.includes(app.appId)" @click="toggleFavorite(app.appId)">
+              <Star :size="18" :fill="favorites.includes(app.appId) ? 'currentColor' : 'none'" />
+            </button>
           </div>
-
-          <div class="flex items-center gap-4 mb-4">
-            <div class="bg-gray-50 p-3 rounded-lg text-gray-700 group-hover:text-primary transition-colors flex items-center justify-center w-[56px] h-[56px] flex-shrink-0 border border-gray-100">
-              <img v-if="app.image" :src="app.image" :alt="app.name" class="w-full h-full object-contain" />
-              <component v-else :is="getIconForApp(app)" :size="32" />
-            </div>
-            <h3 class="font-bold text-xl text-gray-900 leading-tight pr-16">{{ app.name }}</h3>
+          <RouterLink :to="{ name: 'apps.detail', params: { id: app.appId } }" class="catalog-app-name">{{ app.name }}</RouterLink>
+          <AppVersionStatusBadge v-if="badgeStatusForApp(app)" :status="badgeStatusForApp(app)!" class="self-start" />
+          <div :lang="locale" class="catalog-description">
+            <MarkdownRenderer v-if="app.description?.trim()" :source="app.description" variant="compact" :clamp="3" />
+            <p v-else>{{ t('AppsView.noDescription') }}</p>
           </div>
-
-          <div :lang="locale" class="text-sm mb-6 flex-grow text-left break-words hyphens-auto">
-            <MarkdownRenderer
-              v-if="app.description && app.description.trim()"
-              :source="app.description"
-              variant="compact"
-              :clamp="3"
-              :expandable="true"
-            />
-            <p v-else class="text-gray-600 leading-relaxed">
-              {{ $t('AppsView.noDescription') }}
-            </p>
-          </div>
-
-          <div class="mt-auto">
-            <BaseButton
-              variant="green"
-              class="w-full flex items-center justify-center gap-2"
-              @click.stop="handleDeploy(app)"
-            >
-              {{ $t('AppsView.detailsDeploy') }}
-            </BaseButton>
+          <div class="catalog-card-actions">
+            <BaseButton @click="handleDeploy(app)">{{ t('workspace.details') }}</BaseButton>
+            <BaseButton variant="outline" @click="handleDeploy(app, true)">{{ t('workspace.deploy') }}</BaseButton>
           </div>
         </Card>
       </div>
     </EntityListState>
   </div>
 </template>
+
+<style scoped>
+.app-catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.catalog-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 22px; }
+.catalog-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.favorite-button { color: rgb(var(--color-text-muted)); padding: 4px; }
+.favorite-button[aria-pressed='true'] { color: rgb(var(--color-primary)); }
+.catalog-app-name { font-size: 17px; font-weight: 650; color: rgb(var(--color-text-heading)); }
+.catalog-description { flex: 1; min-height: 66px; color: rgb(var(--color-text-muted)); font-size: 13px; line-height: 1.7; }
+.catalog-card-actions { display: flex; gap: 10px; margin-top: 8px; }
+.catalog-card-actions button { flex: 1; padding-inline: 10px; }
+@media (max-width: 1100px) { .app-catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .app-catalog-grid { grid-template-columns: 1fr; } }
+</style>

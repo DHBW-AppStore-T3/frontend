@@ -110,7 +110,7 @@ describe('NewDeploymentTeamsView.vue', () => {
     expect(wrapper.text()).toContain('Jane Smith')
     
     // Next-Button sollte deaktiviert sein (weil nicht alle zugewiesen sind)
-    const nextBtn = wrapper.find('button.bg-gradient-to-r')
+    const nextBtn = wrapper.find('[data-testid="btn-next"]')
     expect(nextBtn.attributes('disabled')).toBeDefined()
   })
 
@@ -176,7 +176,7 @@ describe('NewDeploymentTeamsView.vue', () => {
     const store = useDeploymentStore()
 
     // Finde den Remove-Button (das erste 'X' in der Drop-Zone)
-    const removeBtn = wrapper.find('button[title="CourseDetailView.removeModal.remove"]')
+    const removeBtn = wrapper.find('[data-testid="btn-remove-student"]')
     expect(removeBtn.exists()).toBe(true)
     
     await removeBtn.trigger('click')
@@ -193,7 +193,7 @@ describe('NewDeploymentTeamsView.vue', () => {
     })
     await flushPromises()
 
-    const nextBtn = wrapper.find('button.bg-gradient-to-r')
+    const nextBtn = wrapper.find('[data-testid="btn-next"]')
     expect(nextBtn.attributes('disabled')).toBeDefined()
 
     // Weise sie manuell im Store zu
@@ -215,7 +215,7 @@ describe('NewDeploymentTeamsView.vue', () => {
     const wrapper = createWrapper()
     await flushPromises()
 
-    const backBtn = wrapper.find('button.bg-gray-100')
+    const backBtn = wrapper.find('[data-testid="btn-back"]')
     await backBtn.trigger('click')
 
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'deployment.config' })

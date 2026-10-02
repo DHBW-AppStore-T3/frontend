@@ -1,18 +1,16 @@
 # Frontend
 
-[![Coverage](https://img.shields.io/endpoint?url=https://six7-click-n-deploy.github.io/frontend/badge.json)](https://six7-click-n-deploy.github.io/frontend/)
-
 Vue 3 SPA für den App Store. Studierende und Dozierende verwalten hier Apps, deployen sie auf OpenStack und sehen ihre Deployments.
 
 ## Setup
 
-Dieses Repository wird nicht eigenständig gestartet. Der gesamte Stack — inklusive Frontend — wird über das deployment-Repository hochgefahren. Vollständige Anleitung: [deployment/README.md](https://github.com/six7-click-n-deploy/deployment#readme).
+Dieses Repository wird nicht eigenständig gestartet. Der gesamte Stack — inklusive Frontend — wird über das deployment-Repository hochgefahren. Vollständige Anleitung: [deployment/README.md](https://github.com/DHBW-AppStore-T3/deployment#readme).
 
 Voraussetzung für alle folgenden Befehle: `make dev-up` aus dem `deployment/`-Verzeichnis wurde ausgeführt und der Stack läuft.
 
 ## Entwicklung
 
-Alle `make`-Befehle werden aus dem `deployment/`-Verzeichnis des [deployment-Repos](https://github.com/six7-click-n-deploy/deployment) ausgeführt — dort liegt das Makefile.
+Alle `make`-Befehle werden aus dem `deployment/`-Verzeichnis des [deployment-Repos](https://github.com/DHBW-AppStore-T3/deployment) ausgeführt — dort liegt das Makefile.
 
 ```bash
 # in app-store/deployment
@@ -21,7 +19,45 @@ make dev-logs-frontend      # Frontend-Logs verfolgen
 make shell-frontend         # interaktive Shell im Container
 ```
 
-Lint, Type-Check und Tests werden im Frontend-Container ausgeführt — `make shell-frontend` öffnet eine Shell, in der die üblichen `npm run lint`, `npm run type-check`, `npm run test:unit` und `npm run build` zur Verfügung stehen.
+Lint, Type-Check und Tests laufen im Frontend-Container — `make shell-frontend` öffnet eine Shell. Die tatsächlich vorhandenen Skripte:
+
+```bash
+npm run lint            # ESLint (eslint.config.js)
+npm run lint:fix        # ESLint mit --fix
+npx vue-tsc -b --noEmit # Type-Check (kein eigenes npm-Skript)
+npm run test            # Vitest, einmaliger Lauf
+npm run test:coverage   # Vitest + Coverage (istanbul)
+npm run build           # vue-tsc + vite build
+```
+
+### API-Typen aus dem Backend-Schema
+
+`src/types/api.generated.ts` wird aus `src/types/openapi.json` erzeugt und **nicht von Hand bearbeitet**. Die Datei `openapi.json` ist eine committete Kopie des Backend-Schemas — FastAPI ist laut HARNESS.md die Single Source of Truth für den API-Contract.
+
+Bei einer Backend-API-Änderung:
+
+```bash
+# 1. im backend-Repo: Schema exportieren
+poetry run python scripts/export_openapi.py        # oder: make openapi aus deployment/
+# 2. Ergebnis nach frontend/src/types/openapi.json kopieren
+# 3. im frontend-Repo:
+npm run gen:api-types
+npx vue-tsc -b --noEmit
+```
+
+Schritt 3 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die User-Typen bereits aus dem generierten Schema ab; die übrigen Blöcke sind noch handgepflegt und sollten bei Gelegenheit nachgezogen werden.
+
+## Theming
+
+Branding (Logo, Name, Titel, Favicon, Farben und Login-Bild) kommt aus `src/theme/`.
+Ohne `VITE_THEME` wird `t3` geladen. Ein unbekannter Wert f?llt mit Warnung auf `t3` zur?ck.
+
+```bash
+VITE_THEME=t3 npm run dev
+```
+
+Im Container wird `VITE_THEME` ?ber `env-config.js`/`envsubst` gesetzt.
+Neue Themes: [docs/themes.md](docs/themes.md).
 
 ## Technologie-Stack
 
@@ -71,5 +107,5 @@ src/
 
 ## Mehr
 
-- Architektur und projektübergreifende Doku: [.github-Repo](https://github.com/six7-click-n-deploy/.github)
+- Architektur und projektübergreifende Doku: [.github-Repo](https://github.com/DHBW-AppStore-T3/.github)
 - API-Docs (Backend Swagger): http://localhost:8000/docs (nach `make dev-up`)

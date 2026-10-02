@@ -4,8 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar.vue'
-import { 
-  BarChart3, 
+import {
+  BarChart3,
   Search,
   Check,
   Users,
@@ -14,7 +14,9 @@ import {
 } from 'lucide-vue-next'
 import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
+import type { User } from '@/types'
 import { useToast } from '@/composables/useToast'
+import { extractErrorMessage } from '@/utils/http-error'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import CredentialMissingBanner from '@/components/CredentialMissingBanner.vue'
 
@@ -31,7 +33,7 @@ const allStudents = ref<any[]>([])
 const students = ref<any[]>([])
 
 // Cache map for every student ever seen (stable, keyed by keycloak_id).
-const studentCache = ref(new Map<string, any>())
+const studentCache = ref(new Map<string, User>())
 
 const studentSearchQuery = ref('')
 const loadingCourses = ref(false)
@@ -44,7 +46,7 @@ const activeTab = ref<'courses' | 'individuals'>('courses')
 
 // Helper: store students in the cache (keyed by keycloak_id). Only overwrite
 // when the new object has more info (e.g. firstName).
-function cacheStudents(list: any[]) {
+function cacheStudents(list: User[]) {
   for (const s of list || []) {
     if (!s?.keycloak_id || typeof s.keycloak_id !== 'string' || !s.keycloak_id.trim()) continue
     const existing = studentCache.value.get(s.keycloak_id)
@@ -72,14 +74,14 @@ const filteredStudents = computed(() => {
 })
 
 // Selected students: always resolved from the cache (stable, keyed by keycloak_id).
-const selectedStudents = computed(() => {
+const selectedStudents = computed<User[]>(() => {
   return store.draft.studentIds
     .map((kid: string) => studentCache.value.get(kid))
-    .filter(Boolean)
+    .filter((s): s is User => s !== undefined)
 })
 
 // Cache for students per course (lazy loading).
-const courseStudentsCache = ref(new Map<string, any[]>())
+const courseStudentsCache = ref(new Map<string, User[]>())
 
 // Helper: return all student IDs of a course (lazy loading).
 async function getStudentIdsForCourse(courseId: string): Promise<string[]> {
@@ -217,7 +219,7 @@ async function loadCourses() {
   try {
     const res = await courseApi.list(0, 200)
     courses.value = res.data || []
-  } catch (err) {
+  } catch (_err) {
     coursesError.value = t('CoursesView.toasts.loadError')
     toast.error(coursesError.value)
   } finally {
@@ -234,7 +236,7 @@ async function loadAllStudents() {
     allStudents.value = res.data || []
     students.value = allStudents.value
     cacheStudents(allStudents.value)
-  } catch (err) {
+  } catch (_err) {
     studentsError.value = t('CourseDetailView.toasts.loadUsersError')
     toast.error(studentsError.value)
   } finally {
@@ -272,7 +274,7 @@ watch(studentSearchQuery, (val) => {
     } catch (err) {
       console.error('User search error:', err)
       const e: any = err
-      const msg = e?.response?.data?.detail || e?.message || t('CourseDetailView.toasts.loadUsersError')
+      const msg = extractErrorMessage(e, t('CourseDetailView.toasts.loadUsersError'))
       toast.error(msg)
     } finally {
       loadingStudents.value = false
@@ -290,15 +292,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto w-full">
-    
-    <div class="bg-white rounded-2xl p-10 border shadow-sm min-h-[700px] flex flex-col">
-      
+  <div class="app-page wizard-page">
+
+    <div class="wizard-surface flex flex-col">
+
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">
+        <h1 class="text-3xl font-bold text-textHeading">
           {{ t('deployment.title') }}
         </h1>
-        <BarChart3 :size="32" class="text-emerald-600" />
+        <BarChart3 :size="32" class="text-primary" />
       </div>
 
       <DeploymentProgressBar :current-step="1" />
@@ -316,30 +318,30 @@ onMounted(async () => {
 
       <template v-if="!credStore.isResolved || credStore.hasCredential">
       <div class="mb-8">
-        <label class="block text-xl font-bold text-gray-900 mb-3">
+        <label class="block text-xl font-bold text-textHeading mb-3">
           {{ t('deployment.config.nameLabel') }}
         </label>
-        <input 
+        <input
           v-model="store.draft.name"
-          type="text" 
+          type="text"
           :placeholder="t('deployment.config.namePlaceholder')"
           data-testid="deployment-name"
-          class="w-full px-4 py-3 rounded-full border-2 border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all"
+          class="w-full px-4 py-3 rounded-full border-2 border-borderSubtle focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
         />
       </div>
 
       <div class="flex-grow">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">
+        <h2 class="text-xl font-bold text-textHeading mb-4">
           {{ t('deployment.config.targetGroupTitle') }}
         </h2>
 
-        <div class="flex border-b border-gray-200 mb-6">
+        <div class="flex border-b border-borderSubtle mb-6">
           <button
             @click="activeTab = 'courses'"
             class="px-6 py-3 font-semibold transition-colors border-b-2"
-            :class="activeTab === 'courses' 
-              ? 'border-emerald-500 text-emerald-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700'"
+            :class="activeTab === 'courses'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-textMuted hover:text-textMuted'"
           >
             <BookOpen :size="20" class="inline mr-2" />
             {{ t('deployment.config.courseLabel') }}
@@ -347,9 +349,9 @@ onMounted(async () => {
           <button
             @click="activeTab = 'individuals'"
             class="px-6 py-3 font-semibold transition-colors border-b-2"
-            :class="activeTab === 'individuals' 
-              ? 'border-emerald-500 text-emerald-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700'"
+            :class="activeTab === 'individuals'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-textMuted hover:text-textMuted'"
           >
             <UserPlus :size="20" class="inline mr-2" />
             {{ t('deployment.config.studentsLabel') }}
@@ -357,29 +359,29 @@ onMounted(async () => {
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
+
           <div>
             <div v-if="activeTab === 'courses'">
-              <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ t('CoursesView.title') }}</h3>
+              <h3 class="text-lg font-semibold text-textHeading mb-4">{{ t('CoursesView.title') }}</h3>
               <div class="space-y-3 max-h-[400px] overflow-y-auto">
-                <div 
+                <div
                   v-for="course in courses"
                   :key="course.courseId"
                   @click="toggleCourse(course.courseId)"
                   :data-testid="`course-${course.courseId}`"
                   class="flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all"
-                  :class="isCourseSelected(course.courseId) 
-                    ? 'bg-emerald-50 border-emerald-300' 
-                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'"
+                  :class="isCourseSelected(course.courseId)
+                    ? 'bg-primaryFaint border-primary/30'
+                    : 'bg-surfaceMuted border-borderSubtle hover:border-borderSubtle'"
                 >
                   <div class="w-6 h-6 flex items-center justify-center rounded border transition-colors"
-                       :class="isCourseSelected(course.courseId) ? 'bg-emerald-500 border-emerald-500' : 'border-gray-400 bg-white'"
+                       :class="isCourseSelected(course.courseId) ? 'bg-primaryFaint0 border-primary' : 'border-gray-400 bg-white'"
                   >
                      <Check v-if="isCourseSelected(course.courseId)" :size="16" class="text-white" />
                   </div>
                   <div class="flex-grow">
-                    <div class="font-semibold text-gray-900">{{ course.name }}</div>
-                    <div class="text-sm text-gray-600">
+                    <div class="font-semibold text-textHeading">{{ course.name }}</div>
+                    <div class="text-sm text-textMuted">
                       <span v-if="loadingCourseStudents.has(course.courseId)">{{ t('CoursesView.loading') }}</span>
                       <span v-else>{{ t('DeploymentDetailView.deploymentStudentCount', getStudentCountForCourse(course.courseId)) }}</span>
                     </div>
@@ -389,41 +391,41 @@ onMounted(async () => {
             </div>
 
             <div v-if="activeTab === 'individuals'">
-              <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ t('deployment.config.studentsLabel') }}</h3>
-              
+              <h3 class="text-lg font-semibold text-textHeading mb-4">{{ t('deployment.config.studentsLabel') }}</h3>
+
               <div class="relative mb-4">
-                <Search class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" :size="20" />
-                <input 
+                <Search class="absolute left-4 top-1/2 transform -translate-y-1/2 text-textFaint" :size="20" />
+                <input
                   v-model="studentSearchQuery"
                   type="text"
                   :placeholder="t('deployment.config.searchPlaceholder')"
                   data-testid="student-search"
-                  class="w-full pl-12 pr-4 py-3 rounded-full border-2 border-gray-200 focus:border-emerald-500 outline-none transition-all"
+                  class="w-full pl-12 pr-4 py-3 rounded-full border-2 border-borderSubtle focus:border-primary outline-none transition-all"
                 />
               </div>
 
-              <div class="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 max-h-[350px] overflow-y-auto">
-                <div 
+              <div class="bg-surfaceMuted rounded-lg overflow-hidden border-2 border-borderSubtle max-h-[350px] overflow-y-auto">
+                <div
                   v-for="student in filteredStudents"
-                  :key="student.keycloak_id"
+                  :key="student.keycloak_id ?? student.userId"
                   @click="toggleStudent(student.keycloak_id)"
                   :data-testid="`student-${student.keycloak_id}`"
-                  class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-gray-200 transition-colors select-none"
-                  :class="store.draft.studentIds.includes(student.keycloak_id) ? 'bg-emerald-50' : 'hover:bg-gray-100'"
+                  class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-borderSubtle transition-colors select-none"
+                  :class="store.draft.studentIds.includes(student.keycloak_id) ? 'bg-primaryFaint' : 'hover:bg-surfaceMuted'"
                 >
                   <div class="w-6 h-6 flex items-center justify-center rounded border transition-colors"
-                       :class="store.draft.studentIds.includes(student.keycloak_id) ? 'bg-emerald-500 border-emerald-500' : 'border-gray-400 bg-white'"
+                       :class="store.draft.studentIds.includes(student.keycloak_id) ? 'bg-primaryFaint0 border-primary' : 'border-gray-400 bg-white'"
                   >
                      <Check v-if="store.draft.studentIds.includes(student.keycloak_id)" :size="16" class="text-white" />
                   </div>
-                  <span class="text-gray-700 font-medium">
-                    {{ (student.firstName || student.lastName) 
+                  <span class="text-textMuted font-medium">
+                    {{ (student.firstName || student.lastName)
                         ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
-                        : (student.username || student.email || student.name || student.keycloak_id) }}
+                        : (student.username || student.email || student.keycloak_id) }}
                   </span>
                 </div>
-                
-                <div v-if="filteredStudents.length === 0" class="p-4 text-gray-500 text-center">
+
+                <div v-if="filteredStudents.length === 0" class="p-4 text-textMuted text-center">
                   {{ t('CourseDetailView.addModal.noUsersFound') }}
                 </div>
               </div>
@@ -431,31 +433,31 @@ onMounted(async () => {
           </div>
 
           <div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <h3 class="text-lg font-semibold text-textHeading mb-4 flex items-center gap-2">
               <Users :size="20" />
               {{ t('deployment.groups.studentsSelected', { count: selectedStudents.length }) }}
             </h3>
-            
-            <div class="bg-gray-50 rounded-lg border-2 border-gray-200 p-4 max-h-[400px] overflow-y-auto">
-              <div v-if="selectedStudents.length === 0" class="text-gray-500 text-center py-8">
+
+            <div class="bg-surfaceMuted rounded-lg border-2 border-borderSubtle p-4 max-h-[400px] overflow-y-auto">
+              <div v-if="selectedStudents.length === 0" class="text-textMuted text-center py-8">
                 {{ t('deployment.assignment.noStudents') }}
               </div>
               <div v-else class="space-y-2">
                 <div
                   v-for="student in selectedStudents"
-                  :key="student.keycloak_id"
-                  class="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200"
+                  :key="student.keycloak_id ?? student.userId"
+                  class="flex items-center justify-between bg-white p-3 rounded-lg border border-borderSubtle"
                 >
-                  <span class="text-gray-700 font-medium">
-                    {{ (student.firstName || student.lastName) 
+                  <span class="text-textMuted font-medium">
+                    {{ (student.firstName || student.lastName)
                         ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
-                        : (student.username || student.email || student.name || student.keycloak_id) }}
+                        : (student.username || student.email || student.keycloak_id) }}
                   </span>
-                  <button 
-                    @click="toggleStudent(student.keycloak_id)" 
-                    class="text-red-500 hover:text-red-700 font-bold text-lg leading-none"
+                  <button
+                    @click="toggleStudent(student.keycloak_id ?? '')"
+                    class="text-danger hover:text-red-700 font-bold text-lg leading-none"
                     :title="t('CourseDetailView.removeModal.remove')"
-                    :data-testid="`remove-${student.keycloak_id}`"
+                    :data-testid="`remove-${student.keycloak_id ?? student.userId}`"
                   >
                     ×
                   </button>
@@ -463,7 +465,7 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="mt-4 p-4 bg-infoTint border border-info/30 rounded-lg">
               <p class="text-sm text-blue-800">
                 <strong>{{ t('deployment.config.infoTitle') }}</strong> {{ t('deployment.config.infoText') }}
               </p>
@@ -474,20 +476,20 @@ onMounted(async () => {
       </div>
       </template>
 
-      <div class="flex justify-between items-center mt-8 pt-4 border-t border-gray-200">
-        <button 
+      <div class="flex justify-between items-center mt-8 pt-4 border-t border-borderSubtle">
+        <button
           @click="handleBack"
           data-testid="btn-back"
-          class="px-8 py-2.5 rounded-full bg-gray-400 text-white font-semibold hover:bg-gray-500 transition-colors"
+          class="px-8 py-2.5 rounded-full bg-gray-400 text-white font-semibold hover:bg-surfaceMuted0 transition-colors"
         >
           {{ t('deployment.actions.back') }}
         </button>
-        
+
         <button
           @click="handleNext"
           data-testid="btn-next"
           :disabled="credStore.isResolved && !credStore.hasCredential"
-          class="px-8 py-2.5 rounded-full bg-emerald-700 text-white font-bold hover:bg-emerald-800 transition-colors shadow-lg shadow-emerald-700/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-8 py-2.5 rounded-full bg-success text-white font-bold hover:bg-successHover transition-colors shadow-lg shadow-success/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ t('deployment.actions.next') }}
         </button>

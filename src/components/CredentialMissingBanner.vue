@@ -19,8 +19,8 @@ const styles = computed(() => {
   switch (props.variant) {
     case 'error':
       return {
-        wrapper: 'bg-red-50 border-red-200 text-red-900',
-        iconBox: 'bg-red-100 text-red-600',
+        wrapper: 'bg-dangerTint border-danger/30 text-red-900',
+        iconBox: 'bg-dangerTint text-danger',
         title: 'text-red-900',
         message: 'text-red-800',
         cta: 'bg-red-600 hover:bg-red-700 text-white',
@@ -28,8 +28,8 @@ const styles = computed(() => {
       }
     case 'lock':
       return {
-        wrapper: 'bg-blue-50 border-blue-200 text-blue-900',
-        iconBox: 'bg-blue-100 text-blue-600',
+        wrapper: 'bg-infoTint border-info/30 text-blue-900',
+        iconBox: 'bg-infoTint text-info',
         title: 'text-blue-900',
         message: 'text-blue-800',
         cta: 'bg-blue-600 hover:bg-blue-700 text-white',

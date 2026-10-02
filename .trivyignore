@@ -4,3 +4,9 @@
 # comment. Document *why* a finding is suppressed so reviewers can
 # revisit when the upstream advisory changes.
 
+CVE-2026-93990 # libexpat in the nginx-unprivileged:alpine base image (Dockerfile
+               # stage 2). Unrelated to any application code change — surfaced
+               # 2026-09-24 on frontend#9's PR (#11), which touches no Dockerfile
+               # lines. Base-image OS package, not a Node/npm dependency; revisit
+               # once nginxinc publishes an alpine tag built against a patched
+               # expat, or Alpine's own repo ships the fix.

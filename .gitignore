@@ -31,7 +31,11 @@ dist-ssr
 # Emitted by composite tsconfig during local type-check
 src/**/*.d.ts
 vite.config.d.ts
+vitest.config.d.ts
 
 
 # Vitest coverage output
 coverage/
+
+# Claude Code skills (symlinks to deployment repo — local only)
+.claude/skills/

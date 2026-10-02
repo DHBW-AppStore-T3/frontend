@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 
 import {
   BarChart3,
   Plus,
-  Inbox,
   GitBranch,
   Box,
   Clock,
@@ -56,15 +55,29 @@ const sortedDeployments = computed(() =>
   })
 )
 
+const statusFilter = ref('active')
+const statusGroups: Record<string, string[]> = {
+  active: ['success'],
+  building: ['pending', 'running', 'resuming', 'destroying', 'pausing'],
+  stopped: ['paused', 'failed', 'cancelled', 'destroyed', 'pause_failed', 'resume_failed'],
+}
+const statusTabs = computed(() => [
+  ...Object.entries(statusGroups).map(([key, statuses]) => ({ key, count: sortedDeployments.value.filter(item => statuses.includes(item.status)).length })),
+  { key: 'all', count: sortedDeployments.value.length },
+])
+const filteredDeployments = computed(() => sortedDeployments.value.filter(item =>
+  statusFilter.value === 'all' || statusGroups[statusFilter.value]?.includes(item.status),
+))
+
 // Status pills. Color semantics: orange = destroy, amber = lifecycle-pending,
 // slate = paused.
 const getStatusColor = (status: string) => {
   const colors = {
-    'success': 'bg-green-100 text-green-800 border-green-300',
-    'failed': 'bg-red-100 text-red-800 border-red-300',
-    'running': 'bg-blue-100 text-blue-800 border-blue-300',
+    'success': 'bg-successTint text-green-800 border-green-300',
+    'failed': 'bg-dangerTint text-red-800 border-red-300',
+    'running': 'bg-infoTint text-blue-800 border-blue-300',
     'pending': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    'cancelled': 'bg-gray-100 text-gray-700 border-gray-300',
+    'cancelled': 'bg-surfaceMuted text-textMuted border-borderSubtle',
     'destroyed': 'bg-orange-100 text-orange-800 border-orange-300',
     'destroying': 'bg-orange-100 text-orange-700 border-orange-300',
     'pausing': 'bg-amber-100 text-amber-800 border-amber-300',
@@ -73,14 +86,14 @@ const getStatusColor = (status: string) => {
     'pause_failed': 'bg-amber-100 text-amber-900 border-amber-300',
     'resume_failed': 'bg-amber-100 text-amber-900 border-amber-300',
   }
-  return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-300'
+  return colors[status as keyof typeof colors] || 'bg-surfaceMuted text-textHeading border-borderSubtle'
 }
 </script>
 
 
 <template>
-  <div class="p-6">
-    <PageHeader :title="$t('DeploymentsView.title')" :subtitle="$t('DeploymentsView.subtitle')">
+  <div class="app-page">
+    <PageHeader :eyebrow="$t('nav.deployments')" :title="$t('DeploymentsView.title')" :subtitle="$t('DeploymentsView.subtitle')">
       <template #actions>
         <RouterLink :to="{ name: 'apps' }">
           <BaseButton class="flex items-center gap-2">
@@ -91,10 +104,15 @@ const getStatusColor = (status: string) => {
       </template>
     </PageHeader>
 
+    <div class="catalog-tabs" :aria-label="$t('workspace.deploymentStatus')">
+      <button v-for="tab in statusTabs" :key="tab.key" type="button" class="catalog-tab" :aria-pressed="statusFilter === tab.key" @click="statusFilter = tab.key">
+        {{ $t(`workspace.statusTabs.${tab.key}`) }} <span class="catalog-count">{{ tab.count }}</span>
+      </button>
+    </div>
     <EntityListState
       :is-loading="deploymentStore.isLoading && deploymentStore.deployments.length === 0"
-      :is-empty="!deploymentStore.isLoading && deploymentStore.deployments.length === 0"
-      :icon="Inbox"
+      :is-empty="!deploymentStore.isLoading && filteredDeployments.length === 0"
+      :icon="Box"
       :empty-message="$t('DeploymentsView.deploymentsMissingMessage')"
     >
       <template #empty-action>
@@ -110,22 +128,22 @@ const getStatusColor = (status: string) => {
            release tag, creation date). Click opens the detail; newest first. -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <RouterLink
-          v-for="deployment in sortedDeployments"
+          v-for="deployment in filteredDeployments"
           :key="deployment.deploymentId"
           :to="{ name: 'deployments.detail', params: { id: deployment.deploymentId } }"
           class="block"
         >
-          <Card class="flex flex-col h-full cursor-pointer hover:border-emerald-200 transition">
+          <Card class="flex flex-col h-full cursor-pointer hover:border-primary/30 transition">
             <div class="flex items-start justify-between gap-3 mb-3">
               <div class="flex items-center gap-3 min-w-0">
                 <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <BarChart3 :size="20" class="text-primary" />
                 </div>
                 <div class="min-w-0">
-                  <h3 class="font-semibold text-gray-900 truncate" :title="deployment.name">
+                  <h3 class="font-semibold text-textHeading truncate" :title="deployment.name">
                     {{ deployment.name }}
                   </h3>
-                  <p class="text-xs text-gray-500 truncate mt-0.5">
+                  <p class="text-xs text-textMuted truncate mt-0.5">
                     <Box :size="11" class="inline-block mr-1 align-text-bottom" />
                     {{ getAppName(deployment.appId) }}
                   </p>
@@ -139,7 +157,7 @@ const getStatusColor = (status: string) => {
               </span>
             </div>
 
-            <div class="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <div class="mt-auto pt-3 border-t border-borderSubtle flex items-center justify-between text-xs text-textMuted">
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
                 <GitBranch :size="11" />
                 {{ deployment.releaseTag }}

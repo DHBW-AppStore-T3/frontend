@@ -1,21 +1,91 @@
 export default {
+  workspace: {
+    "profile": "Profil",
+    "logout": "Abmelden",
+    "navigation": "Hauptnavigation",
+    "openMenu": "Menü öffnen",
+    "openSidebar": "Seitenleiste öffnen",
+    "closeSidebar": "Seitenleiste schließen",
+    "searchApps": "Apps suchen…",
+    "filters": "Filter",
+    "details": "Details",
+    "deploy": "Deployen",
+    "favorite": "{name} als Favorit markieren",
+    "categories": {
+      "label": "App-Kategorien",
+      "all": "Alle",
+      "productivity": "Produktivität",
+      "development": "Entwicklung",
+      "data": "Daten & KI",
+      "other": "Weitere",
+      "favorites": "Favoriten"
+    },
+    "searchCourses": "Kurse suchen…",
+    "allCourses": "Alle Kurse",
+    "deploymentStatus": "Deployment-Status",
+    "statusTabs": {
+      "active": "Aktiv",
+      "building": "In Bereitstellung",
+      "stopped": "Gestoppt",
+      "all": "Alle"
+    },
+    "personalInformation": "Persönliche Informationen",
+    "profileSubtitle": "Verwalte deine Profildaten und Anzeigeeinstellungen.",
+    "name": "Name",
+    "accountManaged": "Name und E-Mail werden über dein Hochschulkonto verwaltet.",
+    "save": "Speichern",
+    "preferencesSaved": "Anzeigeeinstellungen gespeichert.",
+    "languages": {
+      "de": "Deutsch (DE)",
+      "en": "English (EN)"
+    },
+    "searchHelp": "Hilfe durchsuchen…",
+    "help": {
+      "documentation": "Dokumentation",
+      "documentationDescription": "Ausführliche Anleitungen und Tutorials.",
+      "faq": "FAQ",
+      "faqDescription": "Häufig gestellte Fragen und Antworten.",
+      "support": "Support",
+      "supportDescription": "Bei weiteren Fragen wende dich an den Administrator."
+    },
+    "quotas": {
+      "instances": "VMs / Instanzen",
+      "vcpus": "vCPUs",
+      "ram": "RAM",
+      "volumes": "Volumes",
+      "storage": "Storage",
+      "floatingIps": "Floating IPs"
+    }
+  },
   auth: {
     login: {
+      language: "Sprache",
       title: "Login",
       emailLabel: "E-Mail",
-      emailPlaceholder: "name@six7.de",
+      emailPlaceholder: "name@example.org",
       userLabel: "Benutzername",
       userPlaceholder: "dein.username",
       passwordLabel: "Passwort",
       passwordPlaceholder: "••••••••",
       submit: "Login",
       keycloakButton: "Mit DHBW anmelden",
-      keycloakInfo: "Melden Sie sich mit Ihrem DHBW-Account an",
+      keycloakInfo: "Der DHBW AppStore stellt vorkonfigurierte Anwendungen und Umgebungen für Lehre, Forschung und Verwaltung bereit.",
       noAccount: "Kein Account? Wenden Sie sich an Ihren Administrator.",
       toRegister: "Noch kein Account? Registrieren",
       successMessage: "Erfolgreich angemeldet!",
       failureMessage: "Anmeldung fehlgeschlagen!",
-      missingCredentials: "Bitte Nutzernamen und Passwort eingeben."
+      missingCredentials: "Bitte Nutzernamen und Passwort eingeben.",
+      features: {
+        diverse: "Vielfältige Anwendungen",
+        preconfigured: "Vorkonfigurierte Umgebungen",
+        secure: "Sicher & Hochschulintern"
+      }
+    },
+    hero: {
+      steps: { configure: "App konfigurieren", deploy: "Umgebung bereitstellen", start: "Direkt loslegen" },
+      eyebrow: "CLICK'N DEPLOY",
+      heading: { lead: "Anwendungen einfach", accent: "bereitstellen" },
+      subtitle: "Eine Plattform für Lehre, Forschung und Verwaltung."
     },
   },
 
@@ -62,7 +132,7 @@ export default {
 
   CoursesView: {
     title: "Kurse",
-    subtitle: "Verwalte deine Kurse und Teilnehmer",
+    subtitle: "Hier findest du die für dich verfügbaren Kurse und zugehörige Anwendungen.",
     newCourse: "Neuer Kurs",
     loading: "Lädt Kurse...",
     noCourses: "Noch keine Kurse vorhanden",
@@ -150,7 +220,7 @@ export default {
   },
 
   DashboardView: {
-    title: "Willkommen zurück zu Six7!",
+    title: "Willkommen zurück zu {brand}!",
     subtitle: "Willkommen zurück in deiner Deployment-Umgebung.",
     timeGreetings: {
       morning: "Guten Morgen",
@@ -182,8 +252,8 @@ export default {
   },
 
  HelpView: {
-    title: "Hilfe & Q/A",
-    subtitle: "Support & häufige Fragen.",
+    title: "Hilfe & Unterstützung",
+    subtitle: "Hier findest du Hilfestellungen und Dokumentationen.",
     quickTip: "Nur für eingeloggte Nutzer: direkte Hilfe für die wichtigsten Abläufe.",
     intro: "Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Du erhältst hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.",
     loggedInUsers: {
@@ -268,6 +338,11 @@ export default {
     deploymentDelete: "Löschen",
     deploymentPause: "Pausieren",
     deploymentResume: "Fortsetzen",
+    deploymentStop: 'Stoppen',
+    confirmStopTitle: 'Deployment stoppen?',
+    confirmStopMessage: 'Stoppt <strong>{name}</strong> und entfernt alles bisher Erzeugte, einschließlich der Build-Instanz des Images. Der bisherige Fortschritt geht verloren.',
+    stopStartedToast: 'Deployment wird gestoppt und aufgeräumt…',
+    stopFailedToast: 'Deployment konnte nicht gestoppt werden',
     confirmDeleteTitle: "Deployment löschen",
     confirmDeleteMessage: "Das Deployment <strong>{name}</strong> löschen? Falls noch OpenStack-Ressourcen existieren, werden sie zuerst automatisch via Terraform abgebaut (Live-Fortschritt im Anschluss).",
     confirmPauseTitle: "Deployment pausieren",
@@ -339,8 +414,8 @@ export default {
     destroyErrorToast: "Fehler beim Starten des Zerstörens.",
   },
   AppsView: {
-    title: "Apps",
-    subtitle: "Vorlagen zur Erstellung neuer Deployments.",
+    title: "Anwendungen",
+    subtitle: "Durchstöbere verfügbare Anwendungen für Lehre, Forschung und Verwaltung.",
     addApp: "App hinzufügen",
     loading: "Lade Daten...",
     noAppsTitle: "Keine Apps vorhanden",
@@ -389,7 +464,7 @@ export default {
     },
     info: {
       important: "Wichtig:",
-      inviteText: "Bitte lade den Git user <strong>six7clickndeploy</strong> als Collaborator zu dem Repo ein."
+      inviteText: "Bitte frage deine Administration, welches <strong>GitHub-Konto</strong> als Collaborator zum Repository eingeladen werden muss."
     },
     buttons: {
       saving: "Speichern...",
@@ -514,13 +589,11 @@ export default {
     edit: "Profil bearbeiten",
 
     emailLabel: "E-Mail",
-    emailValue: "eichberg@six7.de",
+    emailValue: "eichberg@example.org",
 
     roleLabel: "Rolle",
     roleAdmin: "Administrator",
 
-    passwordLabel: "Passwort",
-    changePassword: "Passwort ändern",
   },
 
   AppVersionStatusBadge: {
@@ -630,6 +703,7 @@ export default {
       groupPrefix: 'Gruppe', // Wird zu "Gruppe 1", "Gruppe 2" etc.
       unassigned: 'Nicht zugewiesen', // Optional
       removeAll: 'Alle entfernen',
+      removeStudent: 'Student aus Gruppe entfernen',
       moveAllHere: 'Alle hierhin verschieben',
       removeAllTooltip: 'Alle aus dieser Gruppe entfernen',
       moveAllTooltip: 'Verschiebt alle Studenten in diese Gruppe',
@@ -647,6 +721,8 @@ export default {
       reset: 'Zurücksetzen',
       dragDropTitle: 'Drag & Drop aktiviert',
       dragDropText: 'Ziehen Sie Studenten per Drag & Drop zwischen den Teams und dem Nicht-zugewiesenen Bereich hin und her.',
+      windowsConstraintTitle: 'Windows-Lizenzierung aktiv',
+      windowsConstraintText: 'Windows-Lizenzierung erfordert individuelle Zuweisung. Jeder Studierende erhält eine eigene VM.',
       allAssigned: 'Alle Studenten sind Teams zugewiesen',
       dropZone: 'Studenten hier ablegen',
       progress: 'Fortschritt',

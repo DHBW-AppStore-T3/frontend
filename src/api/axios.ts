@@ -37,8 +37,12 @@ api.interceptors.response.use(
       
       if (!hasValidToken) {
         // Clear any stored data
-        localStorage.removeItem('user')
-        
+        try {
+          localStorage.removeItem('user')
+        } catch {
+          /* storage blocked in embedded iframe */
+        }
+
         // Redirect to login if not already there
         if (window.location.pathname !== '/login') {
           const returnUrl = window.location.pathname

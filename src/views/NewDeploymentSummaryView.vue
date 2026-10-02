@@ -2,6 +2,7 @@
 import { userApi } from '@/api/user.api'
 import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { extractErrorMessage } from '@/utils/http-error'
 import { useRouter } from 'vue-router'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
@@ -289,7 +290,7 @@ function renderOsValue(
   if (val === null || val === undefined || val === '') return '-'
 
   // Split the value — may be a string, CSV, or array. Same as in the picker.
-  let parts: string[] = []
+  let parts: string[]
   if (Array.isArray(val)) {
     parts = val.map((v) => String(v).trim()).filter(Boolean)
   } else if (typeof val === 'string') {
@@ -314,7 +315,7 @@ function renderOsValue(
 const formatValue = (val: any): string => {
   if (typeof val === 'boolean') return val ? t('deployment.summary.yes') : t('deployment.summary.no')
   if (Array.isArray(val)) return val.map(item => String(item).replace(/^"|"$/g, '')).join(', ')
-  if (typeof val === 'string') return val.replace(/^["'\[]+|["'\]]+$/g, '')
+  if (typeof val === 'string') return val.replace(/^["'[]+|["'\]]+$/g, '')
   if (val === null || val === undefined || val === '') return '-'
   return String(val)
 }
@@ -476,7 +477,7 @@ const handleDeploy = async () => {
       const res = await userApi.list()
       backendUsers = res.data || []
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.message || t('deployment.summary.fetchUsersError')
+      const detail = extractErrorMessage(err, t('deployment.summary.fetchUsersError'))
       toastStore.addToast({ message: detail, type: 'error' })
       return
     }
@@ -541,46 +542,46 @@ const handleBack = () => {
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl p-10 border shadow-sm max-w-7xl mx-auto min-h-[600px] flex flex-col">
+  <div class="app-page wizard-page flex flex-col">
 
     <div class="mb-8">
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">
+        <h1 class="text-3xl font-bold text-textHeading">
           {{ t('deployment.title') }}
         </h1>
-        <BarChart3 :size="32" class="text-emerald-600" />
+        <BarChart3 :size="32" class="text-primary" />
       </div>
 
       <DeploymentProgressBar :current-step="4" />
-      <div class="border-b border-gray-100 mt-4"></div>
+      <div class="border-b border-borderSubtle mt-4"></div>
     </div>
 
     <div class="text-center mb-8">
-      <h2 class="text-2xl font-bold text-gray-900">
+      <h2 class="text-2xl font-bold text-textHeading">
         {{ t('deployment.summary.title') }}
       </h2>
-      <p class="text-gray-600 mt-2">{{ t('deployment.summary.subtitle') }}</p>
+      <p class="text-textMuted mt-2">{{ t('deployment.summary.subtitle') }}</p>
     </div>
 
     <div v-if="isLoadingVariables" class="flex flex-col items-center justify-center py-12 gap-3">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-      <span class="text-gray-500 text-sm">{{ t('deployment.summary.loadingConfig') }}</span>
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <span class="text-textMuted text-sm">{{ t('deployment.summary.loadingConfig') }}</span>
     </div>
 
     <div v-else class="flex-grow space-y-6">
       
       <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border-2 border-emerald-200">
         <div class="flex items-center gap-3 mb-4">
-          <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">1</div>
-          <h3 class="text-xl font-bold text-gray-900">{{ t('deployment.summary.baseConfigTitle') }}</h3>
+          <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">1</div>
+          <h3 class="text-xl font-bold text-textHeading">{{ t('deployment.summary.baseConfigTitle') }}</h3>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="bg-white rounded-lg p-4 border border-emerald-100">
-            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.deploymentNameLabel') }}</p>
-            <p class="text-lg font-bold text-gray-900">{{ deploymentStore.draft.name || '-' }}</p>
+            <p class="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.deploymentNameLabel') }}</p>
+            <p class="text-lg font-bold text-textHeading">{{ deploymentStore.draft.name || '-' }}</p>
           </div>
           <div class="bg-white rounded-lg p-4 border border-emerald-100">
-            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.appLabel') }}</p>
+            <p class="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.appLabel') }}</p>
             <div class="flex items-center gap-2">
               <img
                 v-if="selectedApp?.image"
@@ -588,19 +589,19 @@ const handleBack = () => {
                 :alt="selectedApp.name"
                 class="w-7 h-7 object-contain rounded"
               />
-              <p class="text-lg font-bold text-emerald-700">{{ selectedApp?.name || t('deployment.summary.appNotFound') }}</p>
+              <p class="text-lg font-bold text-primaryDark">{{ selectedApp?.name || t('deployment.summary.appNotFound') }}</p>
             </div>
           </div>
           <div class="bg-white rounded-lg p-4 border border-emerald-100">
-            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.versionLabel') }}</p>
-            <p class="text-lg font-bold text-gray-900">{{ versionDisplay }}</p>
+            <p class="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.versionLabel') }}</p>
+            <p class="text-lg font-bold text-textHeading">{{ versionDisplay }}</p>
           </div>
         </div>
           <div class="mt-4 bg-white rounded-lg p-4 border border-emerald-100">
-            <p class="text-xs text-gray-500 mb-2 uppercase tracking-wider font-semibold">{{ t('deployment.summary.selectedStudents', { count: deploymentStore.draft.studentIds.length }) }}</p>
+            <p class="text-xs text-textMuted mb-2 uppercase tracking-wider font-semibold">{{ t('deployment.summary.selectedStudents', { count: deploymentStore.draft.studentIds.length }) }}</p>
             <div class="flex flex-wrap gap-2">
               <span v-for="studentId in deploymentStore.draft.studentIds" :key="studentId" 
-                class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium border border-emerald-200">
+                class="px-3 py-1 bg-primarySoft text-emerald-800 rounded-full text-sm font-medium border border-emerald-200">
                 {{
                   (deploymentStore.studentCache.get(studentId)?.firstName || deploymentStore.studentCache.get(studentId)?.lastName)
                     ? `${deploymentStore.studentCache.get(studentId)?.firstName || ''} ${deploymentStore.studentCache.get(studentId)?.lastName || ''}`.trim()
@@ -611,40 +612,40 @@ const handleBack = () => {
           </div>
       </div>
 
-      <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border-2 border-blue-200">
+      <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border-2 border-info/30">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">2</div>
-          <h3 class="text-xl font-bold text-gray-900">{{ t('deployment.summary.teamAssignmentTitle') }}</h3>
+          <h3 class="text-xl font-bold text-textHeading">{{ t('deployment.summary.teamAssignmentTitle') }}</h3>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="bg-white rounded-lg p-4 border border-blue-100">
-            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.teamCountLabel') }}</p>
+            <p class="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.teamCountLabel') }}</p>
             <p class="text-2xl font-bold text-blue-700">{{ deploymentStore.draft.groupCount }}</p>
           </div>
           <div class="bg-white rounded-lg p-4 border border-blue-100">
-            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.modeLabel') }}</p>
-            <p class="text-lg font-bold text-gray-900">{{ groupModeDisplay }}</p>
+            <p class="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.modeLabel') }}</p>
+            <p class="text-lg font-bold text-textHeading">{{ groupModeDisplay }}</p>
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div v-for="(assignments, index) in deploymentStore.draft.assignments" :key="index" 
-            class="bg-white rounded-lg p-4 border-2 border-blue-200 hover:border-blue-400 transition-colors">
+            class="bg-white rounded-lg p-4 border-2 border-info/30 hover:border-blue-400 transition-colors">
             <div class="flex items-center justify-between mb-3">
-              <p class="font-bold text-gray-900">{{ deploymentStore.draft.groupNames[index] || t('deployment.assignment.vmDefaultName', { index: index + 1 }) }}</p>
-              <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+              <p class="font-bold text-textHeading">{{ deploymentStore.draft.groupNames[index] || t('deployment.assignment.vmDefaultName', { index: index + 1 }) }}</p>
+              <span class="px-2 py-1 bg-infoTint text-blue-700 rounded-full text-xs font-bold">
                 {{ t('deployment.assignment.userCount', { count: assignments?.length || 0 }) }}
               </span>
             </div>
             <div class="space-y-1 max-h-32 overflow-y-auto">
               <div v-for="studentId in assignments" :key="studentId" 
-                class="text-sm text-gray-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                class="text-sm text-textMuted bg-infoTint px-2 py-1 rounded border border-blue-100">
                 {{
                   (deploymentStore.studentCache && deploymentStore.studentCache.get(studentId)?.firstName || deploymentStore.studentCache.get(studentId)?.lastName)
                     ? `${deploymentStore.studentCache.get(studentId)?.firstName || ''} ${deploymentStore.studentCache.get(studentId)?.lastName || ''}`.trim()
                     : (deploymentStore.studentCache && (deploymentStore.studentCache.get(studentId)?.username || deploymentStore.studentCache.get(studentId)?.email) || studentId)
                 }}
               </div>
-              <p v-if="!assignments || assignments.length === 0" class="text-xs text-gray-400 italic">{{ t('deployment.summary.noUsersAssigned') }}</p>
+              <p v-if="!assignments || assignments.length === 0" class="text-xs text-textFaint italic">{{ t('deployment.summary.noUsersAssigned') }}</p>
             </div>
           </div>
         </div>
@@ -654,7 +655,7 @@ const handleBack = () => {
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">3</div>
-            <h3 class="text-xl font-bold text-gray-900">{{ t('deployment.summary.variablesConfigTitle') }}</h3>
+            <h3 class="text-xl font-bold text-textHeading">{{ t('deployment.summary.variablesConfigTitle') }}</h3>
           </div>
           <button @click="handleCustomize"
             class="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition-colors border border-purple-300 text-sm">
@@ -664,8 +665,8 @@ const handleBack = () => {
         </div>
         
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="bg-white rounded-lg border-2 border-blue-200 overflow-hidden">
-            <div class="bg-blue-100 px-4 py-2 border-b border-blue-200 flex items-center gap-2">
+          <div class="bg-white rounded-lg border-2 border-info/30 overflow-hidden">
+            <div class="bg-infoTint px-4 py-2 border-b border-info/30 flex items-center gap-2">
               <Box :size="18" class="text-blue-700" />
               <h4 class="font-bold text-blue-900 text-sm">{{ t('deployment.summary.packerVars') }}</h4>
               <span class="ml-auto text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">
@@ -674,16 +675,16 @@ const handleBack = () => {
             </div>
             <div class="p-4 space-y-2 max-h-64 overflow-y-auto">
               <div v-for="item in packerVars" :key="item.label"
-                class="flex justify-between items-start gap-3 py-2 border-b border-gray-100 last:border-0">
-                <span class="text-sm font-semibold text-gray-700 flex-shrink-0">{{ item.label }}</span>
+                class="flex justify-between items-start gap-3 py-2 border-b border-borderSubtle last:border-0">
+                <span class="text-sm font-semibold text-textMuted flex-shrink-0">{{ item.label }}</span>
                 <span
-                  class="text-sm text-gray-900 font-medium text-right break-all"
+                  class="text-sm text-textHeading font-medium text-right break-all"
                   :title="item.raw ? t('deployment.summary.submittedValue', { value: item.raw }) : undefined"
                 >
                   {{ item.value }}
                 </span>
               </div>
-              <p v-if="packerVars.length === 0" class="text-sm text-gray-400 italic text-center py-4">
+              <p v-if="packerVars.length === 0" class="text-sm text-textFaint italic text-center py-4">
                 {{ t('deployment.summary.noPackerVars') }}
               </p>
             </div>
@@ -699,16 +700,16 @@ const handleBack = () => {
             </div>
             <div class="p-4 space-y-2 max-h-64 overflow-y-auto">
               <div v-for="item in terraformVars" :key="item.label"
-                class="flex justify-between items-start gap-3 py-2 border-b border-gray-100 last:border-0">
-                <span class="text-sm font-semibold text-gray-700 flex-shrink-0">{{ item.label }}</span>
+                class="flex justify-between items-start gap-3 py-2 border-b border-borderSubtle last:border-0">
+                <span class="text-sm font-semibold text-textMuted flex-shrink-0">{{ item.label }}</span>
                 <span
-                  class="text-sm text-gray-900 font-medium text-right break-all"
+                  class="text-sm text-textHeading font-medium text-right break-all"
                   :title="item.raw ? t('deployment.summary.submittedValue', { value: item.raw }) : undefined"
                 >
                   {{ item.value }}
                 </span>
               </div>
-              <p v-if="terraformVars.length === 0" class="text-sm text-gray-400 italic text-center py-4">
+              <p v-if="terraformVars.length === 0" class="text-sm text-textFaint italic text-center py-4">
                 {{ t('deployment.summary.noTerraformVars') }}
               </p>
             </div>
@@ -730,13 +731,13 @@ const handleBack = () => {
             </div>
             <div class="p-4 space-y-3">
               <div v-for="entry in fileVarSummaries" :key="entry.name">
-                <div class="text-xs font-semibold text-gray-700 mb-1">
+                <div class="text-xs font-semibold text-textMuted mb-1">
                   {{ entry.name }}
-                  <span class="text-[10px] font-normal text-gray-500 ml-1">
+                  <span class="text-[10px] font-normal text-textMuted ml-1">
                     (Scope: {{ entry.scope }})
                   </span>
                 </div>
-                <div v-if="entry.chips.length === 0" class="text-xs text-gray-400 italic">
+                <div v-if="entry.chips.length === 0" class="text-xs text-textFaint italic">
                   Keine Datei hochgeladen
                 </div>
                 <div v-else class="flex flex-wrap gap-1.5">
@@ -762,16 +763,16 @@ const handleBack = () => {
 
     </div>
 
-    <div class="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
+    <div class="flex justify-between items-center mt-8 pt-6 border-t-2 border-borderSubtle">
       <button @click="handleBack"
-        class="flex items-center gap-2 px-8 py-3 rounded-full bg-gray-100 text-gray-600 font-semibold hover:bg-gray-200 transition-colors">
+        class="flex items-center gap-2 px-8 py-3 rounded-full bg-surfaceMuted text-textMuted font-semibold hover:bg-gray-200 transition-colors">
         <ArrowLeft :size="18" />
         {{ t('deployment.actions.back') }}
       </button>
 
       <button @click="handleDeploy"
         :disabled="isLoadingVariables || isSubmitting || deploymentStore.isLoading"
-        class="flex items-center gap-3 px-10 py-3 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xl shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
+        class="flex items-center gap-3 px-10 py-3 rounded-full bg-gradient-to-r from-primary to-primaryDark text-white font-bold hover:from-primaryDark hover:to-primaryDark transition-all shadow-xl shadow-statusGreen/30 disabled:opacity-50 disabled:cursor-not-allowed">
 
         <span v-if="isSubmitting || deploymentStore.isLoading" class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></span>
         <span v-if="isSubmitting || deploymentStore.isLoading">{{ t('deployment.summary.creating') }}</span>

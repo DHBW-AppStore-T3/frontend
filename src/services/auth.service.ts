@@ -1,6 +1,33 @@
 import { userApi } from '@/api/user.api'
 import type { User } from '@/types'
 
+// localStorage is unavailable when the app runs in a third-party iframe
+// (the Moodle LTI embed) with storage access blocked. Every access is wrapped
+// so a SecurityError degrades to an in-memory-only session instead of aborting.
+function safeGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function safeSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    /* storage blocked in embedded iframe — skip persistence */
+  }
+}
+
+function safeRemove(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    /* storage blocked in embedded iframe — nothing to clear */
+  }
+}
+
 // ----------------------------------------------------------------
 // AUTH SERVICE (Keycloak Integration)
 // ----------------------------------------------------------------
@@ -11,7 +38,7 @@ export class AuthService {
    */
   static async fetchMe(): Promise<User> {
     const { data: user } = await userApi.getMe()
-    localStorage.setItem('user', JSON.stringify(user))
+    safeSet('user', JSON.stringify(user))
     return user
   }
 
@@ -19,9 +46,9 @@ export class AuthService {
    * Get stored user from localStorage
    */
   static getStoredUser(): User | null {
-    const userStr = localStorage.getItem('user')
+    const userStr = safeGet('user')
     if (!userStr) return null
-    
+
     try {
       return JSON.parse(userStr) as User
     } catch {
@@ -33,6 +60,6 @@ export class AuthService {
    * Clear stored user data
    */
   static clearStoredUser(): void {
-    localStorage.removeItem('user')
+    safeRemove('user')
   }
 }

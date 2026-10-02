@@ -112,7 +112,7 @@ describe('AddAppsView.vue', () => {
 
         await nameInput.setValue('Kali Linux')
         expect(wrapper.findComponent(Shield).exists()).toBe(true)
-        expect(wrapper.findComponent(Shield).classes()).toContain('text-blue-500')
+        expect(wrapper.findComponent(Shield).classes()).toContain('text-info')
 
         await nameInput.setValue('Node Backend')
         expect(wrapper.findComponent(Server).exists()).toBe(true)
