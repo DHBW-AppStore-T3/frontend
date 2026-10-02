@@ -677,7 +677,8 @@ export default {
       noTeamsConfigured: 'No teams configured yet — please complete the previous step first.',
       noMembers: 'No members',
       missingRequiredTitle: 'Missing required inputs:',
-      teamRenameToast: 'Team/User change detected — {count} orphaned input(s) removed:\n{lines}'
+      teamRenameToast: 'Team/User change detected — {count} orphaned input(s) removed:\n{lines}',
+      expertSettings: 'Expert settings ({count})'
     },
     summary: {
       title: 'Recommended Configuration',
