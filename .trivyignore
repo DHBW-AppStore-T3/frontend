@@ -10,3 +10,8 @@ CVE-2026-93990 # libexpat in the nginx-unprivileged:alpine base image (Dockerfil
                # lines. Base-image OS package, not a Node/npm dependency; revisit
                # once nginxinc publishes an alpine tag built against a patched
                # expat, or Alpine's own repo ships the fix.
+
+CVE-2026-103111 # pcre2 in the nginx-unprivileged:alpine base image (Dockerfile
+                # stage 2). OS package, not an application dependency. Fix requires
+                # pcre2 ≥ 10.49-r0 in Alpine; revisit once nginxinc ships an alpine
+                # tag built against a patched pcre2.
