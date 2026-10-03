@@ -756,7 +756,8 @@ export default {
       noTeamsConfigured: 'Noch keine Teams konfiguriert — bitte den vorigen Schritt zuerst durchlaufen.',
       noMembers: 'Keine Mitglieder',
       missingRequiredTitle: 'Es fehlen noch Pflichteingaben:',
-      teamRenameToast: 'Team-/User-Änderung erkannt — {count} verwaiste Eingabe(n) entfernt:\n{lines}'
+      teamRenameToast: 'Team-/User-Änderung erkannt — {count} verwaiste Eingabe(n) entfernt:\n{lines}',
+      expertSettings: 'Experteneinstellungen ({count})'
     },
     summary: {
       title: 'Empfohlene Konfiguration',

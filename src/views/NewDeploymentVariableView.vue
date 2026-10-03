@@ -15,7 +15,8 @@ import {
   Box,
   Layers,
   AlertTriangle,
-  // Plus - removed
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-vue-next'
 import type { AppVariable, DeploymentFile } from '@/types'
 import FileDropZone from '@/components/FileDropZone.vue'
@@ -46,6 +47,15 @@ const isList = (type: string) => type.toLowerCase().startsWith('list') || type.t
 // the file-specific FileDropZone branch, not the OpenStackResourcePicker.
 // True when the variable is marked ``@openstack:file:<scope>``.
 const isFileVar = (v: AppVariable): boolean => v.osType === 'file'
+
+const isExpert = (v: AppVariable): boolean =>
+  (v.description?.includes('@expert') ?? false)
+
+const displayDescription = (v: AppVariable): string =>
+  (v.description ?? '').replace(/@expert\b/g, '').trim()
+
+const packerExpertOpen = ref(false)
+const terraformExpertOpen = ref(false)
 
 // True when the variable has a per-variable scope other than ``all``.
 const effectiveScope = (v: AppVariable): 'all' | 'team' | 'user' => {
@@ -241,6 +251,22 @@ const packerByTemplate = computed<Record<string, AppVariable[]>>(() => {
   return out
 })
 
+const packerExpertByTemplate = computed<Record<string, AppVariable[]>>(() => {
+  const out: Record<string, AppVariable[]> = {}
+  for (const [tkey, vars] of Object.entries(packerByTemplate.value)) {
+    out[tkey] = vars.filter(v => isExpert(v))
+  }
+  return out
+})
+
+const packerNormalByTemplate = computed<Record<string, AppVariable[]>>(() => {
+  const out: Record<string, AppVariable[]> = {}
+  for (const [tkey, vars] of Object.entries(packerByTemplate.value)) {
+    out[tkey] = vars.filter(v => !isExpert(v))
+  }
+  return out
+})
+
 const templateKeys = computed(() => Object.keys(packerByTemplate.value).sort())
 
 const packerVariables = computed(() =>
@@ -349,6 +375,13 @@ onMounted(async () => {
       }
     }
     formValues.value = restored
+    const hasBlockingExpert = variables.value.some(
+      v => isExpert(v) && v.required && (v.default === null || v.default === undefined)
+    )
+    if (hasBlockingExpert) {
+      packerExpertOpen.value = true
+      terraformExpertOpen.value = true
+    }
     return
   }
 
@@ -431,6 +464,14 @@ onMounted(async () => {
 
       formValues.value[storageKey] = valToSet
     })
+
+    const hasBlockingExpert = variables.value.some(
+      v => isExpert(v) && v.required && (v.default === null || v.default === undefined)
+    )
+    if (hasBlockingExpert) {
+      packerExpertOpen.value = true
+      terraformExpertOpen.value = true
+    }
 
   } catch (error: any) {
     console.error(error)
@@ -660,7 +701,7 @@ watch(
                 Image: <code class="font-mono">{{ tkey }}</code>
               </div>
 
-              <div v-for="variable in packerByTemplate[tkey]" :key="`${tkey}.${variable.name}`" class="bg-white rounded-lg p-4 border border-info/30 shadow-sm">
+              <div v-for="variable in packerNormalByTemplate[tkey]" :key="`${tkey}.${variable.name}`" class="bg-white rounded-lg p-4 border border-info/30 shadow-sm">
               <div class="flex items-start justify-between gap-2 mb-3">
                 <label
                   :for="packerFormKey(variable)"
@@ -696,7 +737,7 @@ watch(
               </div>
 
               <div v-if="activeTooltip === packerFormKey(variable)" class="mb-3 bg-infoTint p-3 rounded-lg border border-blue-100 text-sm text-textMuted">
-                <p v-if="variable.description" class="mb-2">{{ variable.description }}</p>
+                <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
                 <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-blue-700">
                   <Info :size="12" class="mt-0.5 shrink-0" />
                   <span>{{ t('deployment.variables.commaSeparated') }}</span>
@@ -850,6 +891,57 @@ watch(
                 </div>
               </template>
             </div>
+
+              <div v-if="packerExpertByTemplate[tkey]?.length" class="mt-2 border-t border-blue-200 pt-3">
+                <button
+                  type="button"
+                  @click="packerExpertOpen = !packerExpertOpen"
+                  class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 transition-colors"
+                >
+                  <span>{{ t('deployment.variables.expertSettings', { count: packerExpertByTemplate[tkey]!.length }) }}</span>
+                  <ChevronUp v-if="packerExpertOpen" :size="16" />
+                  <ChevronDown v-else :size="16" />
+                </button>
+                <div v-if="packerExpertOpen" class="mt-3 space-y-4">
+                  <div v-for="variable in packerExpertByTemplate[tkey]" :key="`${tkey}.${variable.name}.expert`" class="bg-white rounded-lg p-4 border border-blue-200 shadow-sm opacity-90">
+                    <div class="flex items-start justify-between gap-2 mb-3">
+                      <label
+                        :for="packerFormKey(variable)"
+                        @click.prevent="focusInput(packerFormKey(variable))"
+                        class="text-base font-bold text-textHeading cursor-pointer hover:text-blue-700 transition-colors flex-1"
+                      >{{ variable.name }}</label>
+                      <button
+                        v-if="variable.description || isList(variable.type)"
+                        @click.stop="toggleTooltip(packerFormKey(variable))"
+                        class="text-textFaint hover:text-info transition-colors focus:outline-none"
+                        :class="activeTooltip === packerFormKey(variable) ? 'text-info' : ''"
+                        :title="t('deployment.variables.showInfo')"
+                      ><Info :size="16" /></button>
+                    </div>
+                    <div v-if="activeTooltip === packerFormKey(variable)" class="mb-3 bg-infoTint p-3 rounded-lg border border-blue-100 text-sm text-textMuted">
+                      <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
+                      <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-blue-700">
+                        <Info :size="12" class="mt-0.5 shrink-0" />
+                        <span>{{ t('deployment.variables.commaSeparated') }}</span>
+                      </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 mb-3">
+                      <span class="text-[10px] font-bold uppercase tracking-wider bg-infoTint text-blue-700 px-2 py-0.5 rounded border border-info/30">{{ variable.type }}</span>
+                      <span v-if="variable.required" class="text-[10px] font-bold uppercase tracking-wider bg-dangerTint text-red-700 px-2 py-0.5 rounded border border-danger/30">{{ t('deployment.variables.required') }}</span>
+                      <ScopeBadge :scope="effectiveScope(variable)" />
+                    </div>
+                    <VariableInput
+                      v-if="!isScoped(variable) && !isFileVar(variable)"
+                      :variable="variable"
+                      :model-value="formValues[packerFormKey(variable)]"
+                      @update:modelValue="(v) => (formValues[packerFormKey(variable)] = v)"
+                      :filter-network-id="variable.osType === 'subnet' ? findNetworkValueForSubnet(variable) : null"
+                      accent="blue"
+                      :input-id="packerFormKey(variable)"
+                    />
+                  </div>
+                </div>
+              </div>
             </template>
           </div>
         </div>
@@ -868,7 +960,7 @@ watch(
               {{ t('deployment.summary.noTerraformVars') }}
             </div>
             
-            <div v-for="variable in terraformVariables" :key="variable.name" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
+            <div v-for="variable in terraformVariables.filter(v => !isExpert(v))" :key="variable.name" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
               <div class="flex items-start justify-between gap-2 mb-3">
                 <label
                   :for="variable.name"
@@ -904,7 +996,7 @@ watch(
               </div>
 
               <div v-if="activeTooltip === variable.name" class="mb-3 bg-purple-50 p-3 rounded-lg border border-purple-100 text-sm text-textMuted">
-                <p v-if="variable.description" class="mb-2">{{ variable.description }}</p>
+                <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
                 <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-purple-700">
                   <Info :size="12" class="mt-0.5 shrink-0" />
                   <span>{{ t('deployment.variables.commaSeparated') }}</span>
@@ -1057,6 +1149,57 @@ watch(
                   </template>
                 </div>
               </template>
+            </div>
+
+            <div v-if="terraformVariables.filter(isExpert).length" class="mt-2 border-t border-purple-200 pt-3">
+              <button
+                type="button"
+                @click="terraformExpertOpen = !terraformExpertOpen"
+                class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50 transition-colors"
+              >
+                <span>{{ t('deployment.variables.expertSettings', { count: terraformVariables.filter(isExpert).length }) }}</span>
+                <ChevronUp v-if="terraformExpertOpen" :size="16" />
+                <ChevronDown v-else :size="16" />
+              </button>
+              <div v-if="terraformExpertOpen" class="mt-3 space-y-4">
+                <div v-for="variable in terraformVariables.filter(isExpert)" :key="`${variable.name}.expert`" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm opacity-90">
+                  <div class="flex items-start justify-between gap-2 mb-3">
+                    <label
+                      :for="variable.name"
+                      @click.prevent="focusInput(variable.name)"
+                      class="text-base font-bold text-gray-900 cursor-pointer hover:text-purple-700 transition-colors flex-1"
+                    >{{ variable.name }}</label>
+                    <button
+                      v-if="variable.description || isList(variable.type)"
+                      @click.stop="toggleTooltip(variable.name)"
+                      class="text-textFaint hover:text-purple-600 transition-colors focus:outline-none"
+                      :class="activeTooltip === variable.name ? 'text-purple-600' : ''"
+                      :title="t('deployment.variables.showInfo')"
+                    ><Info :size="16" /></button>
+                  </div>
+                  <div v-if="activeTooltip === variable.name" class="mb-3 bg-purple-50 p-3 rounded-lg border border-purple-100 text-sm text-gray-700">
+                    <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
+                    <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-purple-700">
+                      <Info :size="12" class="mt-0.5 shrink-0" />
+                      <span>{{ t('deployment.variables.commaSeparated') }}</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <span class="text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200">{{ variable.type }}</span>
+                    <span v-if="variable.required" class="text-[10px] font-bold uppercase tracking-wider bg-dangerTint text-red-700 px-2 py-0.5 rounded border border-danger/30">{{ t('deployment.variables.required') }}</span>
+                    <ScopeBadge :scope="effectiveScope(variable)" />
+                  </div>
+                  <VariableInput
+                    v-if="!isScoped(variable) && !isFileVar(variable)"
+                    :variable="variable"
+                    :model-value="formValues[variable.name]"
+                    @update:modelValue="(v) => (formValues[variable.name] = v)"
+                    :filter-network-id="variable.osType === 'subnet' ? findNetworkValueForSubnet(variable) : null"
+                    accent="purple"
+                    :input-id="variable.name"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
