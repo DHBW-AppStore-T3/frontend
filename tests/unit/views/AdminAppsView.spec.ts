@@ -109,7 +109,6 @@ describe('AdminAppsView.vue', () => {
     await flushPromises()
     const text = wrapper.text()
     const aIdx = text.indexOf('Vue App')
-    const bIdx = text.indexOf('Node API')
     // APP_A has pending, so it should appear; APP_B has none so it may be hidden by default filter
     expect(aIdx).toBeGreaterThanOrEqual(0)
   })

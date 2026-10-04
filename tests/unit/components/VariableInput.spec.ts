@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import type { AppVariable } from '@/types'
 
@@ -170,7 +170,6 @@ describe('VariableInput', () => {
   // disabled prop
   // -----------------------------------------------------------------------
   it('passes disabled to number input', () => {
-    const w = mountVar({ ...varOf('number'), name: 'n' } as AppVariable)
     const w2 = mount(VariableInput, {
       props: { variable: varOf('number'), modelValue: 0, disabled: true },
     })
