@@ -1,7 +1,7 @@
 import type { Theme } from './types'
-import { defaultTheme } from './themes/default'
+import { t3Theme } from './themes/t3'
 
-let active: Theme = defaultTheme
+let active: Theme = t3Theme
 
 export function setActiveTheme(theme: Theme): void {
   active = theme

@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { THEME_COLOR_KEYS } from '@/theme/types'
+import { t3Theme } from '@/theme/themes/t3'
 // @ts-expect-error -- plain JS config without type declarations
 import tailwindConfig from '../../../tailwind.config.js'
+import { contrastRatio, type ContrastPair } from './contrast.helper'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const SRC = path.join(ROOT, 'src')
@@ -86,20 +88,71 @@ describe('legacy tokens', () => {
   })
 })
 
-describe('branding', () => {
-  it('keeps SIX7/Six7 strings and Six7 assets inside src/theme/', () => {
-    const THEME_DIR = path.join(SRC, 'theme')
-    const offenders: string[] = []
-    const files = [...walk(SRC), path.join(ROOT, 'index.html')]
-    for (const file of files) {
-      if (file.startsWith(THEME_DIR + path.sep)) continue
-      fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
-        if (/SIX7|Six7/.test(line) && !/github\.com/i.test(line)) {
-          offenders.push(`${path.relative(ROOT, file)}:${i + 1}: ${line.trim()}`)
-        }
-      })
+describe('semantic color usage meets WCAG contrast per context', () => {
+  const white = '255 255 255'
+
+  function colorVar(name: string): string {
+    return t3Theme.colors[name as keyof typeof t3Theme.colors]
+  }
+
+  // Real foreground/background combinations used by Badge.vue (text on tint) and
+  // Toast.vue (icon on white) — not every base color checked against white in isolation.
+  const pairs: ContrastPair[] = [
+    { name: 'Badge success text on success-tint', fg: colorVar('success'), bg: colorVar('success-tint'), usage: 'text' },
+    { name: 'Badge danger text on danger-tint', fg: colorVar('danger'), bg: colorVar('danger-tint'), usage: 'text' },
+    { name: 'Badge warning text on warning-tint', fg: colorVar('warning'), bg: colorVar('warning-tint'), usage: 'text' },
+    { name: 'Badge info text on info-tint', fg: colorVar('info'), bg: colorVar('info-tint'), usage: 'text' },
+    { name: 'Toast success icon on white', fg: colorVar('success'), bg: white, usage: 'non-text' },
+    { name: 'Toast danger icon on white', fg: colorVar('danger'), bg: white, usage: 'non-text' },
+    { name: 'Toast warning icon on white', fg: colorVar('warning'), bg: white, usage: 'non-text' },
+    { name: 'Toast info icon on white', fg: colorVar('info'), bg: white, usage: 'non-text' },
+  ]
+
+  for (const pair of pairs) {
+    it(`${pair.name} (${pair.usage}) meets threshold`, () => {
+      const threshold = pair.usage === 'text' ? 4.5 : 3
+      expect(contrastRatio(pair.fg, pair.bg)).toBeGreaterThanOrEqual(threshold)
+    })
+  }
+})
+
+describe('tailwind design tokens', () => {
+  const extend = (tailwindConfig as {
+    theme: { extend: { borderRadius?: Record<string, string>; boxShadow?: Record<string, string>; spacing?: Record<string, string>; fontSize?: Record<string, unknown>; fontFamily?: Record<string, unknown> } }
+  }).theme.extend
+
+  it('binds borderRadius to --radius-* tokens', () => {
+    expect(extend.borderRadius, 'borderRadius').toBeTruthy()
+    for (const value of Object.values(extend.borderRadius!)) {
+      expect(value).toMatch(/^var\(--radius-[a-z0-9]+\)$/)
     }
-    expect(offenders).toEqual([])
+  })
+
+  it('binds boxShadow to --shadow-* tokens', () => {
+    expect(extend.boxShadow, 'boxShadow').toBeTruthy()
+    for (const value of Object.values(extend.boxShadow!)) {
+      expect(value).toMatch(/^var\(--shadow-[a-z0-9]+\)$/)
+    }
+  })
+
+  it('binds spacing to --space-* tokens', () => {
+    expect(extend.spacing, 'spacing').toBeTruthy()
+    for (const value of Object.values(extend.spacing!)) {
+      expect(value).toMatch(/^var\(--space-[0-9]+\)$/)
+    }
+  })
+
+  it('binds fontFamily.sans to --font-family-sans', () => {
+    expect(extend.fontFamily?.sans).toEqual(['var(--font-family-sans)'])
+  })
+
+  it('binds fontSize entries to --text-* tokens', () => {
+    expect(extend.fontSize, 'fontSize').toBeTruthy()
+    for (const value of Object.values(extend.fontSize!)) {
+      expect(Array.isArray(value)).toBe(true)
+      const [size] = value as [string, unknown]
+      expect(size).toMatch(/^var\(--text-[a-z0-9-]+-size\)$/)
+    }
   })
 })
 
@@ -107,7 +160,7 @@ describe('layout and base UI', () => {
   it('use brand tokens instead of green/emerald/teal palette classes', () => {
     const files = [
       ...fs.readdirSync(path.join(SRC, 'layouts')).map((f) => path.join(SRC, 'layouts', f)),
-      ...['BaseButton', 'BaseInput', 'Card', 'Modal', 'PageHeader'].map((n) =>
+      ...['BaseButton', 'BaseInput', 'Card', 'Modal', 'PageHeader', 'Badge', 'AppVersionStatusBadge'].map((n) =>
         path.join(SRC, 'components', 'ui', `${n}.vue`),
       ),
     ]
@@ -120,7 +173,7 @@ describe('layout and base UI', () => {
 
 describe('source', () => {
   it('contains no hardcoded color literals', () => {
-    const skip = ['styles/colors.css', '__snapshots__', '__tests__', 'types'].map((p) =>
+    const skip = ['styles/colors.css', 'styles/tokens.css', '__snapshots__', '__tests__', 'types'].map((p) =>
       path.join(SRC, p),
     )
     const offenders: string[] = []

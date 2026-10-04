@@ -3,6 +3,7 @@ import { applyTheme } from '@/theme/applyTheme'
 import { useTheme } from '@/theme/useTheme'
 import { THEMES } from '@/theme'
 import { THEME_COLOR_KEYS } from '@/theme/types'
+import type { Theme } from '@/theme/types'
 
 describe('applyTheme', () => {
   beforeEach(() => {
@@ -11,36 +12,43 @@ describe('applyTheme', () => {
   })
 
   it('writes every color as --color-* on the root', () => {
-    applyTheme(THEMES['default']!)
+    applyTheme(THEMES.t3!)
     for (const key of THEME_COLOR_KEYS) {
       expect(document.documentElement.style.getPropertyValue(`--color-${key}`)).toBe(
-        THEMES['default']!.colors[key],
+        THEMES.t3!.colors[key],
       )
     }
   })
 
   it('sets document title and creates the favicon link when missing', () => {
-    applyTheme(THEMES['t3-demo']!)
-    expect(document.title).toBe(THEMES['t3-demo']!.brand.documentTitle)
+    applyTheme(THEMES['t3']!)
+    expect(document.title).toBe(THEMES['t3']!.brand.documentTitle)
     const link = document.head.querySelector<HTMLLinkElement>('link[rel="icon"]')
     expect(link).not.toBeNull()
-    expect(link!.getAttribute('href')).toBe(THEMES['t3-demo']!.favicon)
+    expect(link!.getAttribute('href')).toBe(THEMES['t3']!.favicon)
   })
 
   it('a second call overrides everything and reuses the link', () => {
-    applyTheme(THEMES['default']!)
-    applyTheme(THEMES['t3-demo']!)
+    const alternative: Theme = {
+      ...THEMES.t3!,
+      id: 'alternative',
+      brand: { ...THEMES.t3!.brand, documentTitle: 'Alternative' },
+      colors: { ...THEMES.t3!.colors, primary: '1 2 3' },
+    }
+    applyTheme(alternative)
+    applyTheme(THEMES.t3!)
     expect(document.documentElement.style.getPropertyValue('--color-primary')).toBe(
-      THEMES['t3-demo']!.colors.primary,
+      THEMES['t3']!.colors.primary,
     )
-    expect(document.title).toBe(THEMES['t3-demo']!.brand.documentTitle)
+    expect(document.title).toBe(THEMES['t3']!.brand.documentTitle)
     expect(document.head.querySelectorAll('link[rel="icon"]')).toHaveLength(1)
   })
 
   it('useTheme returns the last applied theme', () => {
-    applyTheme(THEMES['t3-demo']!)
-    expect(useTheme().id).toBe('t3-demo')
-    applyTheme(THEMES['default']!)
-    expect(useTheme().id).toBe('default')
+    const alternative: Theme = { ...THEMES.t3!, id: 'alternative' }
+    applyTheme(alternative)
+    expect(useTheme().id).toBe('alternative')
+    applyTheme(THEMES.t3!)
+    expect(useTheme().id).toBe('t3')
   })
 })

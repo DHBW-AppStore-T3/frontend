@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { GraduationCap, Trash2, Plus, Users } from 'lucide-vue-next'
+import { GraduationCap, Trash2, Plus, Users, Search, ChevronRight } from 'lucide-vue-next'
 import { useCourseStore } from '@/stores/course.store'
 import { useToast } from '@/composables/useToast'
 import { extractErrorMessage } from '@/utils/http-error'
@@ -25,6 +25,8 @@ const { isStaff } = useRole()
 const router = useRouter()
 const { t } = useI18n() // <-- i18n initialisiert
 
+const searchQuery = ref('')
+const filteredCourses = computed(() => courseStore.courses.filter(course => course.name.toLocaleLowerCase().includes(searchQuery.value.trim().toLocaleLowerCase())))
 const showModal = ref(false)
 const formData = ref({ name: '' })
 
@@ -73,7 +75,7 @@ const saveCourse = async () => {
     if (created?.courseId) {
       router.push(`/courses/${created.courseId}`)
     }
-  } catch (error: any) {
+  } catch (error) {
     toast.error(extractErrorMessage(error, t('CoursesView.toasts.createError')))
   }
 }
@@ -99,22 +101,20 @@ const confirmDelete = async () => {
     toast.success(t('CoursesView.toasts.deleteSuccess'))
     showDeleteModal.value = false
     courseToDelete.value = null
-  } catch (error: any) {
+  } catch (error) {
     toast.error(extractErrorMessage(error, t('CoursesView.toasts.deleteError')))
   } finally {
     isDeleting.value = false
   }
 }
 
-const goToDetail = (courseId: string) => {
-  router.push({ path: `/courses/${courseId}` })
-}
 </script>
 
 <template>
-  <div class="p-6">
-    <PageHeader :title="$t('CoursesView.title')" :subtitle="$t('CoursesView.subtitle')">
+  <div class="app-page">
+    <PageHeader :eyebrow="$t('nav.courses')" :title="$t('CoursesView.title')" :subtitle="$t('CoursesView.subtitle')">
       <template #actions>
+        <label class="search-field"><Search :size="16" aria-hidden="true" /><input v-model="searchQuery" type="search" :placeholder="t('workspace.searchCourses')" :aria-label="t('workspace.searchCourses')" /></label>
         <BaseButton
             v-if="isStaff"
             @click="openCreateModal"
@@ -126,9 +126,10 @@ const goToDetail = (courseId: string) => {
       </template>
     </PageHeader>
 
+    <div class="catalog-tabs"><span class="catalog-tab" aria-pressed="true">{{ t('workspace.allCourses') }} <span class="catalog-count">{{ courseStore.courses.length }}</span></span></div>
     <EntityListState
       :is-loading="courseStore.isLoading && courseStore.courses.length === 0"
-      :is-empty="!courseStore.isLoading && courseStore.courses.length === 0"
+      :is-empty="!courseStore.isLoading && filteredCourses.length === 0"
       :icon="GraduationCap"
       :empty-message="$t('CoursesView.noCourses')"
       :loading-message="$t('CoursesView.loading')"
@@ -139,54 +140,18 @@ const goToDetail = (courseId: string) => {
         </BaseButton>
       </template>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card
-            v-for="course in courseStore.courses"
-            :key="course.courseId"
-            class="flex flex-col group h-full relative cursor-pointer hover:border-emerald-200"
-            @click="goToDetail(course.courseId)"
-        >
-          <!-- Delete action (top-right) -->
-          <button
-              v-if="isStaff"
-              @click.stop="requestDelete(course)"
-              class="absolute top-3 right-3 p-2 hover:bg-red-50 rounded-lg transition z-10"
-              :title="$t('CoursesView.deleteTitle')"
-          >
-            <Trash2 :size="16" class="text-red-600" />
-          </button>
-
-          <div class="flex items-center gap-4 mb-4">
-            <div class="bg-gray-50 p-3 rounded-lg text-blue-600 group-hover:text-primary transition-colors flex items-center justify-center w-[56px] h-[56px] flex-shrink-0 border border-gray-100">
-              <GraduationCap :size="32" />
-            </div>
-            <h3 class="font-bold text-xl text-gray-900 leading-tight pr-10">
-              {{ course.name }}
-            </h3>
-          </div>
-
-          <p class="text-gray-600 text-sm mb-6 flex-grow leading-relaxed text-left flex items-center gap-2">
-            <template v-if="isStaff">
-              <Users :size="14" class="text-gray-400" />
-              <span>
-                {{ memberCounts[course.courseId] ?? 0 }}
-                {{ (memberCounts[course.courseId] ?? 0) === 1 ? $t('CoursesView.memberSingular') : $t('CoursesView.memberPlural') }}
-              </span>
-            </template>
-            <span v-else class="text-gray-400 italic">
-              {{ $t('CoursesView.openToView') }}
+      <div class="course-list">
+        <Card v-for="(course, index) in filteredCourses" :key="course.courseId" class="course-row">
+          <RouterLink :to="`/courses/${course.courseId}`" class="course-link">
+            <span class="course-icon" :data-tone="index % 4"><GraduationCap :size="25" :stroke-width="1.5" /></span>
+            <span class="course-copy">
+              <span class="course-name">{{ course.name }}</span>
+              <span class="course-caption" v-if="isStaff"><Users :size="13" /> {{ memberCounts[course.courseId] ?? 0 }} {{ (memberCounts[course.courseId] ?? 0) === 1 ? t('CoursesView.memberSingular') : t('CoursesView.memberPlural') }}</span>
+              <span class="course-caption" v-else>{{ t('CoursesView.openToView') }}</span>
             </span>
-          </p>
-
-          <div class="mt-auto">
-            <BaseButton
-                variant="green"
-                class="w-full flex items-center justify-center gap-2"
-                @click.stop="goToDetail(course.courseId)"
-            >
-              {{ $t('CoursesView.openDetails') }}
-            </BaseButton>
-          </div>
+            <ChevronRight :size="18" class="ml-auto text-textMuted" />
+          </RouterLink>
+          <button v-if="isStaff" type="button" class="course-delete" @click="requestDelete(course)" :aria-label="t('CoursesView.deleteTitle')"><Trash2 :size="16" /></button>
         </Card>
       </div>
     </EntityListState>
@@ -198,11 +163,11 @@ const goToDetail = (courseId: string) => {
 
       <template #body>
         <div class="space-y-5">
-          <p class="text-sm text-gray-500">
+          <p class="text-sm text-textMuted">
             {{ $t('CoursesView.createModal.intro') }}
           </p>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-textMuted mb-1.5">
               {{ $t('CoursesView.createModal.nameLabel') }}
             </label>
             <BaseInput v-model="formData.name" :placeholder="$t('CoursesView.createModal.namePlaceholder')" required @keyup.enter="saveCourse" />
@@ -212,7 +177,7 @@ const goToDetail = (courseId: string) => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="showModal = false">
+          <BaseButton variant="text" @click="showModal = false">
             {{ $t('CoursesView.createModal.cancel') }}
           </BaseButton>
           <BaseButton @click="saveCourse" :disabled="!formData.name">
@@ -229,8 +194,8 @@ const goToDetail = (courseId: string) => {
 
       <template #body>
         <div class="space-y-3">
-          <p class="text-gray-700" v-html="$t('CoursesView.deleteModal.confirmPrompt', { name: courseToDelete?.name })"></p>
-          <p class="text-sm text-gray-500">
+          <p class="text-textMuted" v-html="$t('CoursesView.deleteModal.confirmPrompt', { name: courseToDelete?.name })"></p>
+          <p class="text-sm text-textMuted">
             {{ $t('CoursesView.deleteModal.warning') }}
           </p>
         </div>
@@ -238,10 +203,10 @@ const goToDetail = (courseId: string) => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <BaseButton variant="ghost" @click="closeDeleteModal" :disabled="isDeleting">
+          <BaseButton variant="text" @click="closeDeleteModal" :disabled="isDeleting">
             {{ $t('CoursesView.deleteModal.cancel') }}
           </BaseButton>
-          <BaseButton variant="red" @click="confirmDelete" :disabled="isDeleting">
+          <BaseButton variant="destructive" @click="confirmDelete" :disabled="isDeleting">
             {{ isDeleting ? $t('CoursesView.deleteModal.deleting') : $t('CoursesView.deleteModal.delete') }}
           </BaseButton>
         </div>
@@ -249,3 +214,16 @@ const goToDetail = (courseId: string) => {
     </Modal>
   </div>
 </template>
+<style scoped>
+.course-list { display: grid; gap: 16px; }
+.course-row { display: flex; align-items: center; padding: 18px 20px; gap: 16px; }
+.course-link { display: flex; align-items: center; gap: 20px; flex: 1; min-width: 0; }
+.course-icon { width: 50px; height: 50px; border-radius: 9px; display: grid; place-items: center; background: rgb(var(--color-info) / .1); color: rgb(var(--color-info)); flex-shrink: 0; }
+.course-icon[data-tone='0'] { color: rgb(var(--color-warning)); background: rgb(var(--color-warning) / .1); }
+.course-icon[data-tone='2'] { color: rgb(var(--color-success)); background: rgb(var(--color-success) / .1); }
+.course-copy { display: grid; gap: 5px; min-width: 0; }
+.course-name { color: rgb(var(--color-text-heading)); font-weight: 650; font-size: 15px; }
+.course-caption { display: flex; align-items: center; gap: 6px; color: rgb(var(--color-text-muted)); font-size: 12px; }
+.course-delete { color: rgb(var(--color-text-faint)); padding: 8px; border-radius: 6px; }
+.course-delete:hover { color: rgb(var(--color-danger)); background: rgb(var(--color-danger) / .06); }
+</style>
