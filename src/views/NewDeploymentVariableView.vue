@@ -48,11 +48,11 @@ const isList = (type: string) => type.toLowerCase().startsWith('list') || type.t
 // True when the variable is marked ``@openstack:file:<scope>``.
 const isFileVar = (v: AppVariable): boolean => v.osType === 'file'
 
-const isExpert = (v: AppVariable): boolean =>
-  (v.description?.includes('@expert') ?? false)
-
-const displayDescription = (v: AppVariable): string =>
-  (v.description ?? '').replace(/@expert\b/g, '').trim()
+// A variable is auto-hidden (shown only in the expert accordion) when it is
+// optional OR already has a non-null default — the lecturer never needs to touch it.
+// Only truly required fields with no default stay visible at all times.
+const isAutoHidden = (v: AppVariable): boolean =>
+  !v.required || (v.default !== null && v.default !== undefined)
 
 const packerExpertOpen = ref(false)
 const terraformExpertOpen = ref(false)
@@ -254,7 +254,7 @@ const packerByTemplate = computed<Record<string, AppVariable[]>>(() => {
 const packerExpertByTemplate = computed<Record<string, AppVariable[]>>(() => {
   const out: Record<string, AppVariable[]> = {}
   for (const [tkey, vars] of Object.entries(packerByTemplate.value)) {
-    out[tkey] = vars.filter(v => isExpert(v))
+    out[tkey] = vars.filter(v => isAutoHidden(v))
   }
   return out
 })
@@ -262,7 +262,7 @@ const packerExpertByTemplate = computed<Record<string, AppVariable[]>>(() => {
 const packerNormalByTemplate = computed<Record<string, AppVariable[]>>(() => {
   const out: Record<string, AppVariable[]> = {}
   for (const [tkey, vars] of Object.entries(packerByTemplate.value)) {
-    out[tkey] = vars.filter(v => !isExpert(v))
+    out[tkey] = vars.filter(v => !isAutoHidden(v))
   }
   return out
 })
@@ -375,13 +375,6 @@ onMounted(async () => {
       }
     }
     formValues.value = restored
-    const hasBlockingExpert = variables.value.some(
-      v => isExpert(v) && v.required && (v.default === null || v.default === undefined)
-    )
-    if (hasBlockingExpert) {
-      packerExpertOpen.value = true
-      terraformExpertOpen.value = true
-    }
     return
   }
 
@@ -464,14 +457,6 @@ onMounted(async () => {
 
       formValues.value[storageKey] = valToSet
     })
-
-    const hasBlockingExpert = variables.value.some(
-      v => isExpert(v) && v.required && (v.default === null || v.default === undefined)
-    )
-    if (hasBlockingExpert) {
-      packerExpertOpen.value = true
-      terraformExpertOpen.value = true
-    }
 
   } catch (error: any) {
     console.error(error)
@@ -737,7 +722,7 @@ watch(
               </div>
 
               <div v-if="activeTooltip === packerFormKey(variable)" class="mb-3 bg-infoTint p-3 rounded-lg border border-blue-100 text-sm text-textMuted">
-                <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
+                <p v-if="variable.description" class="mb-2">{{ variable.description }}</p>
                 <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-blue-700">
                   <Info :size="12" class="mt-0.5 shrink-0" />
                   <span>{{ t('deployment.variables.commaSeparated') }}</span>
@@ -919,7 +904,7 @@ watch(
                       ><Info :size="16" /></button>
                     </div>
                     <div v-if="activeTooltip === packerFormKey(variable)" class="mb-3 bg-infoTint p-3 rounded-lg border border-blue-100 text-sm text-textMuted">
-                      <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
+                      <p v-if="variable.description" class="mb-2">{{ variable.description }}</p>
                       <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-blue-700">
                         <Info :size="12" class="mt-0.5 shrink-0" />
                         <span>{{ t('deployment.variables.commaSeparated') }}</span>
@@ -960,7 +945,7 @@ watch(
               {{ t('deployment.summary.noTerraformVars') }}
             </div>
             
-            <div v-for="variable in terraformVariables.filter(v => !isExpert(v))" :key="variable.name" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
+            <div v-for="variable in terraformVariables.filter(v => !isAutoHidden(v))" :key="variable.name" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
               <div class="flex items-start justify-between gap-2 mb-3">
                 <label
                   :for="variable.name"
@@ -996,7 +981,7 @@ watch(
               </div>
 
               <div v-if="activeTooltip === variable.name" class="mb-3 bg-purple-50 p-3 rounded-lg border border-purple-100 text-sm text-textMuted">
-                <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
+                <p v-if="variable.description" class="mb-2">{{ variable.description }}</p>
                 <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-purple-700">
                   <Info :size="12" class="mt-0.5 shrink-0" />
                   <span>{{ t('deployment.variables.commaSeparated') }}</span>
@@ -1151,18 +1136,18 @@ watch(
               </template>
             </div>
 
-            <div v-if="terraformVariables.filter(isExpert).length" class="mt-2 border-t border-purple-200 pt-3">
+            <div v-if="terraformVariables.filter(isAutoHidden).length" class="mt-2 border-t border-purple-200 pt-3">
               <button
                 type="button"
                 @click="terraformExpertOpen = !terraformExpertOpen"
                 class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50 transition-colors"
               >
-                <span>{{ t('deployment.variables.expertSettings', { count: terraformVariables.filter(isExpert).length }) }}</span>
+                <span>{{ t('deployment.variables.expertSettings', { count: terraformVariables.filter(isAutoHidden).length }) }}</span>
                 <ChevronUp v-if="terraformExpertOpen" :size="16" />
                 <ChevronDown v-else :size="16" />
               </button>
               <div v-if="terraformExpertOpen" class="mt-3 space-y-4">
-                <div v-for="variable in terraformVariables.filter(isExpert)" :key="`${variable.name}.expert`" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm opacity-90">
+                <div v-for="variable in terraformVariables.filter(isAutoHidden)" :key="`${variable.name}.expert`" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm opacity-90">
                   <div class="flex items-start justify-between gap-2 mb-3">
                     <label
                       :for="variable.name"
@@ -1178,7 +1163,7 @@ watch(
                     ><Info :size="16" /></button>
                   </div>
                   <div v-if="activeTooltip === variable.name" class="mb-3 bg-purple-50 p-3 rounded-lg border border-purple-100 text-sm text-gray-700">
-                    <p v-if="displayDescription(variable)" class="mb-2">{{ displayDescription(variable) }}</p>
+                    <p v-if="variable.description" class="mb-2">{{ variable.description }}</p>
                     <div v-if="isList(variable.type)" class="flex gap-2 items-start text-xs text-purple-700">
                       <Info :size="12" class="mt-0.5 shrink-0" />
                       <span>{{ t('deployment.variables.commaSeparated') }}</span>
