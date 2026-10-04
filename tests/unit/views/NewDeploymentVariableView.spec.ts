@@ -118,8 +118,8 @@ describe('NewDeploymentVariableView.vue', () => {
 
   it('fetches variables and groups them into packer and terraform sections', async () => {
     const mockVars = [
-      { name: 'packer_var', source: 'packer', type: 'string', required: false, default: 'val1' },
-      { name: 'tf_var', source: 'terraform', type: 'string', required: false, default: 'val2' }
+      { name: 'packer_var', source: 'packer', type: 'string', required: true, default: null },
+      { name: 'tf_var', source: 'terraform', type: 'string', required: true, default: null }
     ]
     
     const wrapper = createWrapper({}, mockVars)
@@ -193,107 +193,108 @@ describe('NewDeploymentVariableView.vue', () => {
   })
 
   // ----------------------------------------------------------------
-  // Expert settings (@expert marker)
+  // Experteneinstellungen: automatische Sichtbarkeitsregel
+  // Sichtbar:  required === true && default === null/undefined
+  // Versteckt: optional ODER hat Default-Wert
   // ----------------------------------------------------------------
 
-  it('hides expert-marked terraform variables behind the accordion by default', async () => {
+  it('shows required terraform variable with null default directly', async () => {
     const mockVars = [
-      { name: 'visible_var', source: 'terraform', type: 'string', required: false, default: 'v1', description: 'Normal variable' },
-      { name: 'expert_var', source: 'terraform', type: 'string', required: false, default: 'v2', description: 'Technical UUID @expert' }
+      { name: 'must_fill', source: 'terraform', type: 'string', required: true, default: null }
     ]
-
     const wrapper = createWrapper({}, mockVars)
     await flushPromises()
-
-    // normal var is visible, expert var is not (accordion is closed)
-    expect(wrapper.text()).toContain('visible_var')
-    expect(wrapper.text()).not.toContain('expert_var')
-  })
-
-  it('shows expert count in accordion button', async () => {
-    const mockVars = [
-      { name: 'a', source: 'terraform', type: 'string', required: false, default: 'x', description: '@expert' },
-      { name: 'b', source: 'terraform', type: 'string', required: false, default: 'y', description: '@expert' }
-    ]
-
-    const wrapper = createWrapper({}, mockVars)
-    await flushPromises()
-
-    // The accordion toggle should mention the count (2)
-    expect(wrapper.text()).toContain('deployment.variables.expertSettings')
-  })
-
-  it('reveals expert variables when the accordion is opened', async () => {
-    const mockVars = [
-      { name: 'expert_var', source: 'terraform', type: 'string', required: false, default: 'val', description: '@expert' }
-    ]
-
-    const wrapper = createWrapper({}, mockVars)
-    await flushPromises()
-
-    // find and click the expert toggle button
-    const toggle = wrapper.findAll('button').find(b => b.text().includes('deployment.variables.expertSettings'))
-    expect(toggle).toBeDefined()
-    await toggle!.trigger('click')
-
-    expect(wrapper.text()).toContain('expert_var')
-  })
-
-  it('auto-opens expert section when a required expert variable has no default', async () => {
-    const mockVars = [
-      { name: 'required_expert', source: 'terraform', type: 'string', required: true, default: null, description: '@expert' }
-    ]
-
-    const wrapper = createWrapper({}, mockVars)
-    await flushPromises()
-
-    // required expert with no default must be visible immediately (section auto-opened)
-    expect(wrapper.text()).toContain('required_expert')
-  })
-
-  it('strips @expert from the displayed description tooltip', async () => {
-    const mockVars = [
-      { name: 'my_var', source: 'terraform', type: 'string', required: false, default: 'x', description: 'Network UUID @expert' }
-    ]
-
-    const wrapper = createWrapper({}, mockVars)
-    await flushPromises()
-
-    // open the expert section first
-    const toggle = wrapper.findAll('button').find(b => b.text().includes('deployment.variables.expertSettings'))
-    await toggle!.trigger('click')
-
-    // open the tooltip for my_var
-    const infoBtn = wrapper.findAll('button').find(b => b.attributes('title') === 'deployment.variables.showInfo')
-    await infoBtn?.trigger('click')
-
-    // @expert should not appear in the rendered tooltip text
-    expect(wrapper.text()).not.toContain('@expert')
-    expect(wrapper.text()).toContain('Network UUID')
-  })
-
-  it('shows no expert accordion when no variables carry @expert marker', async () => {
-    const mockVars = [
-      { name: 'plain_var', source: 'terraform', type: 'string', required: false, default: 'x', description: 'Normal description' }
-    ]
-
-    const wrapper = createWrapper({}, mockVars)
-    await flushPromises()
-
+    expect(wrapper.text()).toContain('must_fill')
     expect(wrapper.text()).not.toContain('deployment.variables.expertSettings')
   })
 
-  it('hides expert-marked packer variables behind the accordion by default', async () => {
+  it('shows required terraform variable with undefined default directly', async () => {
     const mockVars = [
-      { name: 'visible_packer', source: 'packer', type: 'string', required: false, default: 'v1', description: 'Normal' },
-      { name: 'expert_packer', source: 'packer', type: 'string', required: false, default: 'v2', description: '@expert' }
+      { name: 'must_fill_undef', source: 'terraform', type: 'string', required: true }
     ]
-
     const wrapper = createWrapper({}, mockVars)
     await flushPromises()
+    expect(wrapper.text()).toContain('must_fill_undef')
+    expect(wrapper.text()).not.toContain('deployment.variables.expertSettings')
+  })
 
+  it('hides optional terraform variable (required: false) behind the accordion', async () => {
+    const mockVars = [
+      { name: 'optional_var', source: 'terraform', type: 'string', required: false, default: 'some-default' }
+    ]
+    const wrapper = createWrapper({}, mockVars)
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('optional_var')
+    expect(wrapper.text()).toContain('deployment.variables.expertSettings')
+  })
+
+  it('hides required terraform variable that has a non-null default behind the accordion', async () => {
+    const mockVars = [
+      { name: 'has_default', source: 'terraform', type: 'string', required: true, default: 'preset-uuid' }
+    ]
+    const wrapper = createWrapper({}, mockVars)
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('has_default')
+    expect(wrapper.text()).toContain('deployment.variables.expertSettings')
+  })
+
+  it('shows only accordion toggle when all terraform vars have defaults', async () => {
+    const mockVars = [
+      { name: 'var_a', source: 'terraform', type: 'string', required: true, default: 'val-a' },
+      { name: 'var_b', source: 'terraform', type: 'string', required: false, default: 'val-b' }
+    ]
+    const wrapper = createWrapper({}, mockVars)
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('var_a')
+    expect(wrapper.text()).not.toContain('var_b')
+    expect(wrapper.text()).toContain('deployment.variables.expertSettings')
+  })
+
+  it('shows accordion count for auto-hidden terraform variables', async () => {
+    const mockVars = [
+      { name: 'a', source: 'terraform', type: 'string', required: false, default: 'x' },
+      { name: 'b', source: 'terraform', type: 'string', required: false, default: 'y' }
+    ]
+    const wrapper = createWrapper({}, mockVars)
+    await flushPromises()
+    expect(wrapper.text()).toContain('deployment.variables.expertSettings')
+  })
+
+  it('reveals auto-hidden terraform variables when accordion is opened', async () => {
+    const mockVars = [
+      { name: 'hidden_var', source: 'terraform', type: 'string', required: false, default: 'val' }
+    ]
+    const wrapper = createWrapper({}, mockVars)
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('hidden_var')
+
+    const toggle = wrapper.findAll('button').find(b => b.text().includes('deployment.variables.expertSettings'))
+    expect(toggle).toBeDefined()
+    await toggle!.trigger('click')
+    expect(wrapper.text()).toContain('hidden_var')
+  })
+
+  it('shows no accordion when all terraform variables are required with no default', async () => {
+    const mockVars = [
+      { name: 'req_a', source: 'terraform', type: 'string', required: true, default: null },
+      { name: 'req_b', source: 'terraform', type: 'string', required: true }
+    ]
+    const wrapper = createWrapper({}, mockVars)
+    await flushPromises()
+    expect(wrapper.text()).toContain('req_a')
+    expect(wrapper.text()).toContain('req_b')
+    expect(wrapper.text()).not.toContain('deployment.variables.expertSettings')
+  })
+
+  it('hides packer variable with a default behind the packer accordion', async () => {
+    const mockVars = [
+      { name: 'visible_packer', source: 'packer', type: 'string', required: true, default: null },
+      { name: 'hidden_packer', source: 'packer', type: 'string', required: false, default: 'uuid-default' }
+    ]
+    const wrapper = createWrapper({}, mockVars)
+    await flushPromises()
     expect(wrapper.text()).toContain('visible_packer')
-    expect(wrapper.text()).not.toContain('expert_packer')
+    expect(wrapper.text()).not.toContain('hidden_packer')
   })
 
   it('shows error toast when fetchAppVariables fails', async () => {
