@@ -17,6 +17,10 @@ Closes #
 ## Checkliste
 
 <!--
+Checkliste für Änderungs-PRs (Feature-/Fix-Branch → `dev`, Hotfix → `main`).
+Release-PRs (`dev` oder `promote/*` → `main`) verwenden stattdessen
+`.github/pull_request_template/release.md`.
+
 Jeder Punkt wird abgehakt, bevor der PR gemergt werden kann. Der CI-Check
 "PR Checklist" blockiert den Merge, solange hier noch ein offenes "- [ ]" steht.
 
