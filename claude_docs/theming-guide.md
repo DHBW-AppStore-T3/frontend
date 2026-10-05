@@ -223,5 +223,52 @@ in `.vue`-Dateien, außerdem Tailwind-Standardfarben im Config (`tests/unit/styl
 | Layouts | Sidebar/Header in `AppLayout.vue` | `AppSidebar`, `AppHeader`, `SidebarNavigation`, Styles in `auth.css`/`workspace.css` |
 | Fallback bei unbekannter ID | `default` | `t3` |
 
+## 10. Betroffene Dateien
+
+Stand: Branch `demo/mannheim-theme`. Grundlage der Liste ist der Diff `47ba24c` (T3-Redesign, Basis) bis zur Spitze des Branches
+sowie eine Textsuche nach `--color-`, `--theme-` und `useTheme`.
+
+### 10.1 Was für ein neues Theme angelegt oder geändert werden muss
+
+Am Beispiel Mannheim. Mehr braucht ein weiteres Theme nicht:
+
+| Datei | Änderung |
+|-------|----------|
+| `src/theme/themes/<id>.ts` | **neu**, das Theme (Farben, Branding, Logo-Angaben) |
+| `src/theme/index.ts` | Import und Eintrag in `THEMES` |
+| `src/theme/assets/<id>-*.png\|jpg` | **neu**, Logo und optional Hintergrundbild |
+| `public/themes/<id>/favicon.png` | **neu**, Favicon |
+
+### 10.2 Was beim Ausbau für Mannheim einmalig am System geändert wurde
+
+Gilt seitdem für alle Themes, muss für weitere Themes nicht wiederholt werden:
+
+| Datei | Änderung |
+|-------|----------|
+| `src/theme/types.ts` | `brand.institution` und `styles` im Typ `Theme` ergänzt |
+| `src/theme/applyTheme.ts` | schreibt `theme.styles` als `--theme-*` auf `:root` |
+| `src/theme/workspace.css` | Dashboard-Scrim und -Position über `--theme-dashboard-scrim` und `--theme-dashboard-position` |
+| `src/views/LoginView.vue` | liest `brand.institution` (Fallback `DHBW`) |
+| `src/i18n/locales/de.ts`, `en.ts` | Login-Texte mit Platzhalter `{institution}` |
+| `tests/unit/theme/applyTheme.spec.ts` | Test für `styles` |
+
+### 10.3 Dateien, die die Variablen definieren oder nutzen
+
+| Rolle | Dateien |
+|-------|---------|
+| Definition und Vertrag | `src/theme/types.ts` (`THEME_COLOR_KEYS`, `THEME_STYLE_KEYS`), `src/theme/themes/*.ts`, `src/theme/applyTheme.ts`, `src/theme/useTheme.ts` |
+| Mapping auf Tailwind | `tailwind.config.js` (jede `--color-*` hat einen Tailwind-Namen) |
+| Konstante Variablen | `src/styles/colors.css` (nur Produkt-Icon-Farben), `src/styles/tokens.css` (Radius, Schatten, Abstände, Typografie), `src/styles/fonts.css` |
+| CSS mit Theme-Variablen | `src/theme/auth.css` (Login), `src/theme/workspace.css` (App-Bereich) |
+| Layouts und Komponenten | `src/layouts/AppLayout.vue`, `AuthLayout.vue`, `SidebarNavigation.vue`, `src/components/ui/AppLogo.vue`, `src/components/ui/Toast.vue` |
+| Views mit direkten `--color-*`-Zugriffen | `AppsView`, `CoursesView`, `DashboardView`, `DeploymentDetailView`, `HelpView`, `LoginView`, `UserView` |
+| Branding-Zugriff über `useTheme()` | `AuthLayout.vue`, `AppLayout.vue` und weitere Layouts/Views (Logo, Name, Hintergrundbild, `institution`) |
+| Vor-Boot-Fallback | `index.html` (Titel und Favicon, werden von `applyTheme()` überschrieben) |
+| Env-Weitergabe | `src/env.ts`, `public/env-config.js`, `docker-entrypoint.sh` (`VITE_THEME`) |
+| Absicherung | `tests/unit/theme/*.spec.ts`, `tests/unit/styles/*.spec.ts`, `tests/unit/layouts/branding.spec.ts`, `tests/unit/env.spec.ts` |
+
+Zusätzlich greifen alle `.vue`-Dateien mit Tailwind-Klassen wie `bg-primary` oder `text-textMuted` indirekt auf dieselben Variablen zu.
+Sie müssen für ein neues Theme nicht angefasst werden. Die Anzahl dieser Dateien wurde nicht gezählt.
+
 Der Guide ist bis zum Merge des Branches nach `main` nur dort gültig. Auf `main` gelten bis dahin nur die Abschnitte 1, 3 (ohne Zusatzfelder) und 8
 sinngemäß mit den 16 Tokens aus `src/theme/types.ts`.
