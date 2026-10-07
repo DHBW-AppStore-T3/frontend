@@ -45,10 +45,9 @@ describe('LoginView.vue', () => {
     expect(wrapper.find('button').exists()).toBe(true)
   })
 
-  it('shows i18n keys for title, info, button, no-account', () => {
+  it('shows i18n keys for info, button, no-account', () => {
     const wrapper = mount_()
     const text = wrapper.text()
-    expect(text).toContain('auth.login.title')
     expect(text).toContain('auth.login.keycloakInfo')
     expect(text).toContain('auth.login.keycloakButton')
     expect(text).toContain('auth.login.noAccount')

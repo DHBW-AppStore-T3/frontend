@@ -18,7 +18,7 @@ vi.mock('../auth.store', () => ({
 }))
 
 import { appApi } from '@/api/app.api'
-const mockApi = appApi as Record<string, ReturnType<typeof vi.fn>>
+const mockApi = vi.mocked(appApi)
 
 const APP1 = { appId: 'app-1', name: 'App Alpha', userId: 'test-user-id' }
 const APP2 = { appId: 'app-2', name: 'App Beta',  userId: 'other-user' }
@@ -38,7 +38,7 @@ describe('AppStore', () => {
   })
 
   it('fetchApps sets apps from API', async () => {
-    mockApi.list.mockResolvedValueOnce({ data: [APP1, APP2] })
+    mockApi.list.mockResolvedValueOnce({ data: [APP1, APP2] } as any)
     const store = useAppStore()
     await store.fetchApps()
     expect(store.apps).toEqual([APP1, APP2])
@@ -47,7 +47,7 @@ describe('AppStore', () => {
   })
 
   it('fetchApps passes optional userId param', async () => {
-    mockApi.list.mockResolvedValueOnce({ data: [] })
+    mockApi.list.mockResolvedValueOnce({ data: [] } as any)
     const store = useAppStore()
     await store.fetchApps('user-42')
     expect(mockApi.list).toHaveBeenCalledWith({ userId: 'user-42' })
@@ -62,7 +62,7 @@ describe('AppStore', () => {
   })
 
   it('fetchAppById sets currentApp on success', async () => {
-    mockApi.getById.mockResolvedValueOnce({ data: APP1 })
+    mockApi.getById.mockResolvedValueOnce({ data: APP1 } as any)
     const store = useAppStore()
     await store.fetchAppById('app-1')
     expect(store.currentApp).toEqual(APP1)
@@ -77,7 +77,7 @@ describe('AppStore', () => {
   })
 
   it('createApp pushes new app and returns it', async () => {
-    mockApi.create.mockResolvedValueOnce({ data: APP1 })
+    mockApi.create.mockResolvedValueOnce({ data: APP1 } as any)
     const store = useAppStore()
     const result = await store.createApp({ name: 'App Alpha' } as any)
     expect(result).toEqual(APP1)
@@ -85,7 +85,7 @@ describe('AppStore', () => {
   })
 
   it('updateApp replaces the matching app in-place', async () => {
-    mockApi.update.mockResolvedValueOnce({ data: { ...APP1, name: 'App Alpha v2' } })
+    mockApi.update.mockResolvedValueOnce({ data: { ...APP1, name: 'App Alpha v2' } } as any)
     const store = useAppStore()
     store.apps = [APP1 as any, APP2 as any]
     const result = await store.updateApp('app-1', { name: 'App Alpha v2' } as any)
@@ -95,7 +95,7 @@ describe('AppStore', () => {
   })
 
   it('updateApp is a no-op when appId not in list', async () => {
-    mockApi.update.mockResolvedValueOnce({ data: APP1 })
+    mockApi.update.mockResolvedValueOnce({ data: APP1 } as any)
     const store = useAppStore()
     store.apps = [APP2 as any]
     await store.updateApp('app-1', {} as any)
@@ -113,7 +113,7 @@ describe('AppStore', () => {
 
   it('fetchAppVariables returns variable array directly', async () => {
     const vars = [{ name: 'region', type: 'string' }]
-    mockApi.getVariables.mockResolvedValueOnce({ data: vars })
+    mockApi.getVariables.mockResolvedValueOnce({ data: vars } as any)
     const store = useAppStore()
     const result = await store.fetchAppVariables('app-1', 'v1.0')
     expect(result).toEqual(vars)

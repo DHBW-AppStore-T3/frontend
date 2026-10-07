@@ -130,21 +130,21 @@ describe('getDisplayName()', () => {
 // ===========================================================================
 describe('ensureLoaded()', () => {
   it('fetches and caches network list on first call', async () => {
-    mockApi.listNetworks.mockResolvedValue({ data: NETWORKS })
+    mockApi.listNetworks.mockResolvedValue({ data: NETWORKS } as any)
     await ensureLoaded('network')
     expect(mockApi.listNetworks).toHaveBeenCalledOnce()
     expect(getDisplayName('network', 'id', 'net-1')).toMatchObject({ known: true })
   })
 
   it('does not re-fetch when cache is fresh', async () => {
-    mockApi.listNetworks.mockResolvedValue({ data: NETWORKS })
+    mockApi.listNetworks.mockResolvedValue({ data: NETWORKS } as any)
     await ensureLoaded('network')
     await ensureLoaded('network')
     expect(mockApi.listNetworks).toHaveBeenCalledOnce()
   })
 
   it('parallel calls all complete and cache is populated', async () => {
-    mockApi.listNetworks.mockResolvedValue({ data: NETWORKS })
+    mockApi.listNetworks.mockResolvedValue({ data: NETWORKS } as any)
     await Promise.all([ensureLoaded('network'), ensureLoaded('network'), ensureLoaded('network')])
     // All three calls resolved; cache must contain the result regardless of fetch count
     expect(getDisplayName('network', 'id', 'net-1')).toMatchObject({ known: true })
@@ -157,57 +157,57 @@ describe('ensureLoaded()', () => {
   })
 
   it('fetches flavors (covers flavor switch case)', async () => {
-    mockApi.listFlavors.mockResolvedValue({ data: [{ id: 'fl-1', name: 'm1.small' }] })
+    mockApi.listFlavors.mockResolvedValue({ data: [{ id: 'fl-1', name: 'm1.small' }] } as any)
     await ensureLoaded('flavor')
     expect(mockApi.listFlavors).toHaveBeenCalledOnce()
     expect(getDisplayName('flavor', 'id', 'fl-1')).toMatchObject({ known: true })
   })
 
   it('fetches images (covers image switch case)', async () => {
-    mockApi.listImages.mockResolvedValue({ data: [{ id: 'img-1', name: 'ubuntu-22.04' }] })
+    mockApi.listImages.mockResolvedValue({ data: [{ id: 'img-1', name: 'ubuntu-22.04' }] } as any)
     await ensureLoaded('image')
     expect(mockApi.listImages).toHaveBeenCalledWith('active')
     expect(getDisplayName('image', 'id', 'img-1')).toMatchObject({ known: true })
   })
 
   it('fetches keypairs (covers keypair switch case)', async () => {
-    mockApi.listKeypairs.mockResolvedValue({ data: [{ id: 'key-1', name: 'my-key' }] })
+    mockApi.listKeypairs.mockResolvedValue({ data: [{ id: 'key-1', name: 'my-key' }] } as any)
     await ensureLoaded('keypair')
     expect(getDisplayName('keypair', 'id', 'key-1')).toMatchObject({ known: true })
   })
 
   it('fetches security_group (covers security_group switch case)', async () => {
-    mockApi.listSecurityGroups.mockResolvedValue({ data: [{ id: 'sg-1', name: 'default' }] })
+    mockApi.listSecurityGroups.mockResolvedValue({ data: [{ id: 'sg-1', name: 'default' }] } as any)
     await ensureLoaded('security_group')
     expect(getDisplayName('security_group', 'id', 'sg-1')).toMatchObject({ known: true })
   })
 
   it('fetches subnet (covers subnet switch case)', async () => {
-    mockApi.listSubnets.mockResolvedValue({ data: [{ id: 'sub-1', name: 'subnet-a' }] })
+    mockApi.listSubnets.mockResolvedValue({ data: [{ id: 'sub-1', name: 'subnet-a' }] } as any)
     await ensureLoaded('subnet')
     expect(getDisplayName('subnet', 'id', 'sub-1')).toMatchObject({ known: true })
   })
 
   it('fetches floating_ip_pool (covers floating_ip_pool switch case)', async () => {
-    mockApi.listFloatingIpPools.mockResolvedValue({ data: [{ id: 'pool-1', name: 'public' }] })
+    mockApi.listFloatingIpPools.mockResolvedValue({ data: [{ id: 'pool-1', name: 'public' }] } as any)
     await ensureLoaded('floating_ip_pool')
     expect(getDisplayName('floating_ip_pool', 'id', 'pool-1')).toMatchObject({ known: true })
   })
 
   it('fetches volume (covers volume switch case)', async () => {
-    mockApi.listVolumes.mockResolvedValue({ data: [{ id: 'vol-1', name: 'boot-vol' }] })
+    mockApi.listVolumes.mockResolvedValue({ data: [{ id: 'vol-1', name: 'boot-vol' }] } as any)
     await ensureLoaded('volume')
     expect(getDisplayName('volume', 'id', 'vol-1')).toMatchObject({ known: true })
   })
 
   it('fetches router (covers router switch case)', async () => {
-    mockApi.listRouters.mockResolvedValue({ data: [{ id: 'rtr-1', name: 'router-a' }] })
+    mockApi.listRouters.mockResolvedValue({ data: [{ id: 'rtr-1', name: 'router-a' }] } as any)
     await ensureLoaded('router')
     expect(getDisplayName('router', 'id', 'rtr-1')).toMatchObject({ known: true })
   })
 
   it('fetches availability_zone (covers availability_zone switch case)', async () => {
-    mockApi.listAvailabilityZones.mockResolvedValue({ data: [{ id: 'nova', name: 'nova' }] })
+    mockApi.listAvailabilityZones.mockResolvedValue({ data: [{ id: 'nova', name: 'nova' }] } as any)
     await ensureLoaded('availability_zone')
     expect(mockApi.listAvailabilityZones).toHaveBeenCalledWith('compute')
     expect(getDisplayName('availability_zone', 'id', 'nova')).toMatchObject({ known: true })

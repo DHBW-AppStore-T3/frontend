@@ -16,6 +16,12 @@ vi.mock('lucide-vue-next', () => ({
   Cpu: {},
   HardDrive: {},
   Network: {},
+  Box: {},
+  Layers: {},
+}))
+
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key }),
 }))
 
 import { quotasApi } from '@/api/quotas.api'
@@ -171,6 +177,6 @@ describe('useQuotas — formattedQuotas', async () => {
     mockQuotasApi.getOverview.mockResolvedValue({ data: zeroLimitData })
     const { formattedQuotas, fetchQuotas } = useQuotas()
     await fetchQuotas()
-    expect(formattedQuotas.value[0].percentage).toBe(0)
+    expect(formattedQuotas.value[0]!.percentage).toBe(0)
   })
 })

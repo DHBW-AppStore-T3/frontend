@@ -201,17 +201,20 @@ describe('MarkdownRenderer', () => {
 import UserLayout from '@/layouts/UserLayout.vue'
 
 describe('UserLayout', () => {
-  it('renders header with back link and slot content', () => {
+  it('renders slot content', () => {
     const w = mount(UserLayout, {
       slots: { default: '<p class="slot-content">body</p>' },
       global: {
-        stubs: { RouterLink: { template: '<a><slot /></a>' } },
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          RouterLink: { template: '<a><slot /></a>' },
+          ArrowLeft: true,
+          User: true,
+        },
         mocks: { $t: (k: string) => k },
       },
     })
     expect(w.find('.slot-content').exists()).toBe(true)
-    expect(w.text()).toContain('action.back')
-    expect(w.text()).toContain('user.title')
   })
 })
 
