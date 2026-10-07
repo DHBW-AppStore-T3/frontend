@@ -190,7 +190,7 @@ describe('handleEvent: log', () => {
     start()
     await drain()
     expect(liveLogs.value).toHaveLength(1)
-    expect(liveLogs.value[0].timestamp).toBe('2024-06-01T12:00:00Z')
+    expect(liveLogs.value[0]!.timestamp).toBe('2024-06-01T12:00:00Z')
   })
 
   it('falls back to raw timestamp field when iso_timestamp is absent', async () => {
@@ -200,7 +200,7 @@ describe('handleEvent: log', () => {
     const { liveLogs, start } = useDeploymentStream(ref('d-1'))
     start()
     await drain()
-    expect(liveLogs.value[0].timestamp).toBe('2024-06-01T12:00:00Z')
+    expect(liveLogs.value[0]!.timestamp).toBe('2024-06-01T12:00:00Z')
   })
 })
 
@@ -214,8 +214,8 @@ describe('handleEvent: overflow', () => {
     start()
     await drain()
     expect(liveLogs.value).toHaveLength(1)
-    expect(liveLogs.value[0].level).toBe('WARNING')
-    expect(liveLogs.value[0].category).toBe('system')
+    expect(liveLogs.value[0]!.level).toBe('WARNING')
+    expect(liveLogs.value[0]!.category).toBe('system')
   })
 })
 
@@ -265,8 +265,8 @@ describe('pushLog ring buffer', () => {
     expect(liveLogs.value).toHaveLength(100)
     expect(totalLogCount.value).toBe(105)
     // Oldest 5 were evicted; buffer window starts at msg-5
-    expect(liveLogs.value[0].message).toBe('msg-5')
-    expect(liveLogs.value[99].message).toBe('msg-104')
+    expect(liveLogs.value[0]!.message).toBe('msg-5')
+    expect(liveLogs.value[99]!.message).toBe('msg-104')
   })
 })
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useDashboard } from '@/composables/useDashboard'
 
 vi.mock('@/api/dashboard.api', () => ({

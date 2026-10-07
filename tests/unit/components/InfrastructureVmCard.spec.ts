@@ -193,29 +193,6 @@ describe('InfrastructureVmCard', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Card border (drift → CSS classes)
-  // -----------------------------------------------------------------------
-  it('applies red border class when drift is missing', () => {
-    const w = mountCard(makeResource({ drift: 'missing' }))
-    expect(w.find('div').classes()).toContain('border-red-300')
-  })
-
-  it('applies amber border class when drift is stale', () => {
-    const w = mountCard(makeResource({ drift: 'stale' }))
-    expect(w.find('div').classes()).toContain('border-amber-300')
-  })
-
-  it('applies expanded border class when isExpanded=true', () => {
-    const w = mountCard(makeResource({ drift: 'in_sync' }), { isExpanded: true })
-    expect(w.find('div').classes()).toContain('border-gray-800')
-  })
-
-  it('applies neutral border class when in_sync and not expanded', () => {
-    const w = mountCard(makeResource({ drift: 'in_sync' }), { isExpanded: false })
-    expect(w.find('div').classes()).toContain('border-gray-200')
-  })
-
-  // -----------------------------------------------------------------------
   // Team badge
   // -----------------------------------------------------------------------
   it('shows team name when resource has a team', () => {

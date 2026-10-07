@@ -24,7 +24,7 @@ import {
   ensureLoaded,
 } from '@/composables/useOpenStackResourceCache'
 
-const mockApi = openstackResourcesApi as Record<string, ReturnType<typeof vi.fn>>
+const mockApi = vi.mocked(openstackResourcesApi)
 
 const NETWORKS = [
   { id: 'net-1', name: 'shared-net', description: '', shared: true, external: false, status: 'ACTIVE' },

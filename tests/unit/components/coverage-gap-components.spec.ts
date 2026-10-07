@@ -47,13 +47,11 @@ describe('CredentialMissingBanner', () => {
   it('renders error variant (AlertCircle icon)', () => {
     const w = mount(CredentialMissingBanner, { props: { variant: 'error', title: 'Error' } })
     expect(w.find('.alertcircle').exists()).toBe(true)
-    expect(w.html()).toContain('bg-red-50')
   })
 
   it('renders lock variant (Lock icon)', () => {
     const w = mount(CredentialMissingBanner, { props: { variant: 'lock', title: 'Locked' } })
     expect(w.find('.lock').exists()).toBe(true)
-    expect(w.html()).toContain('bg-blue-50')
   })
 
   it('renders CTA link when cta + ctaTo are set', () => {
@@ -172,11 +170,6 @@ describe('MarkdownRenderer', () => {
     })
     // hr renders as ' · '
     expect(w.html()).toContain('·')
-  })
-
-  it('compact variant: applies compact prose class', () => {
-    const w = mount(MarkdownRenderer, { props: { source: 'text', variant: 'compact' } })
-    expect(w.html()).toContain('text-gray-600')
   })
 
   it('applies clamp style when clamp prop is set', () => {

@@ -149,14 +149,14 @@ describe('useQuotas — formattedQuotas', async () => {
 
     expect(formattedQuotas.value).toHaveLength(6)
 
-    const instances = formattedQuotas.value[0]
+    const instances = formattedQuotas.value[0]!
     expect(instances.label).toBe('VMs / Instanzen')
     expect(instances.used).toBe(3)
     expect(instances.limit).toBe(10)
     expect(instances.percentage).toBe(30)
 
     // RAM is converted to GB (4096 / 1024 = 4)
-    const ram = formattedQuotas.value[2]
+    const ram = formattedQuotas.value[2]!
     expect(ram.label).toBe('RAM')
     expect(ram.used).toBe(4)
     expect(ram.limit).toBe(20)
