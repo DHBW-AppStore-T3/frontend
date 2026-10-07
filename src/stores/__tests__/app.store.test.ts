@@ -90,7 +90,7 @@ describe('AppStore', () => {
     store.apps = [APP1 as any, APP2 as any]
     const result = await store.updateApp('app-1', { name: 'App Alpha v2' } as any)
     expect(result).toMatchObject({ appId: 'app-1', name: 'App Alpha v2' })
-    expect(store.apps[0].name).toBe('App Alpha v2')
+    expect(store.apps[0]!.name).toBe('App Alpha v2')
     expect(store.apps).toHaveLength(2)
   })
 
@@ -104,7 +104,7 @@ describe('AppStore', () => {
   })
 
   it('deleteApp removes app from list', async () => {
-    mockApi.delete.mockResolvedValueOnce({})
+    mockApi.delete.mockResolvedValueOnce({} as any)
     const store = useAppStore()
     store.apps = [APP1 as any, APP2 as any]
     await store.deleteApp('app-1')

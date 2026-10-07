@@ -143,7 +143,7 @@ describe('VariableInput', () => {
     const input = w.find('input[type="text"]')
     await input.setValue('new value')
     expect(w.emitted('update:modelValue')).toBeTruthy()
-    expect(w.emitted('update:modelValue')![0][0]).toBe('new value')
+    expect(w.emitted('update:modelValue')![0]![0]).toBe('new value')
   })
 
   it('emits update:modelValue when number input changes', async () => {
@@ -163,7 +163,7 @@ describe('VariableInput', () => {
     const w = mountVar(varOf('bool'), false)
     await w.find('button').trigger('click')
     expect(w.emitted('update:modelValue')).toBeTruthy()
-    expect(w.emitted('update:modelValue')![0][0]).toBe(true)
+    expect(w.emitted('update:modelValue')![0]![0]).toBe(true)
   })
 
   // -----------------------------------------------------------------------

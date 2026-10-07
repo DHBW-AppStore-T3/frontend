@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useToastStore } from '@/stores/toast.store'
 
@@ -16,9 +16,9 @@ describe('toast.store', () => {
     const store = useToastStore()
     store.addToast({ message: 'Hello', type: 'success' })
     expect(store.toasts).toHaveLength(1)
-    expect(store.toasts[0].message).toBe('Hello')
-    expect(store.toasts[0].type).toBe('success')
-    expect(store.toasts[0].id).toBeTruthy()
+    expect(store.toasts[0]!.message).toBe('Hello')
+    expect(store.toasts[0]!.type).toBe('success')
+    expect(store.toasts[0]!.id).toBeTruthy()
   })
 
   it('addToast auto-removes toast after default 5000ms', () => {
@@ -44,7 +44,7 @@ describe('toast.store', () => {
     store.addToast({ message: 'Y', type: 'success' })
     store.removeToast(id)
     expect(store.toasts).toHaveLength(1)
-    expect(store.toasts[0].message).toBe('Y')
+    expect(store.toasts[0]!.message).toBe('Y')
   })
 
   it('removeToast is a no-op for unknown id', () => {
@@ -58,26 +58,26 @@ describe('toast.store', () => {
     const store = useToastStore()
     const id = store.success('It worked')
     expect(typeof id).toBe('string')
-    expect(store.toasts[0].type).toBe('success')
-    expect(store.toasts[0].message).toBe('It worked')
+    expect(store.toasts[0]!.type).toBe('success')
+    expect(store.toasts[0]!.message).toBe('It worked')
   })
 
   it('error helper creates error toast', () => {
     const store = useToastStore()
     store.error('Oops')
-    expect(store.toasts[0].type).toBe('error')
+    expect(store.toasts[0]!.type).toBe('error')
   })
 
   it('warning helper creates warning toast', () => {
     const store = useToastStore()
     store.warning('Watch out')
-    expect(store.toasts[0].type).toBe('warning')
+    expect(store.toasts[0]!.type).toBe('warning')
   })
 
   it('info helper creates info toast', () => {
     const store = useToastStore()
     store.info('FYI')
-    expect(store.toasts[0].type).toBe('info')
+    expect(store.toasts[0]!.type).toBe('info')
   })
 
   it('clear removes all toasts', () => {

@@ -211,22 +211,22 @@ describe('InfrastructureVmCard', () => {
   it('emits open-details when Details button is clicked', async () => {
     const w = mountCard(makeResource())
     const buttons = w.findAll('button')
-    await buttons[0].trigger('click')
+    await buttons[0]!.trigger('click')
     expect(w.emitted('open-details')).toBeTruthy()
-    expect(w.emitted('open-details')![0][0]).toBe('openstack_compute_instance_v2.web[0]')
+    expect(w.emitted('open-details')![0]![0]).toBe('openstack_compute_instance_v2.web[0]')
   })
 
   it('emits redeploy when Redeploy button is clicked', async () => {
     const w = mountCard(makeResource())
     const buttons = w.findAll('button')
-    await buttons[1].trigger('click')
+    await buttons[1]!.trigger('click')
     expect(w.emitted('redeploy')).toBeTruthy()
   })
 
   it('disables redeploy button when redeploying=true', () => {
     const w = mountCard(makeResource(), { redeploying: true })
     const buttons = w.findAll('button')
-    expect(buttons[1].attributes('disabled')).toBeDefined()
+    expect(buttons[1]!.attributes('disabled')).toBeDefined()
   })
 
   it('shows "hideDetails" label when isExpanded=true', () => {

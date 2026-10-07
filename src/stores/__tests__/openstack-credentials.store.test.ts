@@ -22,7 +22,7 @@ vi.mock('@/utils/http-error', () => ({
 import { credentialsApi } from '@/api/credentials.api'
 import { useOpenStackCredentialsStore } from '../openstack-credentials.store'
 
-const mockApi = credentialsApi as Record<string, ReturnType<typeof vi.fn>>
+const mockApi = vi.mocked(credentialsApi)
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,7 +59,7 @@ beforeEach(() => {
 // ===========================================================================
 describe('fetch()', () => {
   it('sets status and clears error on success', async () => {
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
     await store.fetch()
     expect(store.status).toEqual(STATUS_OK)
@@ -83,7 +83,7 @@ describe('fetch()', () => {
   })
 
   it('concurrent calls deduplicate: only one API request is made', async () => {
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
     const p1 = store.fetch()
     const p2 = store.fetch()
@@ -100,9 +100,9 @@ describe('save()', () => {
   const PAYLOAD = { auth_url: 'https://os.example.com', username: 'u', password: 'p', project_id: 'proj', domain_name: 'Default', region_name: 'RegionOne' }
 
   it('sets status and returns data on success', async () => {
-    mockApi.put.mockResolvedValue({ data: STATUS_OK })
+    mockApi.put.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
-    const result = await store.save(PAYLOAD)
+    const result = await store.save(PAYLOAD as any)
     expect(result).toEqual(STATUS_OK)
     expect(store.status).toEqual(STATUS_OK)
     expect(store.loading).toBe(false)
@@ -111,16 +111,16 @@ describe('save()', () => {
   it('sets fallback error and re-throws on generic failure', async () => {
     mockApi.put.mockRejectedValue(new Error('500'))
     const store = useOpenStackCredentialsStore()
-    await expect(store.save(PAYLOAD)).rejects.toThrow()
+    await expect(store.save(PAYLOAD as any)).rejects.toThrow()
     expect(store.error).toBe('Failed to save OpenStack credentials')
     expect(mockApi.get).not.toHaveBeenCalled()
   })
 
   it('sets locked-specific error and triggers re-fetch on 409', async () => {
     mockApi.put.mockRejectedValue(makeLockedError(3))
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
-    await expect(store.save(PAYLOAD)).rejects.toThrow()
+    await expect(store.save(PAYLOAD as any)).rejects.toThrow()
     // The locked error triggered auto-fetch; fetch() resets error=null on success,
     // but status is updated and the re-fetch call is verified.
     expect(mockApi.get).toHaveBeenCalledOnce()
@@ -130,7 +130,7 @@ describe('save()', () => {
   it('sets loading false even after error', async () => {
     mockApi.put.mockRejectedValue(new Error('err'))
     const store = useOpenStackCredentialsStore()
-    try { await store.save(PAYLOAD) } catch { /* expected */ }
+    try { await store.save(PAYLOAD as any) } catch { /* expected */ }
     expect(store.loading).toBe(false)
   })
 })
@@ -142,9 +142,9 @@ describe('saveFromYaml()', () => {
   const YAML_PAYLOAD = { clouds_yaml: 'clouds:\n  mycloud:\n    auth:\n      ...' }
 
   it('sets status on success', async () => {
-    mockApi.putFromYaml.mockResolvedValue({ data: STATUS_OK })
+    mockApi.putFromYaml.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
-    const result = await store.saveFromYaml(YAML_PAYLOAD)
+    const result = await store.saveFromYaml(YAML_PAYLOAD as any)
     expect(result).toEqual(STATUS_OK)
     expect(store.status).toEqual(STATUS_OK)
   })
@@ -152,15 +152,15 @@ describe('saveFromYaml()', () => {
   it('sets fallback error and re-throws on failure', async () => {
     mockApi.putFromYaml.mockRejectedValue(new Error('bad yaml'))
     const store = useOpenStackCredentialsStore()
-    await expect(store.saveFromYaml(YAML_PAYLOAD)).rejects.toThrow()
+    await expect(store.saveFromYaml(YAML_PAYLOAD as any)).rejects.toThrow()
     expect(store.error).toBe('Failed to parse clouds.yaml')
   })
 
   it('triggers re-fetch on locked 409', async () => {
     mockApi.putFromYaml.mockRejectedValue(makeLockedError(2))
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
-    try { await store.saveFromYaml(YAML_PAYLOAD) } catch { /* expected */ }
+    try { await store.saveFromYaml(YAML_PAYLOAD as any) } catch { /* expected */ }
     expect(mockApi.get).toHaveBeenCalledOnce()
   })
 })
@@ -170,8 +170,8 @@ describe('saveFromYaml()', () => {
 // ===========================================================================
 describe('remove()', () => {
   it('calls delete and then re-fetches on success', async () => {
-    mockApi.remove.mockResolvedValue({})
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.remove.mockResolvedValue({} as any)
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
     await store.remove()
     expect(mockApi.remove).toHaveBeenCalledOnce()
@@ -187,7 +187,7 @@ describe('remove()', () => {
 
   it('triggers re-fetch on locked 409', async () => {
     mockApi.remove.mockRejectedValue(makeLockedError(1))
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
     try { await store.remove() } catch { /* expected */ }
     expect(mockApi.get).toHaveBeenCalledOnce()
@@ -200,7 +200,7 @@ describe('remove()', () => {
 describe('test()', () => {
   it('sets updated status on success', async () => {
     const validated = { ...STATUS_OK, last_validated_at: '2026-06-01T00:00:00Z' }
-    mockApi.test.mockResolvedValue({ data: validated })
+    mockApi.test.mockResolvedValue({ data: validated } as any)
     const store = useOpenStackCredentialsStore()
     const result = await store.test()
     expect(result).toEqual(validated)
@@ -230,7 +230,7 @@ describe('test()', () => {
 // ===========================================================================
 describe('reset()', () => {
   it('clears status, error, and loading', async () => {
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
     await store.fetch()
     expect(store.status).not.toBeNull()
@@ -294,7 +294,7 @@ describe('getters', () => {
   })
 
   it('isResolved: false initially, true after fetch', async () => {
-    mockApi.get.mockResolvedValue({ data: STATUS_OK })
+    mockApi.get.mockResolvedValue({ data: STATUS_OK } as any)
     const store = useOpenStackCredentialsStore()
     expect(store.isResolved).toBe(false)
     await store.fetch()

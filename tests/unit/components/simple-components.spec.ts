@@ -33,7 +33,7 @@ describe('AppVersionStatusBadge', () => {
     ['private', 'AppVersionStatusBadge.private'],
     ['unknown-status', '-'],
   ])('renders %s status without error', (status, expectedLabel) => {
-    const wrapper = mount(AppVersionStatusBadge, { props: { status } })
+    const wrapper = mount(AppVersionStatusBadge, { props: { status: status as any } })
     expect(wrapper.text()).toContain(expectedLabel)
   })
 })

@@ -66,8 +66,8 @@ const mount_ = () =>
 
 describe('AdminAppsView.vue', () => {
   it('loads apps and pending approvals on mount', async () => {
-    mockListApps.mockResolvedValue({ data: [APP_A, APP_B] })
-    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
+    mockListApps.mockResolvedValue({ data: [APP_A, APP_B] } as any)
+    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
     mount_()
     await flushPromises()
     expect(mockListApps).toHaveBeenCalledOnce()
@@ -76,17 +76,17 @@ describe('AdminAppsView.vue', () => {
 
   it('shows error toast when initial load fails', async () => {
     mockListApps.mockRejectedValue(new Error('500'))
-    mockListPendingApprovals.mockResolvedValue({ data: [] })
+    mockListPendingApprovals.mockResolvedValue({ data: [] } as any)
     mount_()
     await flushPromises()
     expect(mockToastError).toHaveBeenCalledWith('AdminAppsView.loadError')
   })
 
   it('renders app names after successful load', async () => {
-    mockListApps.mockResolvedValue({ data: [APP_A, APP_B] })
+    mockListApps.mockResolvedValue({ data: [APP_A, APP_B] } as any)
     // Both apps have a pending submission so neither is hidden by the default filter
     const pendingB = { appId: 'app-2', version_tag: 'v1.0', status: 'pending', app: APP_B }
-    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING, pendingB] })
+    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING, pendingB] } as any)
     const wrapper = mount_()
     await flushPromises()
     expect(wrapper.text()).toContain('Vue App')
@@ -94,8 +94,8 @@ describe('AdminAppsView.vue', () => {
   })
 
   it('shows only apps with submissions when filter is on (default)', async () => {
-    mockListApps.mockResolvedValue({ data: [APP_A, APP_B] })
-    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
+    mockListApps.mockResolvedValue({ data: [APP_A, APP_B] } as any)
+    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
     const wrapper = mount_()
     await flushPromises()
     expect(wrapper.text()).toContain('Vue App')
@@ -103,8 +103,8 @@ describe('AdminAppsView.vue', () => {
   })
 
   it('sorts apps: those with pending submissions appear first', async () => {
-    mockListApps.mockResolvedValue({ data: [APP_B, APP_A] })
-    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
+    mockListApps.mockResolvedValue({ data: [APP_B, APP_A] } as any)
+    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
     const wrapper = mount_()
     await flushPromises()
     const text = wrapper.text()
@@ -114,9 +114,9 @@ describe('AdminAppsView.vue', () => {
   })
 
   it('loads approvals when an app row is expanded', async () => {
-    mockListApps.mockResolvedValue({ data: [APP_A] })
-    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
-    mockListVersionApprovals.mockResolvedValue({ data: [APPROVAL_PENDING, APPROVAL_APPROVED] })
+    mockListApps.mockResolvedValue({ data: [APP_A] } as any)
+    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
+    mockListVersionApprovals.mockResolvedValue({ data: [APPROVAL_PENDING, APPROVAL_APPROVED] } as any)
     const wrapper = mount_()
     await flushPromises()
 
@@ -129,10 +129,10 @@ describe('AdminAppsView.vue', () => {
   })
 
   it('calls approveVersion and shows success toast', async () => {
-    mockListApps.mockResolvedValue({ data: [APP_A] })
-    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
-    mockListVersionApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
-    mockApproveVersion.mockResolvedValue({})
+    mockListApps.mockResolvedValue({ data: [APP_A] } as any)
+    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
+    mockListVersionApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
+    mockApproveVersion.mockResolvedValue({} as any)
     const wrapper = mount_()
     await flushPromises()
 
@@ -154,9 +154,9 @@ describe('AdminAppsView.vue', () => {
   })
 
   it('shows error toast when approve fails', async () => {
-    mockListApps.mockResolvedValue({ data: [APP_A] })
-    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
-    mockListVersionApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] })
+    mockListApps.mockResolvedValue({ data: [APP_A] } as any)
+    mockListPendingApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
+    mockListVersionApprovals.mockResolvedValue({ data: [APPROVAL_PENDING] } as any)
     mockApproveVersion.mockRejectedValue(new Error('500'))
     const wrapper = mount_()
     await flushPromises()

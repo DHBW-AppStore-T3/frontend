@@ -19,7 +19,7 @@ vi.mock('@/api/course.api', () => ({
 }))
 
 import { courseApi } from '@/api/course.api'
-const mockCourseApi = courseApi as Record<string, ReturnType<typeof vi.fn>>
+const mockCourseApi = vi.mocked(courseApi)
 
 const COURSE_A = { courseId: 'c-1', name: 'Web Development', description: '' }
 const COURSE_B = { courseId: 'c-2', name: 'Data Science', description: '' }
@@ -32,7 +32,7 @@ beforeEach(() => {
 
 describe('course.store — fetchCourses', () => {
   it('populates courses on success', async () => {
-    mockCourseApi.list.mockResolvedValue({ data: [COURSE_A, COURSE_B] })
+    mockCourseApi.list.mockResolvedValue({ data: [COURSE_A, COURSE_B] } as any)
     const store = useCourseStore()
     await store.fetchCourses()
     expect(store.courses).toEqual([COURSE_A, COURSE_B])
@@ -51,7 +51,7 @@ describe('course.store — fetchCourses', () => {
 
 describe('course.store — fetchCourseById', () => {
   it('sets currentCourse and currentMembers', async () => {
-    mockCourseApi.getById.mockResolvedValue({ data: COURSE_WITH_USERS })
+    mockCourseApi.getById.mockResolvedValue({ data: COURSE_WITH_USERS } as any)
     const store = useCourseStore()
     await store.fetchCourseById('c-1')
     expect(store.currentCourse).toEqual(COURSE_WITH_USERS)
@@ -59,7 +59,7 @@ describe('course.store — fetchCourseById', () => {
   })
 
   it('handles missing users array', async () => {
-    mockCourseApi.getById.mockResolvedValue({ data: COURSE_A })
+    mockCourseApi.getById.mockResolvedValue({ data: COURSE_A } as any)
     const store = useCourseStore()
     await store.fetchCourseById('c-1')
     expect(store.currentMembers).toEqual([])
@@ -68,7 +68,7 @@ describe('course.store — fetchCourseById', () => {
 
 describe('course.store — createCourse', () => {
   it('appends new course to list', async () => {
-    mockCourseApi.create.mockResolvedValue({ data: COURSE_A })
+    mockCourseApi.create.mockResolvedValue({ data: COURSE_A } as any)
     const store = useCourseStore()
     const result = await store.createCourse({ name: 'Web Development' } as any)
     expect(result).toEqual(COURSE_A)
@@ -79,7 +79,7 @@ describe('course.store — createCourse', () => {
 describe('course.store — updateCourse', () => {
   it('replaces course in list by courseId', async () => {
     const updated = { ...COURSE_A, name: 'Web Dev Updated' }
-    mockCourseApi.update.mockResolvedValue({ data: updated })
+    mockCourseApi.update.mockResolvedValue({ data: updated } as any)
     const store = useCourseStore()
     store.courses = [COURSE_A, COURSE_B]
     await store.updateCourse('c-1', { name: 'Web Dev Updated' } as any)
@@ -89,7 +89,7 @@ describe('course.store — updateCourse', () => {
 
   it('merges into currentCourse when ids match', async () => {
     const updated = { ...COURSE_A, name: 'Web Dev Updated' }
-    mockCourseApi.update.mockResolvedValue({ data: updated })
+    mockCourseApi.update.mockResolvedValue({ data: updated } as any)
     const store = useCourseStore()
     store.currentCourse = COURSE_WITH_USERS as any
     await store.updateCourse('c-1', { name: 'Web Dev Updated' } as any)
@@ -99,7 +99,7 @@ describe('course.store — updateCourse', () => {
 
 describe('course.store — deleteCourse', () => {
   it('removes course from list', async () => {
-    mockCourseApi.delete.mockResolvedValue({})
+    mockCourseApi.delete.mockResolvedValue({} as any)
     const store = useCourseStore()
     store.courses = [COURSE_A, COURSE_B]
     await store.deleteCourse('c-1')
@@ -110,7 +110,7 @@ describe('course.store — deleteCourse', () => {
 describe('course.store — member actions', () => {
   it('fetchMembers populates currentMembers', async () => {
     const members = [{ userId: 'u-1' }, { userId: 'u-2' }]
-    mockCourseApi.listMembers.mockResolvedValue({ data: members })
+    mockCourseApi.listMembers.mockResolvedValue({ data: members } as any)
     const store = useCourseStore()
     const result = await store.fetchMembers('c-1')
     expect(store.currentMembers).toEqual(members)
@@ -126,14 +126,14 @@ describe('course.store — member actions', () => {
 
   it('addMembers replaces currentMembers with returned roster', async () => {
     const roster = [{ userId: 'u-1' }, { userId: 'u-3' }]
-    mockCourseApi.addMembers.mockResolvedValue({ data: roster })
+    mockCourseApi.addMembers.mockResolvedValue({ data: roster } as any)
     const store = useCourseStore()
     await store.addMembers('c-1', ['u-3'])
     expect(store.currentMembers).toEqual(roster)
   })
 
   it('removeMember filters userId out of currentMembers', async () => {
-    mockCourseApi.removeMember.mockResolvedValue({})
+    mockCourseApi.removeMember.mockResolvedValue({} as any)
     const store = useCourseStore()
     store.currentMembers = [{ userId: 'u-1' } as any, { userId: 'u-2' } as any]
     await store.removeMember('c-1', 'u-1')

@@ -26,7 +26,7 @@ vi.mock('@/stores/app.store', () => ({
 }))
 
 import { deploymentApi } from '@/api/deployment.api'
-const mockApi = deploymentApi as Record<string, ReturnType<typeof vi.fn>>
+const mockApi = vi.mocked(deploymentApi)
 
 const D1 = { deploymentId: 'd-1', name: 'Deploy A', status: 'success', userId: 'user-me' }
 const D2 = { deploymentId: 'd-2', name: 'Deploy B', status: 'running', userId: 'other-user' }
@@ -38,7 +38,7 @@ beforeEach(() => {
 
 describe('deployment.store — fetchDeployments', () => {
   it('populates deployments list on success', async () => {
-    mockApi.list.mockResolvedValue({ data: [D1, D2] })
+    mockApi.list.mockResolvedValue({ data: [D1, D2] } as any)
     const store = useDeploymentStore()
     await store.fetchDeployments()
     expect(store.deployments).toEqual([D1, D2])
@@ -55,7 +55,7 @@ describe('deployment.store — fetchDeployments', () => {
 
 describe('deployment.store — fetchDeploymentById', () => {
   it('sets currentDeployment', async () => {
-    mockApi.getById.mockResolvedValue({ data: D1 })
+    mockApi.getById.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     await store.fetchDeploymentById('d-1')
     expect(store.currentDeployment).toEqual(D1)
@@ -79,7 +79,7 @@ describe('deployment.store — fetchDeploymentById', () => {
 
 describe('deployment.store — createDeployment', () => {
   it('appends and returns new deployment', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     const result = await store.createDeployment({ name: 'Deploy A' } as any)
     expect(result).toEqual(D1)
@@ -89,7 +89,7 @@ describe('deployment.store — createDeployment', () => {
 
 describe('deployment.store — deleteDeployment', () => {
   it('removes deployment from list', async () => {
-    mockApi.delete.mockResolvedValue({ status: 204 })
+    mockApi.delete.mockResolvedValue({ status: 204 } as any)
     const store = useDeploymentStore()
     store.deployments = [D1 as any, D2 as any]
     await store.deleteDeployment('d-1')
@@ -99,21 +99,21 @@ describe('deployment.store — deleteDeployment', () => {
 
 describe('deployment.store — action wrappers', () => {
   it('cancelDeployment calls cancel API', async () => {
-    mockApi.cancel.mockResolvedValue({ data: { task_id: 't-1', status: 'destroying' } })
+    mockApi.cancel.mockResolvedValue({ data: { task_id: 't-1', status: 'destroying' } } as any)
     const store = useDeploymentStore()
     await store.cancelDeployment('d-1')
     expect(mockApi.cancel).toHaveBeenCalledWith('d-1')
   })
 
   it('pauseDeployment calls pause API', async () => {
-    mockApi.pause.mockResolvedValue({ data: { task_id: 't-2', status: 'pausing' } })
+    mockApi.pause.mockResolvedValue({ data: { task_id: 't-2', status: 'pausing' } } as any)
     const store = useDeploymentStore()
     await store.pauseDeployment('d-1')
     expect(mockApi.pause).toHaveBeenCalledWith('d-1')
   })
 
   it('resumeDeployment calls resume API', async () => {
-    mockApi.resume.mockResolvedValue({ data: { task_id: 't-3', status: 'resuming' } })
+    mockApi.resume.mockResolvedValue({ data: { task_id: 't-3', status: 'resuming' } } as any)
     const store = useDeploymentStore()
     await store.resumeDeployment('d-1')
     expect(mockApi.resume).toHaveBeenCalledWith('d-1')
@@ -156,7 +156,7 @@ describe('deployment.store — submitDraft', () => {
   })
 
   it('builds payload and calls createDeployment', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'My Deploy'
@@ -168,14 +168,14 @@ describe('deployment.store — submitDraft', () => {
     await store.submitDraft()
 
     expect(mockApi.create).toHaveBeenCalledOnce()
-    const payload = mockApi.create.mock.calls[0][0]
+    const payload = mockApi.create.mock.calls[0]![0]
     expect(payload.name).toBe('My Deploy')
     expect(payload.appId).toBe('app-1')
     expect(payload.releaseTag).toBe('v1.0')
   })
 
   it('uses releaseTag object.version when tag is an object', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -184,12 +184,12 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
+    const payload = mockApi.create.mock.calls[0]![0]
     expect(payload.releaseTag).toBe('v2.0')
   })
 
   it('skips file-typed variables in userInputVar', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -202,13 +202,13 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
-    expect(payload.userInputVar.terraform).not.toHaveProperty('my_file')
-    expect(payload.userInputVar.terraform).toHaveProperty('region', 'eu-west-1')
+    const payload = mockApi.create.mock.calls[0]![0]
+    expect(payload.userInputVar!.terraform).not.toHaveProperty('my_file')
+    expect(payload.userInputVar!.terraform).toHaveProperty('region', 'eu-west-1')
   })
 
   it('uses releaseTag.name when .version is absent', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -217,12 +217,12 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
+    const payload = mockApi.create.mock.calls[0]![0]
     expect(payload.releaseTag).toBe('v3.0')
   })
 
   it('falls back to terraform when variableDefinitions is not an array', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -232,12 +232,12 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
-    expect(payload.userInputVar.terraform).toEqual({ region: 'us-east-1', size: 'medium' })
+    const payload = mockApi.create.mock.calls[0]![0]
+    expect(payload.userInputVar!.terraform).toEqual({ region: 'us-east-1', size: 'medium' })
   })
 
   it('builds teams from groupNames + assignments', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -248,7 +248,7 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const { teams } = mockApi.create.mock.calls[0][0]
+    const { teams } = mockApi.create.mock.calls[0]![0]
     expect(teams).toEqual([
       { name: 'Team-A', userIds: ['u-1', 'u-2'] },
       { name: 'Team-B', userIds: ['u-3'] },
@@ -256,7 +256,7 @@ describe('deployment.store — submitDraft', () => {
   })
 
   it('falls back to missing assignment slot → empty userIds', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -267,12 +267,12 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const { teams } = mockApi.create.mock.calls[0][0]
-    expect(teams[1]).toEqual({ name: 'Team-B', userIds: [] })
+    const { teams } = mockApi.create.mock.calls[0]![0]
+    expect(teams![1]).toEqual({ name: 'Team-B', userIds: [] })
   })
 
   it('auto-splits studentIds into teams when groupNames is empty', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -285,15 +285,15 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const { teams } = mockApi.create.mock.calls[0][0]
+    const { teams } = mockApi.create.mock.calls[0]![0]
     // 5 students / 2 groups: remainder=1 → group-0 gets 3, group-1 gets 2
     expect(teams).toHaveLength(2)
-    expect(teams[0]).toEqual({ name: 'Team-1', userIds: ['u-1', 'u-2', 'u-3'] })
-    expect(teams[1]).toEqual({ name: 'Team-2', userIds: ['u-4', 'u-5'] })
+    expect(teams![0]).toEqual({ name: 'Team-1', userIds: ['u-1', 'u-2', 'u-3'] })
+    expect(teams![1]).toEqual({ name: 'Team-2', userIds: ['u-4', 'u-5'] })
   })
 
   it('skips scoped variable (team/user) with empty object value', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -306,13 +306,13 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
-    expect(payload.userInputVar.terraform).not.toHaveProperty('user_cfg')
-    expect(payload.userInputVar.terraform).toHaveProperty('region', 'eu-west-1')
+    const payload = mockApi.create.mock.calls[0]![0]
+    expect(payload.userInputVar!.terraform).not.toHaveProperty('user_cfg')
+    expect(payload.userInputVar!.terraform).toHaveProperty('region', 'eu-west-1')
   })
 
   it('multi-image packer: routes nested packer vars under template_key', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -327,12 +327,12 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
-    expect(payload.userInputVar.packer).toEqual({ ubuntu: { image_name: 'my-ubuntu-22.04' } })
+    const payload = mockApi.create.mock.calls[0]![0]
+    expect(payload.userInputVar!.packer).toEqual({ ubuntu: { image_name: 'my-ubuntu-22.04' } })
   })
 
   it('file uploads: only slots with content_b64 included; empty map → no files key', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -348,15 +348,15 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
+    const payload = mockApi.create.mock.calls[0]![0]
     expect(payload.files).toBeDefined()
-    expect(payload.files.ssh_key).toEqual({ global: { content_b64: 'abc123', filename: 'key.pem' } })
-    expect(payload.files.ssh_key).not.toHaveProperty('empty_slot')
+    expect(payload.files!.ssh_key).toEqual({ global: { content_b64: 'abc123', filename: 'key.pem' } })
+    expect(payload.files!.ssh_key).not.toHaveProperty('empty_slot')
     expect(payload.files).not.toHaveProperty('never_filled')
   })
 
   it('payload.files is omitted entirely when no uploads have content_b64', async () => {
-    mockApi.create.mockResolvedValue({ data: D1 })
+    mockApi.create.mockResolvedValue({ data: D1 } as any)
     const store = useDeploymentStore()
     store.draft.appId = 'app-1'
     store.draft.name = 'Deploy'
@@ -366,7 +366,7 @@ describe('deployment.store — submitDraft', () => {
 
     await store.submitDraft()
 
-    const payload = mockApi.create.mock.calls[0][0]
+    const payload = mockApi.create.mock.calls[0]![0]
     expect(payload).not.toHaveProperty('files')
   })
 })

@@ -95,8 +95,8 @@ describe('FileDropZone', () => {
     const w = mount(FileDropZone, { props: { modelValue: payload } })
     await w.find('button').trigger('click')
     expect(w.emitted('update:modelValue')).toBeTruthy()
-    expect(w.emitted('update:modelValue')![0][0]).toBeNull()
-    expect(w.emitted('change')![0][0]).toBeNull()
+    expect(w.emitted('update:modelValue')![0]![0]).toBeNull()
+    expect(w.emitted('change')![0]![0]).toBeNull()
   })
 
   it('does not show clear button when disabled=true in filled state', () => {
@@ -122,7 +122,7 @@ describe('FileDropZone', () => {
     await flushPromises()
 
     expect(w.emitted('update:modelValue')).toBeTruthy()
-    const emitted = w.emitted('update:modelValue')![0][0] as any
+    const emitted = w.emitted('update:modelValue')![0]![0] as any
     expect(emitted.name).toBe('hello.txt')
     expect(emitted.content_b64).toBe('aGVsbG8=')
   })
@@ -140,7 +140,7 @@ describe('FileDropZone', () => {
     await flushPromises()
 
     expect(w.emitted('error')).toBeTruthy()
-    expect(w.emitted('error')![0][0]).toBe('fileDropZone.tooLarge')
+    expect(w.emitted('error')![0]![0]).toBe('fileDropZone.tooLarge')
     expect(w.text()).toContain('fileDropZone.tooLarge')
   })
 
@@ -193,14 +193,14 @@ describe('FileDropZone', () => {
     const w = mount(FileDropZone)
     // [0] is the outer wrapper div; [1] is the actual drop zone that has the
     // @dragover/@dragleave/@drop handlers.
-    const zone = w.findAll('div')[1]
+    const zone = w.findAll('div')[1]!
     await zone.trigger('dragover')
     expect(w.html()).toContain('border-green-500')
   })
 
   it('clears isDragging on dragleave', async () => {
     const w = mount(FileDropZone)
-    const zone = w.findAll('div')[1]
+    const zone = w.findAll('div')[1]!
     await zone.trigger('dragover')
     await zone.trigger('dragleave')
     expect(w.html()).not.toContain('border-green-500')
@@ -214,7 +214,7 @@ describe('FileDropZone', () => {
     // trigger(event, options) uses document.createEvent('Event') + Object.assign,
     // so dataTransfer is writable on the generic Event — readable by onDrop's
     // event.dataTransfer?.files?.[0] access.
-    await w.findAll('div')[1].trigger('drop', {
+    await w.findAll('div')[1]!.trigger('drop', {
       dataTransfer: { files: { 0: file, length: 1, item: () => file } },
     })
     await flushPromises()
@@ -242,7 +242,7 @@ describe('FileDropZone', () => {
 
   it('does not trigger input when disabled=true (triggerInput guard)', async () => {
     const w = mount(FileDropZone, { props: { disabled: true } })
-    const zone = w.findAll('div')[0]
+    const zone = w.findAll('div')[0]!
     await zone.trigger('click')
     // No assertion needed — just verifying no error is thrown
     expect(w.html()).toBeDefined()
