@@ -7,6 +7,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
+    // Node 22+ ships an experimental global `localStorage` that is unusable
+    // without `--localstorage-file` (it has no `.clear`/`.setItem` etc.) and
+    // shadows happy-dom's working `window.localStorage`. Disable it so tests
+    // get happy-dom's implementation instead of Node's broken stub.
+    poolOptions: {
+      forks: { execArgv: ['--no-experimental-webstorage'] },
+      threads: { execArgv: ['--no-experimental-webstorage'] },
+    },
     coverage: {
       // istanbul, not v8. The v8 provider reports coverage on the
       // compiled SFC output and remaps it back through source maps,

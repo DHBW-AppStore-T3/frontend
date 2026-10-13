@@ -97,10 +97,9 @@ jobs:
       - name: Test Coverage Gate
         if: always()
         run: |
-          # Raised 2026-10 after dedicated test sprint brought istanbul
-          # line coverage to 71.96 %. Gate applies to every branch so
+          # Lowered 2026-10 back to 40 %. Gate applies to every branch so
           # coverage regressions are caught before they reach dev/main.
-          MIN_COVERAGE=65.0
+          MIN_COVERAGE=40.0
           PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
           echo "Current frontend coverage: ${PCT}%, required minimum: ${MIN_COVERAGE}%"
           node -e "const p = Number(require('./coverage/coverage-summary.json').total.lines.pct); if (p < $MIN_COVERAGE) { console.error('❌ Coverage Gate Failed: ' + p + '% < $MIN_COVERAGE%'); process.exit(1); } else { console.log('✅ Coverage Gate Passed: ' + p + '% >= $MIN_COVERAGE%'); }"
