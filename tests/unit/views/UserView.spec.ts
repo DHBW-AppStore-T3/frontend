@@ -1,157 +1,48 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-
+import { createI18n } from 'vue-i18n'
 import UserView from '@/views/UserView.vue'
-
-// ---------------------------------------------------------
-// 1. Mocks & Setup
-// ---------------------------------------------------------
-
-// i18n im setup() von UserView nicht via app.use installiert — daher mocken
-vi.mock('vue-i18n', () => ({
-    useI18n: () => ({
-        t: (key: string, vars?: any) => {
-            // Role-Label-Keys auf deutsche Strings mappen (die Tests erwarten
-            // "Student", "Administrator" usw. — die View nutzt
-            // ``t(roleLabelKey(role))``).
-            const roleMap: Record<string, string> = {
-                'roleLabels.admin': 'Administrator',
-                'roleLabels.teacher': 'Lehrer',
-                'roleLabels.student': 'Student',
-                'roleLabels.unknown': 'Unbekannt',
-                'UserView.loading': 'Lade Benutzerdaten...',
-            }
-            if (key in roleMap) return roleMap[key]
-            return vars ? `${key} ${JSON.stringify(vars)}` : key
-        }
-    })
-}))
-
-// Wir definieren eine Variable für den User, die wir in jedem Test ändern können
-let mockUser: any = null
-
-vi.mock('@/stores/auth.store', () => ({
-    useAuthStore: () => ({
-        get user() { return mockUser }
-    })
-}))
-
-// ---------------------------------------------------------
-// 2. Die Tests
-// ---------------------------------------------------------
-
-describe('UserView.vue', () => {
-
-    beforeEach(() => {
-        vi.clearAllMocks()
-        // Standardmäßig starten wir jeden Test ohne User
-        mockUser = null
-    })
-
-    const mountComponent = () => {
-        return mount(UserView, {
-            global: {
-                stubs: {
-                    // Wir erstellen kleine Stubs für die UI-Komponenten
-                    Badge: { template: '<span class="badge"><slot /></span>' },
-                    RouterLink: {
-                        props: ['to'],
-                        template: '<a :href="to" class="router-link-stub"><slot /></a>'
-                    }
-                }
-            }
-        })
-    }
-
-    // --- 1. Ladezustand ---
-
-    it('zeigt einen Lade-Text an, solange kein User vorhanden ist', () => {
-        mockUser = null
-        const wrapper = mountComponent()
-
-        expect(wrapper.text()).toContain('Lade Benutzerdaten...')
-        // Prüfen, ob die Einstellungs-Karten noch nicht gerendert werden
-        expect(wrapper.text()).not.toContain('Vorname')
-    })
-
-    // --- 2. Erfolgsfall (Happy Path) mit allen Daten ---
-
-    it('zeigt alle Benutzerinformationen korrekt an, wenn sie vorhanden sind', () => {
-        mockUser = {
-            username: 'maxmuster',
-            firstName: 'Max',
-            lastName: 'Mustermann',
-            email: 'max@test.de',
-            role: 'student',
-            userId: 'u-12345',
-            keycloak_id: 'kc-98765',
-            course: { name: 'Informatik Kurs A' },
-            // Ein Datum in der Vergangenheit, um die Formatierung zu testen
-            created_at: '2024-01-15T10:00:00Z'
-        }
-
-        const wrapper = mountComponent()
-
-        expect(wrapper.text()).toContain('maxmuster')
-        expect(wrapper.text()).toContain('Max')
-        expect(wrapper.text()).toContain('Mustermann')
-        expect(wrapper.text()).toContain('max@test.de')
-        expect(wrapper.text()).toContain('Student') // Computed Property Test
-        expect(wrapper.text()).toContain('u-12345')
-        expect(wrapper.text()).toContain('kc-98765')
-        expect(wrapper.text()).toContain('Informatik Kurs A')
-
-        // Prüfen, ob das Jahr 2024 im formatierten Datum auftaucht
-        expect(wrapper.text()).toContain('2024')
-    })
-
-    // --- 3. Fallbacks (Fehlende Daten) ---
-
-    it('zeigt "N/A" an, wenn optionale Felder fehlen', () => {
-        mockUser = {
-            username: 'minimalist',
-            role: 'admin'
-            // firstName, lastName, course, email etc. fehlen absichtlich!
-        }
-
-        const wrapper = mountComponent()
-
-        // Die Komponente ist so programmiert, dass sie 6 Mal 'N/A' anzeigt
-        // (Vorname, Nachname, E-Mail, Kurs, UserID, KeycloakID) + 1x fürs Datum = 7x N/A
-        const text = wrapper.text()
-        expect(text).toContain('N/A')
-
-        // Testen wir explizit, ob der Administrator-Label korrekt gerendert wurde
-        expect(text).toContain('Administrator')
-    })
-
-    // --- 4. Rollen-Logik (Computed Properties) ---
-
-    it('übersetzt die englischen Rollen korrekt ins Deutsche', () => {
-        // 1. Admin testen
-        mockUser = { role: 'admin' }
-        let wrapper = mountComponent()
-        expect(wrapper.text()).toContain('Administrator')
-
-        // 2. Teacher testen
-        mockUser = { role: 'teacher' }
-        wrapper = mountComponent()
-        expect(wrapper.text()).toContain('Lehrer')
-
-        // 3. Fallback testen (Unbekannte Rolle)
-        mockUser = { role: 'hacker' }
-        wrapper = mountComponent()
-        expect(wrapper.text()).toContain('Unbekannt')
-    })
-
-    // --- 5. Navigation ---
-
-    it('verlinkt korrekt auf die OpenStack-Einstellungen', () => {
-        mockUser = { username: 'testuser' }
-        const wrapper = mountComponent()
-
-        const link = wrapper.find('a.router-link-stub')
-        expect(link.exists()).toBe(true)
-        expect(link.attributes('href')).toBe('/user/openstack')
-    })
+import de from '@/i18n/locales/de'
+import en from '@/i18n/locales/en'
+import type { UserWithCourse } from '@/types'
+let mockUser: Partial<UserWithCourse> | null = null
+const success = vi.fn()
+vi.mock('@/stores/auth.store', () => ({ useAuthStore: () => ({ get user() { return mockUser } }) }))
+vi.mock('@/composables/useToast', () => ({ useToast: () => ({ success }) }))
+function mountView() {
+  const i18n = createI18n({ legacy: false, locale: 'de', messages: { de, en } })
+  return { i18n, wrapper: mount(UserView, { global: { plugins: [i18n], stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } }) }
+}
+beforeEach(() => { mockUser = null; localStorage.clear(); vi.clearAllMocks() })
+describe('User profile', () => {
+  it('shows a loading state before the account is available', () => {
+    expect(mountView().wrapper.text()).toContain(de.UserView.loading)
+  })
+  it('shows account-managed identity in read-only fields and retains account details', () => {
+    mockUser = { username: 'maxmuster', firstName: 'Max', lastName: 'Mustermann', email: 'max@example.test', role: 'student', userId: 'u-1', keycloak_id: 'kc-1', created_at: '2024-01-15', course: { courseId: 'c-1', name: 'Informatik' } }
+    const { wrapper } = mountView()
+    const fields = wrapper.findAll('input')
+    expect(fields[0]!.element.value).toBe('Max Mustermann')
+    expect(fields[1]!.element.value).toBe('max@example.test')
+    expect(fields.every(field => field.element.readOnly)).toBe(true)
+    for (const value of ['maxmuster', 'Informatik', 'u-1', 'kc-1', '2024']) expect(wrapper.text()).toContain(value)
+  })
+  it('falls back to the username when personal names are missing', () => {
+    mockUser = { username: 'minimalist', role: 'admin' }
+    expect(mountView().wrapper.get('input').element.value).toBe('minimalist')
+  })
+  it('saves the language preference without updating account data', async () => {
+    mockUser = { username: 'admin', role: 'admin' }
+    const { wrapper, i18n } = mountView()
+    await wrapper.get('select').setValue('en')
+    await wrapper.get('form').trigger('submit')
+    expect(i18n.global.locale.value).toBe('en')
+    expect(localStorage.getItem('locale')).toBe('en')
+    expect(success).toHaveBeenCalled()
+    expect(mockUser).toEqual({ username: 'admin', role: 'admin' })
+  })
+  it('keeps the credentials settings accessible', () => {
+    mockUser = { username: 'admin', role: 'admin' }
+    expect(mountView().wrapper.get('a').attributes('href')).toBe('/user/openstack')
+  })
 })

@@ -32,15 +32,15 @@ onMounted(async () => {
     <div class="text-center">
       <div v-if="!error" class="flex flex-col items-center gap-4">
         <Loader2 class="animate-spin text-primary" :size="48" />
-        <p class="text-gray-600">Completing authentication...</p>
+        <p class="text-textMuted">Completing authentication...</p>
       </div>
       
       <div v-else class="flex flex-col items-center gap-4">
-        <div class="text-red-500">
+        <div class="text-danger">
           <p class="font-semibold">Authentication Error</p>
           <p class="text-sm mt-2">{{ error }}</p>
         </div>
-        <p class="text-sm text-gray-600">Redirecting to login...</p>
+        <p class="text-sm text-textMuted">Redirecting to login...</p>
       </div>
     </div>
   </div>

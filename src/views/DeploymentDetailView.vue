@@ -502,6 +502,17 @@ const pauseResumeBusy = ref(false)
 
 onMounted(async () => {
     await deploymentStore.fetchDeploymentById(deploymentId)
+
+    if (!deploymentStore.currentDeployment) {
+        toastStore.error(
+            deploymentStore.error
+                ? 'Du hast keinen Zugriff auf dieses Deployment.'
+                : 'Deployment nicht gefunden.'
+        )
+        router.push({ name: 'deployments.list' })
+        return
+    }
+
     await loadTasks() // Loads the history into tasks.value
 
     if (isOwnerView.value) {
@@ -1308,7 +1319,7 @@ const deselectTask = () => {
             <div class="flex-1 min-w-0 space-y-6">
 
         <!-- Header with back button and status badge -->
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
             <div class="flex items-center gap-4">
                 <RouterLink :to="{ name: 'deployments.list' }">
                     <button
@@ -1345,7 +1356,7 @@ const deselectTask = () => {
                         ? $t('DeploymentDetailView.pauseTooltip')
                         : $t('DeploymentDetailView.resumeTooltip')"
                     class="flex items-center gap-2 px-4 py-2"
-                    :variant="pauseResumeAction === 'pause' ? 'yellow' : 'green'">
+                    :variant="pauseResumeAction === 'pause' ? 'primary' : 'secondary'">
                     <PauseCircle v-if="pauseResumeAction === 'pause'" :size="18" />
                     <PlayCircle v-else :size="18" />
                     <span class="font-medium">
@@ -1359,7 +1370,7 @@ const deselectTask = () => {
                      the task and cleans up everything it created, including
                      the Packer build instance Terraform knows nothing about. -->
                 <BaseButton v-if="canCancel" @click="showCancelModal = true" :disabled="cancelBusy"
-                    class="flex items-center gap-2 px-4 py-2" variant="yellow">
+                    class="flex items-center gap-2 px-4 py-2" variant="primary">
                     <StopCircle :size="18" />
                     <span class="font-medium">{{ $t('DeploymentDetailView.deploymentStop') }}</span>
                 </BaseButton>
@@ -1368,7 +1379,7 @@ const deselectTask = () => {
                      triggers a destroy task or a straight soft-delete based on
                      status. Hidden entirely for members. -->
                 <BaseButton v-if="isOwnerView" data-testid="btn-delete-deployment" @click="canDelete && (showDeleteModal = true)" :disabled="!canDelete"
-                    :title="deleteDisabledReason" class="flex items-center gap-2 px-4 py-2" variant="red">
+                    :title="deleteDisabledReason" class="flex items-center gap-2 px-4 py-2" variant="destructive">
                     <Trash2 :size="18" />
                     <span class="font-medium">{{ $t('DeploymentDetailView.deploymentDelete') }}</span>
                 </BaseButton>
@@ -1379,7 +1390,7 @@ const deselectTask = () => {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             <!-- Deployment info card -->
-            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div class="detail-surface">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Package :size="20" class="text-primary" />
                     Deployment Info
@@ -1414,7 +1425,7 @@ const deselectTask = () => {
             </div>
 
             <!-- App info card -->
-            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div class="detail-surface">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Package :size="20" class="text-emerald-600" />
                     {{ $t('DeploymentsView.deploymentApp') }}
@@ -1449,7 +1460,7 @@ const deselectTask = () => {
             </div>
 
             <!-- User info card -->
-            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div class="detail-surface">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <User :size="20" class="text-blue-600" />
                     {{ $t('DeploymentDetailView.deploymentOwner') }}
@@ -1486,7 +1497,7 @@ const deselectTask = () => {
         </div>
 
         <!-- Groups section -->
-        <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm" v-if="groups.length > 0">
+        <div class="detail-surface" v-if="groups.length > 0">
             <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Users :size="20" class="text-primary" />
                 {{ $t('DeploymentDetailView.deploymentGroups') }}
@@ -1548,7 +1559,7 @@ const deselectTask = () => {
         </div>
 
         <!-- Deployment Variables -->
-        <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm"
+        <div class="detail-surface"
             v-if="Object.keys(deploymentVariables).length > 0">
             <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Settings :size="20" class="text-orange-600" />
@@ -1906,7 +1917,7 @@ const deselectTask = () => {
              Only the deployment owner / staff sees the actual task
              contents — members get a placeholder card instead so the
              page layout stays consistent across roles. -->
-        <div v-if="!isOwnerView" class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div v-if="!isOwnerView" class="detail-surface">
             <div class="flex items-center gap-3 mb-3">
                 <div class="p-2 bg-gray-100 rounded-lg">
                     <Terminal :size="20" class="text-gray-400" />
@@ -1918,7 +1929,7 @@ const deselectTask = () => {
                 <span>{{ $t('DeploymentDetailView.tasksOwnerOnly') }}</span>
             </div>
         </div>
-        <div v-else class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div v-else class="detail-surface">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-gray-100 rounded-lg">
@@ -2177,10 +2188,10 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showCancelModal = false">
+                    <BaseButton variant="text" @click="showCancelModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
-                    <BaseButton variant="yellow" :disabled="cancelBusy" @click="confirmCancel">
+                    <BaseButton variant="primary" :disabled="cancelBusy" @click="confirmCancel">
                         {{ $t('DeploymentDetailView.confirmButton') }}
                     </BaseButton>
                 </div>
@@ -2196,10 +2207,10 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showDeleteModal = false">
+                    <BaseButton variant="text" @click="showDeleteModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
-                    <BaseButton variant="red" data-testid="btn-confirm-delete" @click="confirmDelete">
+                    <BaseButton variant="destructive" data-testid="btn-confirm-delete" @click="confirmDelete">
                         {{ $t('DeploymentDetailView.confirmButton') }}
                     </BaseButton>
                 </div>
@@ -2229,10 +2240,10 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showRedeployModal = false">
+                    <BaseButton variant="text" @click="showRedeployModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
-                    <BaseButton variant="red" @click="confirmRedeploy">
+                    <BaseButton variant="destructive" @click="confirmRedeploy">
                         Redeploy
                     </BaseButton>
                 </div>
@@ -2256,11 +2267,11 @@ const deselectTask = () => {
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
-                    <BaseButton variant="ghost" @click="showPauseResumeModal = false">
+                    <BaseButton variant="text" @click="showPauseResumeModal = false">
                         {{ $t('DeploymentDetailView.cancelButton') }}
                     </BaseButton>
                     <BaseButton
-                        :variant="pauseResumeAction === 'pause' ? 'yellow' : 'green'"
+                        :variant="pauseResumeAction === 'pause' ? 'primary' : 'secondary'"
                         @click="confirmPauseResume"
                         :disabled="pauseResumeBusy">
                         {{ pauseResumeAction === 'pause'

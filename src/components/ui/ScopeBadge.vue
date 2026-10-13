@@ -19,11 +19,11 @@ defineProps<{
 </script>
 
 <template>
-  <Badge v-if="scope === 'team'" variant="purple">
+  <Badge v-if="scope === 'team'" variant="brand">
     <Users :size="12" class="mr-1" aria-hidden="true" />
     <span>Pro Team</span>
   </Badge>
-  <Badge v-else-if="scope === 'user'" variant="purple">
+  <Badge v-else-if="scope === 'user'" variant="brand">
     <User :size="12" class="mr-1" aria-hidden="true" />
     <span>Pro User</span>
   </Badge>

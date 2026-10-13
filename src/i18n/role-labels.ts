@@ -17,16 +17,16 @@ export function roleLabelKey(role: string | undefined | null): string {
 }
 
 /** Variant name for the ``<Badge>`` UI component. */
-export function roleBadgeVariant(role: string | undefined | null): 'yellow' | 'green' | 'red' | 'purple' | 'blue' | 'gray' {
+export function roleBadgeVariant(role: string | undefined | null): 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'brand' {
   switch (role) {
     case "admin":
-      return "purple"
+      return "brand"
     case "teacher":
-      return "blue"
+      return "info"
     case "student":
-      return "green"
+      return "success"
     default:
-      return "gray"
+      return "neutral"
   }
 }
 

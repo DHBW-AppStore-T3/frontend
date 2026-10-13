@@ -53,8 +53,8 @@ const previewIcon = computed(() => {
 
 const iconColorClass = computed(() => {
   const name = form.value.name.toLowerCase()
-  if (name.includes('kali')) return 'text-blue-500'
-  return 'text-gray-700'
+  if (name.includes('kali')) return 'text-info'
+  return 'text-textMuted'
 })
 
 const triggerFileInput = () => {
@@ -162,32 +162,32 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl p-10 border min-h-[600px] flex flex-col">
+  <div class="app-page wizard-page flex flex-col">
 
-    <h1 class="text-4xl font-bold text-gray-900 mb-12">{{ $t('AppsCreateView.title') }}</h1>
+    <h1 class="page-heading mb-8">{{ $t('AppsCreateView.title') }}</h1>
 
     <div class="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-16 items-start mb-8">
 
       <div class="space-y-6">
 
-        <div class="bg-gray-100 rounded-lg p-3 flex items-center shadow-sm">
+        <div class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <IdCard class="text-green-800" :size="28" />
+            <IdCard class="text-primary" :size="28" />
           </div>
-          <div class="font-bold text-gray-800 w-48 pl-2">{{ $t('AppsCreateView.form.nameLabel') }}</div>
+          <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.nameLabel') }}</div>
           <input
               v-model="form.name"
               type="text"
               :placeholder="$t('AppsCreateView.form.namePlaceholder')"
-              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-green-600 outline-none text-gray-700 shadow-sm mx-2"
+              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-primary outline-none text-textMuted shadow-sm mx-2"
           />
         </div>
 
-        <div class="bg-gray-100 rounded-lg p-3 flex items-start shadow-sm">
+        <div class="bg-surfaceMuted rounded-lg p-3 flex items-start shadow-sm">
           <div class="p-2 mt-0.5">
-            <MessageSquare class="text-green-800" :size="28" />
+            <MessageSquare class="text-primary" :size="28" />
           </div>
-          <div class="font-bold text-gray-800 w-48 pl-2 mt-2">{{ $t('AppsCreateView.form.descLabel') }}</div>
+          <div class="font-bold text-textHeading w-48 pl-2 mt-2">{{ $t('AppsCreateView.form.descLabel') }}</div>
           <div class="flex-1 min-w-0 mx-2">
             <MarkdownEditor
               v-model="form.description"
@@ -195,18 +195,18 @@ const handleSubmit = async () => {
               :min-height-px="80"
               :max-height-px="240"
             />
-            <p class="mt-1 text-xs text-gray-500">{{ $t('AppsCreateView.form.descMarkdownHint') }}</p>
+            <p class="mt-1 text-xs text-textMuted">{{ $t('AppsCreateView.form.descMarkdownHint') }}</p>
           </div>
         </div>
 
-        <div class="bg-gray-100 rounded-lg p-3 flex items-center shadow-sm">
+        <div class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <ImageIcon class="text-green-800" :size="28" />
+            <ImageIcon class="text-primary" :size="28" />
           </div>
-          <div class="font-bold text-gray-800 w-48 pl-2">{{ $t('AppsCreateView.form.logoLabel') }}</div>
+          <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.logoLabel') }}</div>
           <div
-              class="flex-1 bg-white rounded py-1.5 px-3 outline-none text-gray-700 shadow-sm mx-2 border-2 transition-all cursor-pointer flex items-center min-h-[36px]"
-              :class="isDragging ? 'border-green-500 bg-green-50 border-dashed' : 'border-transparent hover:border-gray-300 border-dashed'"
+              class="flex-1 bg-white rounded py-1.5 px-3 outline-none text-textMuted shadow-sm mx-2 border-2 transition-all cursor-pointer flex items-center min-h-[36px]"
+              :class="isDragging ? 'border-primary bg-successTint border-dashed' : 'border-transparent hover:border-borderSubtle border-dashed'"
               @dragover.prevent="isDragging = true"
               @dragleave.prevent="isDragging = false"
               @drop.prevent="handleDrop"
@@ -219,41 +219,41 @@ const handleSubmit = async () => {
                 class="hidden"
                 @change="handleFileChange"
             />
-            <span v-if="!imagePreviewUrl" class="text-sm text-gray-400">
+            <span v-if="!imagePreviewUrl" class="text-sm text-textFaint">
               {{ $t('AppsCreateView.form.logoSelect') }}
             </span>
             <div v-else class="flex justify-between items-center w-full">
-              <span class="text-sm text-green-700 font-medium truncate">{{ form.logo?.name }}</span>
-              <span class="text-xs text-gray-400 hover:text-red-500 ml-2" @click.stop="imagePreviewUrl = null; form.logo = null">{{ $t('AppsCreateView.form.logoRemove') }}</span>
+              <span class="text-sm text-success font-medium truncate">{{ form.logo?.name }}</span>
+              <span class="text-xs text-textFaint hover:text-danger ml-2" @click.stop="imagePreviewUrl = null; form.logo = null">{{ $t('AppsCreateView.form.logoRemove') }}</span>
             </div>
           </div>
         </div>
-        <div class="bg-gray-100 rounded-lg p-3 flex items-center shadow-sm">
+        <div class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <LinkIcon class="text-green-800" :size="28" />
+            <LinkIcon class="text-primary" :size="28" />
           </div>
-          <div class="font-bold text-gray-800 w-48 pl-2">{{ $t('AppsCreateView.form.repoLabel') }}</div>
+          <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.repoLabel') }}</div>
           <input
               v-model="form.repoUrl"
               type="text"
               :placeholder="$t('AppsCreateView.form.repoPlaceholder')"
-              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-green-600 outline-none text-gray-700 shadow-sm mx-2"
+              class="flex-1 bg-white rounded py-1.5 px-3 focus:ring-2 focus:ring-primary outline-none text-textMuted shadow-sm mx-2"
           />
         </div>
 
         <!-- Visibility Toggle -->
-        <div class="bg-gray-100 rounded-lg p-3 flex items-start shadow-sm">
+        <div class="bg-surfaceMuted rounded-lg p-3 flex items-start shadow-sm">
           <div class="p-2">
-            <component :is="form.isPrivate ? Lock : Globe" class="text-green-800" :size="28" />
+            <component :is="form.isPrivate ? Lock : Globe" class="text-primary" :size="28" />
           </div>
-          <div class="font-bold text-gray-800 w-48 pl-2 pt-1">{{ $t('AppsCreateView.form.visibilityLabel') }}</div>
+          <div class="font-bold text-textHeading w-48 pl-2 pt-1">{{ $t('AppsCreateView.form.visibilityLabel') }}</div>
           <div class="flex-1 mx-2">
             <div class="flex gap-3">
               <button
                 type="button"
                 @click="form.isPrivate = false"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all"
-                :class="!form.isPrivate ? 'border-green-600 bg-green-50 text-green-800' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'"
+                :class="!form.isPrivate ? 'border-primary bg-successTint text-primary' : 'border-borderSubtle bg-white text-textMuted hover:border-textFaint'"
               >
                 <Globe :size="16" />
                 {{ $t('AppsCreateView.form.visibilityPublic') }}
@@ -262,31 +262,31 @@ const handleSubmit = async () => {
                 type="button"
                 @click="form.isPrivate = true"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all"
-                :class="form.isPrivate ? 'border-purple-600 bg-purple-50 text-purple-800' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'"
+                :class="form.isPrivate ? 'border-purple-600 bg-purple-50 text-purple-800' : 'border-borderSubtle bg-white text-textMuted hover:border-textFaint'"
               >
                 <Lock :size="16" />
                 {{ $t('AppsCreateView.form.visibilityPrivate') }}
               </button>
             </div>
-            <p class="mt-2 text-sm text-gray-500">
+            <p class="mt-2 text-sm text-textMuted">
               {{ form.isPrivate ? $t('AppsCreateView.form.visibilityPrivateHint') : $t('AppsCreateView.form.visibilityPublicHint') }}
             </p>
           </div>
         </div>
 
         <!-- Submit all versions toggle (public only) -->
-        <div v-if="!form.isPrivate" class="bg-gray-100 rounded-lg p-3 flex items-center shadow-sm">
+        <div v-if="!form.isPrivate" class="bg-surfaceMuted rounded-lg p-3 flex items-center shadow-sm">
           <div class="p-2">
-            <Send class="text-green-800" :size="28" />
+            <Send class="text-primary" :size="28" />
           </div>
-          <div class="font-bold text-gray-800 w-48 pl-2">{{ $t('AppsCreateView.form.submitAllLabel') }}</div>
+          <div class="font-bold text-textHeading w-48 pl-2">{{ $t('AppsCreateView.form.submitAllLabel') }}</div>
           <div class="flex-1 mx-2 flex items-center justify-between">
-            <p class="text-sm text-gray-500">{{ $t('AppsCreateView.form.submitAllHint') }}</p>
+            <p class="text-sm text-textMuted">{{ $t('AppsCreateView.form.submitAllHint') }}</p>
             <button
               type="button"
               @click="form.submitAllVersions = !form.submitAllVersions"
               class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ml-4"
-              :class="form.submitAllVersions ? 'bg-green-600' : 'bg-gray-300'"
+              :class="form.submitAllVersions ? 'bg-primary' : 'bg-gray-300'"
             >
               <span
                 class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
@@ -300,17 +300,17 @@ const handleSubmit = async () => {
 
       <div class="flex flex-col items-center pt-4">
         <!-- Container matching the overview design (p-6, flex-col) -->
-        <div class="w-full bg-surfaceTint border border-gray-200 rounded-xl p-6 flex flex-col shadow-sm relative min-h-[250px]">
+        <div class="w-full bg-surfaceTint border border-borderSubtle rounded-xl p-6 flex flex-col shadow-sm relative min-h-[250px]">
 
           <!-- Badge -->
-          <span class="absolute top-3 right-3 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+          <span class="absolute top-3 right-3 text-[10px] text-textFaint uppercase tracking-widest font-bold">
             {{ $t('AppsCreateView.preview.badge') }}
           </span>
 
           <!-- Header: Icon & Titel nebeneinander -->
           <div class="flex items-center gap-4 mb-4 mt-2">
             <!-- Icon/logo box, matching the overview -->
-            <div class="bg-white p-3 rounded-lg shadow-sm text-gray-700 flex items-center justify-center w-[56px] h-[56px] flex-shrink-0">
+            <div class="bg-white p-3 rounded-lg shadow-sm text-textMuted flex items-center justify-center w-[56px] h-[56px] flex-shrink-0">
               <img
                   v-if="imagePreviewUrl"
                   :src="imagePreviewUrl"
@@ -325,7 +325,7 @@ const handleSubmit = async () => {
               />
             </div>
 
-            <h3 class="font-bold text-xl text-gray-900 leading-tight pr-12 text-left">
+            <h3 class="font-bold text-xl text-textHeading leading-tight pr-12 text-left">
               {{ form.name || $t('AppsCreateView.preview.defaultName') }}
             </h3>
           </div>
@@ -338,16 +338,16 @@ const handleSubmit = async () => {
               variant="compact"
               :clamp="5"
             />
-            <p v-else class="text-gray-600 leading-relaxed">
+            <p v-else class="text-textMuted leading-relaxed">
               {{ $t('AppsCreateView.preview.defaultDesc') }}
             </p>
           </div>
 
           <!-- Preview button — same look as on the app overview
-               (BaseButton variant="green"), not clickable since it's a preview. -->
+               (BaseButton variant="secondary"), not clickable since it's a preview. -->
           <div class="mt-auto">
             <BaseButton
-                variant="green"
+                variant="secondary"
                 class="w-full flex items-center justify-center gap-2 cursor-default opacity-80"
                 @click.prevent
             >
@@ -362,13 +362,13 @@ const handleSubmit = async () => {
     <div class="mt-auto grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-16 items-end">
 
       <div>
-        <div class="bg-blue-50 text-blue-900 p-4 rounded-lg text-sm leading-relaxed border border-blue-200 flex gap-3 items-start shadow-sm">
+        <div class="bg-infoTint text-blue-900 p-4 rounded-lg text-sm leading-relaxed border border-info/30 flex gap-3 items-start shadow-sm">
           <Info class="shrink-0 mt-0.5 text-blue-700" :size="20" />
           <div>
             <span class="font-semibold block mb-1">{{ $t('AppsCreateView.info.important') }}</span>
             <span v-html="$t('AppsCreateView.info.inviteText')"></span><br>
-            <a href="https://github.com/six7clickndeploy" target="_blank" class="text-blue-700 underline hover:text-blue-500 break-all">
-              https://github.com/six7clickndeploy
+            <a href="https://github.com/DHBW-AppStore-T3" target="_blank" class="text-blue-700 underline hover:text-info break-all">
+              https://github.com/DHBW-AppStore-T3
             </a>
           </div>
         </div>

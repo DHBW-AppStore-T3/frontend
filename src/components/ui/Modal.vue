@@ -1,7 +1,15 @@
 <!-- src/components/ui/Modal.vue -->
 <script setup lang="ts">
-defineProps<{ show: boolean }>()
-defineEmits(['close'])
+import { toRef } from 'vue'
+import { useOverlay } from '@/composables/useOverlay'
+
+const props = defineProps<{ show: boolean }>()
+const emit = defineEmits(['close'])
+
+const { containerRef } = useOverlay({
+  show: toRef(props, 'show'),
+  onClose: () => emit('close'),
+})
 </script>
 
 <template>
@@ -11,6 +19,7 @@ defineEmits(['close'])
     @click.self="$emit('close')"
   >
     <div
+      :ref="(el) => (containerRef = el as HTMLElement | null)"
       class="bg-white rounded-2xl shadow-2xl w-full max-w-[520px] animate-fade-in flex flex-col max-h-[90vh]"
       @click.stop
     >

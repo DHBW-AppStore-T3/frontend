@@ -1,15 +1,14 @@
 import type { Theme } from './types'
-import { defaultTheme } from './themes/default'
-import { t3DemoTheme } from './themes/t3-demo'
+import { t3Theme } from './themes/t3'
 
 export const THEMES: Record<string, Theme> = {
-  [defaultTheme.id]: defaultTheme,
-  [t3DemoTheme.id]: t3DemoTheme,
+  [t3Theme.id]: t3Theme,
 }
 
 export function resolveTheme(id: string | undefined): Theme {
-  const theme = id ? THEMES[id] : undefined
+  if (!id) return t3Theme
+  const theme = THEMES[id]
   if (theme) return theme
-  console.warn(`Unknown theme "${id ?? ''}", falling back to "default"`)
-  return defaultTheme
+  console.warn(`Unknown theme "${id}", falling back to "t3"`)
+  return t3Theme
 }

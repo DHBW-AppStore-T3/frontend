@@ -1,201 +1,241 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`HelpView (de) > matches snapshot 1`] = `
-"<div class="bg-white rounded-2xl p-10 border shadow-sm">
-  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
-    <div class="flex items-center gap-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-        <path d="M12 17h.01"></path>
-      </svg>
-      <div>
-        <h1 class="text-2xl font-bold">Hilfe &amp; Q/A</h1>
-        <p class="text-sm text-gray-500">Support &amp; häufige Fragen.</p>
-      </div>
+"<div data-v-be5a2ffc="" class="app-page help-page">
+  <div data-v-be5a2ffc="" class="page-header">
+    <div class="min-w-0">
+      <p class="page-eyebrow">Hilfe</p>
+      <h1 class="page-heading">Hilfe &amp; Unterstützung</h1>
+      <p class="page-subtitle">Hier findest du Hilfestellungen und Dokumentationen.</p>
     </div>
-  </div>
-  <p class="text-gray-600 leading-7 max-w-3xl mb-8">Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Du erhältst hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.</p>
-  <div class="grid gap-4 lg:grid-cols-2">
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers-icon lucide-layers">
-          <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"></path>
-          <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"></path>
-          <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">Wenn etwas nicht funktioniert</h2>
+    <!--v-if-->
+  </div><label data-v-be5a2ffc="" class="search-field help-search"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="lucide lucide-search-icon lucide-search">
+      <path d="m21 21-4.34-4.34"></path>
+      <circle cx="11" cy="11" r="8"></circle>
+    </svg><input data-v-be5a2ffc="" type="search" placeholder="Hilfe durchsuchen…" aria-label="Hilfe durchsuchen…"></label>
+  <div data-v-be5a2ffc="" class="help-list">
+    <details data-v-be5a2ffc="" class="help-section">
+      <summary data-v-be5a2ffc=""><span data-v-be5a2ffc="" class="help-icon"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg></span><span data-v-be5a2ffc="" class="help-summary"><strong data-v-be5a2ffc="">Dokumentation</strong><span data-v-be5a2ffc="">Ausführliche Anleitungen und Tutorials.</span></span><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg></summary>
+      <div data-v-be5a2ffc="" class="help-body">
+        <p data-v-be5a2ffc="" class="text-textMuted mb-6">Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Du erhältst hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.</p>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text">
+              <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path>
+              <path d="M14 2v5a1 1 0 0 0 1 1h5"></path>
+              <path d="M10 9H8"></path>
+              <path d="M16 13H8"></path>
+              <path d="M16 17H8"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">Dokumentation</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-textMuted leading-7 mb-4">Direkter Zugriff auf die relevanten Projekt-Dokumentationen.</p>
+          <ul data-v-be5a2ffc="" class="list-disc list-inside space-y-3 text-textMuted">
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/deployment/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation bzgl. Installations und Administration</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/.github/blob/main/docs/technologiestack.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation bzgl. Technologiestack und Architektur</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/template-app/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation für App Entwickler: Entwicklung eines neuen App Templates</a></li>
+          </ul>
+        </article>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
+              <path d="M12 7v14"></path>
+              <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">Nützliche Projektlinks</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-textMuted leading-7 mb-4">Direkter Zugriff auf die relevanten GitHub-Repositories.</p>
+          <ul data-v-be5a2ffc="" class="list-disc list-inside space-y-2 text-textMuted">
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/frontend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Frontend-Repository</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/backend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Backend-Repository</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/deployment" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Deployment-Repository</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/worker" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Worker-Repository</a></li>
+          </ul>
+        </article>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">Diese Checkliste hilft dir, die häufigsten Blocker schnell zu finden und zu verstehen, was du als nächstes prüfen solltest.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
-        <li>Prüfe, ob du dein Quota-Limit erreicht hast.</li>
-        <li>Sieh dir die Deployment-Details und Logs an, um den Fehler einzugrenzen.</li>
-      </ul>
-    </article>
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
-          <path d="M12 7v14"></path>
-          <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">Schritt-für-Schritt-Anleitung</h2>
+    </details>
+    <details data-v-be5a2ffc="" class="help-section">
+      <summary data-v-be5a2ffc=""><span data-v-be5a2ffc="" class="help-icon"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg></span><span data-v-be5a2ffc="" class="help-summary"><strong data-v-be5a2ffc="">FAQ</strong><span data-v-be5a2ffc="">Häufig gestellte Fragen und Antworten.</span></span><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg></summary>
+      <div data-v-be5a2ffc="" class="help-body">
+        <p data-v-be5a2ffc="" class="text-textMuted mb-6">Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Du erhältst hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.</p>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
+              <path d="M12 7v14"></path>
+              <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">Schritt-für-Schritt-Anleitung</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-sm font-semibold text-slate-700 mb-3">Deployment-Prozess</p>
+          <ol data-v-be5a2ffc="" class="list-decimal list-inside space-y-3 text-textMuted">
+            <li data-v-be5a2ffc="">Öffne die Deployments-Übersicht und starte ein neues Deployment.</li>
+            <li data-v-be5a2ffc="">Wähle die gewünschte App und App-Version aus.</li>
+            <li data-v-be5a2ffc="">Ordne das Deployment einem Kurs oder Team zu und passe die Einstellungen an.</li>
+            <li data-v-be5a2ffc="">Kontrolliere deine aktuellen Quotas, bevor du das Deployment ausführst.</li>
+            <li data-v-be5a2ffc="">Starte das Deployment und überwache den Status sowie die Logs in der Detailansicht.</li>
+          </ol>
+          <div data-v-be5a2ffc="" class="mt-6 space-y-4 text-textMuted">
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Dashboard</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Schneller Überblick über Deployments, Systemstatus und verfügbare Ressourcen.</p>
+            </div>
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Apps</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Apps prüfen, Versionen auswählen und neue Anwendungen bereitstellen.</p>
+            </div>
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Kurse</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Deployments mit Kursen verknüpfen und Teilnehmergruppen organisieren.</p>
+            </div>
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Deployments</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Neue Deployments anlegen, den Status prüfen und Fehler analysieren.</p>
+            </div>
+          </div>
+        </article>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers-icon lucide-layers">
+              <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"></path>
+              <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"></path>
+              <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">Wenn etwas nicht funktioniert</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-textMuted leading-7 mb-4">Diese Checkliste hilft dir, die häufigsten Blocker schnell zu finden und zu verstehen, was du als nächstes prüfen solltest.</p>
+          <ul data-v-be5a2ffc="" class="list-disc list-inside space-y-2 text-textMuted">
+            <li data-v-be5a2ffc="">Prüfe, ob du dein Quota-Limit erreicht hast.</li>
+            <li data-v-be5a2ffc="">Sieh dir die Deployment-Details und Logs an, um den Fehler einzugrenzen.</li>
+          </ul>
+        </article>
       </div>
-      <p class="text-sm font-semibold text-slate-700 mb-3">Deployment-Prozess</p>
-      <ol class="list-decimal list-inside space-y-3 text-gray-600">
-        <li>Öffne die Deployments-Übersicht und starte ein neues Deployment.</li>
-        <li>Wähle die gewünschte App und App-Version aus.</li>
-        <li>Ordne das Deployment einem Kurs oder Team zu und passe die Einstellungen an.</li>
-        <li>Kontrolliere deine aktuellen Quotas, bevor du das Deployment ausführst.</li>
-        <li>Starte das Deployment und überwache den Status sowie die Logs in der Detailansicht.</li>
-      </ol>
-      <div class="mt-6 space-y-4 text-gray-700">
-        <div>
-          <h3 class="font-semibold text-base">Dashboard</h3>
-          <p class="text-gray-600">Schneller Überblick über Deployments, Systemstatus und verfügbare Ressourcen.</p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-base">Apps</h3>
-          <p class="text-gray-600">Apps prüfen, Versionen auswählen und neue Anwendungen bereitstellen.</p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-base">Kurse</h3>
-          <p class="text-gray-600">Deployments mit Kursen verknüpfen und Teilnehmergruppen organisieren.</p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-base">Deployments</h3>
-          <p class="text-gray-600">Neue Deployments anlegen, den Status prüfen und Fehler analysieren.</p>
-        </div>
-      </div>
-    </article>
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
-          <path d="M12 7v14"></path>
-          <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">Nützliche Projektlinks</h2>
-      </div>
-      <p class="text-gray-600 leading-7 mb-4">Direkter Zugriff auf die relevanten GitHub-Repositories.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
-        <li><a href="https://github.com/six7-click-n-deploy/frontend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Frontend-Repository</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/backend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Backend-Repository</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/deployment" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Deployment-Repository</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/worker" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: Worker-Repository</a></li>
-      </ul>
-    </article>
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text">
-          <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path>
-          <path d="M14 2v5a1 1 0 0 0 1 1h5"></path>
-          <path d="M10 9H8"></path>
-          <path d="M16 13H8"></path>
-          <path d="M16 17H8"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">Dokumentation</h2>
-      </div>
-      <p class="text-gray-600 leading-7 mb-4">Direkter Zugriff auf die relevanten Projekt-Dokumentationen.</p>
-      <ul class="list-disc list-inside space-y-3 text-gray-600">
-        <li><a href="https://github.com/six7-click-n-deploy/deployment/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation bzgl. Installations und Administration</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/.github/blob/main/docs/technologiestack.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation bzgl. Technologiestack und Architektur</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/template-app/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Dokumentation für App Entwickler: Entwicklung eines neuen App Templates</a></li>
-      </ul>
-    </article>
+    </details>
+    <details data-v-be5a2ffc="" class="help-section">
+      <summary data-v-be5a2ffc=""><span data-v-be5a2ffc="" class="help-icon"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg></span><span data-v-be5a2ffc="" class="help-summary"><strong data-v-be5a2ffc="">Support</strong><span data-v-be5a2ffc="">Bei weiteren Fragen wende dich an den Administrator.</span></span><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg></summary>
+      <p data-v-be5a2ffc="" class="help-body text-textMuted">Kein Account? Wenden Sie sich an Ihren Administrator.</p>
+    </details>
   </div>
 </div>"
 `;
 
 exports[`HelpView (en) > matches snapshot 1`] = `
-"<div class="bg-white rounded-2xl p-10 border shadow-sm">
-  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
-    <div class="flex items-center gap-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-        <path d="M12 17h.01"></path>
-      </svg>
-      <div>
-        <h1 class="text-2xl font-bold">Help &amp; Q/A</h1>
-        <p class="text-sm text-gray-500">Support &amp; frequently asked questions.</p>
-      </div>
+"<div data-v-be5a2ffc="" class="app-page help-page">
+  <div data-v-be5a2ffc="" class="page-header">
+    <div class="min-w-0">
+      <p class="page-eyebrow">Help</p>
+      <h1 class="page-heading">Help &amp; Q/A</h1>
+      <p class="page-subtitle">Support &amp; frequently asked questions.</p>
     </div>
-  </div>
-  <p class="text-gray-600 leading-7 max-w-3xl mb-8">This page explains the most important steps for users who are already signed in. You get concrete guidance for deployments, quotas and next practical steps.</p>
-  <div class="grid gap-4 lg:grid-cols-2">
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers-icon lucide-layers">
-          <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"></path>
-          <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"></path>
-          <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">If something does not work</h2>
+    <!--v-if-->
+  </div><label data-v-be5a2ffc="" class="search-field help-search"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="lucide lucide-search-icon lucide-search">
+      <path d="m21 21-4.34-4.34"></path>
+      <circle cx="11" cy="11" r="8"></circle>
+    </svg><input data-v-be5a2ffc="" type="search" placeholder="Search help…" aria-label="Search help…"></label>
+  <div data-v-be5a2ffc="" class="help-list">
+    <details data-v-be5a2ffc="" class="help-section">
+      <summary data-v-be5a2ffc=""><span data-v-be5a2ffc="" class="help-icon"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg></span><span data-v-be5a2ffc="" class="help-summary"><strong data-v-be5a2ffc="">Documentation</strong><span data-v-be5a2ffc="">Detailed guides and tutorials.</span></span><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg></summary>
+      <div data-v-be5a2ffc="" class="help-body">
+        <p data-v-be5a2ffc="" class="text-textMuted mb-6">This page explains the most important steps for users who are already signed in. You get concrete guidance for deployments, quotas and next practical steps.</p>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text">
+              <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path>
+              <path d="M14 2v5a1 1 0 0 0 1 1h5"></path>
+              <path d="M10 9H8"></path>
+              <path d="M16 13H8"></path>
+              <path d="M16 17H8"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">Documentation</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-textMuted leading-7 mb-4">Direct access to the relevant project documentation.</p>
+          <ul data-v-be5a2ffc="" class="list-disc list-inside space-y-3 text-textMuted">
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/deployment/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation regarding Installation and Administration</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/.github/blob/main/docs/technologiestack.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation regarding Technology Stack and Architecture</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/template-app/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation for App Developers: Creating a new App Template</a></li>
+          </ul>
+        </article>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
+              <path d="M12 7v14"></path>
+              <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">Useful project links</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-textMuted leading-7 mb-4">Quick access to the relevant GitHub repositories.</p>
+          <ul data-v-be5a2ffc="" class="list-disc list-inside space-y-2 text-textMuted">
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/frontend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: frontend repository</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/backend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: backend repository</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/deployment" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: deployment repository</a></li>
+            <li data-v-be5a2ffc=""><a data-v-be5a2ffc="" href="https://github.com/DHBW-AppStore-T3/worker" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: worker repository</a></li>
+          </ul>
+        </article>
       </div>
-      <p class="text-gray-600 leading-7 mb-4">This checklist helps you find the most common blockers quickly and understand what to check next.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
-        <li>Check whether you have reached your quota limit.</li>
-        <li>Look at deployment details and logs to narrow down the issue.</li>
-      </ul>
-    </article>
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
-          <path d="M12 7v14"></path>
-          <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">Step-by-step guide</h2>
+    </details>
+    <details data-v-be5a2ffc="" class="help-section">
+      <summary data-v-be5a2ffc=""><span data-v-be5a2ffc="" class="help-icon"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg></span><span data-v-be5a2ffc="" class="help-summary"><strong data-v-be5a2ffc="">FAQ</strong><span data-v-be5a2ffc="">Frequently asked questions and answers.</span></span><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg></summary>
+      <div data-v-be5a2ffc="" class="help-body">
+        <p data-v-be5a2ffc="" class="text-textMuted mb-6">This page explains the most important steps for users who are already signed in. You get concrete guidance for deployments, quotas and next practical steps.</p>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
+              <path d="M12 7v14"></path>
+              <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">Step-by-step guide</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-sm font-semibold text-slate-700 mb-3">Deployment process</p>
+          <ol data-v-be5a2ffc="" class="list-decimal list-inside space-y-3 text-textMuted">
+            <li data-v-be5a2ffc="">Open the deployments overview and start a new deployment.</li>
+            <li data-v-be5a2ffc="">Choose the desired app and app version.</li>
+            <li data-v-be5a2ffc="">Assign the deployment to a course or team and adjust the settings.</li>
+            <li data-v-be5a2ffc="">Review your current quotas before launching the deployment.</li>
+            <li data-v-be5a2ffc="">Start the deployment and monitor status and logs in the detail view.</li>
+          </ol>
+          <div data-v-be5a2ffc="" class="mt-6 space-y-4 text-textMuted">
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Dashboard</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Quickly see active deployments, system health, and available resources.</p>
+            </div>
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Apps</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Verify the app you need or add new applications and versions.</p>
+            </div>
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Courses</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Link deployments to courses and organize participant groups.</p>
+            </div>
+            <div data-v-be5a2ffc="">
+              <h3 data-v-be5a2ffc="" class="font-semibold text-base">Deployments</h3>
+              <p data-v-be5a2ffc="" class="text-textMuted">Create deployments, check status, and investigate errors.</p>
+            </div>
+          </div>
+        </article>
+        <article data-v-be5a2ffc="" class="help-article">
+          <div data-v-be5a2ffc="" class="flex items-center gap-3 mb-4 text-primary"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers-icon lucide-layers">
+              <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"></path>
+              <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"></path>
+              <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"></path>
+            </svg>
+            <h2 data-v-be5a2ffc="" class="text-lg font-semibold">If something does not work</h2>
+          </div>
+          <p data-v-be5a2ffc="" class="text-textMuted leading-7 mb-4">This checklist helps you find the most common blockers quickly and understand what to check next.</p>
+          <ul data-v-be5a2ffc="" class="list-disc list-inside space-y-2 text-textMuted">
+            <li data-v-be5a2ffc="">Check whether you have reached your quota limit.</li>
+            <li data-v-be5a2ffc="">Look at deployment details and logs to narrow down the issue.</li>
+          </ul>
+        </article>
       </div>
-      <p class="text-sm font-semibold text-slate-700 mb-3">Deployment process</p>
-      <ol class="list-decimal list-inside space-y-3 text-gray-600">
-        <li>Open the deployments overview and start a new deployment.</li>
-        <li>Choose the desired app and app version.</li>
-        <li>Assign the deployment to a course or team and adjust the settings.</li>
-        <li>Review your current quotas before launching the deployment.</li>
-        <li>Start the deployment and monitor status and logs in the detail view.</li>
-      </ol>
-      <div class="mt-6 space-y-4 text-gray-700">
-        <div>
-          <h3 class="font-semibold text-base">Dashboard</h3>
-          <p class="text-gray-600">Quickly see active deployments, system health, and available resources.</p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-base">Apps</h3>
-          <p class="text-gray-600">Verify the app you need or add new applications and versions.</p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-base">Courses</h3>
-          <p class="text-gray-600">Link deployments to courses and organize participant groups.</p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-base">Deployments</h3>
-          <p class="text-gray-600">Create deployments, check status, and investigate errors.</p>
-        </div>
-      </div>
-    </article>
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open">
-          <path d="M12 7v14"></path>
-          <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">Useful project links</h2>
-      </div>
-      <p class="text-gray-600 leading-7 mb-4">Quick access to the relevant GitHub repositories.</p>
-      <ul class="list-disc list-inside space-y-2 text-gray-600">
-        <li><a href="https://github.com/six7-click-n-deploy/frontend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: frontend repository</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/backend" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: backend repository</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/deployment" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: deployment repository</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/worker" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub: worker repository</a></li>
-      </ul>
-    </article>
-    <article class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-      <div class="flex items-center gap-3 mb-4 text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text">
-          <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path>
-          <path d="M14 2v5a1 1 0 0 0 1 1h5"></path>
-          <path d="M10 9H8"></path>
-          <path d="M16 13H8"></path>
-          <path d="M16 17H8"></path>
-        </svg>
-        <h2 class="text-lg font-semibold">Documentation</h2>
-      </div>
-      <p class="text-gray-600 leading-7 mb-4">Direct access to the relevant project documentation.</p>
-      <ul class="list-disc list-inside space-y-3 text-gray-600">
-        <li><a href="https://github.com/six7-click-n-deploy/deployment/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation regarding Installation and Administration</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/.github/blob/main/docs/technologiestack.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation regarding Technology Stack and Architecture</a></li>
-        <li><a href="https://github.com/six7-click-n-deploy/template-app/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Documentation for App Developers: Creating a new App Template</a></li>
-      </ul>
-    </article>
+    </details>
+    <details data-v-be5a2ffc="" class="help-section">
+      <summary data-v-be5a2ffc=""><span data-v-be5a2ffc="" class="help-icon"><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg></span><span data-v-be5a2ffc="" class="help-summary"><strong data-v-be5a2ffc="">Support</strong><span data-v-be5a2ffc="">Contact your administrator for further assistance.</span></span><svg data-v-be5a2ffc="" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg></summary>
+      <p data-v-be5a2ffc="" class="help-body text-textMuted">No account? Contact your administrator.</p>
+    </details>
   </div>
 </div>"
 `;

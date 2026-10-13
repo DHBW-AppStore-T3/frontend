@@ -45,10 +45,10 @@ for (const [lng, msgs] of Object.entries(locales)) {
         expect(rel).toContain('noreferrer')
       }
 
-      expectHref('https://github.com/six7-click-n-deploy/frontend')
-      expectHref('https://github.com/six7-click-n-deploy/backend')
-      expectHref('https://github.com/six7-click-n-deploy/deployment')
-      expectHref('https://github.com/six7-click-n-deploy/worker')
+      expectHref('https://github.com/DHBW-AppStore-T3/frontend')
+      expectHref('https://github.com/DHBW-AppStore-T3/backend')
+      expectHref('https://github.com/DHBW-AppStore-T3/deployment')
+      expectHref('https://github.com/DHBW-AppStore-T3/worker')
     })
 
     it('renders icon visuals (stub or svg)', () => {

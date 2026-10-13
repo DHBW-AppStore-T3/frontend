@@ -3,31 +3,33 @@ import { THEMES, resolveTheme } from '@/theme'
 import { THEME_COLOR_KEYS } from '@/theme/types'
 
 describe('themes', () => {
-  it.each(Object.entries(THEMES))('%s defines exactly THEME_COLOR_KEYS with valid RGB triples', (_id, theme) => {
+  it.each(Object.entries(THEMES))('%s fulfills the theme contract', (id, theme) => {
+    expect(theme.id).toBe(id)
+    expect(theme.brand.name).toBeTruthy()
+    expect(theme.brand.documentTitle).toBeTruthy()
+    expect(theme.logo.src).toBeTruthy()
+    expect(theme.logo.alt).toBeTruthy()
+    expect(theme.favicon).toBeTruthy()
     expect(Object.keys(theme.colors).sort()).toEqual([...THEME_COLOR_KEYS].sort())
     for (const [key, value] of Object.entries(theme.colors)) {
       expect(value, key).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/)
-      for (const ch of value.split(' ')) expect(Number(ch), key).toBeLessThanOrEqual(255)
+      for (const channel of value.split(' ')) expect(Number(channel), key).toBeLessThanOrEqual(255)
     }
   })
 
-  it('has unique theme ids matching their registry key', () => {
-    const ids = Object.values(THEMES).map((t) => t.id)
-    expect(new Set(ids).size).toBe(ids.length)
-    for (const [key, theme] of Object.entries(THEMES)) expect(theme.id).toBe(key)
+  it('uses T3 by default and for an explicit T3 selection', () => {
+    expect(resolveTheme(undefined)).toBe(THEMES.t3)
+    expect(resolveTheme('')).toBe(THEMES.t3)
+    expect(resolveTheme('t3')).toBe(THEMES.t3)
   })
 
-  it('resolves known ids', () => {
-    expect(resolveTheme('t3-demo').id).toBe('t3-demo')
-    expect(resolveTheme('default').id).toBe('default')
-  })
-
-  it('falls back to default with a warning for unknown or empty ids', () => {
+  it('warns and falls back to T3 for unknown IDs without registering aliases', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(resolveTheme('gibts-nicht').id).toBe('default')
-    expect(resolveTheme('').id).toBe('default')
-    expect(resolveTheme(undefined).id).toBe('default')
-    expect(warn).toHaveBeenCalledTimes(3)
+    for (const oldId of ['six' + '7', 't3-' + 'demo', 'default', 'unknown']) {
+      expect(THEMES).not.toHaveProperty(oldId)
+      expect(resolveTheme(oldId)).toBe(THEMES.t3)
+    }
+    expect(warn).toHaveBeenCalledTimes(4)
     warn.mockRestore()
   })
 })

@@ -63,9 +63,9 @@ const { removeToast } = toastStore
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background: rgb(var(--color-on-dark));
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   border-left: 4px solid;
   pointer-events: auto;
   cursor: pointer;
@@ -74,7 +74,7 @@ const { removeToast } = toastStore
 
 .toast:hover {
   transform: translateX(-4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-xl);
 }
 
 .toast-success {

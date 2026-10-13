@@ -1,0 +1,72 @@
+:root {
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-9: 2.25rem;
+  --space-10: 2.5rem;
+  --space-11: 2.75rem;
+  --space-12: 3rem;
+
+  /* Typography */
+  --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --text-display-1-size: 2.5rem;
+  --text-display-1-line-height: 2.75rem;
+  --text-headline-1-size: 2.25rem;
+  --text-headline-1-line-height: 2.75rem;
+  --text-headline-2-size: 1.75rem;
+  --text-headline-2-line-height: 2.25rem;
+  --text-headline-3-size: 1.25rem;
+  --text-headline-3-line-height: 1.75rem;
+  --text-lead-size: 1.125rem;
+  --text-lead-line-height: 1.75rem;
+  --text-body-size: 1rem;
+  --text-body-line-height: 1.5rem;
+  --text-caption-size: 0.875rem;
+  --text-caption-line-height: 1.25rem;
+
+  --font-weight-bold: 700;
+  --font-weight-semibold: 600;
+  --font-weight-regular: 400;
+}
+
+/* display-1 is a large, compact-leading display size for standalone hero
+   headlines (distinct from headline-1, which many ordinary page headers use)
+   — it scales up on wider viewports instead of needing a responsive class
+   at every call site. Three tiers (mobile / tablet / desktop) so it grows
+   gradually instead of one hard jump at a single breakpoint. */
+@media (min-width: 768px) {
+  :root {
+    --text-display-1-size: 3.5rem;
+    --text-display-1-line-height: 3.25rem;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    /* Measured off the reference screenshot: ~77px cap-derived font size against a
+       ~60px baseline-to-baseline line pitch — a deliberately tight, slightly negative
+       leading typical of large display headlines. */
+    --text-display-1-size: 4.75rem;
+    --text-display-1-line-height: 3.75rem;
+  }
+}

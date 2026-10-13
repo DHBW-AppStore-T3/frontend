@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import axios from 'axios'
-import { Cpu, HardDrive, Network } from 'lucide-vue-next'
+import { Cpu, HardDrive, Network, Box, Layers } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 import { quotasApi } from '@/api/quotas.api'
 import type { QuotaOverview } from '@/types/quota'
 
@@ -43,6 +44,7 @@ const needsCredentials = ref(false)
 // USE QUOTAS COMPOSABLE
 // ----------------------------------------------------------------
 export const useQuotas = () => {
+  const { t } = useI18n()
   const getPercentage = (used: number, limit: number): number => {
     if (limit === 0) return 0
     return Math.round((used / limit) * 100)
@@ -62,8 +64,8 @@ export const useQuotas = () => {
 
     return [
       {
-        icon: Cpu,
-        label: 'VMs / Instanzen',
+        icon: Box,
+        label: t('workspace.quotas.instances'),
         used: compute.instances.used,
         limit: compute.instances.limit,
         percentage: getPercentage(compute.instances.used, compute.instances.limit),
@@ -71,15 +73,15 @@ export const useQuotas = () => {
       },
       {
         icon: Cpu,
-        label: 'vCPUs',
+        label: t('workspace.quotas.vcpus'),
         used: compute.vcpus.used,
         limit: compute.vcpus.limit,
         percentage: getPercentage(compute.vcpus.used, compute.vcpus.limit),
         unit: ''
       },
       {
-        icon: Cpu,
-        label: 'RAM',
+        icon: Layers,
+        label: t('workspace.quotas.ram'),
         used: Math.round(compute.ram.used / 1024),
         limit: Math.round(compute.ram.limit / 1024),
         percentage: getPercentage(compute.ram.used, compute.ram.limit),
@@ -87,7 +89,7 @@ export const useQuotas = () => {
       },
       {
         icon: HardDrive,
-        label: 'Volumes',
+        label: t('workspace.quotas.volumes'),
         used: storage.volumes.used,
         limit: storage.volumes.limit,
         percentage: getPercentage(storage.volumes.used, storage.volumes.limit),
@@ -95,7 +97,7 @@ export const useQuotas = () => {
       },
       {
         icon: HardDrive,
-        label: 'Storage',
+        label: t('workspace.quotas.storage'),
         used: storage.gigabytes.used,
         limit: storage.gigabytes.limit,
         percentage: getPercentage(storage.gigabytes.used, storage.gigabytes.limit),
@@ -103,7 +105,7 @@ export const useQuotas = () => {
       },
       {
         icon: Network,
-        label: 'Floating IPs',
+        label: t('workspace.quotas.floatingIps'),
         used: network.floating_ips.used,
         limit: network.floating_ips.limit,
         percentage: getPercentage(network.floating_ips.used, network.floating_ips.limit),
