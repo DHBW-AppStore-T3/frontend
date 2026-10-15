@@ -1,18 +1,29 @@
-import { createI18n } from 'vue-i18n'
+import i18next from 'i18next'
+import { initReactI18next } from 'react-i18next'
 
 import de from './locales/de'
 import en from './locales/en'
 
 import { readSavedLocale, FALLBACK_LOCALE } from './locale'
 
-const i18n = createI18n({
-  legacy: false,
-  locale: readSavedLocale(),
-  fallbackLocale: FALLBACK_LOCALE,
-  messages: {
-    de,
-    en,
+// Single i18n instance, shared by components (via react-i18next) and by
+// non-React code such as the router guards (`i18n.t(...)`).
+//
+// `{name}` interpolation is configured here so the locale files keep the
+// message format they had under vue-i18n. `escapeValue` is off because React
+// escapes text children itself; HTML messages go through `translateHtml`.
+const i18n = i18next.createInstance()
+
+void i18n.use(initReactI18next).init({
+  lng: readSavedLocale(),
+  fallbackLng: FALLBACK_LOCALE,
+  resources: {
+    de: { translation: de },
+    en: { translation: en },
   },
+  interpolation: { prefix: '{', suffix: '}', escapeValue: false },
+  returnNull: false,
+  initImmediate: false,
 })
 
 export default i18n
