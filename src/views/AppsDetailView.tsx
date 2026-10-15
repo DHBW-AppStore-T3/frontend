@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, GitBranch, Layers, Pencil, ShoppingBag, Trash2 } from 'lucide-react'
@@ -85,7 +85,6 @@ export default function AppsDetailView() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [submitTarget, setSubmitTarget] = useState<string | null>(null)
-  const deployRef = useRef<HTMLDivElement>(null)
 
   const versionOptions = useMemo(() => versionOptionsOf(app), [app])
   // Default to the first version once the list is known.
@@ -96,14 +95,6 @@ export default function AppsDetailView() {
   const isOwner = !!app && isOwnerOf(app)
   const canManageVersions = !!app && canManage(app)
   const banner = bannerStatusOf(app, detail.approvals)
-
-  // Jump to the deployment options when arriving from "Deploy" in the catalogue.
-  useEffect(() => {
-    if (!app || hash !== DEPLOYMENT_OPTIONS_HASH) return
-    const el = deployRef.current
-    el?.scrollIntoView?.({ block: 'center' })
-    el?.querySelector('select')?.focus({ preventScroll: true })
-  }, [app, hash])
 
   const startDeployment = () => {
     if (!app || !effectiveVersion) {
@@ -242,7 +233,7 @@ export default function AppsDetailView() {
               versionInfo={toVersionInfo(versionDetails)}
               hasVersionInfo={hasInfo(versionDetails)}
               credentialsMissing={credentialsResolved && !hasCredential}
-              deployRef={deployRef}
+              scrollToDeployOptions={hash === DEPLOYMENT_OPTIONS_HASH}
               onSelectVersion={setSelectedVersion}
               onDeploy={startDeployment}
             />

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
@@ -5,7 +6,6 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDate } from '@/utils/format'
 import { paths } from '@/router/paths'
 import type { AppDetail, VersionInfo } from './versionInfo'
-import type { RefObject } from 'react'
 
 export interface OverviewTabProps {
   app: AppDetail
@@ -14,7 +14,8 @@ export interface OverviewTabProps {
   versionInfo: VersionInfo | null
   hasVersionInfo: boolean
   credentialsMissing: boolean
-  deployRef: RefObject<HTMLDivElement | null>
+  /** Scroll to (and focus) the deployment options once, e.g. when arriving from "Deploy". */
+  scrollToDeployOptions: boolean
   onSelectVersion: (version: string) => void
   onDeploy: () => void
 }
@@ -34,6 +35,13 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default function OverviewTab(props: OverviewTabProps) {
   const { app, versionOptions, selectedVersion, versionInfo, hasVersionInfo, credentialsMissing } = props
   const { t, i18n } = useTranslation()
+  const deployRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!props.scrollToDeployOptions) return
+    deployRef.current?.scrollIntoView?.({ block: 'center' })
+    deployRef.current?.querySelector('select')?.focus({ preventScroll: true })
+  }, [props.scrollToDeployOptions])
 
   const prerelease = String(versionInfo?.prerelease ?? '').toLowerCase() === 'true'
     ? t('AppsDetailView.yes')
@@ -112,7 +120,7 @@ export default function OverviewTab(props: OverviewTabProps) {
       </div>
 
       {/* Deploy sidebar */}
-      <div id="deployment-options" ref={props.deployRef} className="detail-surface deployment-options">
+      <div id="deployment-options" ref={deployRef} className="detail-surface deployment-options">
         <h2 className="text-lg font-semibold text-textHeading mb-6">{t('AppsDetailView.startDeploymentTitle')}</h2>
 
         <div className="mb-6">
