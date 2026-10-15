@@ -4,7 +4,6 @@ import AuthLayout from '@/layouts/AuthLayout'
 import AppLayout from '@/layouts/AppLayout'
 import UserLayout from '@/layouts/UserLayout'
 import Toast from '@/components/ui/Toast'
-import NotMigratedView from '@/views/NotMigratedView'
 import type { UserRole } from '@/types'
 import { paths } from './paths'
 import { resolveRouteGuard, requireWizardStep, type RouteMeta, type WizardField } from './guards'
@@ -12,11 +11,6 @@ import { resolveRouteGuard, requireWizardStep, type RouteMeta, type WizardField 
 /** Lazy-load a view's default export (code-splitting, like the old `() => import(...)`). */
 const lazyView = (load: () => Promise<{ default: ComponentType }>) => async () => ({
   Component: (await load()).default,
-})
-
-/** Temporary stand-in for views that are not ported yet. */
-const notMigrated = (name: string) => async () => ({
-  Component: () => <NotMigratedView name={name} />,
 })
 
 /**
@@ -136,4 +130,4 @@ export const appRoutes: RouteObject[] = [
 
 export const createAppRouter = () => createBrowserRouter(appRoutes)
 
-export { paths, lazyView }
+export { paths }

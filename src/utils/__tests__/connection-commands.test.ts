@@ -7,7 +7,7 @@ import {
   userUrlFor,
 } from '@/utils/connection-commands'
 
-// These lived at the top of DeploymentDetailView.vue and had no tests --
+// These lived at the top of DeploymentDetailView and had no tests --
 // reaching them meant mounting a ~2590-line component. They are pure string
 // builders, so pulling them into a module made them directly testable.
 

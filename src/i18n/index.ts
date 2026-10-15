@@ -1,4 +1,4 @@
-import i18next from 'i18next'
+import i18next, { type i18n as I18nInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 import de from './locales/de'
@@ -12,7 +12,7 @@ import { readSavedLocale, FALLBACK_LOCALE } from './locale'
 // `{name}` interpolation is configured here so the locale files keep the
 // message format they had under vue-i18n. `escapeValue` is off because React
 // escapes text children itself; HTML messages go through `translateHtml`.
-const i18n = i18next.createInstance()
+const i18n: I18nInstance = i18next.createInstance()
 
 void i18n.use(initReactI18next).init({
   lng: readSavedLocale(),

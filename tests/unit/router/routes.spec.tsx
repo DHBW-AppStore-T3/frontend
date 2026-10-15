@@ -103,14 +103,6 @@ describe('app routes', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
-
-  it('renders views that are not yet migrated as a placeholder inside the layout', async () => {
-    mocks.auth.isAuthenticated = true
-    mocks.auth.user = { userId: 'u', role: 'student' }
-    renderAt('/help')
-
-    await waitFor(() => expect(document.querySelector('.app-shell')).not.toBeNull())
-  })
 })
 
 describe('deployment routes', () => {

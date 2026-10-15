@@ -1,7 +1,7 @@
 /**
  * Phase-stepper state for a deployment's live progress UI.
  *
- * Extracted from DeploymentDetailView.vue, which had grown to ~2590 lines and
+ * Extracted from DeploymentDetailView, which had grown to ~2590 lines and
  * carried this alongside resource loading, VM drawer state, the delete and
  * pause/resume flows, SSE wiring, JSON highlighting and clipboard helpers.
  *
