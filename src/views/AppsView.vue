@@ -15,9 +15,12 @@ import { APP_CATEGORIES, appPresentation, type AppCategory } from '@/config/app-
 import { useFavorites } from '@/composables/useFavorites'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
+import { useRole } from '@/composables/useRole'
 import type { App, AppVersionApproval } from '@/types'
 
 const { t, locale } = useI18n()
+// Teachers and admins register apps (.github#7 F).
+const { isStaff } = useRole()
 const toast = useToast()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -128,7 +131,7 @@ onMounted(() => {
           </button>
         </div>
 
-        <RouterLink :to="{ name: 'apps.create' }">
+        <RouterLink v-if="isStaff" :to="{ name: 'apps.create' }">
           <BaseButton class="flex items-center gap-2">
             <Plus :size="16" />
             {{ $t('AppsView.addApp') }}
@@ -152,7 +155,7 @@ onMounted(() => {
       :loading-message="$t('AppsView.loading')"
     >
       <template #empty-action>
-        <RouterLink v-if="visibilityFilter === 'all'" :to="{ name: 'apps.create' }">
+        <RouterLink v-if="isStaff && visibilityFilter === 'all'" :to="{ name: 'apps.create' }">
           <BaseButton class="flex items-center gap-2">
             <Plus :size="16" />
             {{ $t('AppsView.addApp') }}

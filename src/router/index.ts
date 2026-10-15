@@ -34,6 +34,8 @@ import NewDeploymentGroupsAssignmentView from '@/views/NewDeploymentGroupsAssign
  */
 type WizardField = 'appId' | 'name' | 'studentIds'
 
+const STAFF: UserRole[] = ['teacher', 'admin']
+
 function requireWizardStep(required: WizardField[]) {
   return () => {
     const draft = useDeploymentStore().draft
@@ -113,10 +115,12 @@ const router = createRouter({
       meta: { layout: "app", requiresAuth: true },
     },
     {
+      // Teachers and admins register apps and deploy (.github#7 F); the
+      // API refuses students with 403 role_required anyway.
       path: "/apps/create",
       name: "apps.create",
       component: AddAppsView,
-      meta: { layout: "app", requiresAuth: true },
+      meta: { layout: "app", requiresAuth: true, requiresRole: STAFF },
     },
     {
       path: "/apps/:id",
@@ -157,13 +161,13 @@ const router = createRouter({
       path: '/deployment/new/config',
       name: 'deployment.config',
       component: NewDeploymentConfigView,
-      meta: { requiresAuth: true, layout: 'app' }
+      meta: { requiresAuth: true, layout: 'app', requiresRole: STAFF }
     },
     {
       path: '/deployment/new/teams',
       name: 'deployment.teams',
       component: NewDeploymentGroupsAssignmentView,
-      meta: { requiresAuth: true, layout: 'app' },
+      meta: { requiresAuth: true, layout: 'app', requiresRole: STAFF },
       // Step 2 requires step 1 (app + name + at least one student). Deep-links
       // otherwise redirect to step 1.
       beforeEnter: requireWizardStep(['appId', 'name', 'studentIds']),
@@ -172,7 +176,7 @@ const router = createRouter({
       path: '/deployment/new/variables',
       name: 'deployment.variables',
       component: NewDeploymentVariableView,
-      meta: { requiresAuth: true, layout: 'app' },
+      meta: { requiresAuth: true, layout: 'app', requiresRole: STAFF },
       // The variables step needs the team setup filled in; otherwise redirect
       // to the matching earlier step.
       beforeEnter: requireWizardStep(['appId', 'name', 'studentIds']),
@@ -181,7 +185,7 @@ const router = createRouter({
       path: '/deployment/new/summary',
       name: 'deployment.summary',
       component: NewDeploymentSummaryView,
-      meta: { requiresAuth: true, layout: 'app' },
+      meta: { requiresAuth: true, layout: 'app', requiresRole: STAFF },
       // Summary is only reachable once all previous steps have data.
       beforeEnter: requireWizardStep(['appId', 'name', 'studentIds']),
     },
@@ -192,10 +196,11 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'app', requiresRole: ['admin'] as UserRole[] },
     },
     {
+      // OpenStack credentials only matter for deploying VM apps (staff).
       path: '/user/openstack',
       name: 'user.openstack',
       component: () => import('@/views/SettingsOpenStackView.vue'),
-      meta: { requiresAuth: true, layout: 'user' },
+      meta: { requiresAuth: true, layout: 'user', requiresRole: STAFF },
     },
     {
       path: '/forbidden',

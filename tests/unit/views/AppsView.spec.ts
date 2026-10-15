@@ -26,8 +26,13 @@ vi.mock('@/composables/useToast', () => ({
     useToast: () => ({ error: mockToastError })
 }))
 
+// Mutable per test: only teachers and admins create apps.
+const authState = { user: { userId: 'other-user-id', role: 'teacher' } as { userId: string; role: string } }
 vi.mock('@/stores/auth.store', () => ({
-    useAuthStore: () => ({ userId: 'other-user-id', isTeacherOrAdmin: false })
+    useAuthStore: () => ({
+        get user() { return authState.user },
+        userId: 'other-user-id'
+    })
 }))
 
 vi.mock('@/api/app.api', () => ({
@@ -46,6 +51,7 @@ describe('AppsView.vue', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        authState.user = { userId: 'other-user-id', role: 'teacher' }
         // Unterdrücke die Konsolenausgabe für Fehler in unseren Tests
         vi.spyOn(console, 'error').mockImplementation(() => {})
     })
@@ -150,6 +156,16 @@ describe('AppsView.vue', () => {
 
         const addLink = wrapper.find('a.router-link-stub')
         expect(addLink.attributes('href')).toBe('apps.create')
+    })
+
+    it('students do not get the "add app" link', async () => {
+        authState.user = { userId: 'student-1', role: 'student' }
+        ;(appApi.list as any).mockResolvedValue({ data: [] })
+        const wrapper = mountComponent()
+        await flushPromises()
+
+        expect(wrapper.text()).not.toContain('AppsView.addApp')
+        expect(wrapper.findAll('a.router-link-stub').some(a => a.attributes('href') === 'apps.create')).toBe(false)
     })
 
     it('Icons: rendert das richtige Icon basierend auf dem App-Namen', async () => {

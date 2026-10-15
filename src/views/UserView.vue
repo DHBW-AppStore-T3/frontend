@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { Cloud, ChevronRight, Plus } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth.store'
+import { useRole } from '@/composables/useRole'
 import { useToast } from '@/composables/useToast'
 import { saveLocale, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
 import { roleLabelKey } from '@/i18n/role-labels'
@@ -10,6 +11,8 @@ import type { UserWithCourse } from '@/types'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 const auth = useAuthStore()
+// OpenStack credentials only matter to staff deploying VM apps.
+const { isStaff } = useRole()
 const toast = useToast()
 const { t, locale } = useI18n()
 const user = computed(() => auth.user as UserWithCourse | null)
@@ -49,7 +52,7 @@ const accountFields = computed(() => [
         <summary>{{ t('UserView.title') }}</summary>
         <dl><div v-for="field in accountFields" :key="field.label"><dt>{{ field.label }}</dt><dd>{{ field.value || '–' }}</dd></div></dl>
       </details>
-      <RouterLink to="/user/openstack" class="ui-card profile-settings">
+      <RouterLink v-if="isStaff" to="/user/openstack" class="ui-card profile-settings">
         <Cloud :size="24" class="text-primary" /><span><strong>{{ t('UserView.settings.openstackTitle') }}</strong><small>{{ t('UserView.settings.openstackHint') }}</small></span><ChevronRight :size="18" />
       </RouterLink>
     </template>
