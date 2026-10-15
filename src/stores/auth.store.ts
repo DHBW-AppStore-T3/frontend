@@ -136,8 +136,7 @@ export const useAuthStore = defineStore('auth', {
 
     /**
      * Dev-only bridge: inject a pre-authenticated user via ?sso_handoff=email
-     * without a running self-service-ui or Keycloak flow. Never the
-     * production self-service-ui path — see setHandoffUser for that.
+     * without a running Keycloak flow (``import.meta.env.DEV`` builds only).
      */
     async setDevUser(email: string) {
       await keycloak.setDevUser(email)
@@ -159,20 +158,6 @@ export const useAuthStore = defineStore('auth', {
       this.user = this.buildStubUser(email, role)
       this.fetchMe().catch(() => {
         this.user = this.buildStubUser(email, role)
-      })
-    },
-
-    /**
-     * Authenticate from a self-service-ui handoff. Backend already
-     * validated self-service-ui's Keycloak bearer and minted a handoff
-     * token; role is unknown until fetchMe() resolves, so the stub defaults
-     * to 'student' and is replaced (or kept, on failure) same as LTI.
-     */
-    async setHandoffUser(email: string, token: string) {
-      await keycloak.setHandoffUser(email, token)
-      this.user = this.buildStubUser(email, 'student')
-      this.fetchMe().catch(() => {
-        this.user = this.buildStubUser(email, 'student')
       })
     },
 

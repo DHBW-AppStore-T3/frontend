@@ -33,26 +33,11 @@ describe('useKeycloak', () => {
     expect(await kc.getAccessToken()).toBe('lti-session-token')
   })
 
-  it('setHandoffUser sets isAuthenticated and stores token', async () => {
+  it('has no self-service handoff entry point any more (.github#7 N)', async () => {
     vi.resetModules()
     const { useKeycloak } = await import('../useKeycloak')
-    const kc = useKeycloak()
+    const kc = useKeycloak() as Record<string, unknown>
 
-    await kc.setHandoffUser('student@dhbw.de', 'handoff-token')
-
-    expect(kc.isAuthenticated.value).toBe(true)
-    expect(await kc.getAccessToken()).toBe('handoff-token')
-  })
-
-  it('getAccessToken prefers ltiToken over handoffToken over keycloak session', async () => {
-    vi.resetModules()
-    const { useKeycloak } = await import('../useKeycloak')
-    const kc = useKeycloak()
-
-    await kc.setHandoffUser('student@dhbw.de', 'handoff-token')
-    expect(await kc.getAccessToken()).toBe('handoff-token')
-
-    await kc.setLtiUser('teacher@dhbw.de', 'lti-session-token')
-    expect(await kc.getAccessToken()).toBe('lti-session-token')
+    expect(kc.setHandoffUser).toBeUndefined()
   })
 })

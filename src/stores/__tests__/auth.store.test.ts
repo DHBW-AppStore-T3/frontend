@@ -8,7 +8,6 @@ const keycloakMock = {
   handleCallback: vi.fn(),
   logout: vi.fn(),
   setLtiUser: vi.fn(() => Promise.resolve()),
-  setHandoffUser: vi.fn(() => Promise.resolve()),
 }
 
 vi.mock('@/composables/useKeycloak', () => ({
@@ -34,7 +33,7 @@ vi.mock('@/services/auth.service', () => ({
   },
 }))
 
-describe('auth.store — LTI and handoff', () => {
+describe('auth.store — LTI', () => {
   beforeEach(() => {
     vi.resetModules()
     setActivePinia(createPinia())
@@ -71,26 +70,6 @@ describe('auth.store — LTI and handoff', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(store.user).toEqual(realUser)
-  })
-
-  it('setHandoffUser creates stub and replaces via fetchMe', async () => {
-    const { AuthService } = await import('@/services/auth.service')
-    const realUser = {
-      userId: 'u2',
-      email: 'student@dhbw.de',
-      username: 'student',
-      role: 'student' as const,
-      courseId: null,
-      created_at: '2026-01-01T00:00:00Z',
-    }
-    vi.mocked(AuthService.fetchMe).mockResolvedValueOnce(realUser)
-    const { useAuthStore } = await import('../auth.store')
-    const store = useAuthStore()
-
-    await store.setHandoffUser('student@dhbw.de', 'handoff-token')
-
-    expect(keycloakMock.setHandoffUser).toHaveBeenCalledWith('student@dhbw.de', 'handoff-token')
-    await vi.waitFor(() => expect(store.user).toEqual(realUser))
   })
 
   it('setLtiUser keeps stub when fetchMe fails', async () => {

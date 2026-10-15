@@ -15,8 +15,33 @@ function mapLtiRole(role: string | null): UserRole {
   return role === 'instructor' ? 'teacher' : 'student'
 }
 
+interface LtiLaunch {
+  email: string
+  token: string
+  role: UserRole
+}
+
+/**
+ * Moodle LTI 1.3 launch: after validating it, the backend sends the browser
+ * here with ``#lti=1&email=...&role=...&session_token=...``. The fragment is
+ * never sent to a server, so the token stays out of access logs and Referer
+ * headers. It is read and removed from the address bar before the router
+ * sees the URL. The role only shapes the UI until ``/users/me`` answers; the
+ * API decides by the token.
+ */
+function takeLtiLaunch(): LtiLaunch | null {
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  if (fragment.get('lti') !== '1') return null
+  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
+  const email = fragment.get('email')
+  const token = fragment.get('session_token')
+  if (!email || !token) return null
+  return { email, token, role: mapLtiRole(fragment.get('role')) }
+}
+
 ;(async () => {
   applyTheme(resolveTheme(env.THEME))
+  const ltiLaunch = takeLtiLaunch()
 
   const app = createApp(App)
   app.use(createPinia())
@@ -26,32 +51,11 @@ function mapLtiRole(role: string | null): UserRole {
   const auth = useAuthStore()
   const params = new URLSearchParams(window.location.search)
 
-  // Moodle LTI 1.3 launch: backend redirects here with
-  // ?lti=1&email=...&role=...&session_token=... after validating the launch.
-  const ltiEmail = params.get('lti') === '1' ? params.get('email') : null
-  const ltiToken = params.get('session_token')
-
-  // self-service-ui handoff: backend-verified, production-safe — no DEV guard.
-  const handoffEmail = params.get('handoff') === '1' ? params.get('email') : null
-  const handoffToken = params.get('handoff_token')
-
   // Dev-only bare-email bridge, only usable when self-service-ui isn't running locally.
   const ssoHandoffDev = import.meta.env.DEV ? params.get('sso_handoff') : null
 
-  if (ltiEmail && ltiToken) {
-    await auth.setLtiUser(ltiEmail, ltiToken, mapLtiRole(params.get('role')))
-    const clean = new URL(window.location.href)
-    for (const k of ['lti', 'email', 'name', 'course', 'courseId', 'role', 'session_token']) {
-      clean.searchParams.delete(k)
-    }
-    window.history.replaceState({}, '', clean.toString())
-  } else if (handoffEmail && handoffToken) {
-    await auth.setHandoffUser(handoffEmail, handoffToken)
-    const clean = new URL(window.location.href)
-    for (const k of ['handoff', 'email', 'handoff_token']) {
-      clean.searchParams.delete(k)
-    }
-    window.history.replaceState({}, '', clean.toString())
+  if (ltiLaunch) {
+    await auth.setLtiUser(ltiLaunch.email, ltiLaunch.token, ltiLaunch.role)
   } else if (ssoHandoffDev) {
     await auth.setDevUser(decodeURIComponent(ssoHandoffDev))
     const clean = new URL(window.location.href)

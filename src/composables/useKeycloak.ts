@@ -46,7 +46,6 @@ const isLoading = ref(true)
 const isAuthenticated = ref(false)
 const devEmail = ref<string | null>(null)
 const ltiToken = ref<string | null>(null)
-const handoffToken = ref<string | null>(null)
 
 // ----------------------------------------------------------------
 // REFRESH SINGLE-FLIGHT
@@ -178,7 +177,6 @@ export function useKeycloak() {
    */
   async function getAccessToken(): Promise<string | null> {
     if (ltiToken.value) return ltiToken.value
-    if (handoffToken.value) return handoffToken.value
     if (devEmail.value) return 'dev-sso-token'
     try {
       const currentUser = await userManager.getUser()
@@ -211,7 +209,6 @@ export function useKeycloak() {
    */
   async function ensureValidToken(): Promise<boolean> {
     if (ltiToken.value) return true
-    if (handoffToken.value) return true
     if (devEmail.value) return true
     try {
       const currentUser = await userManager.getUser()
@@ -247,18 +244,6 @@ export function useKeycloak() {
     isLoading.value = false
   }
 
-  /**
-   * Set the authenticated user from a self-service-ui handoff. Backend has
-   * already validated self-service-ui's Keycloak bearer and minted a
-   * short-lived HS256 handoff token — independent secret from the LTI path.
-   */
-  async function setHandoffUser(email: string, token: string): Promise<void> {
-    handoffToken.value = token
-    devEmail.value = email
-    isAuthenticated.value = true
-    isLoading.value = false
-  }
-
   function getDevEmail(): string | null {
     return devEmail.value
   }
@@ -280,6 +265,5 @@ export function useKeycloak() {
     setDevUser,
     getDevEmail,
     setLtiUser,
-    setHandoffUser,
   }
 }
