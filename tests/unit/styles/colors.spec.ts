@@ -17,7 +17,7 @@ function walk(dir: string, out: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) walk(full, out)
-    else if (/\.(vue|ts|css)$/.test(entry.name)) out.push(full)
+    else if (/\.(vue|tsx?|css)$/.test(entry.name)) out.push(full)
   }
   return out
 }
@@ -95,8 +95,8 @@ describe('semantic color usage meets WCAG contrast per context', () => {
     return t3Theme.colors[name as keyof typeof t3Theme.colors]
   }
 
-  // Real foreground/background combinations used by Badge.vue (text on tint) and
-  // Toast.vue (icon on white) — not every base color checked against white in isolation.
+  // Real foreground/background combinations used by Badge (text on tint) and
+  // Toast (icon on white) — not every base color checked against white in isolation.
   const pairs: ContrastPair[] = [
     { name: 'Badge success text on success-tint', fg: colorVar('success'), bg: colorVar('success-tint'), usage: 'text' },
     { name: 'Badge danger text on danger-tint', fg: colorVar('danger'), bg: colorVar('danger-tint'), usage: 'text' },
@@ -161,7 +161,7 @@ describe('layout and base UI', () => {
     const files = [
       ...fs.readdirSync(path.join(SRC, 'layouts')).map((f) => path.join(SRC, 'layouts', f)),
       ...['BaseButton', 'BaseInput', 'Card', 'Modal', 'PageHeader', 'Badge', 'AppVersionStatusBadge'].map((n) =>
-        path.join(SRC, 'components', 'ui', `${n}.vue`),
+        path.join(SRC, 'components', 'ui', `${n}.tsx`),
       ),
     ]
     const offenders = files.filter((f) =>

@@ -24,6 +24,7 @@ void i18n.use(initReactI18next).init({
   interpolation: { prefix: '{', suffix: '}', escapeValue: false },
   returnNull: false,
   initImmediate: false,
+  showSupportNotice: false,
 })
 
 export default i18n

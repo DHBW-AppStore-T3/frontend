@@ -1,0 +1,8 @@
+@keyframes drawer-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-drawer-slide {
+  animation: drawer-slide 0.2s ease-out;
+}
