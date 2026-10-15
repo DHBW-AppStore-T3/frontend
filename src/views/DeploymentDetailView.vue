@@ -2091,6 +2091,7 @@ const deselectTask = () => {
                                             class="text-gray-700 font-mono text-xs leading-relaxed whitespace-pre-wrap"
                                         >{{ taskLogsSplit.details }}</pre>
                                     </template>
+                                    <!-- eslint-disable-next-line vue/no-v-html -- highlightJson escapes its input (utils/json-view.ts) -->
                                     <pre v-else class="text-gray-700 font-mono text-xs leading-relaxed whitespace-pre-wrap" v-html="highlightJson(prettyJson(selectedTask.logs))"></pre>
                                 </div>
                             </div>
@@ -2145,6 +2146,7 @@ const deselectTask = () => {
                             <div class="bg-white p-4 overflow-y-auto max-h-[500px]">
                                 <div
                                     class="font-mono text-xs leading-relaxed text-left whitespace-pre-wrap select-text">
+                                    <!-- eslint-disable-next-line vue/no-v-html -- highlightJson escapes its input (utils/json-view.ts) -->
                                     <pre v-html="highlightJson(prettyJson(activeDataTask.tf_state))"></pre>
                                 </div>
                             </div>
@@ -2184,7 +2186,9 @@ const deselectTask = () => {
                 {{ $t('DeploymentDetailView.confirmStopTitle') }}
             </template>
             <template #body>
-                <p class="text-gray-700" v-html="$t('DeploymentDetailView.confirmStopMessage', { name: deployment.name })"></p>
+                <i18n-t keypath="DeploymentDetailView.confirmStopMessage" tag="p" class="text-gray-700">
+                    <template #name><strong>{{ deployment.name }}</strong></template>
+                </i18n-t>
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
@@ -2203,7 +2207,9 @@ const deselectTask = () => {
                 {{ $t('DeploymentDetailView.confirmDeleteTitle') }}
             </template>
             <template #body>
-                <p class="text-gray-700" v-html="$t('DeploymentDetailView.confirmDeleteMessage', { name: deployment.name })"></p>
+                <i18n-t keypath="DeploymentDetailView.confirmDeleteMessage" tag="p" class="text-gray-700">
+                    <template #name><strong>{{ deployment.name }}</strong></template>
+                </i18n-t>
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">
@@ -2261,9 +2267,15 @@ const deselectTask = () => {
                     : $t('DeploymentDetailView.confirmResumeTitle') }}
             </template>
             <template #body>
-                <p class="text-gray-700" v-html="pauseResumeAction === 'pause'
-                    ? $t('DeploymentDetailView.confirmPauseMessage', { name: deployment.name })
-                    : $t('DeploymentDetailView.confirmResumeMessage', { name: deployment.name })"></p>
+                <i18n-t
+                    :keypath="pauseResumeAction === 'pause'
+                        ? 'DeploymentDetailView.confirmPauseMessage'
+                        : 'DeploymentDetailView.confirmResumeMessage'"
+                    tag="p"
+                    class="text-gray-700"
+                >
+                    <template #name><strong>{{ deployment.name }}</strong></template>
+                </i18n-t>
             </template>
             <template #footer>
                 <div class="flex justify-end gap-3">

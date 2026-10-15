@@ -366,6 +366,7 @@ const handleSubmit = async () => {
           <Info class="shrink-0 mt-0.5 text-blue-700" :size="20" />
           <div>
             <span class="font-semibold block mb-1">{{ $t('AppsCreateView.info.important') }}</span>
+            <!-- eslint-disable-next-line vue/no-v-html -- static translation, no parameters -->
             <span v-html="$t('AppsCreateView.info.inviteText')"></span><br>
             <a href="https://github.com/DHBW-AppStore-T3" target="_blank" class="text-blue-700 underline hover:text-info break-all">
               https://github.com/DHBW-AppStore-T3

@@ -194,7 +194,9 @@ const confirmDelete = async () => {
 
       <template #body>
         <div class="space-y-3">
-          <p class="text-textMuted" v-html="$t('CoursesView.deleteModal.confirmPrompt', { name: courseToDelete?.name })"></p>
+          <i18n-t keypath="CoursesView.deleteModal.confirmPrompt" tag="p" class="text-textMuted">
+            <template #name><strong>{{ courseToDelete?.name }}</strong></template>
+          </i18n-t>
           <p class="text-sm text-textMuted">
             {{ $t('CoursesView.deleteModal.warning') }}
           </p>

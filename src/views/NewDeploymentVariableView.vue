@@ -761,6 +761,7 @@ watch(
                 <p class="font-semibold mb-0.5">
                   {{ effectiveScope(variable) === 'team' ? t('deployment.variables.scopeTitleTeam') : t('deployment.variables.scopeTitleUser') }}
                 </p>
+                <!-- eslint-disable-next-line vue/no-v-html -- static translations, no parameters -->
                 <p v-html="effectiveScope(variable) === 'team' ? t('deployment.variables.scopeDescTeam') : t('deployment.variables.scopeDescUser')"></p>
               </div>
 
@@ -1020,6 +1021,7 @@ watch(
                 <p class="font-semibold mb-0.5">
                   {{ effectiveScope(variable) === 'team' ? t('deployment.variables.scopeTitleTeam') : t('deployment.variables.scopeTitleUser') }}
                 </p>
+                <!-- eslint-disable-next-line vue/no-v-html -- static translations, no parameters -->
                 <p v-html="effectiveScope(variable) === 'team' ? t('deployment.variables.scopeDescTeam') : t('deployment.variables.scopeDescUser')"></p>
               </div>
 

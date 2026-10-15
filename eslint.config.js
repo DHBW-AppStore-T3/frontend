@@ -77,10 +77,11 @@ export default tseslint.config(
       'vue/v-on-event-hyphenation': 'off',
       'vue/first-attribute-linebreak': 'off',
 
-      // Every v-html site here runs through DOMPurify (MarkdownRenderer,
-      // the JSON highlighter). Left as a warning rather than off so a new
-      // one still has to be looked at.
-      'vue/no-v-html': 'warn',
+      // Stored XSS (.github#7 J): a message with a user-controlled
+      // parameter never goes through v-html; it uses <i18n-t> slots. The few
+      // remaining sites (DOMPurify'd Markdown, the escaping JSON highlighter,
+      // static translations) are allowed one by one with a reason.
+      'vue/no-v-html': 'error',
 
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'smart'],

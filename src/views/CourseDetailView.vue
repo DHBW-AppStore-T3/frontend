@@ -350,6 +350,7 @@ const roleClass = (role: string | undefined) => {
 
           <div class="bg-infoTint text-blue-800 p-3.5 rounded-lg text-sm flex gap-3 items-start border border-blue-100">
             <Info :size="18" class="mt-0.5 flex-shrink-0 text-info" />
+            <!-- eslint-disable-next-line vue/no-v-html -- static translation, no parameters -->
             <p v-html="$t('CourseDetailView.addModal.info')"></p>
           </div>
 
@@ -450,7 +451,9 @@ const roleClass = (role: string | undefined) => {
 
       <template #body>
         <div class="space-y-3">
-          <p class="text-textMuted" v-html="$t('CourseDetailView.removeModal.confirmPrompt', { username: memberToRemove?.username })"></p>
+          <i18n-t keypath="CourseDetailView.removeModal.confirmPrompt" tag="p" class="text-textMuted">
+            <template #username><strong>{{ memberToRemove?.username }}</strong></template>
+          </i18n-t>
           <p class="text-sm text-textMuted">
             {{ $t('CourseDetailView.removeModal.warning') }}
           </p>

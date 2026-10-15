@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
+    setupFiles: ['tests/setup/i18n-t.ts'],
     // Node 22+ ships an experimental global `localStorage` that is unusable
     // without `--localstorage-file` (it has no `.clear`/`.setItem` etc.) and
     // shadows happy-dom's working `window.localStorage`. Disable it so tests

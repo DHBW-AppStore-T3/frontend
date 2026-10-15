@@ -142,11 +142,11 @@ const onToggle = () => {
 
 <template>
   <div v-if="html">
-    <div
+    <!-- eslint-disable-next-line vue/no-v-html -- DOMPurify-sanitised above -->
+    <div v-html="html"
       ref="contentEl"
       :class="contentClass"
       :style="contentStyle"
-      v-html="html"
     />
     <button
       v-if="showToggle"
