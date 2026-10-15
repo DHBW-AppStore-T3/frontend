@@ -23,13 +23,22 @@ export const isValidGitUrl = (url: string): boolean => GIT_URL_PATTERN.test(url)
 
 const includesAny = (name: string, parts: string[]) => parts.some((p) => name.includes(p))
 
-/** Placeholder icon of the live preview card, guessed from the app name. */
-export function previewIconFor(appName: string): LucideIcon {
+export type PreviewIconKind = 'security' | 'server' | 'box' | 'default'
+
+export const PREVIEW_ICONS: Record<PreviewIconKind, LucideIcon> = {
+  security: Shield,
+  server: Server,
+  box: Box,
+  default: Layers,
+}
+
+/** Kind of the placeholder icon of the live preview card, guessed from the app name. */
+export function previewIconKind(appName: string): PreviewIconKind {
   const name = appName.toLowerCase()
-  if (includesAny(name, ['kali', 'hack', 'security'])) return Shield
-  if (name.includes('node')) return Server
-  if (name.includes('python')) return Box
-  return Layers
+  if (includesAny(name, ['kali', 'hack', 'security'])) return 'security'
+  if (name.includes('node')) return 'server'
+  if (name.includes('python')) return 'box'
+  return 'default'
 }
 
 export function previewIconColorClass(appName: string): string {

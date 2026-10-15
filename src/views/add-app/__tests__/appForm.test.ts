@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Shield, Server, Box, Layers } from 'lucide-react'
-import { isValidGitUrl, previewIconFor, previewIconColorClass, createErrorKey, buildCreatePayload } from '../appForm'
+import { isValidGitUrl, previewIconKind, PREVIEW_ICONS, previewIconColorClass, createErrorKey, buildCreatePayload } from '../appForm'
 
 describe('isValidGitUrl', () => {
   it.each([
@@ -23,7 +23,7 @@ describe('preview icon', () => {
     ['Python Script', Box],
     ['Something else', Layers],
   ])('%s', (name, icon) => {
-    expect(previewIconFor(name)).toBe(icon)
+    expect(PREVIEW_ICONS[previewIconKind(name)]).toBe(icon)
   })
 
   it('only tints kali in the info colour', () => {

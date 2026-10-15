@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import BaseButton from '@/components/ui/BaseButton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
-import { previewIconColorClass, previewIconFor } from './appForm'
+import { previewIconColorClass, previewIconKind, PREVIEW_ICONS } from './appForm'
 
 export interface AppPreviewCardProps {
   name: string
@@ -14,7 +14,7 @@ const DESCRIPTION_LINE_CLAMP = 5
 /** Live preview of how the app will look in the catalogue. */
 export default function AppPreviewCard({ name, description, imageUrl }: AppPreviewCardProps) {
   const { t, i18n } = useTranslation()
-  const Icon = previewIconFor(name)
+  const Icon = PREVIEW_ICONS[previewIconKind(name)]
 
   return (
     <div className="w-full bg-surfaceTint border border-borderSubtle rounded-xl p-6 flex flex-col shadow-sm relative min-h-[250px]">

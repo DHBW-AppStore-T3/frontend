@@ -43,8 +43,37 @@ export interface MarkdownEditorProps {
 
 type Mode = 'edit' | 'preview'
 
-const TOOLBAR_BUTTON = 'p-1 rounded hover:bg-gray-200 text-textMuted'
 const ICON_SIZE = 14
+
+function ToolbarButton({ onClick, title, children }: { onClick: () => void; title: string; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} title={title} className="p-1 rounded hover:bg-gray-200 text-textMuted">
+      {children}
+    </button>
+  )
+}
+
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
+        active ? 'border-primary text-primary' : 'border-transparent text-textMuted hover:text-textHeading'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
 
 export default function MarkdownEditor({
   value,
@@ -107,47 +136,50 @@ export default function MarkdownEditor({
     }
   }
 
-  const tab = (name: Mode, icon: ReactNode, label: string) => (
-    <button
-      type="button"
-      onClick={() => setMode(name)}
-      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
-        mode === name ? 'border-primary text-primary' : 'border-transparent text-textMuted hover:text-textHeading'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  )
-
-  const tool = (onClick: () => void, title: string, icon: ReactNode) => (
-    <button type="button" onClick={onClick} title={title} className={TOOLBAR_BUTTON}>
-      {icon}
-    </button>
-  )
-
   const separator = <span className="mx-1 h-4 w-px bg-gray-300" />
 
   return (
     <div className="w-full rounded-lg border border-borderSubtle bg-white shadow-sm overflow-hidden">
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 border-b border-borderSubtle bg-surfaceMuted px-2">
-        {tab('edit', <Pencil size={12} />, t('markdownEditor.tabEdit'))}
-        {tab('preview', <Eye size={12} />, t('markdownEditor.tabPreview'))}
+        <ModeTab active={mode === 'edit'} onClick={() => setMode('edit')}>
+          <Pencil size={12} />
+          {t('markdownEditor.tabEdit')}
+        </ModeTab>
+        <ModeTab active={mode === 'preview'} onClick={() => setMode('preview')}>
+          <Eye size={12} />
+          {t('markdownEditor.tabPreview')}
+        </ModeTab>
 
         {/* Toolbar (edit mode only) */}
         {mode === 'edit' ? (
           <div className="ml-auto flex items-center gap-0.5 py-1">
-            {tool(bold, t('markdownEditor.toolbar.bold'), <Bold size={ICON_SIZE} />)}
-            {tool(italic, t('markdownEditor.toolbar.italic'), <Italic size={ICON_SIZE} />)}
+            <ToolbarButton onClick={bold} title={t('markdownEditor.toolbar.bold')}>
+              <Bold size={ICON_SIZE} />
+            </ToolbarButton>
+            <ToolbarButton onClick={italic} title={t('markdownEditor.toolbar.italic')}>
+              <Italic size={ICON_SIZE} />
+            </ToolbarButton>
             {separator}
-            {tool(h1, t('markdownEditor.toolbar.h1'), <Heading1 size={ICON_SIZE} />)}
-            {tool(h2, t('markdownEditor.toolbar.h2'), <Heading2 size={ICON_SIZE} />)}
+            <ToolbarButton onClick={h1} title={t('markdownEditor.toolbar.h1')}>
+              <Heading1 size={ICON_SIZE} />
+            </ToolbarButton>
+            <ToolbarButton onClick={h2} title={t('markdownEditor.toolbar.h2')}>
+              <Heading2 size={ICON_SIZE} />
+            </ToolbarButton>
             {separator}
-            {tool(list, t('markdownEditor.toolbar.list'), <List size={ICON_SIZE} />)}
-            {tool(link, t('markdownEditor.toolbar.link'), <LinkIcon size={ICON_SIZE} />)}
-            {tool(inlineCode, t('markdownEditor.toolbar.code'), <CodeIcon size={ICON_SIZE} />)}
-            {tool(codeBlock, t('markdownEditor.toolbar.codeblock'), <Code2 size={ICON_SIZE} />)}
+            <ToolbarButton onClick={list} title={t('markdownEditor.toolbar.list')}>
+              <List size={ICON_SIZE} />
+            </ToolbarButton>
+            <ToolbarButton onClick={link} title={t('markdownEditor.toolbar.link')}>
+              <LinkIcon size={ICON_SIZE} />
+            </ToolbarButton>
+            <ToolbarButton onClick={inlineCode} title={t('markdownEditor.toolbar.code')}>
+              <CodeIcon size={ICON_SIZE} />
+            </ToolbarButton>
+            <ToolbarButton onClick={codeBlock} title={t('markdownEditor.toolbar.codeblock')}>
+              <Code2 size={ICON_SIZE} />
+            </ToolbarButton>
           </div>
         ) : null}
       </div>
