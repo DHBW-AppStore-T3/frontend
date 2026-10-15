@@ -1,0 +1,13 @@
+.help-search { max-width: 480px; margin-bottom: 24px; }
+.help-list { display: grid; gap: 20px; }
+.help-section { border: 1px solid rgb(var(--color-border-subtle)); border-radius: var(--workspace-card-radius); background: var(--workspace-surface); }
+.help-section summary { list-style: none; display: flex; align-items: center; gap: 20px; padding: 24px; cursor: pointer; }
+.help-section summary::-webkit-details-marker { display: none; }
+.help-icon { display: grid; place-items: center; flex-shrink: 0; width: 52px; height: 52px; border-radius: 9px; color: rgb(var(--color-info)); background: rgb(var(--color-info) / .1); }
+.help-summary { display: grid; flex: 1; gap: 6px; }
+.help-summary strong { color: rgb(var(--color-text-heading)); font-size: 16px; }
+.help-summary span { color: rgb(var(--color-text-muted)); font-size: 13px; }
+.help-section[open] summary > svg { transform: rotate(90deg); }
+.help-body { padding: 0 24px 24px; }
+.help-article + .help-article { margin-top: 28px; padding-top: 24px; border-top: 1px solid rgb(var(--color-border-subtle)); }
+@media (max-width: 560px) { .help-section summary { padding: 20px; gap: 14px; } }

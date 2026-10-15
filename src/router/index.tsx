@@ -62,8 +62,8 @@ export const appRoutes: RouteObject[] = [
       {
         element: <AuthLayout />,
         children: [
-          guarded({ path: 'login', lazy: notMigrated('LoginView') }, { requiresGuest: true }),
-          guarded({ path: 'callback', lazy: notMigrated('CallbackView') }, {}),
+          guarded({ path: 'login', lazy: lazyView(() => import('@/views/LoginView')) }, { requiresGuest: true }),
+          guarded({ path: 'callback', lazy: lazyView(() => import('@/views/CallbackView')) }, {}),
         ],
       },
 
@@ -84,7 +84,7 @@ export const appRoutes: RouteObject[] = [
           guarded({ path: 'apps', lazy: notMigrated('AppsView') }, auth),
           guarded({ path: 'apps/create', lazy: notMigrated('AddAppsView') }, auth),
           guarded({ path: 'apps/:id', lazy: notMigrated('AppsDetailView') }, auth),
-          guarded({ path: 'help', lazy: notMigrated('HelpView') }, auth),
+          guarded({ path: 'help', lazy: lazyView(() => import('@/views/HelpView')) }, auth),
           guarded(
             {
               path: 'deployments',
@@ -116,7 +116,7 @@ export const appRoutes: RouteObject[] = [
             { path: 'admin/apps', lazy: notMigrated('AdminAppsView') },
             { requiresAuth: true, requiresRole: ['admin'] as UserRole[] },
           ),
-          guarded({ path: 'forbidden', lazy: notMigrated('ForbiddenView') }, auth),
+          guarded({ path: 'forbidden', lazy: lazyView(() => import('@/views/ForbiddenView')) }, auth),
         ],
       },
 
@@ -124,7 +124,7 @@ export const appRoutes: RouteObject[] = [
       {
         element: <UserLayout />,
         children: [
-          guarded({ path: 'user', lazy: notMigrated('UserView') }, auth),
+          guarded({ path: 'user', lazy: lazyView(() => import('@/views/UserView')) }, auth),
           guarded({ path: 'user/openstack', lazy: notMigrated('SettingsOpenStackView') }, auth),
         ],
       },
