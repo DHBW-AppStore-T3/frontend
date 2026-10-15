@@ -88,10 +88,10 @@ export const appRoutes: RouteObject[] = [
           guarded(
             {
               path: 'deployments',
-              lazy: notMigrated('DeploymentsView'),
+              lazy: lazyView(() => import('@/views/DeploymentsView')),
               children: [
                 { index: true, lazy: notMigrated('DeploymentsListView') },
-                { path: ':id', lazy: notMigrated('DeploymentDetailView') },
+                { path: ':id', lazy: lazyView(() => import('@/views/DeploymentDetailView')) },
               ],
             },
             auth,

@@ -105,3 +105,15 @@ describe('app routes', () => {
     await waitFor(() => expect(document.querySelector('.app-shell')).not.toBeNull())
   })
 })
+
+describe('deployment routes', () => {
+  it('renders the deployment detail view for /deployments/:id inside the app layout', async () => {
+    mocks.auth.isAuthenticated = true
+    mocks.auth.user = { userId: 'u', role: 'student' }
+    renderAt('/deployments/abc')
+
+    await waitFor(() => expect(document.querySelector('.app-shell')).not.toBeNull())
+    // The detail view shows its spinner until the deployment has loaded.
+    await waitFor(() => expect(document.querySelector('.animate-spin')).not.toBeNull())
+  })
+})
