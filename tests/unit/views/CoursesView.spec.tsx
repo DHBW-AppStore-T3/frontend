@@ -165,10 +165,11 @@ describe('CoursesView', () => {
     await screen.findByText('Zu löschender Kurs')
 
     await userEvent.click(screen.getByLabelText(de.CoursesView.deleteTitle))
-    const dialog = screen.getByRole('button', { name: de.CoursesView.deleteModal.delete }).closest('.fixed') as HTMLElement
+    // The list's icon button and the dialog's confirm share the label: scope to the dialog.
+    const dialog = document.querySelector('.fixed.inset-0') as HTMLElement
     expect(within(dialog).getByText(/Zu löschender Kurs/)).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: de.CoursesView.deleteModal.delete }))
+    await userEvent.click(within(dialog).getByRole('button', { name: de.CoursesView.deleteModal.delete }))
 
     await waitFor(() => expect(courseApi.delete).toHaveBeenCalledWith('c-77'))
     expect(toastMessages()).toContainEqual(['success', 'CoursesView.toasts.deleteSuccess'])
