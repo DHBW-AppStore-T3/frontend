@@ -3,6 +3,7 @@ import { deploymentApi } from '@/api/deployment.api'
 import { useAppStore } from './app.store'
 import { useAuthStore } from './auth.store'
 import { runRequest } from './_request'
+import { isMultiImagePackerLayout as isMultiImagePackerLayoutOf } from '@/utils/draft-variables'
 
 import type {
   App,
@@ -259,22 +260,10 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
       // userInputVar: { packer: {...}, terraform: {...} }
       const userInputVarObj: any = { packer: {}, terraform: {} }
       if (draft.variables && typeof draft.variables === 'object') {
-        // Detect multi-image Packer layout: such apps store Packer values nested
-        // under ``draft.variables.packer[<template_key>][<name>]`` rather than
-        // flat under ``draft.variables[<name>]``. Reading only flat would leave
-        // ``val`` undefined for those variables. Same detection/resolution as in
-        // ``NewDeploymentSummaryView``.
+        // Multi-image Packer apps nest their values per template key.
         const draftVars = draft.variables as Record<string, any>
         const packerContainer = draftVars.packer
-        const isMultiImagePackerLayout =
-          packerContainer
-          && typeof packerContainer === 'object'
-          && !Array.isArray(packerContainer)
-          && Object.keys(packerContainer).length > 0
-          && Object.keys(packerContainer).every((k) => {
-            const slot = packerContainer[k]
-            return slot && typeof slot === 'object' && !Array.isArray(slot)
-          })
+        const isMultiImagePackerLayout = isMultiImagePackerLayoutOf(draftVars)
 
         const resolveValue = (def: AppVariable): any => {
           if (def.source === 'packer' && isMultiImagePackerLayout) {
