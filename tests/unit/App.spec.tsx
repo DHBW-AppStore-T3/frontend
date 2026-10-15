@@ -19,6 +19,8 @@ vi.mock('@/stores/auth.store', () => ({
   ),
 }))
 
+vi.mock('@/views/AppsView', () => ({ default: () => <p>apps</p> }))
+
 import App from '@/App'
 import { appRoutes } from '@/router'
 

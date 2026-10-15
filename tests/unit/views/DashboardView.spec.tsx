@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { screen, act } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 
 // Stats and quotas are separate, individually tested units; here they are
 // driven directly so the view's wiring and rendering can be asserted.
