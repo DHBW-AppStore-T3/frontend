@@ -113,7 +113,7 @@ export const appRoutes: RouteObject[] = [
             wizardFields,
           ),
           guarded(
-            { path: 'admin/apps', lazy: notMigrated('AdminAppsView') },
+            { path: 'admin/apps', lazy: lazyView(() => import('@/views/AdminAppsView')) },
             { requiresAuth: true, requiresRole: ['admin'] as UserRole[] },
           ),
           guarded({ path: 'forbidden', lazy: lazyView(() => import('@/views/ForbiddenView')) }, auth),
