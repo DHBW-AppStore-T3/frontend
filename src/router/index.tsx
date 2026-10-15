@@ -78,7 +78,7 @@ export const appRoutes: RouteObject[] = [
             { requiresAuth: true, requiresRole: ['teacher', 'admin'] as UserRole[] },
           ),
           guarded(
-            { path: 'courses/:id', lazy: notMigrated('CourseDetailView') },
+            { path: 'courses/:id', lazy: lazyView(() => import('@/views/CourseDetailView')) },
             { requiresAuth: true, requiresRole: ['teacher', 'admin'] as UserRole[] },
           ),
           guarded({ path: 'apps', lazy: lazyView(() => import('@/views/AppsView')) }, auth),
