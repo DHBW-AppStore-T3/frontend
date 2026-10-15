@@ -25,6 +25,7 @@ vi.mock('@/stores/deployment.store', () => ({
   useDeploymentStore: { getState: () => ({ draft: mocks.draft }) },
 }))
 
+vi.mock('@/views/CoursesView', () => ({ default: () => <p>courses</p> }))
 vi.mock('@/views/AppsView', () => ({ default: () => <p>apps</p> }))
 vi.mock('@/views/DashboardView', () => ({ default: () => <p>dashboard</p> }))
 vi.mock('@/views/DeploymentDetailView', () => ({
