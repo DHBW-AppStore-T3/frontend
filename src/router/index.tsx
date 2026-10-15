@@ -103,7 +103,7 @@ export const appRoutes: RouteObject[] = [
             wizardFields,
           ),
           guarded(
-            { path: 'deployment/new/variables', lazy: notMigrated('NewDeploymentVariableView') },
+            { path: 'deployment/new/variables', lazy: lazyView(() => import('@/views/NewDeploymentVariableView')) },
             auth,
             wizardFields,
           ),
