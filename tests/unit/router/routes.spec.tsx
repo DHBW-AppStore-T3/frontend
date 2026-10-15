@@ -25,6 +25,10 @@ vi.mock('@/stores/deployment.store', () => ({
   useDeploymentStore: { getState: () => ({ draft: mocks.draft }) },
 }))
 
+vi.mock('@/views/DeploymentDetailView', () => ({
+  default: () => <p data-testid="detail-view">detail</p>,
+}))
+
 import { appRoutes } from '@/router'
 
 function renderAt(url: string) {
@@ -113,7 +117,6 @@ describe('deployment routes', () => {
     renderAt('/deployments/abc')
 
     await waitFor(() => expect(document.querySelector('.app-shell')).not.toBeNull())
-    // The detail view shows its spinner until the deployment has loaded.
-    await waitFor(() => expect(document.querySelector('.animate-spin')).not.toBeNull())
+    await waitFor(() => expect(document.querySelector('[data-testid="detail-view"]')).not.toBeNull())
   })
 })
