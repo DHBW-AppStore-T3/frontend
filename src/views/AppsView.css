@@ -1,0 +1,11 @@
+.app-catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.catalog-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 22px; }
+.catalog-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.favorite-button { color: rgb(var(--color-text-muted)); padding: 4px; }
+.favorite-button[aria-pressed='true'] { color: rgb(var(--color-primary)); }
+.catalog-app-name { font-size: 17px; font-weight: 650; color: rgb(var(--color-text-heading)); }
+.catalog-description { flex: 1; min-height: 66px; color: rgb(var(--color-text-muted)); font-size: 13px; line-height: 1.7; }
+.catalog-card-actions { display: flex; gap: 10px; margin-top: 8px; }
+.catalog-card-actions button { flex: 1; padding-inline: 10px; }
+@media (max-width: 1100px) { .app-catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .app-catalog-grid { grid-template-columns: 1fr; } }
