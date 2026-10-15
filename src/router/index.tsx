@@ -90,7 +90,7 @@ export const appRoutes: RouteObject[] = [
               path: 'deployments',
               lazy: lazyView(() => import('@/views/DeploymentsView')),
               children: [
-                { index: true, lazy: notMigrated('DeploymentsListView') },
+                { index: true, lazy: lazyView(() => import('@/views/DeploymentsListView')) },
                 { path: ':id', lazy: lazyView(() => import('@/views/DeploymentDetailView')) },
               ],
             },
