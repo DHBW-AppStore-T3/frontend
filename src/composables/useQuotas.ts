@@ -1,7 +1,8 @@
-import { ref, computed } from 'vue'
+import { useMemo } from 'react'
 import axios from 'axios'
-import { Cpu, HardDrive, Network, Box, Layers } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
+import { create } from 'zustand'
+import { Cpu, HardDrive, Network, Box, Layers } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { quotasApi } from '@/api/quotas.api'
 import type { QuotaOverview } from '@/types/quota'
 
@@ -35,32 +36,66 @@ function writeCachedQuotas(value: QuotaOverview | null) {
   }
 }
 
-const quotas = ref<QuotaOverview | null>(readCachedQuotas())
-const loading = ref(false)
-const error = ref<string | null>(null)
-const needsCredentials = ref(false)
+interface QuotaState {
+  quotas: QuotaOverview | null
+  loading: boolean
+  error: string | null
+  needsCredentials: boolean
+}
+
+export const useQuotaStore = create<QuotaState>()(() => ({
+  quotas: readCachedQuotas(),
+  loading: false,
+  error: null,
+  needsCredentials: false,
+}))
+
+const getPercentage = (used: number, limit: number): number => {
+  if (limit === 0) return 0
+  return Math.round((used / limit) * 100)
+}
+
+const getColorClass = (percentage: number): string => {
+  if (percentage >= 90) return 'bg-red-500'
+  if (percentage >= 75) return 'bg-orange-500'
+  if (percentage >= 50) return 'bg-yellow-500'
+  return 'bg-green-500'
+}
+
+const fetchQuotas = async () => {
+  useQuotaStore.setState({ loading: true, error: null, needsCredentials: false })
+
+  try {
+    const response = await quotasApi.getOverview()
+    useQuotaStore.setState({ quotas: response.data })
+    writeCachedQuotas(response.data)
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 412) {
+      // Drop the cache: credentials are gone, the old numbers don't apply
+      useQuotaStore.setState({ needsCredentials: true, quotas: null })
+      writeCachedQuotas(null)
+    } else {
+      useQuotaStore.setState({ error: 'Failed to fetch quotas' })
+      console.error('Quota fetch error:', err)
+      // Keep the existing cached numbers visible — a transient error
+      // shouldn't blank out the tile.
+    }
+  } finally {
+    useQuotaStore.setState({ loading: false })
+  }
+}
 
 // ----------------------------------------------------------------
-// USE QUOTAS COMPOSABLE
+// USE QUOTAS HOOK
 // ----------------------------------------------------------------
 export const useQuotas = () => {
-  const { t } = useI18n()
-  const getPercentage = (used: number, limit: number): number => {
-    if (limit === 0) return 0
-    return Math.round((used / limit) * 100)
-  }
+  const { t } = useTranslation()
+  const { quotas, loading, error, needsCredentials } = useQuotaStore()
 
-  const getColorClass = (percentage: number): string => {
-    if (percentage >= 90) return 'bg-red-500'
-    if (percentage >= 75) return 'bg-orange-500'
-    if (percentage >= 50) return 'bg-yellow-500'
-    return 'bg-green-500'
-  }
+  const formattedQuotas = useMemo(() => {
+    if (!quotas) return []
 
-  const formattedQuotas = computed(() => {
-    if (!quotas.value) return []
-
-    const { compute, storage, network } = quotas.value
+    const { compute, storage, network } = quotas
 
     return [
       {
@@ -69,7 +104,7 @@ export const useQuotas = () => {
         used: compute.instances.used,
         limit: compute.instances.limit,
         percentage: getPercentage(compute.instances.used, compute.instances.limit),
-        unit: ''
+        unit: '',
       },
       {
         icon: Cpu,
@@ -77,7 +112,7 @@ export const useQuotas = () => {
         used: compute.vcpus.used,
         limit: compute.vcpus.limit,
         percentage: getPercentage(compute.vcpus.used, compute.vcpus.limit),
-        unit: ''
+        unit: '',
       },
       {
         icon: Layers,
@@ -85,7 +120,7 @@ export const useQuotas = () => {
         used: Math.round(compute.ram.used / 1024),
         limit: Math.round(compute.ram.limit / 1024),
         percentage: getPercentage(compute.ram.used, compute.ram.limit),
-        unit: 'GB'
+        unit: 'GB',
       },
       {
         icon: HardDrive,
@@ -93,7 +128,7 @@ export const useQuotas = () => {
         used: storage.volumes.used,
         limit: storage.volumes.limit,
         percentage: getPercentage(storage.volumes.used, storage.volumes.limit),
-        unit: ''
+        unit: '',
       },
       {
         icon: HardDrive,
@@ -101,7 +136,7 @@ export const useQuotas = () => {
         used: storage.gigabytes.used,
         limit: storage.gigabytes.limit,
         percentage: getPercentage(storage.gigabytes.used, storage.gigabytes.limit),
-        unit: 'GB'
+        unit: 'GB',
       },
       {
         icon: Network,
@@ -109,38 +144,10 @@ export const useQuotas = () => {
         used: network.floating_ips.used,
         limit: network.floating_ips.limit,
         percentage: getPercentage(network.floating_ips.used, network.floating_ips.limit),
-        unit: ''
-      }
+        unit: '',
+      },
     ]
-  })
-
-  const hasCachedQuotas = computed(() => quotas.value !== null)
-
-  const fetchQuotas = async () => {
-    loading.value = true
-    error.value = null
-    needsCredentials.value = false
-
-    try {
-      const response = await quotasApi.getOverview()
-      quotas.value = response.data
-      writeCachedQuotas(response.data)
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 412) {
-        needsCredentials.value = true
-        // Drop the cache: credentials are gone, the old numbers don't apply
-        quotas.value = null
-        writeCachedQuotas(null)
-      } else {
-        error.value = 'Failed to fetch quotas'
-        console.error('Quota fetch error:', err)
-        // Keep the existing cached numbers visible — a transient error
-        // shouldn't blank out the tile.
-      }
-    } finally {
-      loading.value = false
-    }
-  }
+  }, [quotas, t])
 
   return {
     quotas,
@@ -148,8 +155,8 @@ export const useQuotas = () => {
     error,
     needsCredentials,
     formattedQuotas,
-    hasCachedQuotas,
+    hasCachedQuotas: quotas !== null,
     fetchQuotas,
-    getColorClass
+    getColorClass,
   }
 }

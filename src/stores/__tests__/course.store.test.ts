@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { liveStore, resetStore } from '../../../tests/helpers/liveStore'
 import { useCourseStore } from '../course.store'
 
 vi.mock('@/api/course.api', () => ({
@@ -17,11 +17,11 @@ vi.mock('@/api/course.api', () => ({
 
 describe('CourseStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    resetStore(useCourseStore)
   })
 
   it('initializes with empty state', () => {
-    const store = useCourseStore()
+    const store = liveStore(useCourseStore)
     expect(store.courses).toEqual([])
     expect(store.currentCourse).toBeNull()
     expect(store.currentMembers).toEqual([])
@@ -35,7 +35,7 @@ describe('CourseStore', () => {
       const courses = [{ courseId: 'c-1', name: 'Informatik' }]
       vi.mocked(courseApi.list).mockResolvedValueOnce({ data: courses } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await store.fetchCourses()
 
       expect(store.courses).toEqual(courses)
@@ -46,7 +46,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.list).mockRejectedValueOnce(new Error('down'))
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await expect(store.fetchCourses()).resolves.toBeUndefined()
       expect(store.error).toBe('down')
     })
@@ -58,7 +58,7 @@ describe('CourseStore', () => {
       const course = { courseId: 'c-1', name: 'Informatik', users: [{ userId: 'u-1' }] }
       vi.mocked(courseApi.getById).mockResolvedValueOnce({ data: course } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await store.fetchCourseById('c-1')
 
       expect(store.currentCourse).toEqual(course)
@@ -69,7 +69,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.getById).mockResolvedValueOnce({ data: { courseId: 'c-1' } } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await store.fetchCourseById('c-1')
 
       expect(store.currentMembers).toEqual([])
@@ -79,7 +79,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.getById).mockRejectedValueOnce(new Error('not found'))
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await expect(store.fetchCourseById('c-1')).rejects.toThrow('not found')
     })
   })
@@ -90,7 +90,7 @@ describe('CourseStore', () => {
       const course = { courseId: 'c-2', name: 'Mathematik' }
       vi.mocked(courseApi.create).mockResolvedValueOnce({ data: course } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       const result = await store.createCourse({ name: 'Mathematik' } as any)
 
       expect(result).toEqual(course)
@@ -104,7 +104,7 @@ describe('CourseStore', () => {
       const updated = { courseId: 'c-1', name: 'Renamed' }
       vi.mocked(courseApi.update).mockResolvedValueOnce({ data: updated } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       store.courses = [{ courseId: 'c-1', name: 'Old' }] as any
       store.currentCourse = { courseId: 'c-1', name: 'Old', users: [] } as any
 
@@ -118,7 +118,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.update).mockResolvedValueOnce({ data: { courseId: 'c-2', name: 'Other' } } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       store.courses = [{ courseId: 'c-2', name: 'Old' }] as any
       store.currentCourse = { courseId: 'c-1', name: 'Untouched' } as any
 
@@ -133,7 +133,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.delete).mockResolvedValueOnce({} as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       store.courses = [{ courseId: 'c-1' }, { courseId: 'c-2' }] as any
 
       await store.deleteCourse('c-1')
@@ -147,7 +147,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.listMembers).mockResolvedValueOnce({ data: [{ userId: 'u-1' }] } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       const result = await store.fetchMembers('c-1')
 
       expect(result).toEqual([{ userId: 'u-1' }])
@@ -159,7 +159,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.listMembers).mockRejectedValueOnce(new Error('forbidden'))
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await expect(store.fetchMembers('c-1')).rejects.toThrow('forbidden')
       expect(store.error).toBe('forbidden')
     })
@@ -168,7 +168,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.addMembers).mockResolvedValueOnce({ data: [{ userId: 'u-1' }, { userId: 'u-2' }] } as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       const result = await store.addMembers('c-1', ['u-2'])
 
       expect(result).toEqual([{ userId: 'u-1' }, { userId: 'u-2' }])
@@ -179,7 +179,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.addMembers).mockRejectedValueOnce(new Error('duplicate'))
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await expect(store.addMembers('c-1', ['u-2'])).rejects.toThrow('duplicate')
       expect(store.error).toBe('duplicate')
     })
@@ -188,7 +188,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.removeMember).mockResolvedValueOnce({} as any)
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       store.currentMembers = [{ userId: 'u-1' }, { userId: 'u-2' }] as any
 
       await store.removeMember('c-1', 'u-1')
@@ -200,7 +200,7 @@ describe('CourseStore', () => {
       const { courseApi } = await import('@/api/course.api')
       vi.mocked(courseApi.removeMember).mockRejectedValueOnce(new Error('not a member'))
 
-      const store = useCourseStore()
+      const store = liveStore(useCourseStore)
       await expect(store.removeMember('c-1', 'u-1')).rejects.toThrow('not a member')
       expect(store.error).toBe('not a member')
     })

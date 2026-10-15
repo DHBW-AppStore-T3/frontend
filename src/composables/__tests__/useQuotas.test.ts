@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
 
 vi.mock('@/api/quotas.api', () => ({ quotasApi: { getOverview: vi.fn() } }))
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
 const overview = {
   compute: {
@@ -18,9 +19,17 @@ const overview = {
   },
 }
 
-async function loadUseQuotas() {
+// Fresh module (and thus fresh module-scoped store + sessionStorage seed) per test.
+async function setup() {
   const mod = await import('../useQuotas')
-  return mod.useQuotas
+  const hook = renderHook(() => mod.useQuotas())
+  return {
+    hook,
+    get current() {
+      return hook.result.current
+    },
+    seed: (value: unknown) => act(() => mod.useQuotaStore.setState({ quotas: value as any })),
+  }
 }
 
 beforeEach(() => {
@@ -31,41 +40,37 @@ beforeEach(() => {
 
 describe('useQuotas', () => {
   it('starts with no cached quotas when sessionStorage is empty', async () => {
-    const useQuotas = await loadUseQuotas()
-    const { quotas, hasCachedQuotas, formattedQuotas } = useQuotas()
+    const q = await setup()
 
-    expect(quotas.value).toBeNull()
-    expect(hasCachedQuotas.value).toBe(false)
-    expect(formattedQuotas.value).toEqual([])
+    expect(q.current.quotas).toBeNull()
+    expect(q.current.hasCachedQuotas).toBe(false)
+    expect(q.current.formattedQuotas).toEqual([])
   })
 
   it('seeds state from a previously cached sessionStorage value', async () => {
     sessionStorage.setItem('openstack.quotas.v1', JSON.stringify(overview))
-    const useQuotas = await loadUseQuotas()
-    const { quotas, hasCachedQuotas } = useQuotas()
+    const q = await setup()
 
-    expect(quotas.value).toEqual(overview)
-    expect(hasCachedQuotas.value).toBe(true)
+    expect(q.current.quotas).toEqual(overview)
+    expect(q.current.hasCachedQuotas).toBe(true)
   })
 
   it('tolerates corrupted sessionStorage content', async () => {
     sessionStorage.setItem('openstack.quotas.v1', '{not json')
-    const useQuotas = await loadUseQuotas()
-    const { quotas } = useQuotas()
+    const q = await setup()
 
-    expect(quotas.value).toBeNull()
+    expect(q.current.quotas).toBeNull()
   })
 
   it('fetchQuotas populates quotas and caches them', async () => {
     const { quotasApi } = await import('@/api/quotas.api')
     vi.mocked(quotasApi.getOverview).mockResolvedValueOnce({ data: overview } as any)
-    const useQuotas = await loadUseQuotas()
-    const { quotas, loading, fetchQuotas } = useQuotas()
+    const q = await setup()
 
-    await fetchQuotas()
+    await act(() => q.current.fetchQuotas())
 
-    expect(quotas.value).toEqual(overview)
-    expect(loading.value).toBe(false)
+    expect(q.current.quotas).toEqual(overview)
+    expect(q.current.loading).toBe(false)
     expect(JSON.parse(sessionStorage.getItem('openstack.quotas.v1')!)).toEqual(overview)
   })
 
@@ -76,13 +81,12 @@ describe('useQuotas', () => {
       isAxiosError: true,
       response: { status: 412 },
     })
-    const useQuotas = await loadUseQuotas()
-    const { quotas, needsCredentials, fetchQuotas } = useQuotas()
+    const q = await setup()
 
-    await fetchQuotas()
+    await act(() => q.current.fetchQuotas())
 
-    expect(needsCredentials.value).toBe(true)
-    expect(quotas.value).toBeNull()
+    expect(q.current.needsCredentials).toBe(true)
+    expect(q.current.quotas).toBeNull()
     expect(sessionStorage.getItem('openstack.quotas.v1')).toBeNull()
   })
 
@@ -91,24 +95,22 @@ describe('useQuotas', () => {
     const { quotasApi } = await import('@/api/quotas.api')
     vi.mocked(quotasApi.getOverview).mockRejectedValueOnce(new Error('network down'))
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const useQuotas = await loadUseQuotas()
-    const { quotas, error, fetchQuotas } = useQuotas()
-    quotas.value = overview as any
+    const q = await setup()
+    q.seed(overview)
 
-    await fetchQuotas()
+    await act(() => q.current.fetchQuotas())
 
-    expect(error.value).toBe('Failed to fetch quotas')
-    expect(quotas.value).toEqual(overview)
+    expect(q.current.error).toBe('Failed to fetch quotas')
+    expect(q.current.quotas).toEqual(overview)
     consoleError.mockRestore()
   })
 
   describe('formattedQuotas', () => {
     it('maps the overview into display rows with computed percentages', async () => {
-      const useQuotas = await loadUseQuotas()
-      const { quotas, formattedQuotas } = useQuotas()
-      quotas.value = overview as any
+      const q = await setup()
+      q.seed(overview)
 
-      const rows = formattedQuotas.value
+      const rows = q.current.formattedQuotas
       expect(rows).toHaveLength(6)
       expect(rows[0]).toMatchObject({ label: 'workspace.quotas.instances', used: 2, limit: 10, percentage: 20 })
       expect(rows[2]).toMatchObject({ label: 'workspace.quotas.ram', used: 2, limit: 8, unit: 'GB' })
@@ -122,9 +124,8 @@ describe('useQuotas', () => {
       [60, 'bg-yellow-500'],
       [10, 'bg-green-500'],
     ])('returns %s%% -> %s', async (pct, expected) => {
-      const useQuotas = await loadUseQuotas()
-      const { getColorClass } = useQuotas()
-      expect(getColorClass(pct)).toBe(expected)
+      const q = await setup()
+      expect(q.current.getColorClass(pct)).toBe(expected)
     })
   })
 })

@@ -1,6 +1,6 @@
 import { UserManager, WebStorageStateStore, InMemoryWebStorage, User } from 'oidc-client-ts'
-import { ref, readonly } from 'vue'
-import { env } from '../env'
+import { createStore } from 'zustand/vanilla'
+import { env } from '@/env'
 
 // ----------------------------------------------------------------
 // KEYCLOAK CONFIGURATION
@@ -39,14 +39,27 @@ const userManager = new UserManager({
 })
 
 // ----------------------------------------------------------------
-// REACTIVE STATE
+// OBSERVABLE STATE
 // ----------------------------------------------------------------
-const user = ref<User | null>(null)
-const isLoading = ref(true)
-const isAuthenticated = ref(false)
-const devEmail = ref<string | null>(null)
-const ltiToken = ref<string | null>(null)
-const handoffToken = ref<string | null>(null)
+// A vanilla (non-React) store: the axios interceptor and router guards read
+// it outside of components, the auth store mirrors it via `subscribe`.
+interface KeycloakState {
+  user: User | null
+  isLoading: boolean
+  isAuthenticated: boolean
+  devEmail: string | null
+  ltiToken: string | null
+  handoffToken: string | null
+}
+
+const state = createStore<KeycloakState>()(() => ({
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
+  devEmail: null,
+  ltiToken: null,
+  handoffToken: null,
+}))
 
 // ----------------------------------------------------------------
 // REFRESH SINGLE-FLIGHT
@@ -68,8 +81,7 @@ async function refreshTokenSingleFlight(): Promise<User | null> {
   refreshInFlight = (async () => {
     try {
       const refreshed = await userManager.signinSilent()
-      user.value = refreshed
-      isAuthenticated.value = !!refreshed
+      state.setState({ user: refreshed, isAuthenticated: !!refreshed })
       return refreshed
     } finally {
       refreshInFlight = null
@@ -79,9 +91,12 @@ async function refreshTokenSingleFlight(): Promise<User | null> {
 }
 
 // ----------------------------------------------------------------
-// COMPOSABLE
+// SERVICE
 // ----------------------------------------------------------------
-export function useKeycloak() {
+// Not a React hook on purpose: it is used from non-component code (axios
+// interceptors, route guards, stores). React code observes it through the
+// auth store.
+function createKeycloak() {
   /**
    * Initialize authentication - load user from storage, falling back to a
    * silent SSO refresh against Keycloak when the in-memory store is empty
@@ -90,34 +105,30 @@ export function useKeycloak() {
    * cookie is still valid.
    */
   async function initialize() {
-    isLoading.value = true
+    state.setState({ isLoading: true })
     try {
       const storedUser = await userManager.getUser()
       if (storedUser && !storedUser.expired) {
-        user.value = storedUser
-        isAuthenticated.value = true
+        state.setState({ user: storedUser, isAuthenticated: true })
         return
       }
 
       try {
         const refreshed = await refreshTokenSingleFlight()
         if (refreshed && !refreshed.expired) {
-          user.value = refreshed
-          isAuthenticated.value = true
+          state.setState({ user: refreshed, isAuthenticated: true })
           return
         }
       } catch {
         // No SSO session available — fall through to unauthenticated state.
       }
 
-      user.value = null
-      isAuthenticated.value = false
+      state.setState({ user: null, isAuthenticated: false })
     } catch (error) {
       console.error('Failed to initialize auth:', error)
-      user.value = null
-      isAuthenticated.value = false
+      state.setState({ user: null, isAuthenticated: false })
     } finally {
-      isLoading.value = false
+      state.setState({ isLoading: false })
     }
   }
 
@@ -143,8 +154,7 @@ export function useKeycloak() {
   async function handleCallback() {
     try {
       const callbackUser = await userManager.signinRedirectCallback()
-      user.value = callbackUser
-      isAuthenticated.value = true
+      state.setState({ user: callbackUser, isAuthenticated: true })
 
       // Get return URL and clean up
       const returnUrl = sessionStorage.getItem('returnUrl') || '/'
@@ -163,8 +173,7 @@ export function useKeycloak() {
   async function logout() {
     try {
       await userManager.signoutRedirect()
-      user.value = null
-      isAuthenticated.value = false
+      state.setState({ user: null, isAuthenticated: false })
     } catch (error) {
       console.error('Logout failed:', error)
       throw error
@@ -177,9 +186,10 @@ export function useKeycloak() {
    * refresh fails.
    */
   async function getAccessToken(): Promise<string | null> {
-    if (ltiToken.value) return ltiToken.value
-    if (handoffToken.value) return handoffToken.value
-    if (devEmail.value) return 'dev-sso-token'
+    const { ltiToken, handoffToken, devEmail } = state.getState()
+    if (ltiToken) return ltiToken
+    if (handoffToken) return handoffToken
+    if (devEmail) return 'dev-sso-token'
     try {
       const currentUser = await userManager.getUser()
       if (!currentUser) return null
@@ -210,9 +220,8 @@ export function useKeycloak() {
    * All concurrent callers share a single signinSilent() round-trip.
    */
   async function ensureValidToken(): Promise<boolean> {
-    if (ltiToken.value) return true
-    if (handoffToken.value) return true
-    if (devEmail.value) return true
+    const { ltiToken, handoffToken, devEmail } = state.getState()
+    if (ltiToken || handoffToken || devEmail) return true
     try {
       const currentUser = await userManager.getUser()
       if (!currentUser) return false
@@ -230,9 +239,7 @@ export function useKeycloak() {
    * Dev-mode only: inject a pre-authenticated user without a Keycloak redirect.
    */
   async function setDevUser(email: string): Promise<void> {
-    devEmail.value = email
-    isAuthenticated.value = true
-    isLoading.value = false
+    state.setState({ devEmail: email, isAuthenticated: true, isLoading: false })
   }
 
   /**
@@ -241,10 +248,7 @@ export function useKeycloak() {
    * token — no Keycloak flow needed for this path.
    */
   async function setLtiUser(email: string, token: string): Promise<void> {
-    ltiToken.value = token
-    devEmail.value = email
-    isAuthenticated.value = true
-    isLoading.value = false
+    state.setState({ ltiToken: token, devEmail: email, isAuthenticated: true, isLoading: false })
   }
 
   /**
@@ -253,21 +257,17 @@ export function useKeycloak() {
    * short-lived HS256 handoff token — independent secret from the LTI path.
    */
   async function setHandoffUser(email: string, token: string): Promise<void> {
-    handoffToken.value = token
-    devEmail.value = email
-    isAuthenticated.value = true
-    isLoading.value = false
+    state.setState({ handoffToken: token, devEmail: email, isAuthenticated: true, isLoading: false })
   }
 
   function getDevEmail(): string | null {
-    return devEmail.value
+    return state.getState().devEmail
   }
 
   return {
     // State
-    user: readonly(user),
-    isLoading: readonly(isLoading),
-    isAuthenticated: readonly(isAuthenticated),
+    getState: state.getState,
+    subscribe: state.subscribe,
 
     // Methods
     initialize,
@@ -283,3 +283,5 @@ export function useKeycloak() {
     setHandoffUser,
   }
 }
+
+export const keycloak = createKeycloak()

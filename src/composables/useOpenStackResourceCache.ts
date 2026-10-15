@@ -15,13 +15,13 @@
  * - Cache TTL: matched to the backend cache (60s) — after that it is
  *   reloaded on the next picker open.
  *
- * REACTIVITY: the cache itself is a plain ``Map``, but a Vue ``ref``
- * (``cacheVersion``) is incremented on every ``prime``/``invalidate``.
- * Consumers read the cache via ``getDisplayName``, which also reads
- * ``cacheVersion.value`` — so the computeds calling it depend on Vue
- * reactivity and re-run as soon as another component updates the cache.
+ * REACTIVITY: the cache itself is a plain ``Map``, but a version counter
+ * (``cacheVersion``) is incremented on every ``prime``/``invalidate`` and
+ * subscribers are notified. Components call ``useOpenStackCacheVersion()``
+ * and read the cache via ``getDisplayName`` — so they re-render as soon as
+ * another component updates the cache.
  */
-import { ref } from 'vue'
+import { useSyncExternalStore } from 'react'
 import {
   openstackResourcesApi,
   type OsResourceType,
@@ -48,9 +48,28 @@ interface CacheEntry {
 // In-memory cache, process-local per browser tab. Cleared on reload.
 const cache = new Map<OsResourceType, CacheEntry>()
 
-// Reactive version counter. Every cache mutation increments it; consumers read
-// ``cacheVersion.value`` in their computeds so Vue re-runs them on change.
-const cacheVersion = ref(0)
+// Version counter. Every cache mutation bumps it and notifies subscribers;
+// React consumers observe it through ``useOpenStackCacheVersion``.
+let cacheVersion = 0
+const listeners = new Set<() => void>()
+
+function bumpVersion(): void {
+  cacheVersion += 1
+  listeners.forEach((l) => l())
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+/**
+ * Subscribes the calling component to cache changes. Call it in any component
+ * that renders values from ``getDisplayName`` so it re-renders on updates.
+ */
+export function useOpenStackCacheVersion(): number {
+  return useSyncExternalStore(subscribe, () => cacheVersion)
+}
 
 const TTL_MS = 60_000
 
@@ -85,14 +104,14 @@ export async function ensureLoaded(osType: OsResourceType): Promise<void> {
         items: res.map(toCachedItem),
         loadedAt: Date.now(),
       })
-      cacheVersion.value += 1
+      bumpVersion()
     } catch {
       // Deliberately no throw — cache stays empty, picker shows its own error UI.
     }
   })()
 
   // Set the pending marker so parallel calls wait instead of re-fetching. Don't
-  // increment ``cacheVersion``: the visible cache view hasn't changed yet.
+  // bump ``cacheVersion``: the visible cache view hasn't changed yet.
   cache.set(osType, {
     items: cache.get(osType)?.items || [],
     loadedAt: cache.get(osType)?.loadedAt || 0,
@@ -117,7 +136,7 @@ export function prime(osType: OsResourceType, items: ReadonlyArray<OsResourceBas
     items: items.map(toCachedItem),
     loadedAt: Date.now(),
   })
-  cacheVersion.value += 1
+  bumpVersion()
 }
 
 /**
@@ -125,7 +144,7 @@ export function prime(osType: OsResourceType, items: ReadonlyArray<OsResourceBas
  */
 export function invalidate(osType: OsResourceType): void {
   if (cache.delete(osType)) {
-    cacheVersion.value += 1
+    bumpVersion()
   }
 }
 
@@ -136,7 +155,7 @@ export function invalidate(osType: OsResourceType): void {
 export function invalidateAll(): void {
   if (cache.size === 0) return
   cache.clear()
-  cacheVersion.value += 1
+  bumpVersion()
 }
 
 /**
@@ -153,16 +172,14 @@ export function invalidateAll(): void {
  *
  * Returns ``null`` when ``value`` is empty.
  *
- * Reads ``cacheVersion.value`` so any computed calling this re-runs when the
- * cache changes.
+ * Components rendering this value must also call ``useOpenStackCacheVersion()``
+ * so they re-render when the cache changes.
  */
 export function getDisplayName(
   osType: OsResourceType,
   mode: 'id' | 'name',
   value: string | null | undefined,
 ): { name: string; known: boolean; modeMismatch?: boolean } | null {
-  // Register the reactive dependency — see module docstring.
-  void cacheVersion.value
   if (!value) return null
   const entry = cache.get(osType)
   if (!entry) {

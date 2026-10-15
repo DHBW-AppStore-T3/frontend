@@ -7,24 +7,21 @@
  * keeping the exact per-action semantics (error fallback string, and whether
  * the error is re-thrown) under the caller's control.
  *
- * It takes the store itself. The previous signature took a
- * `{ setLoading, setError }` adapter, which meant every call site opened with
- * four lines of closure building that adapter -- the same amount of
- * boilerplate the helper was meant to remove. Two of the five stores adopted
- * it; the rest kept hand-rolling try/catch/finally, which is how the error
- * extraction below ended up duplicated across the codebase.
- *
- * Inside a Pinia options-store action, `this` is the store instance, so the
- * call is `runRequest(this, ...)`.
+ * It takes the store's `set` function, so inside a Zustand action the call is
+ * `runRequest(set, ...)`. Only the `isLoading`/`error` pair is touched; the
+ * caller applies the result to its own state.
  */
 
 import { extractErrorMessage } from '@/utils/http-error'
 
-/** Any store exposing the conventional loading/error pair. */
+/** The conventional loading/error slice every request store exposes. */
 export interface LoadingErrorState {
   isLoading: boolean
   error: string | null
 }
+
+/** A Zustand `set` narrowed to the loading/error slice. */
+export type SetLoadingError = (patch: Partial<LoadingErrorState>) => void
 
 export interface RunRequestOptions {
   /** When false, the caught error is swallowed instead of re-thrown. Defaults to true. */
@@ -41,35 +38,34 @@ export interface RunRequestOptions {
  *   to swallow the error, in which case the result may be `undefined`.
  */
 export async function runRequest<T>(
-  store: LoadingErrorState,
+  set: SetLoadingError,
   fn: () => Promise<T>,
   fallbackMsg: string,
 ): Promise<T>
 export async function runRequest<T>(
-  store: LoadingErrorState,
+  set: SetLoadingError,
   fn: () => Promise<T>,
   fallbackMsg: string,
   options: { rethrow: false },
 ): Promise<T | undefined>
 export async function runRequest<T>(
-  store: LoadingErrorState,
+  set: SetLoadingError,
   fn: () => Promise<T>,
   fallbackMsg: string,
   options: RunRequestOptions = {},
 ): Promise<T | undefined> {
   const { rethrow = true } = options
-  store.isLoading = true
-  store.error = null
+  set({ isLoading: true, error: null })
 
   try {
     return await fn()
   } catch (err) {
-    store.error = extractErrorMessage(err, fallbackMsg)
+    set({ error: extractErrorMessage(err, fallbackMsg) })
     if (rethrow) {
       throw err
     }
     return undefined
   } finally {
-    store.isLoading = false
+    set({ isLoading: false })
   }
 }
