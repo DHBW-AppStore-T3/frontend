@@ -16,7 +16,7 @@ import { Server, RefreshCw, AlertCircle, Network, Shield } from 'lucide-vue-next
 import InfrastructureVmCard from '@/components/InfrastructureVmCard.vue'
 import type { DeploymentResource } from '@/types'
 
-defineProps<{
+withDefaults(defineProps<{
     vmResources: DeploymentResource[]
     networkResources: DeploymentResource[]
     securityResources: DeploymentResource[]
@@ -26,7 +26,11 @@ defineProps<{
     redeployInFlight: Set<string>
     /** Address of the VM whose detail drawer is open, if any. */
     openDrawerAddress: string | null
-}>()
+    /** Operate right and the lifecycle allows a redeploy right now. */
+    canRedeploy?: boolean
+}>(), {
+    canRedeploy: true,
+})
 
 defineEmits<{
     (e: 'refresh'): void
@@ -99,6 +103,7 @@ defineEmits<{
                     :resource="vm"
                     :redeploying="redeployInFlight.has(vm.address)"
                     :is-expanded="openDrawerAddress === vm.address"
+                    :can-redeploy="canRedeploy"
                     @open-details="(a: string) => $emit('open-vm', a)"
                     @redeploy="(a: string) => $emit('redeploy-vm', a)"
                 />

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { nextTick, ref, computed } from 'vue'
+import { h, nextTick, ref } from 'vue'
 
 import DeploymentDetailView from '@/views/DeploymentDetailView.vue'
-import type { DeploymentWithRelations, Task } from '@/types'
+import DeploymentInfrastructurePanel from '@/components/DeploymentInfrastructurePanel.vue'
+import type { DeploymentWithRelations, PodWorkload, Task } from '@/types'
 
 // ---------------------------------------------------------
 // 1. Mocks & Setup
@@ -13,17 +14,24 @@ const mocks = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockFetchDeploymentById: vi.fn(),
   mockDeleteDeployment: vi.fn(),
+  mockCancelDeployment: vi.fn(),
   mockListTasksByDeployment: vi.fn(),
   mockGetTaskById: vi.fn(),
   mockGetMyAccess: vi.fn(),
+  mockListResources: vi.fn(),
+  mockRedeployResource: vi.fn(),
+  mockRestartWorkload: vi.fn(),
+  mockResetWorkload: vi.fn(),
   mockAddToast: vi.fn(),
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
   mockStartStream: vi.fn(),
   mockStopStream: vi.fn(),
 }))
 
 const mockDeployment = ref<DeploymentWithRelations | null>(null)
+const mockStoreError = ref<string | null>(null)
 const mockAuthUserId = ref('user-owner')
-const mockIsTeacherOrAdmin = ref(true)
 
 const mockStreamProgress = ref<number | null>(null)
 const mockStreamCurrentPhase = ref<string | null>(null)
@@ -34,22 +42,12 @@ const mockStreamTotalLogCount = ref(0)
 const mockStreamConnectionState = ref<'idle' | 'connecting' | 'live' | 'reconnecting' | 'ended' | 'error'>('idle')
 const mockStreamPhaseNames = ref<string[]>([])
 
-vi.mock('lucide-vue-next', () => {
-  const icon = (className: string) => ({ template: `<span class="${className}" />` })
-
-  // Every icon the view imports must be a named export here — vitest
-  // validates named ESM imports at module-eval time, so a Proxy
-  // fallback isn't enough. Keep this list in sync with the two
-  // ``lucide-vue-next`` imports in DeploymentDetailView.vue.
-  const names = [
-    'CircleArrowLeft', 'Loader2', 'Users', 'Settings', 'Terminal',
-    'ChevronDown', 'Trash2', 'GitBranch', 'User', 'Calendar', 'Clock',
-    'Package', 'AlertCircle', 'CheckCircle', 'XCircle', 'StopCircle',
-    'Flame', 'Copy', 'Check', 'Send', 'PauseCircle', 'PlayCircle',
-    'RefreshCw', 'Server', 'Network', 'Shield', 'Eye', 'EyeOff',
-  ]
+// Every icon becomes a tiny stub, so an icon added to the view or one of
+// its panels needs no change here.
+vi.mock('lucide-vue-next', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
   return Object.fromEntries(
-    names.map((n) => [n, icon(`icon-${n.toLowerCase()}`)]),
+    Object.keys(actual).map((n) => [n, { template: `<span class="icon-${n.toLowerCase()}" />` }]),
   )
 })
 
@@ -59,7 +57,7 @@ vi.mock('vue-router', () => ({
 }))
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (key: string) => key }),
+  useI18n: () => ({ t: (key: string) => key, te: () => false }),
 }))
 
 vi.mock('@/stores/deployment.store', () => ({
@@ -67,34 +65,30 @@ vi.mock('@/stores/deployment.store', () => ({
     get currentDeployment() {
       return mockDeployment.value
     },
+    get error() {
+      return mockStoreError.value
+    },
     fetchDeploymentById: mocks.mockFetchDeploymentById,
     deleteDeployment: mocks.mockDeleteDeployment,
+    cancelDeployment: mocks.mockCancelDeployment,
   }),
 }))
 
+// The page decides nothing from the role: what the caller may see and do
+// comes with the deployment (``permissions``/``actions``).
 vi.mock('@/stores/auth.store', () => ({
   useAuthStore: () => ({
-    get isTeacherOrAdmin() {
-      return mockIsTeacherOrAdmin.value
-    },
     get userId() {
       return mockAuthUserId.value
     },
   }),
 }))
 
-// ``useRole`` reads ``auth.user?.role`` in production; the auth-store
-// mock above doesn't expose ``user``, so mock the composable directly
-// and drive ``isStaff`` off the same ref the tests already toggle.
-vi.mock('@/composables/useRole', () => ({
-  useRole: () => ({
-    isStaff: computed(() => mockIsTeacherOrAdmin.value),
-  }),
-}))
-
 vi.mock('@/stores/toast.store', () => ({
   useToastStore: () => ({
     addToast: mocks.mockAddToast,
+    success: mocks.mockToastSuccess,
+    error: mocks.mockToastError,
   }),
 }))
 
@@ -107,10 +101,11 @@ vi.mock('@/api/task.api', () => ({
 
 vi.mock('@/api/deployment.api', () => ({
   deploymentApi: {
-    resendAccess: vi.fn(),
     getMyAccess: mocks.mockGetMyAccess,
-    listResources: vi.fn().mockResolvedValue({ data: { resources: [] } }),
-    redeployResource: vi.fn(),
+    listResources: mocks.mockListResources,
+    redeployResource: mocks.mockRedeployResource,
+    restartWorkload: mocks.mockRestartWorkload,
+    resetWorkload: mocks.mockResetWorkload,
   },
 }))
 
@@ -129,12 +124,16 @@ vi.mock('@/composables/useDeploymentStream', () => ({
   }),
 }))
 
+const OWNER = { owner_view: true, operate: true, member: false }
+const MEMBER = { owner_view: false, operate: false, member: true }
+
 const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): DeploymentWithRelations => ({
   deploymentId: 'dep-1',
   name: 'Data Lab',
   appId: 'app-1',
   userId: 'user-owner',
   status: 'success',
+  runtime: 'openstack-vm',
   commitHash: null,
   commitInfo: null,
   userInputVar: JSON.stringify({
@@ -172,17 +171,31 @@ const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): Deplo
       teamId: 'team-1',
       name: 'Team Alpha',
       members: [
-        {
-          userId: 'member-1',
-          username: 'member.one',
-          email: 'member1@example.com',
-        },
+        { userId: 'member-1', username: 'member.one', email: 'member1@example.com' },
+        { userId: 'member-2', username: 'member.two', email: 'member2@example.com' },
       ],
     },
   ],
   outputs: null,
   logs: null,
   latest_task: null,
+  permissions: OWNER,
+  actions: ['destroy', 'pause', 'redeploy'],
+  ...overrides,
+} as DeploymentWithRelations)
+
+const podDeployment = (overrides: Partial<DeploymentWithRelations> = {}) =>
+  baseDeployment({ runtime: 'kubernetes', actions: ['destroy', 'pause', 'redeploy'], ...overrides })
+
+const workload = (overrides: Partial<PodWorkload> = {}): PodWorkload => ({
+  workload: 'team-alpha',
+  team: 'Team Alpha',
+  user_id: null,
+  ready: true,
+  restarts: 0,
+  phase: 'Running',
+  url: 'https://lab.example/team-alpha/',
+  lastEvent: null,
   ...overrides,
 })
 
@@ -203,89 +216,91 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
       },
     ],
   },
-  tf_state: { resources: [{ name: 'vm-1' }] },
-  outputs: { url: 'https://example.org' },
   current_phase: 'OUTPUTS_AND_CLEANUP',
   progress_pct: 100,
   created_at: '2026-06-08T12:09:00Z',
   ...overrides,
 })
 
+// ``<i18n-t>`` comes from the vue-i18n plugin; render its keypath and slots.
+const I18nT = {
+  props: ['keypath', 'tag'],
+  setup(props: { keypath: string }, { slots }: { slots: Record<string, (() => unknown[]) | undefined> }) {
+    return () => h('p', { class: 'i18n-t' }, [props.keypath, ...Object.values(slots).flatMap((s) => (s ? s() : []))] as any)
+  },
+}
+
+/** Serve ``deployment`` from the next fetchDeploymentById call on. */
+const serve = (deployment: DeploymentWithRelations | null) => {
+  mocks.mockFetchDeploymentById.mockImplementation(async () => {
+    mockDeployment.value = deployment
+    return deployment
+  })
+}
+
+const mountComponent = () =>
+  mount(DeploymentDetailView, {
+    global: {
+      mocks: {
+        $t: (key: string, vars?: Record<string, unknown>) => (vars ? `${key} ${JSON.stringify(vars)}` : key),
+      },
+      components: { 'i18n-t': I18nT },
+      stubs: {
+        RouterLink: true,
+        BaseButton: {
+          inheritAttrs: false,
+          props: ['disabled', 'title'],
+          template: '<button v-bind="$attrs" :disabled="disabled" :title="title"><slot /></button>',
+        },
+        Modal: {
+          props: ['show'],
+          // Renders the footer slot too: the confirm/cancel pair lives there.
+          template:
+            '<div v-if="$props.show" class="modal">' +
+            '<slot name="title" /><slot name="body" /><slot /><slot name="footer" />' +
+            '</div>',
+        },
+        InfrastructureVmCard: { template: '<div class="vm-card-stub" />' },
+        InfrastructureVmDrawer: { template: '<div class="vm-drawer-stub" />' },
+        MarkdownRenderer: {
+          props: ['source'],
+          template: '<div class="markdown-stub">{{ source }}</div>',
+        },
+      },
+    },
+  })
+
+beforeEach(() => {
+  vi.clearAllMocks()
+
+  mockDeployment.value = null
+  mockStoreError.value = null
+  mockAuthUserId.value = 'user-owner'
+
+  mockStreamProgress.value = null
+  mockStreamCurrentPhase.value = null
+  mockStreamCurrentPhaseIndex.value = null
+  mockStreamTotalPhases.value = 11
+  mockStreamPhaseNames.value = []
+  mockStreamLiveLogs.value = []
+  mockStreamTotalLogCount.value = 0
+  mockStreamConnectionState.value = 'idle'
+
+  serve(baseDeployment())
+  mocks.mockDeleteDeployment.mockResolvedValue({ status: 204 })
+  mocks.mockListTasksByDeployment.mockResolvedValue({ data: [baseTask()] })
+  mocks.mockGetTaskById.mockResolvedValue({ data: baseTask() })
+  mocks.mockGetMyAccess.mockResolvedValue({ data: { user_accounts: null, team_vms: null } })
+  mocks.mockListResources.mockResolvedValue({ data: { resources: [], workloads: [], live: true } })
+  mocks.mockRestartWorkload.mockResolvedValue({ data: {} })
+  mocks.mockResetWorkload.mockResolvedValue({ data: {} })
+})
+
 // ---------------------------------------------------------
 // 2. Die Tests
 // ---------------------------------------------------------
 
-// Un-skipped 2026-09 (skipped since 2026-06-29). The TODO listed a
-// batch of UI changes -- infrastructure panel, MarkdownRenderer,
-// canResendAccess gate, drawer wrapper -- as the reason. None of those
-// changed what this suite is about; they moved the DOM out from under
-// selectors like `findAll('div.cursor-pointer')[0]`, which picked the
-// group card by its position among every element carrying a Tailwind
-// utility class.
-//
-// The view now exposes `data-testid` on the group cards, the task-history
-// rows and the delete buttons. Those are a testing contract and survive
-// layout work -- including the component split this file is about to get.
 describe('DeploymentDetailView.vue', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    mockDeployment.value = null
-    mockAuthUserId.value = 'user-owner'
-    mockIsTeacherOrAdmin.value = true
-
-    mockStreamProgress.value = null
-    mockStreamCurrentPhase.value = null
-    mockStreamCurrentPhaseIndex.value = null
-    mockStreamTotalPhases.value = 11
-    mockStreamPhaseNames.value = []
-    mockStreamLiveLogs.value = []
-    mockStreamTotalLogCount.value = 0
-    mockStreamConnectionState.value = 'idle'
-
-    mocks.mockFetchDeploymentById.mockImplementation(async () => {
-      mockDeployment.value = baseDeployment()
-      return { data: mockDeployment.value }
-    })
-
-    mocks.mockDeleteDeployment.mockResolvedValue({ status: 204 })
-    mocks.mockListTasksByDeployment.mockResolvedValue({ data: [baseTask()] })
-    mocks.mockGetTaskById.mockResolvedValue({ data: baseTask() })
-    mocks.mockGetMyAccess.mockResolvedValue({ data: { user_accounts: null, team_vms: null } })
-  })
-
-  const mountComponent = () => {
-    return mount(DeploymentDetailView, {
-      global: {
-        mocks: {
-          $t: (key: string, vars?: Record<string, unknown>) => {
-            return vars ? `${key} ${JSON.stringify(vars)}` : key
-          },
-        },
-        stubs: {
-          RouterLink: true,
-          BaseButton: { template: '<button><slot /></button>' },
-          Modal: {
-            props: ['show'],
-            // Renders the footer slot too -- the confirm/cancel pair lives
-            // there, and a stub that dropped it made the delete-flow test
-            // look like a regression when it was the harness that was stale.
-            template:
-              '<div v-if="$props.show" class="modal">' +
-              '<slot name="title" /><slot /><slot name="footer" />' +
-              '</div>',
-          },
-          InfrastructureVmCard: { template: '<div class="vm-card-stub" />' },
-          InfrastructureVmDrawer: { template: '<div class="vm-drawer-stub" />' },
-          MarkdownRenderer: {
-            props: ['source'],
-            template: '<div class="markdown-stub">{{ source }}</div>',
-          },
-        },
-      },
-    })
-  }
-
   // --- 1. Lifecycle & Datenladen ---
 
   it('lädt Deployment und Tasks beim Öffnen der Detailseite', async () => {
@@ -297,6 +312,7 @@ describe('DeploymentDetailView.vue', () => {
     expect(wrapper.text()).toContain('Data Lab')
     expect(wrapper.text()).toContain('Notebook Stack')
     expect(wrapper.text()).toContain('owner@example.com')
+    expect(wrapper.find('[data-testid="deployment-runtime"]').text()).toBe('runtime.openstackVm')
   })
 
   it('zeigt Gruppen-, Variablen- und Teamdaten aus dem Deployment', async () => {
@@ -319,19 +335,73 @@ describe('DeploymentDetailView.vue', () => {
     expect(wrapper.text()).toContain('student-2')
   })
 
-  // --- 2. Rollen- und Sichtbarkeitslogik ---
+  it('leitet zur Liste zurück, wenn das Deployment nicht existiert', async () => {
+    serve(null)
 
-  it('blendet Tasks und Löschaktion für Nicht-Besitzer aus', async () => {
-    mockIsTeacherOrAdmin.value = false
-    mockAuthUserId.value = 'student-1'
-    mockDeployment.value = baseDeployment({ userId: 'user-owner' })
+    mountComponent()
+    await flushPromises()
+
+    expect(mocks.mockToastError).toHaveBeenCalledWith('DeploymentDetailView.notFound')
+    expect(mocks.mockPush).toHaveBeenCalledWith({ name: 'deployments.list' })
+    expect(mocks.mockListTasksByDeployment).not.toHaveBeenCalled()
+  })
+
+  it('meldet fehlenden Zugriff, wenn die API das Deployment verweigert', async () => {
+    serve(null)
+    mockStoreError.value = 'Request failed with status code 404'
+
+    mountComponent()
+    await flushPromises()
+
+    expect(mocks.mockToastError).toHaveBeenCalledWith('DeploymentDetailView.noAccess')
+  })
+
+  // --- 2. Rechte kommen von der API, nicht aus der Rolle ---
+
+  it('ohne Owner-View: keine Tasks, keine Infrastruktur, kein Löschen', async () => {
+    // e.g. another teacher who opens the link: the role alone grants nothing.
+    serve(baseDeployment({ permissions: { owner_view: false, operate: false, member: false }, actions: [] }))
 
     const wrapper = mountComponent()
     await flushPromises()
 
     expect(mocks.mockListTasksByDeployment).not.toHaveBeenCalled()
+    expect(mocks.mockListResources).not.toHaveBeenCalled()
+    expect(mocks.mockGetMyAccess).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('DeploymentDetailView.tasksOwnerOnly')
-    expect(wrapper.text()).not.toContain('DeploymentDetailView.deploymentDelete')
+    expect(wrapper.find('[data-testid="btn-delete-deployment"]').exists()).toBe(false)
+  })
+
+  it('Owner-View ohne Bedienrecht (Admin bei einer VM-App) darf nichts auslösen', async () => {
+    serve(baseDeployment({
+      permissions: { owner_view: true, operate: false, member: false },
+      actions: ['destroy', 'pause', 'redeploy'],
+    }))
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    // Sees everything ...
+    expect(mocks.mockListTasksByDeployment).toHaveBeenCalled()
+    // ... but every lifecycle action is off.
+    const deleteButton = wrapper.find('[data-testid="btn-delete-deployment"]')
+    expect(deleteButton.attributes('disabled')).toBeDefined()
+    expect(deleteButton.attributes('title')).toBe('DeploymentDetailView.deleteUnavailable')
+    expect(wrapper.text()).not.toContain('DeploymentDetailView.deploymentPause')
+    expect(wrapper.findComponent(DeploymentInfrastructurePanel).props('canRedeploy')).toBe(false)
+  })
+
+  it('zeigt nur die Aktionen, die der Lebenszyklus gerade erlaubt', async () => {
+    // A task is running: only "stop" makes sense.
+    serve(baseDeployment({ status: 'running', actions: ['cancel'] }))
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('DeploymentDetailView.deploymentStop')
+    expect(wrapper.text()).not.toContain('DeploymentDetailView.deploymentPause')
+    expect(wrapper.find('[data-testid="btn-delete-deployment"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.findComponent(DeploymentInfrastructurePanel).props('canRedeploy')).toBe(false)
   })
 
   // --- 3. Task-Details & Aktionen ---
@@ -380,43 +450,92 @@ describe('DeploymentDetailView.vue', () => {
   })
 })
 
+// ---------------------------------------------------------
+// Pods: workloads instead of VMs
+// ---------------------------------------------------------
+describe('DeploymentDetailView.vue — Pods', () => {
+  beforeEach(() => {
+    serve(podDeployment())
+    mocks.mockListResources.mockResolvedValue({ data: { resources: [], workloads: [workload()], live: true } })
+  })
+
+  it('zeigt die Workloads statt der VM-Infrastruktur', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="deployment-runtime"]').text()).toBe('runtime.kubernetes')
+    expect(wrapper.find('[data-testid="pod-workloads"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="workload-team-alpha"]').text()).toContain('Team Alpha')
+    expect(wrapper.findComponent(DeploymentInfrastructurePanel).exists()).toBe(false)
+  })
+
+  it('startet einen Workload neu und lädt danach den Stand', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    mocks.mockFetchDeploymentById.mockClear()
+
+    await wrapper.find('[data-testid="restart-team-alpha"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.mockRestartWorkload).toHaveBeenCalledWith('dep-1', 'team-alpha')
+    expect(mocks.mockResetWorkload).not.toHaveBeenCalled()
+    expect(mocks.mockToastSuccess).toHaveBeenCalledWith('pods.restartStarted')
+    expect(mocks.mockFetchDeploymentById).toHaveBeenCalledWith('dep-1')
+  })
+
+  it('setzt einen Workload erst nach Bestätigung zurück (seine Daten werden gelöscht)', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="reset-team-alpha"]').trigger('click')
+    await nextTick()
+
+    expect(mocks.mockResetWorkload).not.toHaveBeenCalled()
+    expect(wrapper.find('.modal').text()).toContain('pods.confirmResetMessage')
+    expect(wrapper.find('.modal').text()).toContain('team-alpha')
+
+    await wrapper.find('[data-testid="btn-confirm-reset"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.mockResetWorkload).toHaveBeenCalledWith('dep-1', 'team-alpha')
+  })
+
+  it('bietet ohne erlaubten Redeploy weder Neustart noch Zurücksetzen an', async () => {
+    serve(podDeployment({ status: 'paused', actions: ['resume', 'destroy'] }))
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="workload-team-alpha"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="restart-team-alpha"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="reset-team-alpha"]').exists()).toBe(false)
+  })
+
+  it('meldet einen gerade laufenden Vorgang (409 ohne Grund)', async () => {
+    mocks.mockRestartWorkload.mockRejectedValue({ response: { status: 409, data: { detail: 'busy' } } })
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="restart-team-alpha"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.mockToastError).toHaveBeenCalledWith('DeploymentDetailView.lifecycleBusy')
+    // The button is usable again afterwards.
+    expect(wrapper.find('[data-testid="restart-team-alpha"]').attributes('disabled')).toBeUndefined()
+  })
+})
 
 // ---------------------------------------------------------
 // Member self-access (own credentials via /my-access)
 // ---------------------------------------------------------
-// Focused, un-skipped block: unlike the legacy suite above (skipped
-// pending a full rewrite), this covers only the member self-credentials
-// path added alongside the backend ``/my-access`` endpoint.
 describe('DeploymentDetailView.vue — member self-access', () => {
-  const mountComponent = () =>
-    mount(DeploymentDetailView, {
-      global: {
-        mocks: {
-          $t: (key: string, vars?: Record<string, unknown>) =>
-            vars ? `${key} ${JSON.stringify(vars)}` : key,
-        },
-        stubs: {
-          RouterLink: true,
-          BaseButton: { template: '<button><slot /></button>' },
-          Modal: {
-            props: ['show'],
-            template: '<div v-if="$props.show" class="modal"><slot /></div>',
-          },
-        },
-      },
-    })
-
   beforeEach(() => {
-    vi.clearAllMocks()
-    // Non-owner student who IS a member of Team Alpha (member-1).
-    mockIsTeacherOrAdmin.value = false
+    // A member of Team Alpha without owner view.
     mockAuthUserId.value = 'member-1'
-    mockDeployment.value = baseDeployment({ userId: 'user-owner' })
+    serve(baseDeployment({ permissions: MEMBER, actions: [] }))
     mocks.mockListTasksByDeployment.mockResolvedValue({ data: [] })
     mocks.mockGetMyAccess.mockResolvedValue({
       data: {
-        // Key mirrors the terraform contract the view derives:
-        // "<team>-<email-local-part with dots→dashes>".
         user_accounts: {
           'Team Alpha-member1': {
             username: 'member1',
@@ -436,21 +555,69 @@ describe('DeploymentDetailView.vue — member self-access', () => {
     const wrapper = mountComponent()
     await flushPromises()
 
-    // Member path: my-access is queried, the owner-only task list is not.
     expect(mocks.mockGetMyAccess).toHaveBeenCalledWith('dep-1')
     expect(mocks.mockListTasksByDeployment).not.toHaveBeenCalled()
-    // The own credential renders in the Teams card.
-    expect(wrapper.text()).toContain('member1')
+    expect(mocks.mockListResources).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="member-member-1"]').text()).toContain('member1')
   })
 
-  it('ruft /my-access NICHT auf, wenn der Nutzer Owner-View hat', async () => {
-    // Staff → owner view → task-based outputs path, no my-access call.
-    mockIsTeacherOrAdmin.value = true
-    mocks.mockGetMyAccess.mockClear()
+  it('hängt die Zugangsdaten nur an die eigene Zeile, nie an Teammitglieder', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="member-member-1"]').text()).toContain('PW:')
+    expect(wrapper.find('[data-testid="member-member-2"]').text()).not.toContain('PW:')
+    // The password stays hidden until asked for.
+    expect(wrapper.text()).not.toContain('super-secret-pw')
+  })
+
+  it('ordnet über die Nutzer-ID zu, nicht über den Namen des Kontos', async () => {
+    // The caller is member-2; the account key looks like member-1's.
+    mockAuthUserId.value = 'member-2'
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="member-member-2"]').text()).toContain('PW:')
+    expect(wrapper.find('[data-testid="member-member-1"]').text()).not.toContain('PW:')
+  })
+
+  it('zeigt bei Pods den eigenen Link zur App', async () => {
+    serve(podDeployment({ permissions: MEMBER, actions: [] }))
+    mocks.mockGetMyAccess.mockResolvedValue({
+      data: {
+        user_accounts: {
+          'u-member-1': { user_id: 'member-1', workload: 'u-abc', url: 'https://lab.example/u-abc/', type: 'none' },
+        },
+        team_vms: {},
+      },
+    })
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    const link = wrapper.find('[data-testid="member-member-1"] a')
+    expect(link.attributes('href')).toBe('https://lab.example/u-abc/')
+    expect(link.attributes('rel')).toBe('noopener noreferrer')
+  })
+
+  it('ruft /my-access NICHT auf, wenn der Nutzer in keinem Team ist', async () => {
+    serve(baseDeployment({ permissions: OWNER }))
+    mockAuthUserId.value = 'user-owner'
 
     mountComponent()
     await flushPromises()
 
     expect(mocks.mockGetMyAccess).not.toHaveBeenCalled()
+  })
+
+  it('auch der Owner bekommt seine Zugangsdaten, wenn er selbst in einem Team ist', async () => {
+    serve(baseDeployment({ permissions: { owner_view: true, operate: true, member: true } }))
+
+    mountComponent()
+    await flushPromises()
+
+    expect(mocks.mockGetMyAccess).toHaveBeenCalledWith('dep-1')
+    expect(mocks.mockListTasksByDeployment).toHaveBeenCalledWith('dep-1')
   })
 })

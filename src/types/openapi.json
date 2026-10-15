@@ -474,7 +474,7 @@
           "Courses"
         ],
         "summary": "Get Course",
-        "description": "Get course by ID with all users",
+        "description": "Get course by ID with all users.\n\nThe member list is personal data (e-mail addresses): teachers and\nadmins may read it, students get 403 (.github#7 F, security review\nM-2).",
         "operationId": "get_course_courses__course_id__get",
         "security": [
           {
@@ -620,7 +620,7 @@
           "Courses"
         ],
         "summary": "List Course Members",
-        "description": "List the users currently enrolled in ``course_id``.\n\nTeacher/Admin only — student rosters are management data.",
+        "description": "List the users currently enrolled in ``course_id``.\n\nTeachers and admins only — student rosters are management data.",
         "operationId": "list_course_members_courses__course_id__users_get",
         "security": [
           {
@@ -671,7 +671,7 @@
           "Courses"
         ],
         "summary": "Add Course Members",
-        "description": "Add (or move) a batch of users into ``course_id``.\n\nThe frontend's add-modal uses the same Keycloak-backed user search\nas the deployment-team picker, so by the time we get here the\nuser-ids exist in our DB. Returns the post-update member list of\nthe course so the UI can refresh without a second round trip.",
+        "description": "Add (or move) a batch of users into ``course_id``.\n\nThe frontend's add-modal uses the same Keycloak-backed user search\nas the deployment-team picker, so by the time we get here the\nuser-ids exist in our DB. Returns the post-update member list of\nthe course so the UI can refresh without a second round trip.\n\nCourse-teachers of THIS course and admins only; moving a user out of\nanother course also needs that right on the other course (.github#7 F,\nsecurity review H-1/A-3): nobody pulls someone from a course they do\nnot manage into their own.",
         "operationId": "add_course_members_courses__course_id__users_post",
         "security": [
           {
@@ -734,7 +734,7 @@
           "Courses"
         ],
         "summary": "Remove Course Member",
-        "description": "Remove ``user_id`` from ``course_id``.\n\nReturns 404 if the user isn't actually enrolled in this course —\nwe never silently detach somebody from a different course.",
+        "description": "Remove ``user_id`` from ``course_id``.\n\nReturns 404 if the user isn't actually enrolled in this course —\nwe never silently detach somebody from a different course.\nCourse-teachers of THIS course and admins only (.github#7 F).",
         "operationId": "remove_course_member_courses__course_id__users__user_id__delete",
         "security": [
           {
@@ -949,7 +949,7 @@
           "Apps"
         ],
         "summary": "Create App",
-        "description": "Create a new app\n- **All authenticated users** can create apps\n- **Git repository access is verified** before creating the app",
+        "description": "Create a new app\n- Teachers and admins only (403 ``role_required``, .github#7 F)\n- The repository must be public and on an allowed host\n  (``APP_GIT_ALLOWED_HOSTS``); 422 otherwise, 403 if it cannot be read\n- The stored ``git_link`` is the normalised, credential-free HTTPS URL",
         "operationId": "create_app_apps__post",
         "security": [
           {
@@ -996,7 +996,7 @@
           "Apps"
         ],
         "summary": "Get App",
-        "description": "Get app by ID with available versions.\n\nSoft-deleted apps are still readable here so existing deployments\nthat still reference them can render their app name, git link,\netc. They just don't show up in the apps list / deploy wizard\n(those use the default-filtered ``get_apps``).",
+        "description": "Get app by ID with available versions.\n\nSoft-deleted apps are still readable here so existing deployments\nthat still reference them can render their app name, git link,\netc. They just don't show up in the apps list / deploy wizard\n(those use the default-filtered ``get_apps``).\n\nThe owner and admins see every tag. Everyone else sees the approved\nversions whose tag still points to the approved commit; a moved tag\ndisappears until it is submitted and approved again.",
         "operationId": "get_app_apps__app_id__get",
         "security": [
           {
@@ -1043,7 +1043,7 @@
           "Apps"
         ],
         "summary": "Update App",
-        "description": "Update an app.\n\n``git_link`` is immutable after creation — sending it in the body\nreturns HTTP 400. Use ``is_private`` to toggle visibility.\n\nOwner OR admin only.",
+        "description": "Update an app.\n\n``git_link`` is immutable after creation — sending it in the body\nreturns HTTP 400. Use ``is_private`` to toggle visibility.\n\nOwner OR admin only. An app an admin deactivated (``hidden_by_admin``)\ncan be made public again only by an admin (403 ``app_hidden_by_admin``\nfor the owner); an admin doing so lifts the deactivation (.github#7 R).",
         "operationId": "update_app_apps__app_id__put",
         "security": [
           {
@@ -1142,7 +1142,7 @@
           "Apps"
         ],
         "summary": "Get App Variables",
-        "description": "Get dynamic app variables from app's Git repository\nParses variables.tf file and returns all configurable variables\n\nReturns:\n- name: Variable name\n- type: Variable type (string, number, bool, list, map, etc.)\n- description: Variable description\n- default: Default value (if any)\n- required: Whether variable is required",
+        "description": "Get dynamic app variables from app's Git repository\nParses variables.tf file and returns all configurable variables\n\nReturns:\n- name: Variable name\n- type: Variable type (string, number, bool, list, map, etc.)\n- description: Variable description\n- default: Default value (if any)\n- required: Whether variable is required\n\nReads the commit ``version`` points to now; 404 for an unknown tag,\n502 when the repository cannot be read.",
         "operationId": "get_app_variables_apps__app_id__variables_get",
         "security": [
           {
@@ -1198,13 +1198,71 @@
         }
       }
     },
+    "/apps/{app_id}/runtime": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Get App Runtime",
+        "description": "Whether ``version`` runs as pods (``kubernetes``) or VMs (``openstack-vm``).\n\nThe wizard skips the OpenStack steps for pods and takes the group mode\nfrom ``scope`` (a VM app without an appstore.yaml has none). Same\nvisibility and errors as the variables; 422 (with field paths in\n``errors``) for an invalid appstore.yaml.",
+        "operationId": "get_app_runtime_apps__app_id__runtime_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "App Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppRuntimeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/apps/{app_id}/versions/{version_tag}/submit": {
       "post": {
         "tags": [
           "Apps"
         ],
         "summary": "Submit Version",
-        "description": "Submit a specific version tag for admin review.\n\nOwner OR admin only. A REJECTED version can be resubmitted; PENDING\nand APPROVED cannot.",
+        "description": "Submit a version tag for admin review, at the commit it points to now.\n\nOwner OR admin only. A REJECTED version, or one whose tag has moved\nsince its review, can be resubmitted; a PENDING or APPROVED one at the\nsame commit cannot (409). 422 for invalid ``@openstack`` markers, 404\nfor an unknown tag, 502 when the repository cannot be read.",
         "operationId": "submit_version_apps__app_id__versions__version_tag__submit_post",
         "security": [
           {
@@ -1407,7 +1465,7 @@
           "Admin"
         ],
         "summary": "Approve Version",
-        "description": "Approve a PENDING version — makes it deployable by all users.\n\nValidates the ``@openstack`` markers in this version's Terraform/Packer\nvariable files before flipping the status, using the same helper as\n``GET /apps/{id}/variables``.",
+        "description": "Approve a submitted version at its submitted commit — makes exactly\nthat commit deployable by all users (.github#7 G).\n\n- 404: the app or the version submission does not exist.\n- 409 ``version_moved``: the tag no longer points to the submitted\n  commit; the admin would approve code that was not submitted.\n- 409: the version is already approved, or was submitted before\n  versions were pinned to commits.\n- 422: invalid ``@openstack`` markers in the submitted commit's\n  Terraform/Packer variable files (``marker_errors`` lists them).\n- 502: the repository cannot be read; nothing is approved unchecked.",
         "operationId": "approve_version_admin_apps__app_id__versions__version_tag__approve_post",
         "security": [
           {
@@ -1604,7 +1662,7 @@
           "Admin"
         ],
         "summary": "Deactivate App",
-        "description": "Emergency deactivation: set app to private so it disappears from\nthe store immediately. Does not delete the app or its deployments.",
+        "description": "Emergency deactivation: set the app to private so it disappears from\nthe store immediately. Does not delete the app or its deployments.\n\nMarks it ``hidden_by_admin``: the owner can no longer make it public\nagain, only an admin can (``PUT /apps/{id}`` with ``is_private: false``,\n.github#7 R).",
         "operationId": "deactivate_app_admin_apps__app_id__put",
         "security": [
           {
@@ -1653,7 +1711,7 @@
           "Deployments"
         ],
         "summary": "List Deployments",
-        "description": "List deployments visible to the caller.\n\nVisibility rules:\n  * **Staff** (teachers and admins): deployments they created —\n    their own owned set. Cross-user listing is intentional UX: a\n    teacher opens an individual deployment via direct link or via\n    a student's profile page, not from this index.\n  * **Students** (and any non-staff role): deployments they own\n    OR are a member of — either via a team mapping or a direct\n    ``UserToDeployment`` row.\n\nA ``?scope=course`` branch used to sit here, listing every\ndeployment whose owner was in a course the caller teaches. It had\nno caller in the frontend and no test, it silently ignored\n``status_filter``, and its admin arm was a comment block ending in\n``pass``. Removed rather than repaired: if the\nteacher-inspects-a-student feature comes back it wants its own\nendpoint with a working filter and tests, not this.",
+        "description": "List deployments visible to the caller.\n\nVisibility rules:\n  * **Staff** (teachers and admins): deployments they created —\n    their own owned set. Cross-user listing is intentional UX: a\n    teacher opens an individual deployment via direct link or via\n    a student's profile page, not from this index.\n  * **Students** (and any non-staff role): deployments they own\n    OR are a member of — either via a team mapping or a direct\n    ``UserToDeployment`` row.\n  * Either way also every VM deployment in an OpenStack project the\n    caller holds a verified credential for (project peers).\n\nA ``?scope=course`` branch used to sit here, listing every\ndeployment whose owner was in a course the caller teaches. It had\nno caller in the frontend and no test, it silently ignored\n``status_filter``, and its admin arm was a comment block ending in\n``pass``. Removed rather than repaired: if the\nteacher-inspects-a-student feature comes back it wants its own\nendpoint with a working filter and tests, not this.",
         "operationId": "list_deployments_deployments__get",
         "security": [
           {
@@ -1747,7 +1805,7 @@
           "Deployments"
         ],
         "summary": "Create Deployment",
-        "description": "Create a new deployment\n\nAtomicity: a per-user advisory lock serializes credential mutation\nwith deployment dispatch. The deployment row, teams, user mappings,\nand the initial PENDING task row are all inserted in a single\ntransaction, so the user can never end up with a deployment row\nthat has no matching task. Celery dispatch happens AFTER commit;\nif it fails, the task row is flipped to FAILED so the deployment\nsurfaces an honest error instead of hanging in PENDING forever.",
+        "description": "Create a new deployment\n\nAtomicity: a per-user advisory lock serializes credential mutation\nwith deployment dispatch. The deployment row, teams, user mappings,\nand the initial PENDING task row are all inserted in a single\ntransaction, so the user can never end up with a deployment row\nthat has no matching task. The queue dispatch happens AFTER commit;\nif it fails, the task row is flipped to FAILED so the deployment\nsurfaces an honest error instead of hanging in PENDING forever.",
         "operationId": "create_deployment_deployments__post",
         "security": [
           {
@@ -2015,7 +2073,7 @@
           "Deployments"
         ],
         "summary": "Redeploy Deployment Resource",
-        "description": "Replace one compute instance via ``terraform apply -replace=…``.\n\nAddress-whitelisted: we re-parse the cached TF state and only\naccept addresses that resolve to a compute instance. Anything else\nfails with 422 — the redeploy of a network resource would tear\ndown all the team VMs, which is not what a one-VM \"fix it\" action\nshould do.\n\nConcurrency: same per-user advisory lock as create/destroy/pause\nso a parallel redeploy can't race a destroy. The lock is held\nonly for the row insert; Celery dispatch happens after commit.",
+        "description": "Replace one compute instance via ``terraform apply -replace=…``.\n\nAddress-whitelisted: we re-parse the cached TF state and only\naccept addresses that resolve to a compute instance. Anything else\nfails with 422 — the redeploy of a network resource would tear\ndown all the team VMs, which is not what a one-VM \"fix it\" action\nshould do.\n\nLifecycle (.github#7 L): only from ``success`` or ``redeploy_failed``,\nunder the same per-deployment advisory lock as pause, resume, destroy\nand cancel, so a concurrent pause and redeploy cannot both pass the\nstatus check. A failed redeploy surfaces as ``redeploy_failed`` (retry,\npause, destroy; never delete). The lock is held only for the row\ninsert; the queue dispatch happens after commit.",
         "operationId": "redeploy_deployment_resource_deployments__deployment_id__resources__address__redeploy_post",
         "security": [
           {
@@ -2040,6 +2098,165 @@
             "schema": {
               "type": "string",
               "title": "Address"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{deployment_id}/workloads/{workload}/restart": {
+      "post": {
+        "tags": [
+          "Deployments"
+        ],
+        "summary": "Restart Workload",
+        "description": "Restart one team's or person's workload (a new pod); its data stays.",
+        "operationId": "restart_workload_deployments__deployment_id__workloads__workload__restart_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "workload",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workload"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{deployment_id}/workloads/{workload}/reset": {
+      "post": {
+        "tags": [
+          "Deployments"
+        ],
+        "summary": "Reset Workload",
+        "description": "Reset one workload: its volume is deleted, it starts from scratch.",
+        "operationId": "reset_workload_deployments__deployment_id__workloads__workload__reset_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "workload",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workload"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{deployment_id}/cancel": {
+      "post": {
+        "tags": [
+          "Deployments"
+        ],
+        "summary": "Cancel Deployment",
+        "description": "Stop an in-flight deployment and clean up everything it created.\n\nOwner-only, same gate as Destroy. Returns ``202 + {task_id,\nstatus: \"destroying\"}`` so the frontend can stay on the live SSE\nview and watch the cleanup run.",
+        "operationId": "cancel_deployment_deployments__deployment_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Deployment Id"
             }
           }
         ],
@@ -2225,7 +2442,7 @@
           "Deployments"
         ],
         "summary": "Get My Access",
-        "description": "Return the calling member's OWN access credentials for a deployment.\n\nThe full terraform ``outputs`` are owner-view-only (they carry every\nteammate's credentials in one object). This endpoint is the member\ncounterpart: a team member — typically a student — retrieves only\nTHEIR OWN account, extracted server-side from the latest successful\ndeploy. Teammates' credentials are never included in the response.\n\nAuthorisation reuses :func:`ensure_resend_access` with the target set\nto the caller themself, which collapses to the member-view gate\n(owner, staff, team-member, or direct mapping). A caller with no\naccess to the deployment gets 403; the resend endpoint uses the same\ngate for the self-resend button, so the two stay consistent.\n\nReturns 200 with empty maps when there's no successful deploy yet or\nthe app issued no per-user credential for this user — the UI renders\na \"no credentials yet\" state rather than treating it as an error.",
+        "description": "Return the calling member's OWN access credentials for a deployment.\n\nThe only way to the credentials (no mails, .github#7 I). The full\noutputs carry every teammate's credentials and are owner-view only;\na team member — typically a student — gets exactly their own account\nentry, matched exactly by ``services.access`` (.github#7 H), plus their\nteam's VM block. Never a teammate's.\n\nMember-view gate: owner, team member or direct mapping; anyone else\ngets 403.\n\nReturns 200 with empty maps when there's no successful deploy yet or\nno entry belongs to the caller exactly — the UI renders a \"no\ncredentials yet\" state rather than treating it as an error.",
         "operationId": "get_my_access_deployments__deployment_id__my_access_get",
         "security": [
           {
@@ -2268,80 +2485,13 @@
         }
       }
     },
-    "/deployments/{deployment_id}/teams/{team_id}/users/{user_id}/resend-access": {
-      "post": {
-        "tags": [
-          "Deployments"
-        ],
-        "summary": "Resend Access Credentials",
-        "description": "Re-send the per-user access mail for one team member.\n\nReuses the original notify pipeline — same template, same\ncredential extraction from the latest successful DEPLOY task's\n``terraform_outputs``. Useful when the user lost their first mail\nor the deploy ran before the user's email got fixed.\n\nAccess control: caller must have access to the deployment (owner\nor teacher/admin). The endpoint is intentionally idempotent —\neach call sends one mail to the targeted user. There's no rate\nlimit at the API level; SMTP and Gmail's per-account quota are\nthe natural backstops.\n\nMapping ResendError to HTTP:\n  * ``deployment_not_found`` → 404\n  * ``team_not_in_deployment`` / ``user_not_in_team`` → 404\n  * ``no_successful_deploy`` → 409 (nothing to resend yet)\n  * ``no_credentials_for_user`` → 409 (template didn't issue\n    per-user creds, or matcher missed despite the fuzzy logic)",
-        "operationId": "resend_access_credentials_deployments__deployment_id__teams__team_id__users__user_id__resend_access_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "deployment_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Deployment Id"
-            }
-          },
-          {
-            "name": "team_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Team Id"
-            }
-          },
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/deployments/{deployment_id}/stream": {
       "get": {
         "tags": [
           "Deployments"
         ],
         "summary": "Stream Deployment Events",
-        "description": "Live progress + log stream for one deployment as Server-Sent Events.\n\nThe connection is authenticated with the same Keycloak dependency\nused elsewhere; the standard auth middleware also vets the token\nbefore this handler runs. After auth we attach to the in-process\npubsub for this deployment and forward every event to the client.",
+        "description": "Live progress + log stream for one deployment as Server-Sent Events.\n\nStreams the events of the deployment's latest task and ends with its\nterminal event. Starts with a ``snapshot`` event; for a task that is\nalready finished (or no task at all) the stream ends right after it.",
         "operationId": "stream_deployment_events_deployments__deployment_id__stream_get",
         "security": [
           {
@@ -2490,7 +2640,7 @@
           "Teams"
         ],
         "summary": "List Teams",
-        "description": "Get all teams, optionally filtered to a single deployment.\n\nAll authenticated users may list teams; per-team membership gating\nhappens at ``GET /teams/{team_id}``.",
+        "description": "The teams of ``deployment_id`` the caller may read (all of them with\nthe owner view, otherwise their own). 403 without access to the\ndeployment.",
         "operationId": "list_teams_teams__get",
         "security": [
           {
@@ -2498,6 +2648,16 @@
           }
         ],
         "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Deployment Id"
+            }
+          },
           {
             "name": "skip",
             "in": "query",
@@ -2516,23 +2676,6 @@
               "type": "integer",
               "default": 100,
               "title": "Limit"
-            }
-          },
-          {
-            "name": "deployment_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Deployment Id"
             }
           }
         ],
@@ -2568,7 +2711,7 @@
           "Teams"
         ],
         "summary": "Create Team",
-        "description": "Create a new team\n- **Requires**: TEACHER or ADMIN role",
+        "description": "Create a team on a deployment the caller may operate.",
         "operationId": "create_team_teams__post",
         "security": [
           {
@@ -2615,7 +2758,7 @@
           "Teams"
         ],
         "summary": "Get Team",
-        "description": "Get team by ID with all members",
+        "description": "A team with its members: owner view of the deployment or membership.",
         "operationId": "get_team_teams__team_id__get",
         "security": [
           {
@@ -2662,7 +2805,7 @@
           "Teams"
         ],
         "summary": "Update Team",
-        "description": "Update a team\n- **Requires**: TEACHER or ADMIN role",
+        "description": "Rename a team of a deployment the caller may operate.",
         "operationId": "update_team_teams__team_id__put",
         "security": [
           {
@@ -2719,7 +2862,7 @@
           "Teams"
         ],
         "summary": "Delete Team",
-        "description": "Delete a team\n- **Requires**: TEACHER or ADMIN role",
+        "description": "Delete a team of a deployment the caller may operate.",
         "operationId": "delete_team_teams__team_id__delete",
         "security": [
           {
@@ -2761,7 +2904,7 @@
           "Teams"
         ],
         "summary": "Add User To Team",
-        "description": "Add a user to a team\n- **Requires**: TEACHER or ADMIN role",
+        "description": "Add an existing user, who is in no other team of the deployment.",
         "operationId": "add_user_to_team_teams__team_id__users__user_id__post",
         "security": [
           {
@@ -2811,7 +2954,7 @@
           "Teams"
         ],
         "summary": "Remove User From Team",
-        "description": "Remove a user from a team\n- **Requires**: TEACHER or ADMIN role",
+        "description": "Remove a user from a team of a deployment the caller may operate.",
         "operationId": "remove_user_from_team_teams__team_id__users__user_id__delete",
         "security": [
           {
@@ -2857,33 +3000,6 @@
         }
       }
     },
-    "/quotas/overview": {
-      "get": {
-        "tags": [
-          "Quotas"
-        ],
-        "summary": "Get Quota Overview",
-        "description": "Fetch the OpenStack quota overview for compute, storage and network\nfrom the user's **personal** OpenStack project.\n\nDeclared sync (not async) on purpose: every call inside hits the\nOpenStack SDK with blocking network I/O. A sync def runs in\nStarlette's threadpool, so a slow OpenStack response doesn't stall\nthe event loop and starve other endpoints (e.g. /dashboard/stats,\n/users/me) that are mounted on the same dashboard view.\n\nReturns:\n    QuotaOverviewResponse with used/limit/available for all resources",
-        "operationId": "get_quota_overview_quotas_overview_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QuotaOverviewResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/dashboard/stats": {
       "get": {
         "tags": [
@@ -2911,21 +3027,105 @@
         ]
       }
     },
+    "/lti13/login": {
+      "get": {
+        "tags": [
+          "LTI 1.3"
+        ],
+        "summary": "Lti13 Login Get",
+        "description": "Step 1 (GET): the OIDC login initiation from Moodle, parameters in the query string.",
+        "operationId": "lti13LoginGet",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "LTI 1.3"
+        ],
+        "summary": "Lti13 Login Post",
+        "description": "Step 1 (POST): the same initiation with form-encoded parameters.\n\nMoodle sends this as a POST (observed against a real Moodle 5.x\ninstance, 2026-09-25) even though the IMS spec allows either GET or\nPOST for the 3rd-party-initiated login, so both are accepted. Two\nroutes rather than one for both methods: each gets its own OpenAPI\noperation id (one shared id broke the generated frontend types).",
+        "operationId": "lti13LoginPost",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lti13/launch": {
+      "post": {
+        "tags": [
+          "LTI 1.3"
+        ],
+        "summary": "Lti13 Launch",
+        "description": "Step 3: Moodle POSTs the id_token here after the OIDC dance.",
+        "operationId": "lti13_launch_lti13_launch_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lti13/jwks": {
+      "get": {
+        "tags": [
+          "LTI 1.3"
+        ],
+        "summary": "Lti13 Jwks",
+        "description": "Expose this tool's public JWKS.\n\nFor the demo the tool does not sign messages back to the platform, so\nthis returns an empty key set. Replace with actual RSA keys if Assignment\n& Grade Services (AGS) or deep linking is needed.",
+        "operationId": "lti13_jwks_lti13_jwks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/openstack-credentials": {
       "get": {
         "tags": [
           "OpenStack Credentials"
         ],
-        "summary": "Get My Credentials",
-        "description": "Always 200 — returns has_credential=False when none configured.\n\nLock state is included regardless so the frontend can render the\ncorrect guard UI without a second request.",
-        "operationId": "get_my_credentials_me_openstack_credentials_get",
+        "summary": "List My Credentials",
+        "description": "List the caller's OpenStack credentials, one per project, without secrets.\n\nEach entry reports the result of the last Keystone check and the number of\nthe caller's live deployments that need it.",
+        "operationId": "list_my_credentials_me_openstack_credentials_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenStackCredentialResponse"
+                  "items": {
+                    "$ref": "#/components/schemas/OpenStackCredentialResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List My Credentials Me Openstack Credentials Get"
                 }
               }
             }
@@ -2937,13 +3137,13 @@
           }
         ]
       },
-      "put": {
+      "post": {
         "tags": [
           "OpenStack Credentials"
         ],
-        "summary": "Upsert My Credentials",
-        "description": "Auto-validates against Keystone before persisting.\n\nOn a successful authorize we record `last_validated_at`. On failure\nwe still persist the row (so the user can fix it via the UI) and\nrecord the human-readable error message.",
-        "operationId": "upsert_my_credentials_me_openstack_credentials_put",
+        "summary": "Save My Credential",
+        "description": "Check against Keystone, then store (201) or replace the one for the same project (200).\n\n422 ``openstack_credentials_invalid`` with a ``cause`` when Keystone\ndoes not accept it (``auth_url_not_allowed`` for a Keystone URL outside\nthe allowlist); nothing is stored then.",
+        "operationId": "save_my_credential_me_openstack_credentials_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2955,7 +3155,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -2964,6 +3164,9 @@
                 }
               }
             }
+          },
+          "200": {
+            "description": "Replaced the credential for the same project"
           },
           "422": {
             "description": "Validation Error",
@@ -2981,32 +3184,16 @@
             "HTTPBearer": []
           }
         ]
-      },
-      "delete": {
-        "tags": [
-          "OpenStack Credentials"
-        ],
-        "summary": "Delete My Credentials",
-        "operationId": "delete_my_credentials_me_openstack_credentials_delete",
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
       }
     },
     "/me/openstack-credentials/from-yaml": {
-      "put": {
+      "post": {
         "tags": [
           "OpenStack Credentials"
         ],
-        "summary": "Upsert My Credentials From Yaml",
-        "operationId": "upsert_my_credentials_from_yaml_me_openstack_credentials_from_yaml_put",
+        "summary": "Save My Credential From Yaml",
+        "description": "Same as the plain POST, from a pasted `clouds.yaml`.\n\n``cloud_name`` picks the entry when the file holds several clouds. Parse\nerrors answer 422; otherwise status codes as for the plain POST.",
+        "operationId": "save_my_credential_from_yaml_me_openstack_credentials_from_yaml_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3018,6 +3205,63 @@
           "required": true
         },
         "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenStackCredentialResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Replaced the credential for the same project"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/test": {
+      "post": {
+        "tags": [
+          "OpenStack Credentials"
+        ],
+        "summary": "Test My Credential",
+        "description": "Ask Keystone again and record the outcome (e.g. a revoked application credential).\n\nAlways answers 200 with the updated credential; a failure shows up in its\nvalidation fields (``project_changed`` when the credential now scopes to a\ndifferent project). An unverified credential becomes verified with the\nproject Keystone names, and the caller's deployments whose project was\nunknown are placed in it. 404 for a credential that is not the caller's.",
+        "operationId": "test_my_credential_me_openstack_credentials__credential_id__test_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
@@ -3038,55 +3282,124 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
-    "/me/openstack-credentials/test": {
-      "post": {
+    "/me/openstack-credentials/{credential_id}": {
+      "delete": {
         "tags": [
           "OpenStack Credentials"
         ],
-        "summary": "Test My Credentials",
-        "description": "Re-authorize the stored credential and refresh validation metadata.\n\nAllowed even while locked — purely read-only against Keystone.",
-        "operationId": "test_my_credentials_me_openstack_credentials_test_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenStackCredentialResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/refresh": {
-      "post": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "Refresh Cache",
-        "description": "Cache bust for the calling user. Triggered by a click on the\n\"Refresh\" button next to a picker — the user has just created a\nnew resource in Horizon and wants to see it.",
-        "operationId": "refresh_cache_me_openstack_resources_refresh_post",
+        "summary": "Delete My Credential",
+        "description": "Delete one of the caller's credentials (204).\n\n404 when it is not the caller's; 409 ``openstack_credentials_locked`` with\n``active_deployments`` while the caller still owns live deployments that\nneed it.",
+        "operationId": "delete_my_credential_me_openstack_credentials__credential_id__delete",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
         "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/quota": {
+      "get": {
+        "tags": [
+          "OpenStack Credentials"
+        ],
+        "summary": "Get Project Quota",
+        "description": "Quota and usage (compute, storage, network) of the credential's project.\n\nAsked with the caller's own credential; 404 for anyone else's, 502 when\nOpenStack does not answer. Declared sync on purpose: the SDK does\nblocking network I/O, and a sync def runs in Starlette's threadpool\ninstead of stalling the event loop.",
+        "operationId": "get_project_quota_me_openstack_credentials__credential_id__quota_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaOverviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/refresh": {
+      "post": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "Refresh Resource Cache",
+        "description": "Drop the cached resource lists of this credential (204).\n\nTriggered by the refresh button next to a wizard picker — the user has\njust created a resource in Horizon and wants to see it. With ``kind``\nonly that kind is dropped (the ``@openstack:<kind>`` marker names, e.g.\n``network``, ``security_group``, ``availability_zone``); 422 for an\nunknown one. 404 for a credential that is not the caller's.",
+        "operationId": "refresh_resource_cache_me_openstack_credentials__credential_id__resources_refresh_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          },
           {
             "name": "kind",
             "in": "query",
@@ -3100,10 +3413,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Optional: nur diese Resource-Art invalidieren",
+              "description": "Only invalidate this kind: a marker kind such as network or security_group",
               "title": "Kind"
             },
-            "description": "Optional: nur diese Resource-Art invalidieren"
+            "description": "Only invalidate this kind: a marker kind such as network or security_group"
           }
         ],
         "responses": {
@@ -3123,45 +3436,83 @@
         }
       }
     },
-    "/me/openstack/resources/networks": {
+    "/me/openstack-credentials/{credential_id}/resources/networks": {
       "get": {
         "tags": [
           "OpenStack Resources"
         ],
         "summary": "List Networks",
-        "description": "Lists all networks that the user can see in their project.\n\n``shared`` and ``router_external`` are included so the frontend can\nrender \"External Network\" hints.",
-        "operationId": "list_networks_me_openstack_resources_networks_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/subnets": {
-      "get": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "List Subnets",
-        "description": "With ``network_id``: subnets of that network. Without: all subnets in\nthe project. Filtering happens server-side (OpenStack API), not only\nafter the cache — otherwise we would have a separate cache key per\nnetwork, and the unfiltered list cache would never help.",
-        "operationId": "list_subnets_me_openstack_resources_subnets_get",
+        "description": "List all networks visible to the credential's project.\n\n``shared`` and ``external`` are included so the frontend can render\n\"External Network\" hints. Like every endpoint here: 404 for a credential\nthat is not the caller's, 502 when OpenStack fails.",
+        "operationId": "list_networks_me_openstack_credentials__credential_id__resources_networks_get",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
         "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NetworkItem"
+                  },
+                  "title": "Response List Networks Me Openstack Credentials  Credential Id  Resources Networks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/subnets": {
+      "get": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "List Subnets",
+        "description": "List subnets, optionally only those of ``network_id``.\n\nThe filter is passed to the OpenStack API, and each filter value is\ncached under its own key next to the unfiltered list.",
+        "operationId": "list_subnets_me_openstack_credentials__credential_id__resources_subnets_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          },
           {
             "name": "network_id",
             "in": "query",
@@ -3175,10 +3526,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Filter: nur Subnets in diesem Network",
+              "description": "Only subnets of this network",
               "title": "Network Id"
             },
-            "description": "Filter: nur Subnets in diesem Network"
+            "description": "Only subnets of this network"
           }
         ],
         "responses": {
@@ -3186,7 +3537,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SubnetItem"
+                  },
+                  "title": "Response List Subnets Me Openstack Credentials  Credential Id  Resources Subnets Get"
+                }
               }
             }
           },
@@ -3203,56 +3560,94 @@
         }
       }
     },
-    "/me/openstack/resources/flavors": {
+    "/me/openstack-credentials/{credential_id}/resources/flavors": {
       "get": {
         "tags": [
           "OpenStack Resources"
         ],
         "summary": "List Flavors",
-        "description": "Compute flavors with the three spec fields the user really wants\n(CPU/RAM/Disk). ``is_public=False`` means private — we still emit\nit, the frontend can render a note.",
-        "operationId": "list_flavors_me_openstack_resources_flavors_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/images": {
-      "get": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "List Images",
-        "description": "Default ``status=active`` — we do not want to show \"queued\" or\n\"deleted\" images in the picker. ``status=all`` for power users who\nreally want to see everything.",
-        "operationId": "list_images_me_openstack_resources_images_get",
+        "description": "List compute flavors with vCPUs, RAM (MB) and disk (GB).\n\nPrivate flavors (``is_public=false``) are included; the frontend can\nrender a note.",
+        "operationId": "list_flavors_me_openstack_credentials__credential_id__resources_flavors_get",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
         "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlavorItem"
+                  },
+                  "title": "Response List Flavors Me Openstack Credentials  Credential Id  Resources Flavors Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/images": {
+      "get": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "List Images",
+        "description": "List Glance images visible to the project, by default only ``active`` ones.\n\nDefault ``status=active`` keeps \"queued\" or \"deleted\" images out of the\npicker; ``status=all`` returns every image. ``size`` is in bytes.",
+        "operationId": "list_images_me_openstack_credentials__credential_id__resources_images_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          },
           {
             "name": "status",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
-              "description": "OS Image Status (default: active). Alle Stati: 'all'",
+              "description": "Image status to list (default: active); 'all' for every status",
               "default": "active",
               "title": "Status"
             },
-            "description": "OS Image Status (default: active). Alle Stati: 'all'"
+            "description": "Image status to list (default: active); 'all' for every status"
           }
         ],
         "responses": {
@@ -3260,7 +3655,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImageItem"
+                  },
+                  "title": "Response List Images Me Openstack Credentials  Credential Id  Resources Images Get"
+                }
               }
             }
           },
@@ -3277,137 +3678,14 @@
         }
       }
     },
-    "/me/openstack/resources/keypairs": {
+    "/me/openstack-credentials/{credential_id}/resources/keypairs": {
       "get": {
         "tags": [
           "OpenStack Resources"
         ],
         "summary": "List Keypairs",
-        "description": "SSH keypairs of the user. Here the identity is always the ``name``,\nnever the ID — Keystone keypairs do have IDs but Terraform modules\nuse the name.",
-        "operationId": "list_keypairs_me_openstack_resources_keypairs_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/security-groups": {
-      "get": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "List Security Groups",
-        "operationId": "list_security_groups_me_openstack_resources_security_groups_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/floating-ip-pools": {
-      "get": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "List Floating Ip Pools",
-        "description": "There is no dedicated ``Pool`` resource in OpenStack — pools are\nnetworks with ``router:external = true``. Terraform modules usually\nexpect the **name** of the external network.",
-        "operationId": "list_floating_ip_pools_me_openstack_resources_floating_ip_pools_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/volumes": {
-      "get": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "List Volumes",
-        "description": "Cinder volumes. The frontend filters ``status`` itself if needed\n— we emit all of them, because a user can well attach a second\ninstance to an ``in-use`` volume.",
-        "operationId": "list_volumes_me_openstack_resources_volumes_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/routers": {
-      "get": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "List Routers",
-        "operationId": "list_routers_me_openstack_resources_routers_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/me/openstack/resources/availability-zones": {
-      "get": {
-        "tags": [
-          "OpenStack Resources"
-        ],
-        "summary": "List Availability Zones",
-        "description": "AZs differ per service. Default: compute (Nova), because that is\nthe most common use case (VM placement).",
-        "operationId": "list_availability_zones_me_openstack_resources_availability_zones_get",
+        "description": "List the SSH keypairs of the credential's OpenStack user.\n\nNova keypairs belong to the user, not the project, and Terraform modules\nreference them by ``name``; ``id`` therefore repeats the name.",
+        "operationId": "list_keypairs_me_openstack_credentials__credential_id__resources_keypairs_get",
         "security": [
           {
             "HTTPBearer": []
@@ -3415,16 +3693,14 @@
         ],
         "parameters": [
           {
-            "name": "service",
-            "in": "query",
-            "required": false,
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "string",
-              "description": "OpenStack-Service: compute (Nova), network (Neutron), volume (Cinder)",
-              "default": "compute",
-              "title": "Service"
-            },
-            "description": "OpenStack-Service: compute (Nova), network (Neutron), volume (Cinder)"
+              "format": "uuid",
+              "title": "Credential Id"
+            }
           }
         ],
         "responses": {
@@ -3432,7 +3708,290 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KeypairItem"
+                  },
+                  "title": "Response List Keypairs Me Openstack Credentials  Credential Id  Resources Keypairs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/security-groups": {
+      "get": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "List Security Groups",
+        "description": "List the security groups visible to the credential's project.",
+        "operationId": "list_security_groups_me_openstack_credentials__credential_id__resources_security_groups_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DescribedItem"
+                  },
+                  "title": "Response List Security Groups Me Openstack Credentials  Credential Id  Resources Security Groups Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/floating-ip-pools": {
+      "get": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "List Floating Ip Pools",
+        "description": "List the floating IP pools, i.e. the external networks.\n\nThere is no dedicated ``Pool`` resource in OpenStack — pools are\nnetworks with ``router:external = true``. Terraform modules usually\nexpect the **name** of the external network.",
+        "operationId": "list_floating_ip_pools_me_openstack_credentials__credential_id__resources_floating_ip_pools_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DescribedItem"
+                  },
+                  "title": "Response List Floating Ip Pools Me Openstack Credentials  Credential Id  Resources Floating Ip Pools Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/volumes": {
+      "get": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "List Volumes",
+        "description": "List the project's Cinder volumes in every status (``size`` in GB).\n\nThe frontend filters ``status`` itself if needed; ``in-use`` volumes are\nincluded because a multi-attach volume can take a second instance.",
+        "operationId": "list_volumes_me_openstack_credentials__credential_id__resources_volumes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VolumeItem"
+                  },
+                  "title": "Response List Volumes Me Openstack Credentials  Credential Id  Resources Volumes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/routers": {
+      "get": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "List Routers",
+        "description": "List the routers visible to the project, with their external gateway info.",
+        "operationId": "list_routers_me_openstack_credentials__credential_id__resources_routers_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RouterItem"
+                  },
+                  "title": "Response List Routers Me Openstack Credentials  Credential Id  Resources Routers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/openstack-credentials/{credential_id}/resources/availability-zones": {
+      "get": {
+        "tags": [
+          "OpenStack Resources"
+        ],
+        "summary": "List Availability Zones",
+        "description": "List the availability zones of one service; the zone name doubles as ``id``.\n\nAZs differ per service. Default: compute (Nova), the common case (VM\nplacement). 400 for a ``service`` other than compute, network or volume.",
+        "operationId": "list_availability_zones_me_openstack_credentials__credential_id__resources_availability_zones_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          },
+          {
+            "name": "service",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "OpenStack service: compute (Nova), network (Neutron) or volume (Cinder)",
+              "default": "compute",
+              "title": "Service"
+            },
+            "description": "OpenStack service: compute (Nova), network (Neutron) or volume (Cinder)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AvailabilityZoneItem"
+                  },
+                  "title": "Response List Availability Zones Me Openstack Credentials  Credential Id  Resources Availability Zones Get"
+                }
               }
             }
           },
@@ -3571,6 +4130,11 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "hidden_by_admin": {
+            "type": "boolean",
+            "title": "Hidden By Admin",
+            "default": false
+          },
           "image": {
             "anyOf": [
               {
@@ -3592,6 +4156,51 @@
           "created_at"
         ],
         "title": "AppResponse"
+      },
+      "AppRuntimeResponse": {
+        "properties": {
+          "runtime": {
+            "type": "string",
+            "title": "Runtime"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "egress": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Egress"
+          },
+          "access": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Access",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "runtime"
+        ],
+        "title": "AppRuntimeResponse",
+        "description": "How one version runs, for the deploy wizard."
       },
       "AppUpdate": {
         "properties": {
@@ -3812,6 +4421,47 @@
             "type": "string",
             "title": "Version Tag"
           },
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "runtime": {
+            "type": "string",
+            "title": "Runtime",
+            "default": "openstack-vm"
+          },
+          "spec_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Sha256"
+          },
+          "image_digests": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Digests"
+          },
           "status": {
             "$ref": "#/components/schemas/AppVersionApprovalStatus"
           },
@@ -3941,6 +4591,47 @@
             "type": "string",
             "title": "Version Tag"
           },
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "runtime": {
+            "type": "string",
+            "title": "Runtime",
+            "default": "openstack-vm"
+          },
+          "spec_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Sha256"
+          },
+          "image_digests": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Digests"
+          },
           "status": {
             "$ref": "#/components/schemas/AppVersionApprovalStatus"
           },
@@ -4068,6 +4759,11 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "hidden_by_admin": {
+            "type": "boolean",
+            "title": "Hidden By Admin",
+            "default": false
+          },
           "image": {
             "anyOf": [
               {
@@ -4105,6 +4801,42 @@
         ],
         "title": "AppWithVersions"
       },
+      "AvailabilityZoneItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ],
+            "title": "State",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AvailabilityZoneItem",
+        "description": "A compute availability zone."
+      },
       "ComputeQuotas": {
         "properties": {
           "instances": {
@@ -4123,7 +4855,8 @@
           "vcpus",
           "ram"
         ],
-        "title": "ComputeQuotas"
+        "title": "ComputeQuotas",
+        "description": "Nova quotas; ``ram`` is in MB."
       },
       "CourseCreate": {
         "properties": {
@@ -4257,14 +4990,8 @@
             "title": "Appid"
           },
           "releaseTag": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
+            "minLength": 1,
             "title": "Releasetag"
           },
           "userInputVar": {
@@ -4303,12 +5030,25 @@
             "type": "array",
             "title": "Teams",
             "default": []
+          },
+          "credentialId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credentialid"
           }
         },
         "type": "object",
         "required": [
           "name",
-          "appId"
+          "appId",
+          "releaseTag"
         ],
         "title": "DeploymentCreate"
       },
@@ -4343,6 +5083,33 @@
               }
             ],
             "title": "Releasetag"
+          },
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "os_project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Os Project Id"
+          },
+          "runtime": {
+            "type": "string",
+            "title": "Runtime",
+            "default": "openstack-vm"
           },
           "userInputVar": {
             "anyOf": [
@@ -4423,6 +5190,22 @@
               }
             ],
             "title": "Logs"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/DeploymentPermissions",
+            "default": {
+              "owner_view": false,
+              "operate": false,
+              "member": false
+            }
+          },
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actions",
+            "default": []
           }
         },
         "type": "object",
@@ -4491,6 +5274,28 @@
         "title": "DeploymentOutputs",
         "description": "Parsed Terraform outputs - structure depends on app"
       },
+      "DeploymentPermissions": {
+        "properties": {
+          "owner_view": {
+            "type": "boolean",
+            "title": "Owner View",
+            "default": false
+          },
+          "operate": {
+            "type": "boolean",
+            "title": "Operate",
+            "default": false
+          },
+          "member": {
+            "type": "boolean",
+            "title": "Member",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "DeploymentPermissions",
+        "description": "What the caller may do with a deployment, decided by the API.\n\n``owner_view``: tasks, logs, the live stream, infrastructure and the\n(redacted) outputs. ``operate``: pause, resume, destroy, redeploy,\ncancel and team changes. ``member``: the caller is in one of its teams\nand gets their own access through ``my-access``."
+      },
       "DeploymentResourceListResponse": {
         "properties": {
           "resources": {
@@ -4503,6 +5308,19 @@
           "live": {
             "type": "boolean",
             "title": "Live"
+          },
+          "runtime": {
+            "type": "string",
+            "title": "Runtime",
+            "default": "openstack-vm"
+          },
+          "workloads": {
+            "items": {
+              "$ref": "#/components/schemas/PodWorkloadSchema"
+            },
+            "type": "array",
+            "title": "Workloads",
+            "default": []
           }
         },
         "type": "object",
@@ -4684,6 +5502,33 @@
             ],
             "title": "Releasetag"
           },
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "os_project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Os Project Id"
+          },
+          "runtime": {
+            "type": "string",
+            "title": "Runtime",
+            "default": "openstack-vm"
+          },
           "userInputVar": {
             "anyOf": [
               {
@@ -4779,6 +5624,79 @@
           "name"
         ],
         "title": "DeploymentTeamResponse"
+      },
+      "DescribedItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "DescribedItem",
+        "description": "A resource with a description (security groups, floating IP pools)."
+      },
+      "FlavorItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "vcpus": {
+            "type": "integer",
+            "title": "Vcpus",
+            "default": 0
+          },
+          "ram": {
+            "type": "integer",
+            "title": "Ram",
+            "description": "MB",
+            "default": 0
+          },
+          "disk": {
+            "type": "integer",
+            "title": "Disk",
+            "description": "GB",
+            "default": 0
+          },
+          "is_public": {
+            "type": "boolean",
+            "title": "Is Public",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "FlavorItem",
+        "description": "A Nova flavor."
       },
       "HTTPValidationError": {
         "properties": {
@@ -4886,6 +5804,83 @@
         },
         "type": "object",
         "title": "HardwareSpecSchema"
+      },
+      "ImageItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": ""
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility",
+            "default": ""
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "bytes",
+            "default": 0
+          },
+          "disk_format": {
+            "type": "string",
+            "title": "Disk Format",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ImageItem",
+        "description": "A Glance image."
+      },
+      "KeypairItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "fingerprint": {
+            "type": "string",
+            "title": "Fingerprint",
+            "default": ""
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "ssh"
+          }
+        },
+        "type": "object",
+        "title": "KeypairItem",
+        "description": "A Nova key pair of the credential's user."
       },
       "LifecycleStatesSchema": {
         "properties": {
@@ -5020,6 +6015,49 @@
         ],
         "title": "NetworkAddressSchema"
       },
+      "NetworkItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "shared": {
+            "type": "boolean",
+            "title": "Shared",
+            "default": false
+          },
+          "external": {
+            "type": "boolean",
+            "title": "External",
+            "default": false
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "NetworkItem",
+        "description": "A Neutron network."
+      },
       "NetworkPortSchema": {
         "properties": {
           "port_id": {
@@ -5115,7 +6153,8 @@
           "ports",
           "routers"
         ],
-        "title": "NetworkQuotas"
+        "title": "NetworkQuotas",
+        "description": "Neutron quotas, counting only resources owned by the project."
       },
       "OpenStackAuthType": {
         "type": "string",
@@ -5155,25 +6194,16 @@
       },
       "OpenStackCredentialResponse": {
         "properties": {
+          "credentialId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Credentialid"
+          },
           "auth_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/OpenStackAuthType"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/OpenStackAuthType"
           },
           "auth_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Auth Url"
           },
           "region_name": {
@@ -5196,8 +6226,7 @@
                 "type": "null"
               }
             ],
-            "title": "Interface",
-            "default": "public"
+            "title": "Interface"
           },
           "identity_api_version": {
             "anyOf": [
@@ -5208,8 +6237,7 @@
                 "type": "null"
               }
             ],
-            "title": "Identity Api Version",
-            "default": "3"
+            "title": "Identity Api Version"
           },
           "project_id": {
             "anyOf": [
@@ -5233,6 +6261,11 @@
             ],
             "title": "Project Name"
           },
+          "project_verified": {
+            "type": "boolean",
+            "title": "Project Verified",
+            "default": false
+          },
           "user_domain_name": {
             "anyOf": [
               {
@@ -5254,11 +6287,6 @@
               }
             ],
             "title": "Project Domain Name"
-          },
-          "has_credential": {
-            "type": "boolean",
-            "title": "Has Credential",
-            "default": true
           },
           "last_validated_at": {
             "anyOf": [
@@ -5307,11 +6335,6 @@
             ],
             "title": "Updated At"
           },
-          "is_locked": {
-            "type": "boolean",
-            "title": "Is Locked",
-            "default": false
-          },
           "active_deployments": {
             "type": "integer",
             "title": "Active Deployments",
@@ -5319,8 +6342,13 @@
           }
         },
         "type": "object",
+        "required": [
+          "credentialId",
+          "auth_type",
+          "auth_url"
+        ],
         "title": "OpenStackCredentialResponse",
-        "description": "Masked response — never returns identifier/secret material.\n\nWhen `has_credential` is False, base fields are absent/empty and the\nconsumer should branch on `has_credential`. `is_locked` and\n`active_deployments` are populated regardless so the frontend can\nrender the appropriate guard UI even before any credential exists."
+        "description": "A stored credential, masked — never identifier or secret material.\n\n``project_id``/``project_name`` are the project Keystone scoped the\ncredential to once ``project_verified``; a credential saved before\nprojects were checked is unverified until re-checked (``/test``) and\ncannot be deployed with. ``active_deployments`` counts the caller's\nlive deployments in that project (for an unverified credential: those\nwhose project is still unknown); deleting the credential is refused\nwhile there are any, so they cannot be orphaned."
       },
       "OpenStackCredentialUpsert": {
         "properties": {
@@ -5433,6 +6461,79 @@
         "title": "OpenStackCredentialUpsert",
         "description": "Body of PUT /me/openstack-credentials.\n\n`identifier` is either a username (password auth) or an\napplication-credential ID. `secret` is the corresponding password or\napplication-credential secret. Both are stored encrypted at rest."
       },
+      "PodWorkloadSchema": {
+        "properties": {
+          "workload": {
+            "type": "string",
+            "title": "Workload"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "ready": {
+            "type": "boolean",
+            "title": "Ready",
+            "default": false
+          },
+          "restarts": {
+            "type": "integer",
+            "title": "Restarts",
+            "default": 0
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "lastEvent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastevent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workload",
+          "phase"
+        ],
+        "title": "PodWorkloadSchema",
+        "description": "One workload of a pod deployment, read live from the cluster (.github#4)."
+      },
       "QuotaItem": {
         "properties": {
           "used": {
@@ -5444,7 +6545,14 @@
             "title": "Limit"
           },
           "available": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Available"
           },
           "unit": {
@@ -5465,7 +6573,8 @@
           "limit",
           "available"
         ],
-        "title": "QuotaItem"
+        "title": "QuotaItem",
+        "description": "One quota: current usage, the project's limit (-1: unlimited) and what is\nleft (may be negative when over quota; null when unlimited)."
       },
       "QuotaOverviewResponse": {
         "properties": {
@@ -5485,7 +6594,48 @@
           "storage",
           "network"
         ],
-        "title": "QuotaOverviewResponse"
+        "title": "QuotaOverviewResponse",
+        "description": "Quota and usage of one OpenStack project, grouped by service."
+      },
+      "RouterItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": ""
+          },
+          "external_gateway_info": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Gateway Info"
+          }
+        },
+        "type": "object",
+        "title": "RouterItem",
+        "description": "A Neutron router."
       },
       "SecurityGroupSummarySchema": {
         "properties": {
@@ -5544,17 +6694,86 @@
           "snapshots",
           "gigabytes"
         ],
-        "title": "StorageQuotas"
+        "title": "StorageQuotas",
+        "description": "Cinder quotas; ``gigabytes`` sums the size of all volumes."
+      },
+      "SubnetItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "cidr": {
+            "type": "string",
+            "title": "Cidr",
+            "default": ""
+          },
+          "ip_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Version",
+            "default": 4
+          },
+          "network_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Id"
+          },
+          "gateway_ip": {
+            "type": "string",
+            "title": "Gateway Ip",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "SubnetItem",
+        "description": "A Neutron subnet."
       },
       "TaskResponse": {
         "properties": {
+          "taskId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Taskid"
+          },
           "deploymentId": {
             "type": "string",
             "format": "uuid",
             "title": "Deploymentid"
           },
           "celeryTaskId": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Celerytaskid"
           },
           "type": {
@@ -5598,28 +6817,6 @@
             ],
             "title": "Logs"
           },
-          "tf_state": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tf State"
-          },
-          "outputs": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outputs"
-          },
           "current_phase": {
             "anyOf": [
               {
@@ -5642,11 +6839,6 @@
             ],
             "title": "Progress Pct"
           },
-          "taskId": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Taskid"
-          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -5655,14 +6847,14 @@
         },
         "type": "object",
         "required": [
+          "taskId",
           "deploymentId",
-          "celeryTaskId",
           "type",
           "status",
-          "taskId",
           "created_at"
         ],
-        "title": "TaskResponse"
+        "title": "TaskResponse",
+        "description": "A task as the task API shows it to the owner view.\n\nDeliberately without ``tf_state`` and ``outputs`` (.github#7 E): the\nstate holds every attribute of every resource, generated passwords\nincluded, and the outputs hold every member's credentials. Members get\ntheir own entry through ``my-access``; the owner view's outputs are\nredacted (``task_results.redact_sensitive_outputs``)."
       },
       "TaskStatus": {
         "type": "string",
@@ -6232,6 +7424,50 @@
           "volume_id"
         ],
         "title": "VolumeAttachmentSchema"
+      },
+      "VolumeItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "GB",
+            "default": 0
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": ""
+          },
+          "volume_type": {
+            "type": "string",
+            "title": "Volume Type",
+            "default": ""
+          },
+          "bootable": {
+            "type": "boolean",
+            "title": "Bootable",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "VolumeItem",
+        "description": "A Cinder volume."
       },
       "_MarkerErrorPayload": {
         "properties": {

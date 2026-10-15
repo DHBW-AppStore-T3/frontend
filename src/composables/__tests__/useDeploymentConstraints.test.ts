@@ -47,4 +47,37 @@ describe('useDeploymentConstraints', () => {
     appRef.value = makeApp('Debian')
     expect(forcedGroupMode.value).toBeNull()
   })
+
+  describe('with the runtime and scope of the version (appstore.yaml)', () => {
+    it('scope user forces one team per person, whatever the name', () => {
+      const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(makeApp('Ubuntu'), { runtime: 'kubernetes', scope: 'user' })
+      expect(forcedGroupMode.value).toBe('eachUser')
+      expect(groupModeReason.value).toBe('deployment.assignment.perPersonConstraintText')
+    })
+
+    it('scope team leaves the grouping free, even for a "Windows" name', () => {
+      const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(makeApp('Windows Lab'), { runtime: 'openstack-vm', scope: 'team' })
+      expect(forcedGroupMode.value).toBeNull()
+      expect(groupModeReason.value).toBeNull()
+    })
+
+    it('a pod app is never grouped by its name', () => {
+      const { forcedGroupMode } = useDeploymentConstraints(makeApp('Windows Tools'), { runtime: 'kubernetes', scope: null })
+      expect(forcedGroupMode.value).toBeNull()
+    })
+
+    it('only a VM app without a scope falls back to the name rule', () => {
+      const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(makeApp('Windows 11'), { runtime: 'openstack-vm', scope: null })
+      expect(forcedGroupMode.value).toBe('eachUser')
+      expect(groupModeReason.value).toBe('deployment.assignment.windowsConstraintText')
+    })
+
+    it('reacts to the version changing', () => {
+      const version = ref<{ runtime: 'kubernetes' | 'openstack-vm'; scope: 'team' | 'user' | null }>({ runtime: 'kubernetes', scope: 'team' })
+      const { forcedGroupMode } = useDeploymentConstraints(makeApp('Ubuntu'), version)
+      expect(forcedGroupMode.value).toBeNull()
+      version.value = { runtime: 'kubernetes', scope: 'user' }
+      expect(forcedGroupMode.value).toBe('eachUser')
+    })
+  })
 })

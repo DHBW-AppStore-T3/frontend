@@ -15,6 +15,11 @@
  * - Cache TTL: matched to the backend cache (60s) — after that it is
  *   reloaded on the next picker open.
  *
+ * CREDENTIAL: every list belongs to one of the caller's OpenStack
+ * credentials (the one the deployment will be created with). The wizard
+ * sets it with ``setCredential``; switching to another credential empties
+ * the cache, because another project has other resources.
+ *
  * REACTIVITY: the cache itself is a plain ``Map``, but a Vue ``ref``
  * (``cacheVersion``) is incremented on every ``prime``/``invalidate``.
  * Consumers read the cache via ``getDisplayName``, which also reads
@@ -53,6 +58,24 @@ const cache = new Map<OsResourceType, CacheEntry>()
 const cacheVersion = ref(0)
 
 const TTL_MS = 60_000
+
+// The credential the lists are read with (null: none chosen yet).
+const credentialId = ref<string | null>(null)
+
+/**
+ * Read every list with ``id`` from now on. A different credential than
+ * before empties the cache (another project, other resources).
+ */
+export function setCredential(id: string | null): void {
+  if (credentialId.value === id) return
+  credentialId.value = id
+  invalidateAll()
+}
+
+/** The credential lists are read with, or null when none is chosen. */
+export function currentCredential(): string | null {
+  return credentialId.value
+}
 
 /**
  * Returns a cache entry no older than the TTL, or ``null`` if missing/expired.
@@ -191,27 +214,31 @@ export function getDisplayName(
 // Internal: per-type Fetcher
 // ----------------------------------------------------------------
 async function fetchList(osType: OsResourceType): Promise<any[]> {
+  const id = credentialId.value
+  if (!id) return []
   switch (osType) {
     case 'network':
-      return (await openstackResourcesApi.listNetworks()).data
+      return (await openstackResourcesApi.listNetworks(id)).data
     case 'subnet':
-      return (await openstackResourcesApi.listSubnets()).data
+      return (await openstackResourcesApi.listSubnets(id)).data
     case 'flavor':
-      return (await openstackResourcesApi.listFlavors()).data
+      return (await openstackResourcesApi.listFlavors(id)).data
     case 'image':
-      return (await openstackResourcesApi.listImages('active')).data
+      return (await openstackResourcesApi.listImages(id, 'active')).data
     case 'keypair':
-      return (await openstackResourcesApi.listKeypairs()).data
+      return (await openstackResourcesApi.listKeypairs(id)).data
     case 'security_group':
-      return (await openstackResourcesApi.listSecurityGroups()).data
+      return (await openstackResourcesApi.listSecurityGroups(id)).data
     case 'floating_ip_pool':
-      return (await openstackResourcesApi.listFloatingIpPools()).data
+      return (await openstackResourcesApi.listFloatingIpPools(id)).data
     case 'volume':
-      return (await openstackResourcesApi.listVolumes()).data
+      return (await openstackResourcesApi.listVolumes(id)).data
     case 'router':
-      return (await openstackResourcesApi.listRouters()).data
+      return (await openstackResourcesApi.listRouters(id)).data
     case 'availability_zone':
-      return (await openstackResourcesApi.listAvailabilityZones('compute')).data
+      return (await openstackResourcesApi.listAvailabilityZones(id, 'compute')).data
+    default:
+      return []
   }
 }
 

@@ -34,3 +34,36 @@ export function extractErrorMessage(err: unknown, fallback = 'Unknown error'): s
   }
   return e?.message || fallback
 }
+
+/**
+ * The machine-readable reason of an API error (``detail.reason`` or
+ * ``detail.code``), or null.
+ */
+export function errorReason(err: unknown): string | null {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  if (detail && typeof detail === 'object') {
+    const d = detail as { reason?: unknown; code?: unknown }
+    if (typeof d.reason === 'string') return d.reason
+    if (typeof d.code === 'string') return d.code
+  }
+  return null
+}
+
+/**
+ * A readable message for an API error: the translation ``errors.<reason>``
+ * when the API names a reason the UI knows (``te`` from vue-i18n), else
+ * :func:`extractErrorMessage`.
+ */
+export function localizedError(
+  err: unknown,
+  t: (key: string, params?: Record<string, unknown>) => string,
+  te: (key: string) => boolean,
+  fallback = 'Unknown error',
+): string {
+  const reason = errorReason(err)
+  if (reason && te(`errors.${reason}`)) {
+    const detail = (err as { response?: { data?: { detail?: Record<string, unknown> } } })?.response?.data?.detail
+    return t(`errors.${reason}`, { ...(detail ?? {}) })
+  }
+  return extractErrorMessage(err, fallback)
+}

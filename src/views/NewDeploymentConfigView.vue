@@ -12,6 +12,7 @@ import {
   BookOpen,
   UserPlus
 } from 'lucide-vue-next'
+import { appApi } from '@/api/app.api'
 import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
 import type { User } from '@/types'
@@ -32,7 +33,9 @@ const courses = ref<any[]>([])
 const allStudents = ref<any[]>([])
 const students = ref<any[]>([])
 
-// Cache map for every student ever seen (stable, keyed by keycloak_id).
+// Cache map for every student ever seen (stable, keyed by the AppStore user
+// id ``userId``: what the teams carry, and the one id every user has; people
+// who came in through Moodle have no Keycloak id).
 const studentCache = ref(new Map<string, User>())
 
 const studentSearchQuery = ref('')
@@ -44,15 +47,15 @@ const studentsError = ref<string | null>(null)
 // Selection tab: 'courses' or 'individuals'.
 const activeTab = ref<'courses' | 'individuals'>('courses')
 
-// Helper: store students in the cache (keyed by keycloak_id). Only overwrite
+// Helper: store students in the cache (keyed by userId). Only overwrite
 // when the new object has more info (e.g. firstName).
 function cacheStudents(list: User[]) {
   for (const s of list || []) {
-    if (!s?.keycloak_id || typeof s.keycloak_id !== 'string' || !s.keycloak_id.trim()) continue
-    const existing = studentCache.value.get(s.keycloak_id)
+    if (!s?.userId || typeof s.userId !== 'string' || !s.userId.trim()) continue
+    const existing = studentCache.value.get(s.userId)
     if (!existing || (s.firstName && !existing.firstName) || (s.lastName && !existing.lastName)) {
-      studentCache.value.set(s.keycloak_id, s)
-      store.studentCache.set(s.keycloak_id, s)
+      studentCache.value.set(s.userId, s)
+      store.studentCache.set(s.userId, s)
     }
   }
 }
@@ -68,12 +71,12 @@ const filteredStudents = computed(() => {
   // Admin API ``/users?search=…``), so we pass its response through and only use
   // the cached object when present (prevents duplicates).
   return students.value.map((s: any) => {
-    const cached = s?.keycloak_id ? studentCache.value.get(s.keycloak_id) : undefined
+    const cached = s?.userId ? studentCache.value.get(s.userId) : undefined
     return cached || s
   }).filter(Boolean)
 })
 
-// Selected students: always resolved from the cache (stable, keyed by keycloak_id).
+// Selected students: always resolved from the cache (stable, keyed by userId).
 const selectedStudents = computed<User[]>(() => {
   return store.draft.studentIds
     .map((kid: string) => studentCache.value.get(kid))
@@ -88,7 +91,7 @@ async function getStudentIdsForCourse(courseId: string): Promise<string[]> {
   // Check the cache.
   if (courseStudentsCache.value.has(courseId)) {
     const students = courseStudentsCache.value.get(courseId)!
-    return students.map((s: any) => s.keycloak_id)
+    return students.map((s: any) => s.userId)
   }
 
   // Load students for this course.
@@ -98,7 +101,7 @@ async function getStudentIdsForCourse(courseId: string): Promise<string[]> {
     courseStudentsCache.value.set(courseId, students)
     // Also cache in studentCache.
     cacheStudents(students)
-    return students.map((s: any) => s.keycloak_id)
+    return students.map((s: any) => s.userId)
   } catch (err) {
     console.error(`Failed to load students for course ${courseId}:`, err)
     return []
@@ -130,7 +133,7 @@ function isCourseSelected(courseId: string) {
   if (!courseStudentsCache.value.has(courseId)) {
     return false // not loaded yet
   }
-  const studentIds = courseStudentsCache.value.get(courseId)!.map((s: any) => s.keycloak_id)
+  const studentIds = courseStudentsCache.value.get(courseId)!.map((s: any) => s.userId)
   return studentIds.length > 0 && studentIds.every((id) => store.draft.studentIds.includes(id))
 }
 
@@ -155,13 +158,13 @@ const toggleCourse = async (courseId: string) => {
 }
 
 // Toggle a student checkbox (for individual selection).
-const toggleStudent = (studentKeycloakId: string) => {
-  if (!studentKeycloakId || typeof studentKeycloakId !== 'string' || !studentKeycloakId.trim()) return
-  const index = store.draft.studentIds.indexOf(studentKeycloakId)
+const toggleStudent = (userId: string) => {
+  if (!userId || typeof userId !== 'string' || !userId.trim()) return
+  const index = store.draft.studentIds.indexOf(userId)
   if (index > -1) {
     store.draft.studentIds.splice(index, 1)
   } else {
-    store.draft.studentIds.push(studentKeycloakId)
+    store.draft.studentIds.push(userId)
   }
   // After each toggle: sync the course selection.
   syncCourseSelection()
@@ -173,7 +176,7 @@ async function syncCourseSelection() {
   const newCourseIds: string[] = []
   for (const course of courses.value) {
     if (courseStudentsCache.value.has(course.courseId)) {
-      const studentIds = courseStudentsCache.value.get(course.courseId)!.map((s: any) => s.keycloak_id)
+      const studentIds = courseStudentsCache.value.get(course.courseId)!.map((s: any) => s.userId)
       if (studentIds.length > 0 && studentIds.every((id) => store.draft.studentIds.includes(id))) {
         newCourseIds.push(course.courseId)
       }
@@ -183,9 +186,9 @@ async function syncCourseSelection() {
 }
 
 const handleNext = () => {
-  // Block if credentials missing — banner already explains why
-  if (!credStore.hasCredential) {
-    toast.warning(t('AppsDetailView.missingCredsTitle'))
+  // VM apps run in the project of a credential the caller picks; pods need none.
+  if (needsCredential.value && !store.draft.credentialId) {
+    toast.warning(t('deployment.config.credentialRequired'))
     return
   }
 
@@ -270,7 +273,7 @@ watch(studentSearchQuery, (val) => {
       const res = await userApi.search(q, 50)
       toast.clear()
       students.value = res.data || []
-      cacheStudents(students.value) // Cache new students (keyed by keycloak_id)
+      cacheStudents(students.value) // Cache new students (keyed by userId)
     } catch (err) {
       console.error('User search error:', err)
       const e: any = err
@@ -282,10 +285,45 @@ watch(studentSearchQuery, (val) => {
   }, 300)
 })
 
+// ----------------------------------------------------------------
+// RUNTIME AND CREDENTIAL
+// ----------------------------------------------------------------
+// The app detail page put the version's runtime into the draft; a reload
+// or deep link lands here without it, so ask again.
+async function ensureRuntime() {
+  if (store.draft.runtime || !store.draft.appId || !store.draft.releaseTag) return
+  try {
+    const { data } = await appApi.getRuntime(store.draft.appId, String(store.draft.releaseTag))
+    store.draft.runtime = data.runtime
+    store.draft.scope = data.scope ?? null
+  } catch {
+    toast.error(t('AppsDetailView.runtime.loadError'))
+  }
+}
+
+// VM apps (the Windows desktop) run in the OpenStack project of one of the
+// caller's verified credentials; pods run in the cluster without one.
+const needsCredential = computed(() => store.draft.runtime === 'openstack-vm')
+
+// Pick the only usable credential by default; drop a choice that is no
+// longer usable (deleted, or failing its check).
+function syncCredentialChoice() {
+  if (!needsCredential.value) {
+    store.draft.credentialId = null
+    return
+  }
+  const usable = credStore.usable
+  if (store.draft.credentialId && usable.some((c) => c.credentialId === store.draft.credentialId)) return
+  store.draft.credentialId = usable.length === 1 ? (usable[0]?.credentialId ?? null) : null
+}
+
+watch(() => [store.draft.runtime, credStore.credentials], syncCredentialChoice)
+
 // On mount, load courses + the initial students.
 onMounted(async () => {
-  // Ensure cred state is fresh; banner branch shows when missing
-  if (!credStore.status) await credStore.fetch()
+  await ensureRuntime()
+  if (!credStore.isResolved) await credStore.fetch()
+  syncCredentialChoice()
   await loadCourses()
   await loadAllStudents()
 })
@@ -306,7 +344,7 @@ onMounted(async () => {
       <DeploymentProgressBar :current-step="1" />
 
       <CredentialMissingBanner
-        v-if="credStore.isResolved && !credStore.hasCredential"
+        v-if="needsCredential && credStore.isResolved && !credStore.hasUsableCredential"
         variant="warning"
         :title="t('AppsDetailView.missingCredsTitle')"
         :message="t('AppsDetailView.missingCredsText')"
@@ -316,7 +354,26 @@ onMounted(async () => {
         class="mb-6"
       />
 
-      <template v-if="!credStore.isResolved || credStore.hasCredential">
+      <template v-if="!needsCredential || !credStore.isResolved || credStore.hasUsableCredential">
+      <!-- VM apps: the OpenStack project (credential) the deployment is created in -->
+      <div v-if="needsCredential" class="mb-8" data-testid="credential-picker">
+        <label class="block text-xl font-bold text-textHeading mb-3" for="deployment-credential">
+          {{ t('deployment.config.credentialLabel') }}
+        </label>
+        <select
+          id="deployment-credential"
+          v-model="store.draft.credentialId"
+          data-testid="deployment-credential"
+          class="w-full px-4 py-3 rounded-full border-2 border-borderSubtle focus:border-primary outline-none bg-white"
+        >
+          <option :value="null" disabled>{{ t('deployment.config.credentialPlaceholder') }}</option>
+          <option v-for="c in credStore.usable" :key="c.credentialId" :value="c.credentialId">
+            {{ c.project_name || c.project_id }}
+          </option>
+        </select>
+        <p class="text-sm text-textMuted mt-2">{{ t('deployment.config.credentialHint') }}</p>
+      </div>
+
       <div class="mb-8">
         <label class="block text-xl font-bold text-textHeading mb-3">
           {{ t('deployment.config.nameLabel') }}
@@ -407,21 +464,21 @@ onMounted(async () => {
               <div class="bg-surfaceMuted rounded-lg overflow-hidden border-2 border-borderSubtle max-h-[350px] overflow-y-auto">
                 <div
                   v-for="student in filteredStudents"
-                  :key="student.keycloak_id ?? student.userId"
-                  @click="toggleStudent(student.keycloak_id)"
-                  :data-testid="`student-${student.keycloak_id}`"
+                  :key="student.userId"
+                  @click="toggleStudent(student.userId)"
+                  :data-testid="`student-${student.userId}`"
                   class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-borderSubtle transition-colors select-none"
-                  :class="store.draft.studentIds.includes(student.keycloak_id) ? 'bg-primaryFaint' : 'hover:bg-surfaceMuted'"
+                  :class="store.draft.studentIds.includes(student.userId) ? 'bg-primaryFaint' : 'hover:bg-surfaceMuted'"
                 >
                   <div class="w-6 h-6 flex items-center justify-center rounded border transition-colors"
-                       :class="store.draft.studentIds.includes(student.keycloak_id) ? 'bg-primaryFaint0 border-primary' : 'border-gray-400 bg-white'"
+                       :class="store.draft.studentIds.includes(student.userId) ? 'bg-primaryFaint0 border-primary' : 'border-gray-400 bg-white'"
                   >
-                     <Check v-if="store.draft.studentIds.includes(student.keycloak_id)" :size="16" class="text-white" />
+                     <Check v-if="store.draft.studentIds.includes(student.userId)" :size="16" class="text-white" />
                   </div>
                   <span class="text-textMuted font-medium">
                     {{ (student.firstName || student.lastName)
                         ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
-                        : (student.username || student.email || student.keycloak_id) }}
+                        : (student.username || student.email || student.userId) }}
                   </span>
                 </div>
 
@@ -445,19 +502,19 @@ onMounted(async () => {
               <div v-else class="space-y-2">
                 <div
                   v-for="student in selectedStudents"
-                  :key="student.keycloak_id ?? student.userId"
+                  :key="student.userId"
                   class="flex items-center justify-between bg-white p-3 rounded-lg border border-borderSubtle"
                 >
                   <span class="text-textMuted font-medium">
                     {{ (student.firstName || student.lastName)
                         ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
-                        : (student.username || student.email || student.keycloak_id) }}
+                        : (student.username || student.email || student.userId) }}
                   </span>
                   <button
-                    @click="toggleStudent(student.keycloak_id ?? '')"
+                    @click="toggleStudent(student.userId)"
                     class="text-danger hover:text-red-700 font-bold text-lg leading-none"
                     :title="t('CourseDetailView.removeModal.remove')"
-                    :data-testid="`remove-${student.keycloak_id ?? student.userId}`"
+                    :data-testid="`remove-${student.userId}`"
                   >
                     ×
                   </button>
@@ -488,7 +545,7 @@ onMounted(async () => {
         <button
           @click="handleNext"
           data-testid="btn-next"
-          :disabled="credStore.isResolved && !credStore.hasCredential"
+          :disabled="needsCredential && credStore.isResolved && !credStore.hasUsableCredential"
           class="px-8 py-2.5 rounded-full bg-success text-white font-bold hover:bg-successHover transition-colors shadow-lg shadow-success/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ t('deployment.actions.next') }}

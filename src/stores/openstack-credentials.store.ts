@@ -3,25 +3,27 @@ import axios from 'axios'
 import { credentialsApi } from '@/api/credentials.api'
 import { extractErrorMessage } from '@/utils/http-error'
 import type {
+  OpenStackCredential,
   OpenStackCredentialFromYaml,
-  OpenStackCredentialResponse,
   OpenStackCredentialUpsert,
 } from '@/types/openstack-credential'
 
 interface State {
-  status: OpenStackCredentialResponse | null
+  // null until the first ``GET /me/openstack-credentials`` resolved.
+  credentials: OpenStackCredential[] | null
   loading: boolean
   error: string | null
 }
 
 const LOCKED_REASON = 'openstack_credentials_locked'
+const INVALID_REASON = 'openstack_credentials_invalid'
 
 /**
- * Adds the one message this store renders specially on top of the shared
- * extractor: a 409 `openstack_credentials_locked` carries the number of
- * deployments still holding the credentials, which is the whole point of
- * the message. Everything else delegates to `extractErrorMessage`, which
- * used to be duplicated here.
+ * The messages this store renders specially on top of the shared extractor:
+ * a 409 ``openstack_credentials_locked`` carries the number of deployments
+ * still holding the credential, a 422 ``openstack_credentials_invalid`` the
+ * reason Keystone gave (``cause``). Everything else delegates to
+ * ``extractErrorMessage``.
  */
 function extractError(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
@@ -30,7 +32,10 @@ function extractError(err: unknown, fallback: string): string {
       const reason = (detail as { reason?: string }).reason
       if (reason === LOCKED_REASON) {
         const n = (detail as { active_deployments?: number }).active_deployments ?? 0
-        return `Credentials gesperrt — ${n} aktive(s) Deployment(s)`
+        return `Credential gesperrt — ${n} aktive(s) Deployment(s)`
+      }
+      if (reason === INVALID_REASON) {
+        return `Keystone lehnt die Credential ab (${(detail as { cause?: string }).cause ?? 'error'})`
       }
     }
   }
@@ -44,29 +49,46 @@ function isLockedError(err: unknown): boolean {
   return !!(detail && typeof detail === 'object' && (detail as { reason?: string }).reason === LOCKED_REASON)
 }
 
+/** Usable for a deployment: Keystone named its project and the last check passed. */
+export function isUsable(c: OpenStackCredential): boolean {
+  return c.project_verified && !c.last_validation_error
+}
+
 // Dedupe concurrent fetch() calls — DashboardView mount, auth store
 // post-login, and route guards can all kick this off at the same time
 // on a cold load. Without this, each trigger hits the backend.
-let fetchPromise: Promise<OpenStackCredentialResponse | null> | null = null
+let fetchPromise: Promise<OpenStackCredential[] | null> | null = null
 
+/**
+ * The caller's OpenStack credentials, one per project. Only VM apps (the
+ * Windows desktop) need one; pod apps run without.
+ */
 export const useOpenStackCredentialsStore = defineStore('openstack-credentials', {
   state: (): State => ({
-    status: null,
+    credentials: null,
     loading: false,
     error: null,
   }),
 
   getters: {
-    hasCredential: (s) => !!s.status?.has_credential,
-    isValidated: (s) =>
-      !!s.status?.last_validated_at && !s.status?.last_validation_error,
-    lastError: (s) => s.status?.last_validation_error || null,
-    isLocked: (s) => !!s.status?.is_locked,
-    activeDeployments: (s) => s.status?.active_deployments ?? 0,
-    // True once the GET /me/openstack-credentials has resolved at least
-    // once. Banners and disabled states should gate on this to avoid the
-    // "fehlen" message flashing during the initial fetch.
-    isResolved: (s) => s.status !== null,
+    list: (s): OpenStackCredential[] => s.credentials ?? [],
+    hasAnyCredential: (s) => (s.credentials?.length ?? 0) > 0,
+    // At least one credential a VM deployment can be created with.
+    hasUsableCredential: (s) => (s.credentials ?? []).some(isUsable),
+    usable: (s): OpenStackCredential[] => (s.credentials ?? []).filter(isUsable),
+    // Credentials saved before projects were checked: their owner presses
+    // "check" once, until then they cannot be used.
+    unverified: (s): OpenStackCredential[] => (s.credentials ?? []).filter((c) => !c.project_verified),
+    failing: (s): OpenStackCredential[] =>
+      (s.credentials ?? []).filter((c) => c.project_verified && !!c.last_validation_error),
+    // True once the GET has resolved at least once. Banners and disabled
+    // states gate on this to avoid a "missing" message flashing during the
+    // initial fetch.
+    isResolved: (s) => s.credentials !== null,
+    byId: (s) => (credentialId: string | null | undefined): OpenStackCredential | null => {
+      if (!credentialId) return null
+      return (s.credentials ?? []).find((c) => c.credentialId === credentialId) ?? null
+    },
   },
 
   actions: {
@@ -76,8 +98,8 @@ export const useOpenStackCredentialsStore = defineStore('openstack-credentials',
         this.loading = true
         this.error = null
         try {
-          const res = await credentialsApi.get()
-          this.status = res.data
+          const res = await credentialsApi.list()
+          this.credentials = res.data
           return res.data
         } catch (err) {
           this.error = extractError(err, 'Failed to load OpenStack credentials')
@@ -90,16 +112,26 @@ export const useOpenStackCredentialsStore = defineStore('openstack-credentials',
       return fetchPromise
     },
 
+    /** Insert or replace (same project) a credential and return it. */
+    upsertLocal(row: OpenStackCredential) {
+      const rows = [...(this.credentials ?? [])]
+      const index = rows.findIndex((c) => c.credentialId === row.credentialId)
+      if (index >= 0) rows[index] = row
+      else rows.push(row)
+      this.credentials = rows
+      return row
+    },
+
     async save(payload: OpenStackCredentialUpsert) {
       this.loading = true
       this.error = null
       try {
-        const res = await credentialsApi.put(payload)
-        this.status = res.data
+        const res = await credentialsApi.save(payload)
+        // A replaced credential keeps its id; re-read so nothing stale stays.
+        await this.fetch()
         return res.data
       } catch (err) {
         this.error = extractError(err, 'Failed to save OpenStack credentials')
-        if (isLockedError(err)) await this.fetch()
         throw err
       } finally {
         this.loading = false
@@ -110,39 +142,46 @@ export const useOpenStackCredentialsStore = defineStore('openstack-credentials',
       this.loading = true
       this.error = null
       try {
-        const res = await credentialsApi.putFromYaml(body)
-        this.status = res.data
+        const res = await credentialsApi.saveFromYaml(body)
+        await this.fetch()
         return res.data
       } catch (err) {
         this.error = extractError(err, 'Failed to parse clouds.yaml')
-        if (isLockedError(err)) await this.fetch()
         throw err
       } finally {
         this.loading = false
       }
     },
 
-    async remove() {
+    async remove(credentialId: string) {
       this.loading = true
       this.error = null
       try {
-        await credentialsApi.remove()
-        await this.fetch()
+        await credentialsApi.remove(credentialId)
+        this.credentials = (this.credentials ?? []).filter((c) => c.credentialId !== credentialId)
       } catch (err) {
-        this.error = extractError(err, 'Failed to delete OpenStack credentials')
+        const message = extractError(err, 'Failed to delete OpenStack credentials')
+        // A lock means live deployments need it: show their current count.
         if (isLockedError(err)) await this.fetch()
+        this.error = message
         throw err
       } finally {
         this.loading = false
       }
     },
 
-    async test() {
+    /**
+     * Ask Keystone again. Always resolves with the updated credential; a
+     * failure is in its ``last_validation_error``. Verifying an old
+     * credential can place deployments in its project, so the list is
+     * re-read.
+     */
+    async test(credentialId: string) {
       this.loading = true
       this.error = null
       try {
-        const res = await credentialsApi.test()
-        this.status = res.data
+        const res = await credentialsApi.test(credentialId)
+        this.upsertLocal(res.data)
         return res.data
       } catch (err) {
         this.error = extractError(err, 'Failed to validate OpenStack credentials')
@@ -153,7 +192,7 @@ export const useOpenStackCredentialsStore = defineStore('openstack-credentials',
     },
 
     reset() {
-      this.status = null
+      this.credentials = null
       this.error = null
       this.loading = false
     },

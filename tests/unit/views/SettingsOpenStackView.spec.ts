@@ -2,20 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 
 import SettingsOpenStackView from '@/views/SettingsOpenStackView.vue'
+import type { OpenStackCredential } from '@/types/openstack-credential'
 
 // ---------------------------------------------------------------
-// Rewritten from a `describe.skip` dated 2026-06-29. The TODO blamed
-// "i18n rework + UI refactor of PR #77 broke the tests' DOM selectors",
-// which is precisely what it was: fields were looked up by position
-// (`textInputs[1]`, `textInputs[2]`) and buttons by German label text
-// (`b.text().includes('Speichern')`). Reordering a form field or
-// translating a button broke tests about credential handling.
+// The view carries `data-testid` on its inputs, tabs, credential rows
+// and action buttons. Those are a deliberate testing contract: they do
+// not move when the layout or the translations do. Assertions are on
+// the payload handed to the store and the i18n *key* passed to the
+// toast, never on rendered German.
 //
-// The view now carries `data-testid` on its inputs, tabs and action
-// buttons. Those are a deliberate testing contract: they do not move
-// when the layout or the translations do. Assertions are on the
-// payload handed to the store and the i18n *key* passed to the toast,
-// never on rendered German.
+// One credential per OpenStack project: the page lists them, adds new
+// ones (Keystone names the project) and checks or deletes each one.
 // ---------------------------------------------------------------
 
 vi.mock('vue-i18n', () => ({
@@ -25,8 +22,9 @@ vi.mock('vue-i18n', () => ({
 }))
 
 const mockPush = vi.fn()
+let mockQuery: Record<string, unknown> = {}
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: {} }),
+  useRoute: () => ({ query: mockQuery }),
   useRouter: () => ({ push: mockPush }),
 }))
 
@@ -47,34 +45,39 @@ vi.mock('@/utils/clouds-yaml', () => ({
 }))
 import { parseCloudsYaml } from '@/utils/clouds-yaml'
 
+function credential(overrides: Partial<OpenStackCredential> = {}): OpenStackCredential {
+  return {
+    credentialId: 'c-1',
+    auth_type: 'v3applicationcredential',
+    auth_url: 'https://keystone.example/v3',
+    project_id: 'p-1',
+    project_name: 'Project One',
+    project_verified: true,
+    last_validated_at: '2026-10-15T08:00:00Z',
+    last_validation_error: null,
+    active_deployments: 0,
+    ...overrides,
+  }
+}
+
 const mockFetch = vi.fn()
 const mockSave = vi.fn()
 const mockTest = vi.fn()
 const mockRemove = vi.fn()
 
 let storeState = {
-  isLocked: false,
-  activeDeployments: 0,
   loading: false,
-  hasCredential: false,
-  isValidated: false,
-  isResolved: true,
-  lastError: null as string | null,
+  credentials: [] as OpenStackCredential[] | null,
   error: null as string | null,
-  status: {} as any,
 }
 
 vi.mock('@/stores/openstack-credentials.store', () => ({
   useOpenStackCredentialsStore: () => ({
-    get isLocked() { return storeState.isLocked },
-    get activeDeployments() { return storeState.activeDeployments },
     get loading() { return storeState.loading },
-    get hasCredential() { return storeState.hasCredential },
-    get isValidated() { return storeState.isValidated },
-    get isResolved() { return storeState.isResolved },
-    get lastError() { return storeState.lastError },
+    get isResolved() { return storeState.credentials !== null },
+    get hasAnyCredential() { return (storeState.credentials?.length ?? 0) > 0 },
+    get list() { return storeState.credentials ?? [] },
     get error() { return storeState.error },
-    get status() { return storeState.status },
     fetch: mockFetch,
     save: mockSave,
     test: mockTest,
@@ -89,73 +92,82 @@ const mountView = () =>
   mount(SettingsOpenStackView, {
     global: {
       stubs: {
-        CredentialMissingBanner: true,
         RouterLink: { template: '<a><slot /></a>' },
+        PageHeader: { props: ['title'], template: '<h1>{{ title }}</h1>' },
+        'i18n-t': { props: ['keypath'], template: '<span>{{ keypath }}<slot name="file" /></span>' },
       },
     },
   })
 
 const field = (wrapper: any, id: string) => wrapper.get(`[data-testid="${id}"]`)
 
+async function fillAppForm(wrapper: any) {
+  await field(wrapper, 'app-auth-url').setValue('https://test.com')
+  await field(wrapper, 'app-identifier').setValue('my-app-id')
+  await field(wrapper, 'app-secret').setValue('my-secret-key')
+}
+
 describe('SettingsOpenStackView.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.confirm = mockConfirm
-    storeState = {
-      isLocked: false,
-      activeDeployments: 0,
-      loading: false,
-      hasCredential: false,
-      isValidated: false,
-      isResolved: true,
-      lastError: null,
-      error: null,
-      status: {},
-    }
+    mockQuery = {}
+    storeState = { loading: false, credentials: [], error: null }
+    mockSave.mockResolvedValue(credential())
   })
 
   afterEach(() => {
     window.confirm = originalConfirm
   })
 
-  it('loads the stored credential on mount', () => {
+  it('loads the credentials on mount', () => {
     mountView()
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('prefills the form from an existing application credential', async () => {
-    storeState.hasCredential = true
-    storeState.status = {
-      has_credential: true,
-      auth_type: 'v3applicationcredential',
-      auth_url: 'https://my-cloud.com:5000/v3',
-      region_name: 'RegionOne',
-    }
-
+  it('without credentials explains that only VM apps need one', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect((field(wrapper, 'app-auth-url').element as HTMLInputElement).value)
-      .toBe('https://my-cloud.com:5000/v3')
-    expect((field(wrapper, 'app-region').element as HTMLInputElement).value)
-      .toBe('RegionOne')
+    expect(wrapper.text()).toContain('SettingsOpenStackView.vmOnlyHint')
+    expect(wrapper.text()).toContain('SettingsOpenStackView.status.noneTitle')
   })
 
-  // --- locked state -------------------------------------------------
+  // --- the list -----------------------------------------------------
 
-  it('disables the form and the destructive actions while deployments are active', async () => {
-    storeState.isLocked = true
-    storeState.activeDeployments = 2
-    // The retest/delete pair lives in the status card, which only renders
-    // once a credential exists.
-    storeState.hasCredential = true
+  it('lists one row per project with its state', async () => {
+    storeState.credentials = [
+      credential(),
+      credential({ credentialId: 'c-2', project_id: 'typed', project_name: null, project_verified: false }),
+      credential({ credentialId: 'c-3', project_id: 'p-3', project_name: 'Project Three', last_validation_error: 'invalid_credentials' }),
+    ]
 
     const wrapper = mountView()
     await flushPromises()
 
-    expect(field(wrapper, 'app-auth-url').attributes('disabled')).toBeDefined()
-    expect(field(wrapper, 'btn-save').attributes('disabled')).toBeDefined()
-    expect(field(wrapper, 'btn-delete').attributes('disabled')).toBeDefined()
+    expect(field(wrapper, 'credential-c-1').text()).toContain('Project One')
+    expect(field(wrapper, 'credential-c-1').text()).toContain('SettingsOpenStackView.status.lastChecked')
+    // Saved before projects were checked: must be checked once before use.
+    expect(field(wrapper, 'credential-c-2').find('[data-testid="credential-unverified"]').exists()).toBe(true)
+    expect(field(wrapper, 'credential-c-3').text()).toContain('invalid_credentials')
+  })
+
+  it('a credential with active deployments cannot be deleted', async () => {
+    storeState.credentials = [
+      credential({ active_deployments: 2 }),
+      credential({ credentialId: 'c-2', project_id: 'p-2', project_name: 'Project Two' }),
+    ]
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const locked = field(wrapper, 'btn-delete-c-1')
+    expect(locked.attributes('disabled')).toBeDefined()
+    expect(locked.attributes('title')).toBe('SettingsOpenStackView.tooltips.lockedActiveDeployments')
+    expect(field(wrapper, 'credential-c-1').text()).toContain('SettingsOpenStackView.status.activeDeployments {"count":2}')
+    expect(field(wrapper, 'btn-delete-c-2').attributes('disabled')).toBeUndefined()
+    // Adding a credential for another project stays possible.
+    expect(field(wrapper, 'btn-save').attributes('disabled')).toBeUndefined()
   })
 
   // --- saving -------------------------------------------------------
@@ -170,13 +182,11 @@ describe('SettingsOpenStackView.vue', () => {
     expect(mockToastError).toHaveBeenCalledWith('SettingsOpenStackView.errors.missingFields')
   })
 
-  it('saves an application credential with the fields the API expects', async () => {
+  it('saves an application credential and names the project Keystone reported', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await field(wrapper, 'app-auth-url').setValue('https://test.com')
-    await field(wrapper, 'app-identifier').setValue('my-app-id')
-    await field(wrapper, 'app-secret').setValue('my-secret-key')
+    await fillAppForm(wrapper)
     await field(wrapper, 'btn-save').trigger('click')
     await flushPromises()
 
@@ -189,36 +199,36 @@ describe('SettingsOpenStackView.vue', () => {
       identifier: 'my-app-id',
       secret: 'my-secret-key',
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.toasts.saveSuccess')
+    expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.toasts.saveSuccess {"project":"Project One"}')
   })
 
-  it('clears the secret from the form after a successful save', async () => {
+  it('clears the identifier and secret from the form after a successful save', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await field(wrapper, 'app-auth-url').setValue('https://test.com')
-    await field(wrapper, 'app-identifier').setValue('my-app-id')
-    await field(wrapper, 'app-secret').setValue('my-secret-key')
+    await fillAppForm(wrapper)
     await field(wrapper, 'btn-save').trigger('click')
     await flushPromises()
 
     expect((field(wrapper, 'app-secret').element as HTMLInputElement).value).toBe('')
+    expect((field(wrapper, 'app-identifier').element as HTMLInputElement).value).toBe('')
   })
 
-  it('warns instead of celebrating when the credential saves but fails validation', async () => {
+  it('shows why Keystone rejected a credential and stores nothing', async () => {
+    mockSave.mockImplementation(async () => {
+      storeState.error = 'auth_url_not_allowed'
+      throw new Error('422')
+    })
     const wrapper = mountView()
     await flushPromises()
 
-    await field(wrapper, 'app-auth-url').setValue('https://test.com')
-    await field(wrapper, 'app-identifier').setValue('my-app-id')
-    await field(wrapper, 'app-secret').setValue('my-secret-key')
-    mockSave.mockImplementation(async () => { storeState.lastError = 'invalid credentials' })
-
+    await fillAppForm(wrapper)
     await field(wrapper, 'btn-save').trigger('click')
     await flushPromises()
 
-    expect(mockToastWarning).toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalledWith('auth_url_not_allowed')
     expect(mockToastSuccess).not.toHaveBeenCalled()
+    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('saves a password credential from the second tab', async () => {
@@ -270,32 +280,91 @@ describe('SettingsOpenStackView.vue', () => {
     expect(mockToastError).toHaveBeenCalledWith('SettingsOpenStackView.errors.missingFields')
   })
 
+  // --- back to the wizard -------------------------------------------
+
+  it('returns to the wizard step that sent the user here', async () => {
+    mockQuery = { next: '/deployment/new/config' }
+    const wrapper = mountView()
+    await flushPromises()
+
+    await fillAppForm(wrapper)
+    await field(wrapper, 'btn-save').trigger('click')
+    await flushPromises()
+
+    expect(mockPush).toHaveBeenCalledWith('/deployment/new/config')
+  })
+
+  it.each([
+    ['https://evil.example/phish'],
+    ['//evil.example/phish'],
+    ['/\\evil.example/phish'],
+    ['javascript:alert(1)'],
+  ])('never follows a return target outside the app (%s)', async (next) => {
+    mockQuery = { next }
+    const wrapper = mountView()
+    await flushPromises()
+
+    await fillAppForm(wrapper)
+    await field(wrapper, 'btn-save').trigger('click')
+    await flushPromises()
+
+    expect(mockSave).toHaveBeenCalled()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  // --- check --------------------------------------------------------
+
+  it('re-checks a credential and reports a pass', async () => {
+    storeState.credentials = [credential()]
+    mockTest.mockResolvedValue(credential())
+
+    const wrapper = mountView()
+    await flushPromises()
+    await field(wrapper, 'btn-retest-c-1').trigger('click')
+    await flushPromises()
+
+    expect(mockTest).toHaveBeenCalledWith('c-1')
+    expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.toasts.credentialsValid')
+  })
+
+  it('re-checks a credential and reports what Keystone said', async () => {
+    storeState.credentials = [credential()]
+    mockTest.mockResolvedValue(credential({ last_validation_error: 'invalid_credentials' }))
+
+    const wrapper = mountView()
+    await flushPromises()
+    await field(wrapper, 'btn-retest-c-1').trigger('click')
+    await flushPromises()
+
+    expect(mockToastError).toHaveBeenCalledWith('SettingsOpenStackView.errors.validationFailed {"error":"invalid_credentials"}')
+  })
+
   // --- delete -------------------------------------------------------
 
   it('does not delete when the confirmation dialog is dismissed', async () => {
-    storeState.hasCredential = true
+    storeState.credentials = [credential()]
     mockConfirm.mockReturnValue(false)
 
     const wrapper = mountView()
     await flushPromises()
 
-    await field(wrapper, 'btn-delete').trigger('click')
+    await field(wrapper, 'btn-delete-c-1').trigger('click')
 
-    expect(mockConfirm).toHaveBeenCalled()
+    expect(mockConfirm).toHaveBeenCalledWith('SettingsOpenStackView.confirmDelete {"project":"Project One"}')
     expect(mockRemove).not.toHaveBeenCalled()
   })
 
   it('deletes once the confirmation is accepted', async () => {
-    storeState.hasCredential = true
+    storeState.credentials = [credential()]
     mockConfirm.mockReturnValue(true)
 
     const wrapper = mountView()
     await flushPromises()
 
-    await field(wrapper, 'btn-delete').trigger('click')
+    await field(wrapper, 'btn-delete-c-1').trigger('click')
     await flushPromises()
 
-    expect(mockRemove).toHaveBeenCalledTimes(1)
+    expect(mockRemove).toHaveBeenCalledWith('c-1')
     expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.status.deleteSuccess')
   })
 
@@ -325,5 +394,7 @@ describe('SettingsOpenStackView.vue', () => {
     expect(mockToastSuccess).toHaveBeenCalledWith('SettingsOpenStackView.cloudsYamlImported')
     expect((field(wrapper, 'app-auth-url').element as HTMLInputElement).value)
       .toBe('https://yaml.com')
+    // Nothing is stored before the user presses "save".
+    expect(mockSave).not.toHaveBeenCalled()
   })
 })

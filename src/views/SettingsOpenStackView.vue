@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import PageHeader from '@/components/ui/PageHeader.vue'
-import { onMounted, reactive, ref, computed } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -11,13 +11,14 @@ import {
   Trash2,
   RefreshCw,
   Upload,
+  ShieldQuestion,
 } from 'lucide-vue-next'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { useToastStore } from '@/stores/toast.store'
-import CredentialMissingBanner from '@/components/CredentialMissingBanner.vue'
 import { parseCloudsYaml, CloudsYamlError } from '@/utils/clouds-yaml'
 import type {
   OpenStackAuthType,
+  OpenStackCredential,
   OpenStackCredentialUpsert,
 } from '@/types/openstack-credential'
 
@@ -51,29 +52,10 @@ const formPwd = reactive({
 const isDragging = ref(false)
 const yamlInputRef = ref<HTMLInputElement | null>(null)
 
-const lastValidated = computed(() => {
-  if (!credStore.status?.last_validated_at) return null
-  return new Date(credStore.status.last_validated_at).toLocaleString('de-DE')
-})
+const formatTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('de-DE') : null)
 
 onMounted(async () => {
   await credStore.fetch()
-  // Pre-fill known non-secret fields if creds exist.
-  if (credStore.status?.has_credential) {
-    const c = credStore.status
-    activeTab.value = c.auth_type === 'v3applicationcredential' ? 'app' : 'password'
-    if (activeTab.value === 'app') {
-      formApp.auth_url = c.auth_url ?? ''
-      formApp.region_name = c.region_name ?? ''
-    } else {
-      formPwd.auth_url = c.auth_url ?? ''
-      formPwd.region_name = c.region_name ?? ''
-      formPwd.project_id = c.project_id ?? ''
-      formPwd.project_name = c.project_name ?? ''
-      formPwd.user_domain_name = c.user_domain_name ?? 'Default'
-      formPwd.project_domain_name = c.project_domain_name ?? ''
-    }
-  }
 })
 
 const buildPayload = (): OpenStackCredentialUpsert | null => {
@@ -107,36 +89,36 @@ const buildPayload = (): OpenStackCredentialUpsert | null => {
   }
 }
 
+const clearSecrets = () => {
+  formApp.identifier = ''
+  formApp.secret = ''
+  formPwd.secret = ''
+}
+
+// Keystone checks the credential before anything is stored and names its
+// project; saving another one for the same project replaces it (that is how
+// a secret is rotated).
 const handleSave = async () => {
-  if (credStore.isLocked) {
-    toast.warning(t('SettingsOpenStackView.errors.lockedActiveDeployments', { count: credStore.activeDeployments }))
-    return
-  }
   const payload = buildPayload()
   if (!payload) {
     toast.error(t('SettingsOpenStackView.errors.missingFields'))
     return
   }
   try {
-    await credStore.save(payload)
-    if (credStore.lastError) {
-      toast.warning(t('SettingsOpenStackView.errors.validationFailedSaved', { error: credStore.lastError }))
-    } else {
-      toast.success(t('SettingsOpenStackView.toasts.saveSuccess'))
-      maybeReturnToWizard()
-    }
-    formApp.secret = ''
-    formPwd.secret = ''
+    const saved = await credStore.save(payload)
+    toast.success(t('SettingsOpenStackView.toasts.saveSuccess', { project: saved.project_name || saved.project_id }))
+    clearSecrets()
+    maybeReturnToWizard()
   } catch {
     if (credStore.error) toast.error(credStore.error)
   }
 }
 
-const handleTest = async () => {
+const handleTest = async (credential: OpenStackCredential) => {
   try {
-    await credStore.test()
-    if (credStore.lastError) {
-      toast.error(t('SettingsOpenStackView.errors.validationFailed', { error: credStore.lastError }))
+    const checked = await credStore.test(credential.credentialId)
+    if (checked.last_validation_error) {
+      toast.error(t('SettingsOpenStackView.errors.validationFailed', { error: checked.last_validation_error }))
     } else {
       toast.success(t('SettingsOpenStackView.toasts.credentialsValid'))
     }
@@ -145,27 +127,21 @@ const handleTest = async () => {
   }
 }
 
-const handleDelete = async () => {
-  if (credStore.isLocked) {
-    toast.warning(t('SettingsOpenStackView.errors.lockedActiveDeployments', { count: credStore.activeDeployments }))
+const handleDelete = async (credential: OpenStackCredential) => {
+  if (credential.active_deployments > 0) {
+    toast.warning(t('SettingsOpenStackView.errors.lockedActiveDeployments', { count: credential.active_deployments }))
     return
   }
-  if (!confirm(t('SettingsOpenStackView.confirmDelete'))) return
+  if (!confirm(t('SettingsOpenStackView.confirmDelete', { project: credential.project_name || credential.project_id || '' }))) return
   try {
-    await credStore.remove()
+    await credStore.remove(credential.credentialId)
     toast.success(t('SettingsOpenStackView.status.deleteSuccess'))
-    formApp.secret = ''
-    formPwd.secret = ''
   } catch {
     if (credStore.error) toast.error(credStore.error)
   }
 }
 
 const handleYamlFile = async (file: File) => {
-  if (credStore.isLocked) {
-    toast.warning(t('SettingsOpenStackView.errors.lockedActiveDeployments', { count: credStore.activeDeployments }))
-    return
-  }
   let text: string
   try {
     text = await file.text()
@@ -212,7 +188,6 @@ const handleYamlFile = async (file: File) => {
 
 const onDrop = (event: DragEvent) => {
   isDragging.value = false
-  if (credStore.isLocked) return
   const file = event.dataTransfer?.files?.[0]
   if (!file) {
     toast.error(t('SettingsOpenStackView.dropNoFile'))
@@ -228,9 +203,15 @@ const onFilePick = (event: Event) => {
   input.value = ''
 }
 
+// Back to the wizard step that sent the user here. Only a path inside the
+// app is followed (never "//host", "/\host" or "https://..."), so a crafted
+// link cannot use this page to send someone elsewhere.
+const isAppPath = (value: unknown): value is string =>
+  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\')
+
 const maybeReturnToWizard = () => {
-  const next = route.query.next as string | undefined
-  if (next) router.push(next)
+  const next = route.query.next
+  if (isAppPath(next)) router.push(next)
 }
 </script>
 
@@ -238,23 +219,15 @@ const maybeReturnToWizard = () => {
   <div class="app-page max-w-4xl">
     <PageHeader :eyebrow="t('UserView.settings.title')" :title="t('SettingsOpenStackView.title')" :subtitle="t('SettingsOpenStackView.intro')" />
 
-    <!-- Lock banner -->
-    <CredentialMissingBanner
-      v-if="credStore.isLocked"
-      variant="lock"
-      :title="t('SettingsOpenStackView.lockBanner.title')"
-      :message="t('SettingsOpenStackView.lockBanner.message', { count: credStore.activeDeployments })"
-      :cta="t('SettingsOpenStackView.lockBanner.cta')"
-      ctaTo="/deployments"
-      class="mb-6"
-    />
+    <!-- Only VM apps (the Windows desktop) need a credential; pod apps run without. -->
+    <p class="text-sm text-textMuted mb-6">{{ t('SettingsOpenStackView.vmOnlyHint') }}</p>
 
-    <!-- Status card -->
-    <div class="bg-white rounded-xl border p-5 mb-6">
-      <div v-if="credStore.loading" class="text-textMuted text-sm">
+    <!-- Stored credentials, one per OpenStack project -->
+    <div class="bg-white rounded-xl border mb-6" data-testid="credential-list">
+      <div v-if="credStore.loading && !credStore.isResolved" class="p-5 text-textMuted text-sm">
         {{ t('SettingsOpenStackView.status.loading') }}
       </div>
-      <div v-else-if="!credStore.hasCredential" class="flex items-center gap-3">
+      <div v-else-if="!credStore.hasAnyCredential" class="p-5 flex items-center gap-3">
         <CircleHelp class="text-textFaint" :size="22" />
         <div>
           <div class="font-medium text-textHeading">{{ t('SettingsOpenStackView.status.noneTitle') }}</div>
@@ -265,51 +238,69 @@ const maybeReturnToWizard = () => {
           </div>
         </div>
       </div>
-      <div v-else class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <CheckCircle2 v-if="credStore.isValidated && !credStore.lastError" class="text-green-500" :size="22" />
-          <XCircle v-else class="text-danger" :size="22" />
-          <div>
-            <div class="font-medium text-textHeading">
-              {{ credStore.isValidated && !credStore.lastError ? t('SettingsOpenStackView.status.valid') : t('SettingsOpenStackView.status.invalid') }}
-            </div>
-            <div class="text-sm text-textMuted">
-              <span v-if="lastValidated">{{ t('SettingsOpenStackView.status.lastChecked', { time: lastValidated }) }}</span>
-              <span v-if="credStore.lastError" class="block text-danger">{{ credStore.lastError }}</span>
+      <ul v-else class="divide-y">
+        <li
+          v-for="c in credStore.list"
+          :key="c.credentialId"
+          class="p-5 flex flex-wrap items-center justify-between gap-3"
+          :data-testid="`credential-${c.credentialId}`"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <ShieldQuestion v-if="!c.project_verified" class="text-warning" :size="22" />
+            <XCircle v-else-if="c.last_validation_error" class="text-danger" :size="22" />
+            <CheckCircle2 v-else class="text-green-500" :size="22" />
+            <div class="min-w-0">
+              <div class="font-medium text-textHeading truncate">
+                {{ c.project_name || c.project_id || t('SettingsOpenStackView.status.unknownProject') }}
+                <span class="ml-2 text-xs text-textFaint font-mono">{{ c.auth_type === 'password' ? t('SettingsOpenStackView.tabs.password') : t('SettingsOpenStackView.tabs.app') }}</span>
+              </div>
+              <div class="text-sm text-textMuted">
+                <span v-if="!c.project_verified" class="block text-warning" data-testid="credential-unverified">
+                  {{ t('SettingsOpenStackView.status.unverified') }}
+                </span>
+                <span v-else-if="formatTime(c.last_validated_at)">
+                  {{ t('SettingsOpenStackView.status.lastChecked', { time: formatTime(c.last_validated_at) }) }}
+                </span>
+                <span v-if="c.last_validation_error" class="block text-danger">{{ c.last_validation_error }}</span>
+                <span v-if="c.active_deployments > 0" class="block">
+                  {{ t('SettingsOpenStackView.status.activeDeployments', { count: c.active_deployments }) }}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="flex gap-2">
-          <button
-            class="px-3 py-2 text-sm border rounded-md hover:bg-surfaceMuted flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            data-testid="btn-retest"
-            @click="handleTest"
-            :disabled="credStore.loading"
-          >
-            <RefreshCw :size="16" /> {{ t('SettingsOpenStackView.status.retest') }}
-          </button>
-          <button
-            class="px-3 py-2 text-sm border rounded-md text-danger border-danger/30 hover:bg-dangerTint flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            data-testid="btn-delete"
-            @click="handleDelete"
-            :disabled="credStore.loading || credStore.isLocked"
-            :title="credStore.isLocked ? t('SettingsOpenStackView.tooltips.lockedActiveDeployments') : ''"
-          >
-            <Trash2 :size="16" /> {{ t('SettingsOpenStackView.status.delete') }}
-          </button>
-        </div>
-      </div>
+          <div class="flex gap-2">
+            <button
+              class="px-3 py-2 text-sm border rounded-md hover:bg-surfaceMuted flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              :data-testid="`btn-retest-${c.credentialId}`"
+              @click="handleTest(c)"
+              :disabled="credStore.loading"
+            >
+              <RefreshCw :size="16" /> {{ t('SettingsOpenStackView.status.retest') }}
+            </button>
+            <button
+              class="px-3 py-2 text-sm border rounded-md text-danger border-danger/30 hover:bg-dangerTint flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              :data-testid="`btn-delete-${c.credentialId}`"
+              @click="handleDelete(c)"
+              :disabled="credStore.loading || c.active_deployments > 0"
+              :title="c.active_deployments > 0 ? t('SettingsOpenStackView.tooltips.lockedActiveDeployments') : ''"
+            >
+              <Trash2 :size="16" /> {{ t('SettingsOpenStackView.status.delete') }}
+            </button>
+          </div>
+        </li>
+      </ul>
     </div>
+
+    <h2 class="text-lg font-semibold text-textHeading mb-3">{{ t('SettingsOpenStackView.addTitle') }}</h2>
 
     <!-- clouds.yaml drop zone -->
     <div
       class="border-2 border-dashed rounded-xl p-6 mb-6 transition-colors text-center"
       :class="[
         isDragging ? 'border-primary bg-primary/5' : 'border-borderSubtle bg-white',
-        credStore.isLocked ? 'opacity-50 pointer-events-none' : ''
       ]"
-      @dragenter.prevent.stop="!credStore.isLocked && (isDragging = true)"
-      @dragover.prevent.stop="!credStore.isLocked && (isDragging = true)"
+      @dragenter.prevent.stop="isDragging = true"
+      @dragover.prevent.stop="isDragging = true"
       @dragleave.prevent.stop="isDragging = false"
       @drop.prevent.stop="onDrop"
     >
@@ -318,8 +309,7 @@ const maybeReturnToWizard = () => {
       <div class="text-sm text-textMuted mb-3">
         {{ t('SettingsOpenStackView.dropZone.orPrefix') }}
         <button
-          class="text-primary underline disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="credStore.isLocked"
+          class="text-primary underline"
           @click="yamlInputRef?.click()"
         >{{ t('SettingsOpenStackView.dropZone.pickFile') }}</button>
         {{ t('SettingsOpenStackView.dropZone.suffix') }}
@@ -330,7 +320,6 @@ const maybeReturnToWizard = () => {
         type="file"
         accept=".yaml,.yml,application/x-yaml,text/yaml"
         class="hidden"
-        :disabled="credStore.isLocked"
         @change="onFilePick"
       />
     </div>
@@ -366,7 +355,6 @@ const maybeReturnToWizard = () => {
             data-testid="app-auth-url"
             type="url"
             :placeholder="t('SettingsOpenStackView.placeholders.authUrl')"
-            :disabled="credStore.isLocked"
             class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed"
           />
         </div>
@@ -377,7 +365,6 @@ const maybeReturnToWizard = () => {
             data-testid="app-region"
             type="text"
             :placeholder="t('SettingsOpenStackView.placeholders.region')"
-            :disabled="credStore.isLocked"
             class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed"
           />
         </div>
@@ -387,7 +374,6 @@ const maybeReturnToWizard = () => {
             v-model="formApp.identifier"
             data-testid="app-identifier"
             type="text"
-            :disabled="credStore.isLocked"
             class="w-full border rounded-md px-3 py-2 text-sm font-mono disabled:bg-surfaceMuted disabled:cursor-not-allowed"
           />
         </div>
@@ -397,7 +383,6 @@ const maybeReturnToWizard = () => {
             v-model="formApp.secret"
             data-testid="app-secret"
             type="password"
-            :disabled="credStore.isLocked"
             class="w-full border rounded-md px-3 py-2 text-sm font-mono disabled:bg-surfaceMuted disabled:cursor-not-allowed"
           />
         </div>
@@ -407,49 +392,48 @@ const maybeReturnToWizard = () => {
       <div v-else class="p-6 space-y-4">
         <div>
           <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.authUrl') }}</label>
-          <input v-model="formPwd.auth_url" data-testid="pwd-auth-url" type="url" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+          <input v-model="formPwd.auth_url" data-testid="pwd-auth-url" type="url" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.region') }}</label>
-            <input v-model="formPwd.region_name" data-testid="pwd-region" type="text" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+            <input v-model="formPwd.region_name" data-testid="pwd-region" type="text" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
           </div>
           <div>
             <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.userDomain') }}</label>
-            <input v-model="formPwd.user_domain_name" data-testid="pwd-user-domain" type="text" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+            <input v-model="formPwd.user_domain_name" data-testid="pwd-user-domain" type="text" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.username') }}</label>
-            <input v-model="formPwd.identifier" data-testid="pwd-identifier" type="text" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+            <input v-model="formPwd.identifier" data-testid="pwd-identifier" type="text" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
           </div>
           <div>
             <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.password') }}</label>
-            <input v-model="formPwd.secret" data-testid="pwd-secret" type="password" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+            <input v-model="formPwd.secret" data-testid="pwd-secret" type="password" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.projectId') }}</label>
-            <input v-model="formPwd.project_id" data-testid="pwd-project-id" type="text" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm font-mono disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+            <input v-model="formPwd.project_id" data-testid="pwd-project-id" type="text" class="w-full border rounded-md px-3 py-2 text-sm font-mono disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
           </div>
           <div>
             <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.projectName') }}</label>
-            <input v-model="formPwd.project_name" data-testid="pwd-project-name" type="text" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+            <input v-model="formPwd.project_name" data-testid="pwd-project-name" type="text" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
           </div>
         </div>
         <div>
           <label class="block text-sm font-medium text-textMuted mb-1">{{ t('SettingsOpenStackView.fields.projectDomain') }}</label>
-          <input v-model="formPwd.project_domain_name" data-testid="pwd-project-domain" type="text" :disabled="credStore.isLocked" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
+          <input v-model="formPwd.project_domain_name" data-testid="pwd-project-domain" type="text" class="w-full border rounded-md px-3 py-2 text-sm disabled:bg-surfaceMuted disabled:cursor-not-allowed" />
         </div>
       </div>
 
       <div class="px-6 pb-6 flex justify-end">
         <button
           class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          :disabled="credStore.loading || credStore.isLocked"
-          :title="credStore.isLocked ? t('SettingsOpenStackView.tooltips.lockedActiveDeployments') : ''"
+          :disabled="credStore.loading"
           data-testid="btn-save"
           @click="handleSave"
         >

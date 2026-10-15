@@ -18,8 +18,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-vue-next'
-import type { AppVariable, DeploymentFile } from '@/types'
+import { isOsResourceVar, type AppVariable, type DeploymentFile } from '@/types'
 import FileDropZone from '@/components/FileDropZone.vue'
+import { ensureLoaded, setCredential } from '@/composables/useOpenStackResourceCache'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -56,6 +57,10 @@ const displayDescription = (v: AppVariable): string =>
 
 const packerExpertOpen = ref(false)
 const terraformExpertOpen = ref(false)
+
+// Pod apps declare their settings in appstore.yaml: no Packer, no Terraform,
+// no OpenStack resources.
+const isPods = computed(() => deploymentStore.draft.runtime === 'kubernetes')
 
 // True when the variable has a per-variable scope other than ``all``.
 const effectiveScope = (v: AppVariable): 'all' | 'team' | 'user' => {
@@ -325,6 +330,9 @@ onMounted(async () => {
     router.replace('/apps')
     return
   }
+  // OpenStack resource lists come from the project of the credential the
+  // deployment will be created with (VM apps); pods have none.
+  setCredential(isPods.value ? null : (deploymentStore.draft.credentialId ?? null))
 
   if (deploymentStore.draft.variableDefinitions && deploymentStore.draft.variableDefinitions.length > 0) {
     variables.value = deploymentStore.draft.variableDefinitions
@@ -405,10 +413,9 @@ onMounted(async () => {
 
     const osTypesToPrime = new Set<string>()
     for (const v of variables.value) {
-      if (v.osType && v.osType !== 'file') osTypesToPrime.add(v.osType)
+      if (isOsResourceVar(v) && v.osType) osTypesToPrime.add(v.osType)
     }
     if (osTypesToPrime.size > 0) {
-      const { ensureLoaded } = await import('@/composables/useOpenStackResourceCache')
       await Promise.allSettled(
         Array.from(osTypesToPrime).map((t) => ensureLoaded(t as any)),
       )
@@ -677,9 +684,10 @@ watch(
         {{ t('deployment.variables.noVariables') }}
       </div>
 
-      <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-info/30 overflow-hidden">
+      <div v-else class="grid grid-cols-1 gap-6" :class="isPods ? '' : 'lg:grid-cols-2'">
+
+        <!-- Packer only exists for VM apps; pods declare their settings in appstore.yaml. -->
+        <div v-if="!isPods" class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-info/30 overflow-hidden">
           <div class="bg-blue-600 text-white px-6 py-4 flex items-center gap-3">
             <Box :size="24" />
             <div>
@@ -951,14 +959,14 @@ watch(
           <div class="bg-purple-600 text-white px-6 py-4 flex items-center gap-3">
             <Layers :size="24" />
             <div>
-              <h2 class="text-xl font-bold">{{ t('deployment.summary.terraformVars') }}</h2>
-              <p class="text-xs text-purple-100 mt-0.5">{{ t('deployment.variables.terraformDesc') }}</p>
+              <h2 class="text-xl font-bold">{{ isPods ? t('deployment.summary.appSettings') : t('deployment.summary.terraformVars') }}</h2>
+              <p class="text-xs text-purple-100 mt-0.5">{{ isPods ? t('deployment.variables.appSettingsDesc') : t('deployment.variables.terraformDesc') }}</p>
             </div>
           </div>
           
           <div class="p-6 space-y-6 max-h-[600px] overflow-y-auto">
             <div v-if="terraformVariables.length === 0" class="text-center py-8 text-purple-600 italic">
-              {{ t('deployment.summary.noTerraformVars') }}
+              {{ isPods ? t('deployment.summary.noAppSettings') : t('deployment.summary.noTerraformVars') }}
             </div>
             
             <div v-for="variable in terraformVariables.filter(v => !isExpert(v))" :key="variable.name" class="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">

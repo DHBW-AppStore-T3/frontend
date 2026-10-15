@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { userApi } from '@/api/user.api'
 import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { extractErrorMessage } from '@/utils/http-error'
 import { useRouter } from 'vue-router'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
 import { useToastStore } from '@/stores/toast.store'
+import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar.vue'
 import {
   BarChart3,
@@ -15,12 +14,13 @@ import {
   Box,
   Layers
 } from 'lucide-vue-next'
-import type { AppVariable } from '@/types'
+import { isOsResourceVar, type AppVariable } from '@/types'
 import type { OsResourceType } from '@/api/openstack-resources.api'
 import { formatBytes } from '@/utils/format'
 import {
   ensureLoaded as ensureOsCacheLoaded,
   getDisplayName as getOsDisplayName,
+  setCredential as setOsCacheCredential,
 } from '@/composables/useOpenStackResourceCache'
 
 // ``AppVariable.osType`` may include the pseudo-type ``file``, but the
@@ -35,6 +35,14 @@ const router = useRouter()
 const deploymentStore = useDeploymentStore()
 const appStore = useAppStore()
 const toastStore = useToastStore()
+const credStore = useOpenStackCredentialsStore()
+
+// Pods run in the cluster; VM apps in the project of the chosen credential.
+const isPods = computed(() => deploymentStore.draft.runtime === 'kubernetes')
+const credentialProject = computed(() => {
+  const c = credStore.byId(deploymentStore.draft.credentialId)
+  return c ? (c.project_name || c.project_id || '') : ''
+})
 
 // State
 const isLoadingVariables = ref(false)
@@ -154,6 +162,12 @@ function _formatSubmitError(err: any): string {
     ?? err?.message
     ?? t('deployment.summary.submitError')
 
+  if (detail && typeof detail === 'object' && detail.code === 'version_not_approved') {
+    return t('deployment.summary.errors.version_not_approved')
+  }
+  if (detail && typeof detail === 'object' && detail.code === 'role_required') {
+    return t('deployment.summary.errors.role_required')
+  }
   if (!detail || typeof detail !== 'object' || !detail.reason) {
     return fallback
   }
@@ -190,6 +204,31 @@ function _formatSubmitError(err: any): string {
       return t('deployment.summary.errors.fileB64Invalid', { filename })
     case 'file_size_mismatch':
       return t('deployment.summary.errors.fileSizeMismatch', { filename })
+    case 'invalid_teams':
+    case 'unknown_team_member':
+    case 'member_in_several_teams':
+    case 'team_names_collide':
+    case 'no_workloads':
+    case 'too_many_workloads':
+    case 'openstack_credentials_missing':
+    case 'openstack_credential_not_found':
+    case 'openstack_credentials_unverified':
+    case 'auth_url_not_allowed':
+    case 'invalid_app_spec':
+    case 'version_moved':
+    case 'version_required':
+    case 'git_unreachable':
+    case 'git_host_not_allowed':
+      return t(`deployment.summary.errors.${detail.reason}`, {
+        limit: detail.limit ?? '',
+        workloads: detail.workloads ?? '',
+      })
+    case 'workload_budget_exceeded':
+      return t('deployment.summary.errors.workload_budget_exceeded', {
+        inUse: detail.in_use ?? 0,
+        requested: detail.requested ?? 0,
+        budget: detail.budget ?? 0,
+      })
     default:
       return fallback
   }
@@ -251,7 +290,7 @@ function toSummaryEntry(def: AppVariable, val: any): {label: string, value: stri
     if (entries.length === 0) return { label: def.name, value: '-' }
     const lines = entries.map(([slot, raw]) => {
       let display: string
-      if (def.osType) {
+      if (def.osType && isOsResourceVar(def)) {
         const mode = def.osMode || 'name'
         display = renderOsValue(def.osType, mode, raw, !!def.osMulti)
       } else {
@@ -262,7 +301,7 @@ function toSummaryEntry(def: AppVariable, val: any): {label: string, value: stri
     return { label: def.name, value: lines.join(' · ') }
   }
 
-  if (def.osType) {
+  if (def.osType && isOsResourceVar(def)) {
     const mode = def.osMode || 'name'
     const display = renderOsValue(def.osType, mode, val, !!def.osMulti)
     const rawString = formatValue(val)
@@ -332,11 +371,12 @@ const formatValue = (val: any): string => {
 async function primeOsDisplayCache(defs: AppVariable[]): Promise<void> {
   const types = new Set<NonNullable<AppVariable['osType']>>()
   for (const def of defs) {
-    // ``file`` is a frontend-only pseudo-type — the resource cache only
-    // tracks real OpenStack resources, so skip it here.
-    if (def.osType && def.osType !== 'file') types.add(def.osType)
+    // ``file`` and ``enum`` are no OpenStack resources: the cache only
+    // tracks real ones, so skip them here.
+    if (def.osType && isOsResourceVar(def)) types.add(def.osType)
   }
   if (types.size === 0) return
+  setOsCacheCredential(deploymentStore.draft.credentialId ?? null)
   await Promise.all([...types].map((t) => ensureOsCacheLoaded(asOsResourceType(t))))
 }
 
@@ -452,6 +492,7 @@ const fetchAndSyncVariables = async () => {
 }
 
 onMounted(() => {
+  if (!isPods.value && !credStore.isResolved) credStore.fetch()
   fetchAndSyncVariables()
 })
 
@@ -469,56 +510,15 @@ const handleDeploy = async () => {
   isSubmitting.value = true
 
   try {
-    // 1) Keycloak ID → user ID mapping. Kept local and not written back into
-    //    the draft, otherwise the draft IDs would no longer match the
-    //    Keycloak-keyed ``studentCache`` after a failed submit.
-    let backendUsers: any[] = []
-    try {
-      const res = await userApi.list()
-      backendUsers = res.data || []
-    } catch (err: any) {
-      const detail = extractErrorMessage(err, t('deployment.summary.fetchUsersError'))
-      toastStore.addToast({ message: detail, type: 'error' })
-      return
-    }
-
-    const keycloakToUserId = new Map<string, string>()
-    backendUsers.forEach((u: any) => {
-      if (u.keycloak_id) keycloakToUserId.set(u.keycloak_id, u.userId)
-      keycloakToUserId.set(u.userId, u.userId) // fallback: already a userId
-    })
-
-    // 2) Local copies of the ID lists with translated IDs.
-    const sourceAssignments = (deploymentStore.draft.assignments || {}) as Record<number, string[]>
-    const mappedAssignments: Record<number, string[]> = {}
-    Object.entries(sourceAssignments).forEach(([teamIdx, arr]) => {
-      mappedAssignments[Number(teamIdx)] = (arr || [])
-        .map((id: string) => keycloakToUserId.get(id) || id)
-        .filter(Boolean)
-    })
-
-    const mappedStudentIds = (deploymentStore.draft.studentIds || [])
-      .map((id: string) => keycloakToUserId.get(id) || id)
-      .filter(Boolean)
-
-    // 3) Patch the draft transiently for ``submitDraft`` only, then roll back
-    //    so the wizard still shows the original Keycloak IDs on failure.
-    const originalAssignments = deploymentStore.draft.assignments
-    const originalStudentIds = deploymentStore.draft.studentIds
-    deploymentStore.draft.assignments = mappedAssignments
-    deploymentStore.draft.studentIds = mappedStudentIds
-
+    // The wizard selects students by their AppStore user id, which is what
+    // the teams carry; nothing to translate.
     let deployment: any
     try {
       deployment = await deploymentStore.submitDraft()
     } catch (err: any) {
-      // Roll the draft back to Keycloak IDs so the user sees their selection
-      // again in steps 2/3.
-      deploymentStore.draft.assignments = originalAssignments
-      deploymentStore.draft.studentIds = originalStudentIds
-      // Backend returns ``{detail: {reason, variable, slot, limit_bytes,
-      // actual_bytes, ...}}`` for size/extension/encoding violations (413/422).
-      // Branch on ``reason`` and format a localized message with the size numbers.
+      // Backend returns ``{detail: {reason, ...}}`` (or ``{code}``) for size,
+      // extension, team, workload, credential and version violations. Branch
+      // on it and format a localized message.
       const message = _formatSubmitError(err)
       toastStore.addToast({ message, type: 'error' })
       return
@@ -597,6 +597,17 @@ const handleBack = () => {
             <p class="text-lg font-bold text-textHeading">{{ versionDisplay }}</p>
           </div>
         </div>
+        <!-- How it runs: pods in the cluster, or VMs in the chosen OpenStack project -->
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="summary-runtime">
+          <div class="bg-white rounded-lg p-4 border border-emerald-100">
+            <p class="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.runtimeLabel') }}</p>
+            <p class="text-lg font-bold text-textHeading">{{ isPods ? t('runtime.kubernetes') : t('runtime.openstackVm') }}</p>
+          </div>
+          <div v-if="!isPods" class="bg-white rounded-lg p-4 border border-emerald-100">
+            <p class="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">{{ t('deployment.summary.projectLabel') }}</p>
+            <p class="text-lg font-bold text-textHeading">{{ credentialProject || '-' }}</p>
+          </div>
+        </div>
           <div class="mt-4 bg-white rounded-lg p-4 border border-emerald-100">
             <p class="text-xs text-textMuted mb-2 uppercase tracking-wider font-semibold">{{ t('deployment.summary.selectedStudents', { count: deploymentStore.draft.studentIds.length }) }}</p>
             <div class="flex flex-wrap gap-2">
@@ -664,8 +675,8 @@ const handleBack = () => {
           </button>
         </div>
         
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="bg-white rounded-lg border-2 border-info/30 overflow-hidden">
+        <div class="grid grid-cols-1 gap-4" :class="isPods ? '' : 'lg:grid-cols-2'">
+          <div v-if="!isPods" class="bg-white rounded-lg border-2 border-info/30 overflow-hidden">
             <div class="bg-infoTint px-4 py-2 border-b border-info/30 flex items-center gap-2">
               <Box :size="18" class="text-blue-700" />
               <h4 class="font-bold text-blue-900 text-sm">{{ t('deployment.summary.packerVars') }}</h4>
@@ -693,7 +704,7 @@ const handleBack = () => {
           <div class="bg-white rounded-lg border-2 border-purple-200 overflow-hidden">
             <div class="bg-purple-100 px-4 py-2 border-b border-purple-200 flex items-center gap-2">
               <Layers :size="18" class="text-purple-700" />
-              <h4 class="font-bold text-purple-900 text-sm">{{ t('deployment.summary.terraformVars') }}</h4>
+              <h4 class="font-bold text-purple-900 text-sm">{{ isPods ? t('deployment.summary.appSettings') : t('deployment.summary.terraformVars') }}</h4>
               <span class="ml-auto text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full font-bold">
                 {{ terraformVars.length }}
               </span>
@@ -710,7 +721,7 @@ const handleBack = () => {
                 </span>
               </div>
               <p v-if="terraformVars.length === 0" class="text-sm text-textFaint italic text-center py-4">
-                {{ t('deployment.summary.noTerraformVars') }}
+                {{ isPods ? t('deployment.summary.noAppSettings') : t('deployment.summary.noTerraformVars') }}
               </p>
             </div>
           </div>
@@ -724,7 +735,7 @@ const handleBack = () => {
           >
             <div class="bg-amber-100 px-4 py-2 border-b border-amber-200 flex items-center gap-2">
               <Layers :size="18" class="text-amber-700" />
-              <h4 class="font-bold text-amber-900 text-sm">Hochgeladene Dateien</h4>
+              <h4 class="font-bold text-amber-900 text-sm">{{ t('deployment.summary.uploadedFiles') }}</h4>
               <span class="ml-auto text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">
                 {{ fileVarSummaries.reduce((acc, v) => acc + v.chips.length, 0) }}
               </span>
@@ -734,11 +745,11 @@ const handleBack = () => {
                 <div class="text-xs font-semibold text-textMuted mb-1">
                   {{ entry.name }}
                   <span class="text-[10px] font-normal text-textMuted ml-1">
-                    (Scope: {{ entry.scope }})
+                    ({{ t('deployment.summary.scope', { scope: entry.scope }) }})
                   </span>
                 </div>
                 <div v-if="entry.chips.length === 0" class="text-xs text-textFaint italic">
-                  Keine Datei hochgeladen
+                  {{ t('deployment.summary.noFileUploaded') }}
                 </div>
                 <div v-else class="flex flex-wrap gap-1.5">
                   <span

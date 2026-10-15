@@ -377,6 +377,29 @@ onMounted(loadAll)
                   <span class="font-mono text-textHeading bg-surfaceMuted px-2 py-0.5 rounded text-xs">
                     {{ approval.version_tag }}
                   </span>
+                  <!-- What the review covers: exactly this commit and, for
+                       pods, this appstore.yaml and these images. -->
+                  <dl class="mt-1.5 space-y-0.5 text-[11px] text-textMuted" data-testid="review-scope">
+                    <div class="flex gap-1">
+                      <dt class="font-medium">{{ $t('AdminAppsView.runtimeLabel') }}</dt>
+                      <dd>{{ approval.runtime === 'kubernetes' ? $t('runtime.kubernetes') : $t('runtime.openstackVm') }}</dd>
+                    </div>
+                    <div v-if="approval.commit_sha" class="flex gap-1">
+                      <dt class="font-medium">{{ $t('AdminAppsView.commitLabel') }}</dt>
+                      <dd class="font-mono" :title="approval.commit_sha">{{ approval.commit_sha.slice(0, 12) }}</dd>
+                    </div>
+                    <div v-else class="text-warning">{{ $t('AdminAppsView.notPinned') }}</div>
+                    <div v-if="approval.spec_sha256" class="flex gap-1">
+                      <dt class="font-medium">{{ $t('AdminAppsView.specLabel') }}</dt>
+                      <dd class="font-mono" :title="approval.spec_sha256">{{ approval.spec_sha256.slice(0, 12) }}</dd>
+                    </div>
+                    <div v-if="approval.image_digests?.length" class="flex gap-1">
+                      <dt class="font-medium shrink-0">{{ $t('AdminAppsView.imagesLabel') }}</dt>
+                      <dd class="font-mono break-all">
+                        <span v-for="digest in approval.image_digests" :key="digest" class="block" :title="digest">{{ digest.slice(0, 19) }}…</span>
+                      </dd>
+                    </div>
+                  </dl>
                 </td>
                 <td class="py-3 px-4">
                   <div class="space-y-1.5">

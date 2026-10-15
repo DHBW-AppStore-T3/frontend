@@ -56,6 +56,7 @@ import {
   invalidate as invalidateDisplayCache,
   getDisplayName,
   ensureLoaded,
+  currentCredential,
 } from '@/composables/useOpenStackResourceCache'
 // CredentialMissingBanner is not imported here — the parent
 // (NewDeploymentVariableView) renders the full banner once above the variables
@@ -120,28 +121,34 @@ const popupDir = ref<'down' | 'up'>('down')
 // ----------------------------------------------------------------
 // Resource-specific mappings
 // ----------------------------------------------------------------
+// Every list is read with the credential the deployment will be created
+// with (set by the wizard, ``useOpenStackResourceCache.setCredential``).
+class NoCredentialChosen extends Error {}
+
 function fetchByType(): Promise<{ data: any[] }> {
+  const id = currentCredential()
+  if (!id) return Promise.reject(new NoCredentialChosen())
   switch (props.osType) {
     case 'network':
-      return openstackResourcesApi.listNetworks()
+      return openstackResourcesApi.listNetworks(id)
     case 'subnet':
-      return openstackResourcesApi.listSubnets(props.filterNetworkId || undefined)
+      return openstackResourcesApi.listSubnets(id, props.filterNetworkId || undefined)
     case 'flavor':
-      return openstackResourcesApi.listFlavors()
+      return openstackResourcesApi.listFlavors(id)
     case 'image':
-      return openstackResourcesApi.listImages('active')
+      return openstackResourcesApi.listImages(id, 'active')
     case 'keypair':
-      return openstackResourcesApi.listKeypairs()
+      return openstackResourcesApi.listKeypairs(id)
     case 'security_group':
-      return openstackResourcesApi.listSecurityGroups()
+      return openstackResourcesApi.listSecurityGroups(id)
     case 'floating_ip_pool':
-      return openstackResourcesApi.listFloatingIpPools()
+      return openstackResourcesApi.listFloatingIpPools(id)
     case 'volume':
-      return openstackResourcesApi.listVolumes()
+      return openstackResourcesApi.listVolumes(id)
     case 'router':
-      return openstackResourcesApi.listRouters()
+      return openstackResourcesApi.listRouters(id)
     case 'availability_zone':
-      return openstackResourcesApi.listAvailabilityZones(props.azService || 'compute')
+      return openstackResourcesApi.listAvailabilityZones(id, props.azService || 'compute')
   }
 }
 
@@ -341,9 +348,10 @@ async function load(opts: { forceRefresh?: boolean } = {}) {
   errorReason.value = null
   errorMessage.value = ''
   try {
-    if (opts.forceRefresh) {
+    const credential = currentCredential()
+    if (opts.forceRefresh && credential) {
       try {
-        await openstackResourcesApi.refresh(props.osType)
+        await openstackResourcesApi.refresh(credential, props.osType)
       } catch (err) {
         console.warn('[OsPicker] refresh failed:', err)
       }
@@ -359,7 +367,9 @@ async function load(opts: { forceRefresh?: boolean } = {}) {
   } catch (err: any) {
     const status = err?.response?.status
     const detail = err?.response?.data?.detail
-    if (status === 412 && detail?.reason === 'openstack_credentials_missing') {
+    // No credential chosen, or it is gone (404: not the caller's any more).
+    if (err instanceof NoCredentialChosen || status === 404 ||
+        (status === 412 && detail?.reason === 'openstack_credentials_missing')) {
       errorReason.value = 'credentials_missing'
     } else if (status === 502 || detail?.reason === 'openstack_unavailable' ||
                detail?.reason === 'openstack_list_failed') {

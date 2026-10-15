@@ -24,7 +24,7 @@ import { RefreshCcw, AlertTriangle, Cpu, Network } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   resource: DeploymentResource
   /** When the parent has a redeploy in flight for this resource, the
    *  button shows a spinner and is disabled. Identified by address
@@ -35,7 +35,12 @@ const props = defineProps<{
    *  ``Ausblenden``) and a subtle accent on the card border so the
    *  user sees which card the open panel belongs to. */
   isExpanded?: boolean
-}>()
+  /** Whether the caller may redeploy right now (operate right and the
+   *  lifecycle allows it); the button is hidden otherwise. */
+  canRedeploy?: boolean
+}>(), {
+  canRedeploy: true,
+})
 
 const emit = defineEmits<{
   (e: 'open-details', address: string): void
@@ -214,6 +219,7 @@ const cardBorderClass = computed(() => {
         {{ isExpanded ? t('vm.actions.hideDetails') : t('vm.actions.showDetails') }}
       </button>
       <button
+        v-if="canRedeploy"
         @click="emit('redeploy', resource.address)"
         :disabled="redeploying"
         class="flex-1 text-xs font-semibold py-1.5 px-3 rounded border transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"

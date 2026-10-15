@@ -3,11 +3,10 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import { useRouter } from 'vue-router'
 
-// Anpassen an deinen tatsächlichen Dateinamen / Pfad
-import DeploymentConfig from '@/views/NewDeploymentConfigView.vue' 
+import DeploymentConfig from '@/views/NewDeploymentConfigView.vue'
 
 import { useDeploymentStore } from '@/stores/deployment.store'
-import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
+import { appApi } from '@/api/app.api'
 import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
 import { useToast } from '@/composables/useToast'
@@ -34,6 +33,12 @@ vi.mock('@/composables/useToast', () => ({
   }))
 }))
 
+vi.mock('@/api/app.api', () => ({
+  appApi: {
+    getRuntime: vi.fn()
+  }
+}))
+
 vi.mock('@/api/course.api', () => ({
   courseApi: {
     list: vi.fn(),
@@ -48,33 +53,54 @@ vi.mock('@/api/user.api', () => ({
   }
 }))
 
-describe('DeploymentConfig.vue', () => {
+// A credential as GET /me/openstack-credentials lists it (one per project).
+function credential(id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    credentialId: id,
+    auth_type: 'v3applicationcredential',
+    auth_url: 'https://keystone.example/v3',
+    project_id: `p-${id}`,
+    project_name: `Project ${id}`,
+    project_verified: true,
+    last_validated_at: '2026-10-15T08:00:00Z',
+    last_validation_error: null,
+    active_deployments: 0,
+    ...overrides
+  }
+}
+
+interface WrapperOptions {
+  runtime?: 'kubernetes' | 'openstack-vm' | null
+  releaseTag?: string
+  credentials?: ReturnType<typeof credential>[] | null
+}
+
+describe('NewDeploymentConfigView.vue', () => {
   let routerPushMock: any
   let toastWarningMock: any
+  let toastErrorMock: any
 
   beforeEach(() => {
     vi.clearAllMocks()
     routerPushMock = vi.fn()
     vi.mocked(useRouter).mockReturnValue({ push: routerPushMock } as any)
-    
+
     toastWarningMock = vi.fn()
+    toastErrorMock = vi.fn()
     vi.mocked(useToast).mockReturnValue({
       warning: toastWarningMock,
-      error: vi.fn(),
+      error: toastErrorMock,
       clear: vi.fn(),
       success: vi.fn()
     } as any)
 
-    // Standard API-Antworten mocken
     vi.mocked(courseApi.list).mockResolvedValue({ data: [{ courseId: 'c1', name: 'Web Dev' }] } as any)
-    vi.mocked(userApi.list).mockResolvedValue({ data: [{ keycloak_id: 'u1', firstName: 'John', lastName: 'Doe' }] } as any)
-    
-    // --- HIER IST DER FIX GEGEN DIE ENDLOSSCHLEIFE ---
+    // Students are keyed by the AppStore user id; LTI users have no Keycloak id.
+    vi.mocked(userApi.list).mockResolvedValue({ data: [{ userId: 'u1', firstName: 'John', lastName: 'Doe' }] } as any)
     vi.mocked(courseApi.getById).mockResolvedValue({ data: { users: [] } } as any)
   })
 
-  function createWrapper(initialCredState = { isResolved: true, hasCredential: true }) {
-    // 1. Pinia Instanz erstellen
+  function createWrapper({ runtime = 'kubernetes', releaseTag = 'v1.0', credentials = [] }: WrapperOptions = {}) {
     const pinia = createTestingPinia({
       createSpy: vi.fn,
       initialState: {
@@ -82,29 +108,20 @@ describe('DeploymentConfig.vue', () => {
           draft: {
             name: '',
             appId: 'app-1',
+            releaseTag,
+            runtime,
+            scope: runtime === 'kubernetes' ? 'team' : runtime ? 'user' : null,
+            credentialId: null,
             studentIds: [],
             courseIds: []
           },
           studentCache: new Map()
-        }
+        },
+        // `null` = not loaded yet; the real getters derive usable/unverified.
+        'openstack-credentials': { credentials }
       }
     })
 
-   // 2. Credential-Store explizit VOR dem Mounten konfigurieren
-    const credStore = useOpenStackCredentialsStore(pinia)
-
-    // Getters für den Test überschreiben
-    Object.defineProperty(credStore, 'isResolved', { get: () => initialCredState.isResolved })
-    Object.defineProperty(credStore, 'hasCredential', { get: () => initialCredState.hasCredential })
-
-    // 'status' erwartet ein Objekt (CredentialStatus). 
-    // Wir übergeben ein Mock-Objekt und nutzen 'as any', um fehlende Properties zu ignorieren.
-    credStore.status = { 
-      has_credential: initialCredState.hasCredential 
-    } as any
-
-    credStore.fetch = vi.fn().mockResolvedValue(undefined)
-    // 3. Wrapper mounten
     return mount(DeploymentConfig, {
       global: {
         plugins: [pinia],
@@ -124,25 +141,98 @@ describe('DeploymentConfig.vue', () => {
 
   it('renders correctly and loads courses & students on mount', async () => {
     const wrapper = createWrapper()
-    await flushPromises() // Warten auf onMounted API-Calls
+    await flushPromises()
 
     expect(courseApi.list).toHaveBeenCalledWith(0, 200)
     expect(userApi.list).toHaveBeenCalledWith({ role: 'student', limit: 1000 })
-    
-    // Der Kurs sollte nun angezeigt werden, da das v-if korrekt evaluiert wird
     expect(wrapper.text()).toContain('Web Dev')
   })
 
-  it('shows missing credential banner and hides form if credentials are missing', async () => {
-    const wrapper = createWrapper({ isResolved: true, hasCredential: false })
-    await flushPromises()
+  describe('runtime and OpenStack project', () => {
+    it('a pod app needs no credential: no picker, no banner, the form is shown', async () => {
+      const wrapper = createWrapper({ runtime: 'kubernetes', credentials: [] })
+      await flushPromises()
 
-    // Die Eingabefelder sollten durch das v-if nicht da sein
-    expect(wrapper.find('[data-testid="deployment-name"]').exists()).toBe(false)
-    
-    // Der Next-Button sollte disabled sein
-    const nextBtn = wrapper.find('[data-testid="btn-next"]')
-    expect(nextBtn.attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-testid="credential-picker"]').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'CredentialMissingBanner' }).exists()).toBe(false)
+      expect(wrapper.find('[data-testid="deployment-name"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="btn-next"]').attributes('disabled')).toBeUndefined()
+    })
+
+    it('a VM app without a usable credential shows the banner and hides the form', async () => {
+      // Only an unverified (typed-in project) credential: does not count.
+      const wrapper = createWrapper({
+        runtime: 'openstack-vm',
+        credentials: [credential('c-1', { project_verified: false })]
+      })
+      await flushPromises()
+
+      expect(wrapper.findComponent({ name: 'CredentialMissingBanner' }).exists()).toBe(true)
+      expect(wrapper.find('[data-testid="deployment-name"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="btn-next"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('a VM app picks the only usable credential by default', async () => {
+      const wrapper = createWrapper({
+        runtime: 'openstack-vm',
+        credentials: [credential('c-1'), credential('c-2', { last_validation_error: 'invalid_credentials' })]
+      })
+      await flushPromises()
+
+      const store = useDeploymentStore()
+      expect(store.draft.credentialId).toBe('c-1')
+      // Only usable credentials are offered (plus the disabled placeholder).
+      const options = wrapper.find('[data-testid="deployment-credential"]').findAll('option')
+      expect(options.map((o) => o.text())).toEqual(['deployment.config.credentialPlaceholder', 'Project c-1'])
+    })
+
+    it('a VM app with several usable credentials makes the teacher choose', async () => {
+      const wrapper = createWrapper({ runtime: 'openstack-vm', credentials: [credential('c-1'), credential('c-2')] })
+      await flushPromises()
+
+      const store = useDeploymentStore()
+      expect(store.draft.credentialId).toBeNull()
+      store.draft.name = 'My Deployment'
+      store.draft.studentIds = ['u1']
+
+      await wrapper.find('[data-testid="btn-next"]').trigger('click')
+      expect(toastWarningMock).toHaveBeenCalledWith('deployment.config.credentialRequired')
+      expect(routerPushMock).not.toHaveBeenCalled()
+
+      await wrapper.find('[data-testid="deployment-credential"]').setValue('c-2')
+      await wrapper.find('[data-testid="btn-next"]').trigger('click')
+      expect(store.draft.credentialId).toBe('c-2')
+      expect(routerPushMock).toHaveBeenCalledWith({ name: 'deployment.teams' })
+    })
+
+    it('a pod app drops a credential left in the draft', async () => {
+      createWrapper({ runtime: 'kubernetes', credentials: [credential('c-1')] })
+      const store = useDeploymentStore()
+      store.draft.credentialId = 'c-1'
+      await flushPromises()
+
+      expect(store.draft.credentialId).toBeNull()
+    })
+
+    it('a reload without the runtime in the draft asks the API again', async () => {
+      vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'openstack-vm', scope: 'user' } } as any)
+      const wrapper = createWrapper({ runtime: null, releaseTag: 'v2.0', credentials: [credential('c-1')] })
+      await flushPromises()
+
+      const store = useDeploymentStore()
+      expect(appApi.getRuntime).toHaveBeenCalledWith('app-1', 'v2.0')
+      expect(store.draft.runtime).toBe('openstack-vm')
+      expect(store.draft.scope).toBe('user')
+      expect(wrapper.find('[data-testid="credential-picker"]').exists()).toBe(true)
+    })
+
+    it('a failing runtime lookup is reported', async () => {
+      vi.mocked(appApi.getRuntime).mockRejectedValue(new Error('boom'))
+      createWrapper({ runtime: null })
+      await flushPromises()
+
+      expect(toastErrorMock).toHaveBeenCalledWith('AppsDetailView.runtime.loadError')
+    })
   })
 
   it('validates missing name when clicking next', async () => {
@@ -150,11 +240,11 @@ describe('DeploymentConfig.vue', () => {
     await flushPromises()
 
     const store = useDeploymentStore()
-    store.draft.name = '' 
-    store.draft.studentIds = ['u1'] 
+    store.draft.name = ''
+    store.draft.studentIds = ['u1']
 
     await wrapper.find('[data-testid="btn-next"]').trigger('click')
-    
+
     expect(toastWarningMock).toHaveBeenCalledWith('deployment.errors.missingName')
     expect(routerPushMock).not.toHaveBeenCalled()
   })
@@ -164,11 +254,11 @@ describe('DeploymentConfig.vue', () => {
     await flushPromises()
 
     const store = useDeploymentStore()
-    store.draft.name = 'My Deployment' 
-    store.draft.studentIds = [] 
+    store.draft.name = 'My Deployment'
+    store.draft.studentIds = []
 
     await wrapper.find('[data-testid="btn-next"]').trigger('click')
-    
+
     expect(toastWarningMock).toHaveBeenCalledWith('deployment.errors.missingStudents')
     expect(routerPushMock).not.toHaveBeenCalled()
   })
@@ -179,16 +269,16 @@ describe('DeploymentConfig.vue', () => {
 
     const store = useDeploymentStore()
     store.draft.name = 'My Deployment'
-    store.draft.studentIds = ['u1'] 
+    store.draft.studentIds = ['u1']
 
     await wrapper.find('[data-testid="btn-next"]').trigger('click')
-    
+
     expect(toastWarningMock).not.toHaveBeenCalled()
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'deployment.teams' })
   })
 
-  it('switches tabs and selects an individual student', async () => {
-    // 1. Fake-Timer aktivieren, um das 300ms Debouncing zu überspringen
+  it('switches tabs and selects an individual student by user id', async () => {
+    // Skip the 300 ms search debounce.
     vi.useFakeTimers()
 
     const wrapper = createWrapper()
@@ -196,36 +286,41 @@ describe('DeploymentConfig.vue', () => {
 
     const store = useDeploymentStore()
 
-    // 2. Tab wechseln
-    const tabButtons = wrapper.findAll('button')
-    const studentsTabBtn = tabButtons.find(btn => btn.text().includes('deployment.config.studentsLabel'))
-    
+    const studentsTabBtn = wrapper.findAll('button').find(btn => btn.text().includes('deployment.config.studentsLabel'))
     await studentsTabBtn?.trigger('click')
-    await wrapper.vm.$nextTick()
 
-    // 3. Mock für die Suche konfigurieren
-    vi.mocked(userApi.search).mockResolvedValue({ 
-      data: [{ keycloak_id: 'u1', firstName: 'John', lastName: 'Doe' }] 
+    // A Moodle (LTI) user: no Keycloak id, but a user id like everyone.
+    vi.mocked(userApi.search).mockResolvedValue({
+      data: [{ userId: 'lti-7', firstName: 'Lena', lastName: 'Moodle', keycloak_id: null }]
     } as any)
 
-    // 4. Suche auslösen (damit die Liste nicht leer ist)
-    const searchInput = wrapper.find('[data-testid="student-search"]')
-    await searchInput.setValue('John')
-
-    // 5. Zeit um 300ms vorstellen (Debounce-Timer auslösen) und Promises abwarten
+    await wrapper.find('[data-testid="student-search"]').setValue('Lena')
     vi.advanceTimersByTime(300)
     await flushPromises()
-    await wrapper.vm.$nextTick()
 
-    // 6. Jetzt ist der Student im DOM und wir können klicken
-    const studentDiv = wrapper.find('[data-testid="student-u1"]')
+    const studentDiv = wrapper.find('[data-testid="student-lti-7"]')
     expect(studentDiv.exists()).toBe(true)
     await studentDiv.trigger('click')
 
-    expect(store.draft.studentIds).toContain('u1')
+    expect(store.draft.studentIds).toEqual(['lti-7'])
+    expect(store.studentCache.get('lti-7')?.firstName).toBe('Lena')
 
-    // 7. Timer wieder auf Normalbetrieb stellen (wichtig für andere Tests!)
     vi.useRealTimers()
+  })
+
+  it('selecting a course adds all of its students by user id', async () => {
+    vi.mocked(courseApi.getById).mockResolvedValue({
+      data: { users: [{ userId: 'u1', firstName: 'John' }, { userId: 'lti-7', firstName: 'Lena' }] }
+    } as any)
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="course-c1"]').trigger('click')
+    await flushPromises()
+
+    const store = useDeploymentStore()
+    expect(store.draft.studentIds).toEqual(['u1', 'lti-7'])
+    expect(store.draft.courseIds).toEqual(['c1'])
   })
 
   it('handles back button correctly', async () => {
@@ -236,7 +331,7 @@ describe('DeploymentConfig.vue', () => {
     store.draft.appId = 'app-123'
 
     await wrapper.find('[data-testid="btn-back"]').trigger('click')
-    
+
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'apps.detail', params: { id: 'app-123' } })
   })
 })

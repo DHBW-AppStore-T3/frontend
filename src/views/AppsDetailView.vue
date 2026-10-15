@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { appApi } from '@/api/app.api'
 import { useToast } from '@/composables/useToast'
@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 import {
   Layers, Globe, ArrowLeft, GitBranch,
   Trash2, AlertCircle, Clock, Send, ShoppingBag, Lock, Undo2,
-  Pencil, Image as ImageIcon,
+  Pencil, Image as ImageIcon, Boxes, Monitor,
 } from 'lucide-vue-next'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
@@ -20,12 +20,12 @@ import Modal from '@/components/ui/Modal.vue'
 import AppVersionStatusBadge from '@/components/ui/AppVersionStatusBadge.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
-import type { AppVersionApproval, AppVariableMarkerError } from '@/types'
+import type { AppRuntime, AppVersionApproval, AppVariableMarkerError } from '@/types'
 
 const deploymentStore = useDeploymentStore()
 const credStore = useOpenStackCredentialsStore()
 const authStore = useAuthStore()
-const { isAdmin } = useRole()
+const { isAdmin, isStaff } = useRole()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -146,6 +146,46 @@ const hasVersionInfo = computed(() => {
 })
 
 // ----------------------------------------------------------------
+// How the selected version runs
+// ----------------------------------------------------------------
+// Pods (``kubernetes``) need no OpenStack credential; VM apps (the Windows
+// desktop) need one whose project Keystone confirmed. ``null`` while loading
+// or when the version could not be read (``runtimeError``).
+const runtimeInfo = ref<AppRuntime | null>(null)
+const runtimeLoading = ref(false)
+const runtimeError = ref<string | null>(null)
+
+const loadRuntime = async (version: string) => {
+  runtimeInfo.value = null
+  runtimeError.value = null
+  if (!version || !appId.value) return
+  runtimeLoading.value = true
+  try {
+    const { data } = await appApi.getRuntime(appId.value, version)
+    if (selectedVersion.value === version) runtimeInfo.value = data
+  } catch (err: any) {
+    if (selectedVersion.value !== version) return
+    const detail = err?.response?.data?.detail
+    runtimeError.value = detail?.reason === 'invalid_app_spec'
+      ? t('AppsDetailView.runtime.invalidSpec')
+      : t('AppsDetailView.runtime.loadError')
+  } finally {
+    runtimeLoading.value = false
+  }
+}
+
+watch(selectedVersion, (version) => loadRuntime(version))
+
+const isPodVersion = computed(() => runtimeInfo.value?.runtime === 'kubernetes')
+// A VM version needs a usable (verified) OpenStack credential.
+const needsCredential = computed(() =>
+  runtimeInfo.value?.runtime === 'openstack-vm' && credStore.isResolved && !credStore.hasUsableCredential,
+)
+const canStartDeployment = computed(() =>
+  isStaff.value && !!selectedVersion.value && !!runtimeInfo.value && !needsCredential.value,
+)
+
+// ----------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------
 // ----------------------------------------------------------------
@@ -183,9 +223,12 @@ const handleDeploy = () => {
     toast.warning(t('AppsDetailView.toasts.selectVersionFirst'))
     return
   }
+  if (!canStartDeployment.value) return
   deploymentStore.resetDraft()
   deploymentStore.draft.appId = app.value.appId || app.value.id
   deploymentStore.draft.releaseTag = selectedVersion.value
+  deploymentStore.draft.runtime = runtimeInfo.value?.runtime ?? null
+  deploymentStore.draft.scope = runtimeInfo.value?.scope ?? null
   toast.success(t('AppsDetailView.toasts.preparingConfig', { name: app.value.name }))
   router.push({ name: 'deployment.config' })
 }
@@ -241,8 +284,9 @@ const togglePrivacy = async () => {
   if (!app.value) return
   isTogglingPrivacy.value = true
   try {
-    await appApi.update(app.value.appId, { is_private: !app.value.is_private })
-    app.value.is_private = !app.value.is_private
+    const { data } = await appApi.update(app.value.appId, { is_private: !app.value.is_private })
+    // The server's view: an admin making the app public also lifts hidden_by_admin.
+    app.value = { ...app.value, is_private: data.is_private, hidden_by_admin: data.hidden_by_admin }
     toast.success(app.value.is_private
       ? t('AppsDetailView.toasts.setPrivate')
       : t('AppsDetailView.toasts.setPublic')
@@ -386,6 +430,8 @@ const confirmDelete = async () => {
 
 onMounted(async () => {
   await fetchAppDetails()
+  if (isStaff.value && !credStore.isResolved) credStore.fetch()
+  if (selectedVersion.value && !runtimeInfo.value && !runtimeLoading.value) loadRuntime(selectedVersion.value)
   if (canManageVersions.value) await fetchApprovals()
   if (route.hash === '#deployment-options') {
     await nextTick()
@@ -560,8 +606,8 @@ onMounted(async () => {
 
         </div>
 
-        <!-- Deploy sidebar -->
-        <div id="deployment-options" ref="deploymentOptions" class="detail-surface deployment-options">
+        <!-- Deploy sidebar: teachers and admins deploy; students use deployments -->
+        <div v-if="isStaff" id="deployment-options" ref="deploymentOptions" class="detail-surface deployment-options">
           <h2 class="text-lg font-semibold text-textHeading mb-6">{{ $t('AppsDetailView.startDeploymentTitle') }}</h2>
 
           <div class="mb-6">
@@ -575,16 +621,32 @@ onMounted(async () => {
             </select>
           </div>
 
+          <!-- How the version runs: pods in the cluster, or a VM (Windows) -->
+          <div class="mb-4 text-sm" data-testid="version-runtime">
+            <span v-if="runtimeLoading" class="text-textFaint">{{ $t('AppsDetailView.runtime.loading') }}</span>
+            <span v-else-if="runtimeError" class="text-danger">{{ runtimeError }}</span>
+            <span
+              v-else-if="runtimeInfo"
+              class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-semibold"
+              :class="isPodVersion ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-indigo-50 text-indigo-800 border-indigo-200'"
+            >
+              <Boxes v-if="isPodVersion" :size="14" />
+              <Monitor v-else :size="14" />
+              {{ isPodVersion ? $t('runtime.kubernetes') : $t('runtime.openstackVm') }}
+              <span v-if="runtimeInfo.scope === 'user'" class="font-normal">· {{ $t('AppsDetailView.runtime.perPerson') }}</span>
+            </span>
+          </div>
+
           <button
             @click="handleDeploy"
-            :disabled="!selectedVersion || (credStore.isResolved && !credStore.hasCredential)"
-            :title="credStore.isResolved && !credStore.hasCredential ? $t('AppsDetailView.missingCredsTitle') : ''"
+            :disabled="!canStartDeployment"
+            :title="needsCredential ? $t('AppsDetailView.missingCredsTitle') : ''"
             class="w-full bg-gradient-to-r from-primaryAction to-primaryActionHover text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
           >
             <Layers :size="18" />
             {{ $t('AppsDetailView.deployButton') }}
           </button>
-          <p v-if="credStore.isResolved && !credStore.hasCredential" class="mt-2 text-sm text-amber-700">
+          <p v-if="needsCredential" class="mt-2 text-sm text-amber-700">
             <router-link to="/user/openstack" class="underline font-medium">{{ $t('AppsDetailView.missingCredsLink') }}</router-link>
             {{ $t('AppsDetailView.missingCredsText') }}
           </p>
@@ -623,11 +685,15 @@ onMounted(async () => {
                 <p class="text-sm text-textMuted">
                   {{ app.is_private ? $t('AppsDetailView.visibilityPrivateDesc') : $t('AppsDetailView.visibilityPublicDesc') }}
                 </p>
+                <p v-if="app.hidden_by_admin" class="text-sm text-danger" data-testid="hidden-by-admin">
+                  {{ $t('AppsDetailView.hiddenByAdmin') }}
+                </p>
               </div>
             </div>
             <button
               @click="togglePrivacy"
-              :disabled="isTogglingPrivacy"
+              :disabled="isTogglingPrivacy || (app.hidden_by_admin && !isAdmin)"
+              :title="app.hidden_by_admin && !isAdmin ? $t('AppsDetailView.hiddenByAdmin') : ''"
               class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50"
               :class="app.is_private ? 'bg-purple-500' : 'bg-successTint0'"
             >
@@ -653,6 +719,7 @@ onMounted(async () => {
                 <tr class="border-b border-borderSubtle text-left text-xs text-textMuted uppercase tracking-wide">
                   <th class="pb-2 pr-4">{{ $t('AppsDetailView.versionTableVersion') }}</th>
                   <th class="pb-2 pr-4">{{ $t('AppsDetailView.versionTableStatus') }}</th>
+                  <th class="pb-2 pr-4">{{ $t('AppsDetailView.versionTableRuntime') }}</th>
                   <th class="pb-2 pr-4">{{ $t('AppsDetailView.versionTableDate') }}</th>
                   <th class="pb-2">{{ $t('AppsDetailView.versionTableAction') }}</th>
                 </tr>
@@ -663,6 +730,15 @@ onMounted(async () => {
                   <td class="py-2.5 pr-4">
                     <AppVersionStatusBadge v-if="approvalByVersion[ver]" :status="approvalByVersion[ver].status" />
                     <span v-else class="text-textFaint text-xs">–</span>
+                  </td>
+                  <td class="py-2.5 pr-4 text-xs text-textMuted">
+                    <template v-if="approvalByVersion[ver]">
+                      {{ approvalByVersion[ver].runtime === 'kubernetes' ? $t('runtime.kubernetes') : $t('runtime.openstackVm') }}
+                      <span v-if="approvalByVersion[ver].commit_sha" class="block font-mono text-textFaint" :title="approvalByVersion[ver].commit_sha ?? ''">
+                        {{ (approvalByVersion[ver].commit_sha ?? '').slice(0, 8) }}
+                      </span>
+                    </template>
+                    <span v-else>–</span>
                   </td>
                   <td class="py-2.5 pr-4 text-textMuted text-xs">
                     {{ approvalByVersion[ver] ? formatDate(approvalByVersion[ver].created_at) : '–' }}

@@ -26,6 +26,7 @@ const store = useDeploymentStore();
 
 const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(
   computed(() => store.draftAppDetails),
+  computed(() => ({ runtime: store.draft.runtime, scope: store.draft.scope })),
 );
 
 // --- Reactive cache wrapper ---
@@ -159,7 +160,8 @@ onMounted(async () => {
   // Ensure all groups have names.
   ensureDefaultGroupNames();
 
-  // Windows apps must always use individual assignment.
+  // Per-person apps (scope: user, e.g. the Windows desktop) always use
+  // individual assignment.
   if (forcedGroupMode.value === "eachUser") {
     setEachUser();
   }

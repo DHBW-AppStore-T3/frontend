@@ -19,7 +19,7 @@
  */
 import OpenStackResourcePicker from '@/components/OpenStackResourcePicker.vue'
 import { useI18n } from 'vue-i18n'
-import type { AppVariable } from '@/types'
+import { isOsResourceVar, type AppVariable } from '@/types'
 import type { OsResourceType } from '@/api/openstack-resources.api'
 
 const { t } = useI18n()
@@ -57,9 +57,9 @@ const isList = (type: string) =>
 
 // The picker takes precedence over type-based inputs, including list(...)
 // variables, since it handles multi itself. File variables are rendered by the
-// parent and so are excluded here.
-const hasOsPicker = (v: AppVariable): boolean =>
-  Boolean(v.osType) && v.osType !== 'file'
+// parent and so are excluded here, enum variables (pod apps) are a select.
+const hasOsPicker = (v: AppVariable): boolean => isOsResourceVar(v)
+const isEnum = (v: AppVariable): boolean => v.osType === 'enum'
 
 // Narrow ``AppVariableOsType`` (which includes the pseudo-type ``file``)
 // down to ``OsResourceType`` for the picker. ``hasOsPicker`` already
@@ -102,6 +102,21 @@ const toggleFocus = (() => {
     :model-value="modelValue"
     @update:modelValue="update"
   />
+
+  <!-- Pod apps: one of the values the appstore.yaml declares. -->
+  <select
+    v-else-if="isEnum(variable)"
+    :value="modelValue ?? ''"
+    @change="update(($event.target as HTMLSelectElement).value)"
+    :id="inputId || variable.name"
+    :disabled="disabled"
+    data-testid="enum-input"
+    class="w-full px-3 py-2 rounded-lg border-2 outline-none transition-all font-medium text-textHeading bg-white disabled:bg-surfaceMuted disabled:text-textMuted"
+    :class="borderClass"
+  >
+    <option v-if="!variable.default" value="" disabled>{{ t('variableInput.choose') }}</option>
+    <option v-for="value in variable.values ?? []" :key="value" :value="value">{{ value }}</option>
+  </select>
 
   <div v-else-if="isBool(variable.type)" class="flex items-center gap-3">
     <button

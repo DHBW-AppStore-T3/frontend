@@ -9,7 +9,7 @@
 
 /** One account's connection details, as published in the Terraform outputs. */
 export interface ConnectionTarget {
-    username?: string
+    username?: string | null
     ip?: string
     port?: number
 }
@@ -47,7 +47,7 @@ export function rdpCommandFor(data: ConnectionTarget): string {
  * the team VM's URL carries (e.g. `/pgadmin4`). Returns null when the account
  * has no reachable address.
  */
-export function userUrlFor(data: ConnectionTarget, teamVmUrl?: string): string | null {
+export function userUrlFor(data: ConnectionTarget, teamVmUrl?: string | null): string | null {
     if (!data.ip || !data.port) return null
     let path = ''
     if (teamVmUrl) {

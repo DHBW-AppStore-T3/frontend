@@ -3,13 +3,12 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import { useRouter } from 'vue-router'
 
-// Dateinamen anpassen, falls nötig
-import DeploymentSummary from '@/views/NewDeploymentSummaryView.vue' 
+import DeploymentSummary from '@/views/NewDeploymentSummaryView.vue'
 
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
 import { useToastStore } from '@/stores/toast.store'
-import { userApi } from '@/api/user.api'
+import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 
 // --- MOCKS ---
 vi.mock('vue-router', () => ({
@@ -18,27 +17,24 @@ vi.mock('vue-router', () => ({
   }))
 }))
 
+// Placeholders are appended so the tests see what a message is built from.
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
-    t: (key: string, params?: any) => {
-      // Simples Mocking, das bei Platzhaltern etwas anhängt, um es testbar zu machen
-      if (params && params.count !== undefined) return `${key} (${params.count})`
-      return key
-    }
+    t: (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key)
   })
 }))
 
-vi.mock('@/api/user.api', () => ({
-  userApi: {
-    list: vi.fn()
-  }
-}))
-
-// Mock für den OpenStack Cache
 vi.mock('@/composables/useOpenStackResourceCache', () => ({
   ensureLoaded: vi.fn().mockResolvedValue(undefined),
-  getDisplayName: vi.fn((_type, _mode, val) => ({ name: `OS-Name-${val}` }))
+  getDisplayName: vi.fn((_type, _mode, val) => ({ name: `OS-Name-${val}` })),
+  setCredential: vi.fn()
 }))
+
+interface WrapperOptions {
+  runtime?: 'kubernetes' | 'openstack-vm'
+  credentialId?: string | null
+  credentials?: unknown[] | null
+}
 
 describe('NewDeploymentSummaryView.vue', () => {
   let routerPushMock: any
@@ -47,14 +43,9 @@ describe('NewDeploymentSummaryView.vue', () => {
     vi.clearAllMocks()
     routerPushMock = vi.fn()
     vi.mocked(useRouter).mockReturnValue({ push: routerPushMock } as any)
-    
-    // Standard API Antworten
-    vi.mocked(userApi.list).mockResolvedValue({ 
-      data: [{ keycloak_id: 'kc1', userId: 'u1' }] 
-    } as any)
   })
 
-  function createWrapper() {
+  function createWrapper({ runtime = 'kubernetes', credentialId = null, credentials = [] }: WrapperOptions = {}) {
     const pinia = createTestingPinia({
       createSpy: vi.fn,
       initialState: {
@@ -63,19 +54,23 @@ describe('NewDeploymentSummaryView.vue', () => {
             { appId: 'app-1', name: 'Test App', image: 'test.png' }
           ]
         },
+        // The wizard keys everyone by the AppStore user id (what the teams carry).
         deployment: {
           studentCache: new Map([
-            ['kc1', { userId: 'u1', firstName: 'John', lastName: 'Doe', keycloak_id: 'kc1' }]
+            ['u1', { userId: 'u1', firstName: 'John', lastName: 'Doe' }]
           ]),
           draft: {
             name: 'My Deployment',
             appId: 'app-1',
             releaseTag: '1.0.0',
+            runtime,
+            scope: runtime === 'kubernetes' ? 'team' : 'user',
+            credentialId,
             groupCount: 1,
             groupMode: 'one',
-            studentIds: ['kc1'],
+            studentIds: ['u1'],
             assignments: {
-              0: ['kc1']
+              0: ['u1']
             },
             groupNames: ['Team Alpha'],
             variables: {
@@ -84,12 +79,13 @@ describe('NewDeploymentSummaryView.vue', () => {
             },
             fileUploads: {
               'ssh_key': {
-                'kc1': { name: 'id_rsa.pub', size: 1024 } // 1 KB
+                'u1': { name: 'id_rsa.pub', size: 1024 } // 1 KB
               }
             },
             variableDefinitions: []
           }
-        }
+        },
+        'openstack-credentials': { credentials }
       }
     })
 
@@ -119,116 +115,176 @@ describe('NewDeploymentSummaryView.vue', () => {
     })
   }
 
-  it('loads variables on mount and displays summary config', async () => {
+  async function submitWith(error: unknown) {
     const wrapper = createWrapper()
-    
-    // Wir warten sofort auf alle API-Antworten. 
-    // (Der Mock antwortet so schnell, dass der Loading-State übersprungen wird)
-    await flushPromises() 
-    
-    const appStore = useAppStore()
-    
-    // Sollte Variablen geladen haben
-    expect(appStore.fetchAppVariables).toHaveBeenCalledWith('app-1', '1.0.0')
+    await flushPromises()
+    const deploymentStore = useDeploymentStore()
+    deploymentStore.submitDraft = vi.fn().mockRejectedValue(error)
 
-    // Sollte die Zusammenfassung anzeigen
-    expect(wrapper.text()).toContain('My Deployment')
-    expect(wrapper.text()).toContain('Test App')
-    expect(wrapper.text()).toContain('1.0.0')
-    expect(wrapper.text()).toContain('John Doe') // Student Cache Name
-    expect(wrapper.text()).toContain('Team Alpha')
-  })
+    const deployBtn = wrapper.findAll('button').find(b => b.text().includes('deployment.actions.deploy'))
+    await deployBtn?.trigger('click')
+    await flushPromises()
+    return useToastStore()
+  }
 
-  it('separates variables correctly into packer, terraform and files', async () => {
+  it('loads variables on mount and displays summary config', async () => {
     const wrapper = createWrapper()
     await flushPromises()
 
-    // Die Werte, die aus den gemockten Variablen-Definitionen resultieren
-    expect(wrapper.text()).toContain('eu-central-1') // Packer-Wert (aus Draft gemerged)
-    expect(wrapper.text()).toContain('t2.micro') // Terraform-Wert
-    expect(wrapper.text()).toContain('id_rsa.pub') // Datei-Upload
-    expect(wrapper.text()).toContain('1 KB') // Formatierte Dateigröße
+    const appStore = useAppStore()
+    expect(appStore.fetchAppVariables).toHaveBeenCalledWith('app-1', '1.0.0')
+
+    expect(wrapper.text()).toContain('My Deployment')
+    expect(wrapper.text()).toContain('Test App')
+    expect(wrapper.text()).toContain('1.0.0')
+    expect(wrapper.text()).toContain('John Doe')
+    expect(wrapper.text()).toContain('Team Alpha')
+  })
+
+  it('a VM app lists Packer and Terraform variables and the uploaded files', async () => {
+    const wrapper = createWrapper({ runtime: 'openstack-vm' })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('deployment.summary.packerVars')
+    expect(wrapper.text()).toContain('eu-central-1')
+    expect(wrapper.text()).toContain('deployment.summary.terraformVars')
+    expect(wrapper.text()).toContain('t2.micro')
+    expect(wrapper.text()).toContain('id_rsa.pub')
+    expect(wrapper.text()).toContain('1 KB')
+  })
+
+  it('a pod app shows its settings and files, without a Packer card', async () => {
+    const wrapper = createWrapper({ runtime: 'kubernetes' })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('deployment.summary.packerVars')
+    expect(wrapper.text()).toContain('deployment.summary.appSettings')
+    expect(wrapper.text()).toContain('t2.micro')
+    expect(wrapper.text()).toContain('id_rsa.pub')
+  })
+
+  describe('runtime and project', () => {
+    it('a pod app runs in the cluster: no project, no credential lookup', async () => {
+      const wrapper = createWrapper({ runtime: 'kubernetes', credentials: null })
+      await flushPromises()
+
+      const card = wrapper.find('[data-testid="summary-runtime"]')
+      expect(card.text()).toContain('runtime.kubernetes')
+      expect(card.text()).not.toContain('deployment.summary.projectLabel')
+      expect(useOpenStackCredentialsStore().fetch).not.toHaveBeenCalled()
+    })
+
+    it('a VM app names the OpenStack project of the chosen credential', async () => {
+      const wrapper = createWrapper({
+        runtime: 'openstack-vm',
+        credentialId: 'c-1',
+        credentials: [{ credentialId: 'c-1', project_id: 'p-1', project_name: 'Lab Project', project_verified: true }]
+      })
+      await flushPromises()
+
+      const card = wrapper.find('[data-testid="summary-runtime"]')
+      expect(card.text()).toContain('runtime.openstackVm')
+      expect(card.text()).toContain('Lab Project')
+    })
+
+    it('a VM app loads the credentials after a reload', async () => {
+      createWrapper({ runtime: 'openstack-vm', credentialId: 'c-1', credentials: null })
+      await flushPromises()
+
+      expect(useOpenStackCredentialsStore().fetch).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('navigates back to variables step when Back or Edit button is clicked', async () => {
     const wrapper = createWrapper()
     await flushPromises()
 
-    // Zurück Button testen
     const backBtn = wrapper.findAll('button').find(b => b.text().includes('deployment.actions.back'))
     await backBtn?.trigger('click')
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'deployment.variables' })
 
-    // "Bearbeiten" Button bei den Variablen testen
     const editBtn = wrapper.findAll('button').find(b => b.text().includes('deployment.summary.editBtn'))
     await editBtn?.trigger('click')
-    expect(routerPushMock).toHaveBeenCalledWith({ name: 'deployment.variables' }) // Ruft die gleiche Route auf
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'deployment.variables' })
   })
 
-  it('submits the deployment, maps IDs correctly and redirects on success', async () => {
+  it('submits the draft as it is (user ids need no translation) and redirects on success', async () => {
     const wrapper = createWrapper()
     await flushPromises()
 
     const deploymentStore = useDeploymentStore()
     const toastStore = useToastStore()
 
-    // Deploy Button klicken
     const deployBtn = wrapper.findAll('button').find(b => b.text().includes('deployment.actions.deploy'))
     await deployBtn?.trigger('click')
-
-    // Warten auf API Calls
     await flushPromises()
 
-    // Prüft, ob Keycloak ID -> User ID Mapping korrekt war (kc1 -> u1)
-    expect(deploymentStore.draft.studentIds).toContain('u1')
-    expect((deploymentStore.draft.assignments as any)[0]).toContain('u1')
-    
-    // Wurde submit aufgerufen?
-    expect(deploymentStore.submitDraft).toHaveBeenCalled()
+    expect(deploymentStore.draft.studentIds).toEqual(['u1'])
+    expect((deploymentStore.draft.assignments as any)[0]).toEqual(['u1'])
+    expect(deploymentStore.submitDraft).toHaveBeenCalledTimes(1)
     expect(deploymentStore.resetDraft).toHaveBeenCalled()
-    
-    // Erfolgs-Toast gesendet?
     expect(toastStore.addToast).toHaveBeenCalledWith({
       message: 'deployment.summary.submitSuccess',
       type: 'success'
     })
-
-    // Routing zur Liste
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'deployments.list' })
   })
 
-  it('handles submission errors and parses them correctly for the toast', async () => {
-    const wrapper = createWrapper()
-    await flushPromises()
-
-    const deploymentStore = useDeploymentStore()
-    const toastStore = useToastStore()
-
-    // Simuliere einen Fehler vom Backend ("file_too_large" Payload)
-    deploymentStore.submitDraft = vi.fn().mockRejectedValue({
-      response: {
-        data: {
-          detail: {
-            reason: 'file_too_large',
-            filename: 'test.zip',
-            actual_bytes: 3145728, // 3 MB
-            limit_bytes: 2097152 // 2 MB
+  describe('submit errors', () => {
+    it('a file over the limit names the file and both sizes', async () => {
+      const toastStore = await submitWith({
+        response: {
+          data: {
+            detail: { reason: 'file_too_large', filename: 'test.zip', actual_bytes: 3145728, limit_bytes: 2097152 }
           }
         }
-      }
+      })
+
+      expect(toastStore.addToast).toHaveBeenCalledWith({
+        message: 'deployment.summary.errors.fileTooLarge {"filename":"test.zip","actualMb":"3.0","limitMb":"2.0"}',
+        type: 'error'
+      })
+      expect(routerPushMock).not.toHaveBeenCalledWith({ name: 'deployments.list' })
     })
 
-    const deployBtn = wrapper.findAll('button').find(b => b.text().includes('deployment.actions.deploy'))
-    await deployBtn?.trigger('click')
-    await flushPromises()
+    it('an unapproved version (approval pinned to another commit) gets its own message', async () => {
+      const toastStore = await submitWith({ response: { status: 409, data: { detail: { code: 'version_not_approved' } } } })
 
-    // Prüft ob der Error-Formatter korrekt gearbeitet hat
-    expect(toastStore.addToast).toHaveBeenCalledWith({
-      message: 'deployment.summary.errors.fileTooLarge', // Der i18n Key, den die Methode zurückgibt
-      type: 'error'
+      expect(toastStore.addToast).toHaveBeenCalledWith({
+        message: 'deployment.summary.errors.version_not_approved',
+        type: 'error'
+      })
     })
-    
-    // Da es fehlgeschlagen ist, sollte nicht weitergeleitet werden
-    expect(routerPushMock).not.toHaveBeenCalledWith({ name: 'deployments.list' })
+
+    it('the workload budget names what is in use, requested and allowed', async () => {
+      const toastStore = await submitWith({
+        response: { status: 409, data: { detail: { reason: 'workload_budget_exceeded', in_use: 40, requested: 12, budget: 48 } } }
+      })
+
+      expect(toastStore.addToast).toHaveBeenCalledWith({
+        message: 'deployment.summary.errors.workload_budget_exceeded {"inUse":40,"requested":12,"budget":48}',
+        type: 'error'
+      })
+    })
+
+    it('an unverified credential gets its own message', async () => {
+      const toastStore = await submitWith({
+        response: { status: 422, data: { detail: { reason: 'openstack_credentials_unverified' } } }
+      })
+
+      expect(toastStore.addToast).toHaveBeenCalledWith({
+        message: 'deployment.summary.errors.openstack_credentials_unverified {"limit":"","workloads":""}',
+        type: 'error'
+      })
+    })
+
+    it('an unknown reason falls back to the generic message, never "[object Object]"', async () => {
+      const toastStore = await submitWith({ response: { data: { detail: { reason: 'something_new' } } } })
+
+      expect(toastStore.addToast).toHaveBeenCalledWith({
+        message: 'deployment.summary.submitError',
+        type: 'error'
+      })
+    })
   })
 })

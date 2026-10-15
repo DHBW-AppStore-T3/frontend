@@ -5,6 +5,7 @@ import type {
   AppCreate,
   AppUpdate,
   AppQueryParams,
+  AppRuntime,
   AppVariable,
   AppVersionApproval,
   AppVersionApprovalWithApp,
@@ -38,6 +39,17 @@ export const appApi = {
 
   getVariables: (appId: string, version: string) => {
     return api.get<AppVariable[]>(`/apps/${appId}/variables`, {
+      params: { version }
+    })
+  },
+
+  /**
+   * How ``version`` runs: ``kubernetes`` (pods, no OpenStack credential) or
+   * ``openstack-vm`` (the Windows desktop), and its group mode (``scope``).
+   * 422 with field paths for an invalid appstore.yaml.
+   */
+  getRuntime: (appId: string, version: string) => {
+    return api.get<AppRuntime>(`/apps/${appId}/runtime`, {
       params: { version }
     })
   },

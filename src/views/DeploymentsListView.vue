@@ -56,9 +56,11 @@ const sortedDeployments = computed(() =>
 )
 
 const statusFilter = ref('active')
+// ``redeploy_failed`` is still running (only one VM or workload is in
+// doubt), so it counts as active.
 const statusGroups: Record<string, string[]> = {
-  active: ['success'],
-  building: ['pending', 'running', 'resuming', 'destroying', 'pausing'],
+  active: ['success', 'redeploy_failed'],
+  building: ['pending', 'running', 'resuming', 'destroying', 'pausing', 'redeploying'],
   stopped: ['paused', 'failed', 'cancelled', 'destroyed', 'pause_failed', 'resume_failed'],
 }
 const statusTabs = computed(() => [
@@ -85,6 +87,8 @@ const getStatusColor = (status: string) => {
     'resuming': 'bg-emerald-100 text-emerald-800 border-emerald-300',
     'pause_failed': 'bg-amber-100 text-amber-900 border-amber-300',
     'resume_failed': 'bg-amber-100 text-amber-900 border-amber-300',
+    'redeploying': 'bg-infoTint text-blue-800 border-blue-300',
+    'redeploy_failed': 'bg-amber-100 text-amber-900 border-amber-300',
   }
   return colors[status as keyof typeof colors] || 'bg-surfaceMuted text-textHeading border-borderSubtle'
 }
@@ -158,9 +162,14 @@ const getStatusColor = (status: string) => {
             </div>
 
             <div class="mt-auto pt-3 border-t border-borderSubtle flex items-center justify-between text-xs text-textMuted">
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
-                <GitBranch :size="11" />
-                {{ deployment.releaseTag }}
+              <span class="inline-flex items-center gap-1.5">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
+                  <GitBranch :size="11" />
+                  {{ deployment.releaseTag }}
+                </span>
+                <span class="px-1.5 py-0.5 rounded border border-borderSubtle text-[10px] uppercase tracking-wide" data-testid="runtime-badge">
+                  {{ deployment.runtime === 'kubernetes' ? $t('runtime.kubernetesShort') : $t('runtime.openstackVmShort') }}
+                </span>
               </span>
               <span class="inline-flex items-center gap-1">
                 <Clock :size="11" />

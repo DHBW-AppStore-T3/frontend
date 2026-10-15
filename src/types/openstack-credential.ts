@@ -22,12 +22,23 @@ export interface OpenStackCredentialFromYaml {
   cloud_name?: string | null
 }
 
-export interface OpenStackCredentialResponse extends Partial<OpenStackCredentialBase> {
-  has_credential: boolean
+/**
+ * One stored credential, one per OpenStack project (``GET
+ * /me/openstack-credentials`` returns a list). Never carries the identifier
+ * or the secret.
+ *
+ * ``project_id``/``project_name`` are what Keystone scoped the credential
+ * to once ``project_verified``. A credential saved before projects were
+ * checked stays unverified until its owner presses "check" once; it cannot
+ * be deployed with until then. ``active_deployments`` counts the owner's
+ * live deployments in the project; deleting is refused while there are any.
+ */
+export interface OpenStackCredential extends OpenStackCredentialBase {
+  credentialId: string
+  project_verified: boolean
   last_validated_at?: string | null
   last_validation_error?: string | null
   created_at?: string | null
   updated_at?: string | null
-  is_locked: boolean
   active_deployments: number
 }

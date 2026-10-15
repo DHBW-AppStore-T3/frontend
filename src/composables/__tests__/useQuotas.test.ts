@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/api/quotas.api', () => ({ quotasApi: { getOverview: vi.fn() } }))
+vi.mock('@/api/quotas.api', () => ({ quotasApi: { getForCredential: vi.fn() } }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 const overview = {
@@ -11,12 +11,14 @@ const overview = {
   },
   storage: {
     volumes: { used: 1, limit: 5 },
-    gigabytes: { used: 20, limit: 100 },
+    gigabytes: { used: 20, limit: -1 },
   },
   network: {
     floating_ips: { used: 1, limit: 3 },
   },
 }
+
+const KEY = 'openstack.quotas.v2.c-1'
 
 async function loadUseQuotas() {
   const mod = await import('../useQuotas')
@@ -30,71 +32,72 @@ beforeEach(() => {
 })
 
 describe('useQuotas', () => {
-  it('starts with no cached quotas when sessionStorage is empty', async () => {
+  it('starts with nothing selected and no quotas', async () => {
     const useQuotas = await loadUseQuotas()
-    const { quotas, hasCachedQuotas, formattedQuotas } = useQuotas()
+    const { credentialId, quotas, hasCachedQuotas, formattedQuotas } = useQuotas()
 
+    expect(credentialId.value).toBeNull()
     expect(quotas.value).toBeNull()
     expect(hasCachedQuotas.value).toBe(false)
     expect(formattedQuotas.value).toEqual([])
   })
 
-  it('seeds state from a previously cached sessionStorage value', async () => {
-    sessionStorage.setItem('openstack.quotas.v1', JSON.stringify(overview))
+  it('selecting a credential shows its cached numbers first', async () => {
+    sessionStorage.setItem(KEY, JSON.stringify(overview))
     const useQuotas = await loadUseQuotas()
-    const { quotas, hasCachedQuotas } = useQuotas()
+    const { quotas, hasCachedQuotas, selectCredential } = useQuotas()
+
+    selectCredential('c-1')
 
     expect(quotas.value).toEqual(overview)
     expect(hasCachedQuotas.value).toBe(true)
   })
 
   it('tolerates corrupted sessionStorage content', async () => {
-    sessionStorage.setItem('openstack.quotas.v1', '{not json')
+    sessionStorage.setItem(KEY, '{not json')
     const useQuotas = await loadUseQuotas()
-    const { quotas } = useQuotas()
+    const { quotas, selectCredential } = useQuotas()
+
+    selectCredential('c-1')
 
     expect(quotas.value).toBeNull()
   })
 
-  it('fetchQuotas populates quotas and caches them', async () => {
+  it('fetchQuotas asks for the selected credential\'s project and caches per credential', async () => {
     const { quotasApi } = await import('@/api/quotas.api')
-    vi.mocked(quotasApi.getOverview).mockResolvedValueOnce({ data: overview } as any)
+    vi.mocked(quotasApi.getForCredential).mockResolvedValueOnce({ data: overview } as any)
     const useQuotas = await loadUseQuotas()
-    const { quotas, loading, fetchQuotas } = useQuotas()
+    const { quotas, loading, selectCredential, fetchQuotas } = useQuotas()
 
+    selectCredential('c-1')
     await fetchQuotas()
 
+    expect(quotasApi.getForCredential).toHaveBeenCalledWith('c-1')
     expect(quotas.value).toEqual(overview)
     expect(loading.value).toBe(false)
-    expect(JSON.parse(sessionStorage.getItem('openstack.quotas.v1')!)).toEqual(overview)
+    expect(JSON.parse(sessionStorage.getItem(KEY)!)).toEqual(overview)
   })
 
-  it('fetchQuotas sets needsCredentials and clears the cache on a 412', async () => {
-    sessionStorage.setItem('openstack.quotas.v1', JSON.stringify(overview))
+  it('fetchQuotas without a selected credential asks nothing', async () => {
     const { quotasApi } = await import('@/api/quotas.api')
-    vi.mocked(quotasApi.getOverview).mockRejectedValueOnce({
-      isAxiosError: true,
-      response: { status: 412 },
-    })
     const useQuotas = await loadUseQuotas()
-    const { quotas, needsCredentials, fetchQuotas } = useQuotas()
+    const { quotas, fetchQuotas } = useQuotas()
 
     await fetchQuotas()
 
-    expect(needsCredentials.value).toBe(true)
+    expect(quotasApi.getForCredential).not.toHaveBeenCalled()
     expect(quotas.value).toBeNull()
-    expect(sessionStorage.getItem('openstack.quotas.v1')).toBeNull()
   })
 
-  it('fetchQuotas records a generic error and keeps previously cached numbers on other failures', async () => {
-    sessionStorage.setItem('openstack.quotas.v1', JSON.stringify(overview))
+  it('fetchQuotas records a generic error and keeps previously cached numbers on failures', async () => {
+    sessionStorage.setItem(KEY, JSON.stringify(overview))
     const { quotasApi } = await import('@/api/quotas.api')
-    vi.mocked(quotasApi.getOverview).mockRejectedValueOnce(new Error('network down'))
+    vi.mocked(quotasApi.getForCredential).mockRejectedValueOnce(new Error('network down'))
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const useQuotas = await loadUseQuotas()
-    const { quotas, error, fetchQuotas } = useQuotas()
-    quotas.value = overview as any
+    const { quotas, error, selectCredential, fetchQuotas } = useQuotas()
 
+    selectCredential('c-1')
     await fetchQuotas()
 
     expect(error.value).toBe('Failed to fetch quotas')
@@ -103,7 +106,7 @@ describe('useQuotas', () => {
   })
 
   describe('formattedQuotas', () => {
-    it('maps the overview into display rows with computed percentages', async () => {
+    it('maps the overview into display rows; an unlimited quota has no limit and 0 %', async () => {
       const useQuotas = await loadUseQuotas()
       const { quotas, formattedQuotas } = useQuotas()
       quotas.value = overview as any
@@ -112,6 +115,8 @@ describe('useQuotas', () => {
       expect(rows).toHaveLength(6)
       expect(rows[0]).toMatchObject({ label: 'workspace.quotas.instances', used: 2, limit: 10, percentage: 20 })
       expect(rows[2]).toMatchObject({ label: 'workspace.quotas.ram', used: 2, limit: 8, unit: 'GB' })
+      // -1 is "unlimited" in OpenStack, not "over quota".
+      expect(rows[4]).toMatchObject({ label: 'workspace.quotas.storage', used: 20, limit: null, percentage: 0 })
     })
   })
 

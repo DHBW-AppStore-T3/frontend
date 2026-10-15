@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   BarChart3, Layers, GraduationCap, ArrowRight,
@@ -13,7 +13,15 @@ import { useRole } from '@/composables/useRole'
 import CredentialMissingBanner from '@/components/CredentialMissingBanner.vue'
 
 const { stats, fetchStats } = useDashboard()
-const { formattedQuotas, loading: quotasLoading, needsCredentials, hasCachedQuotas, fetchQuotas, getColorClass } = useQuotas()
+const {
+  credentialId: quotaCredentialId,
+  formattedQuotas,
+  loading: quotasLoading,
+  hasCachedQuotas,
+  selectCredential,
+  fetchQuotas,
+  getColorClass,
+} = useQuotas()
 const credStore = useOpenStackCredentialsStore()
 const authStore = useAuthStore()
 const { t } = useI18n()
@@ -31,30 +39,59 @@ const timeGreeting = computed(() => {
   return t('DashboardView.timeGreetings.evening')
 })
 
-onMounted(() => {
-  fetchStats()
+// OpenStack credentials and quotas only concern teachers and admins who run
+// VM apps (the Windows desktop); pod apps need neither, students never.
+const pickQuotaCredential = (id: string | null) => {
+  selectCredential(id)
   fetchQuotas()
-  if (!credStore.status) credStore.fetch()
+}
+
+// Later changes to the list (a credential deleted or failing) move the quota
+// to another project; the first pick happens on mount, once the list is in.
+let initialPickDone = false
+
+watch(
+  () => credStore.usable,
+  (usable) => {
+    if (!isStaff.value || !initialPickDone) return
+    const current = quotaCredentialId.value
+    if (current && usable.some((c) => c.credentialId === current)) return
+    pickQuotaCredential(usable[0]?.credentialId ?? null)
+  },
+)
+
+onMounted(async () => {
+  fetchStats()
+  if (!isStaff.value) return
+  if (!credStore.isResolved) await credStore.fetch()
+  initialPickDone = true
+  const usable = credStore.usable
+  if (!quotaCredentialId.value || !usable.some((c) => c.credentialId === quotaCredentialId.value)) {
+    pickQuotaCredential(usable[0]?.credentialId ?? null)
+  } else {
+    fetchQuotas()
+  }
 })
 </script>
 
 <template>
   <div class="dashboard-page">
 
-    <!-- Banners -->
+    <!-- Banners: only about credentials that exist and need attention.
+         Not having one is fine; only VM apps (Windows) need it. -->
     <CredentialMissingBanner
-      v-if="credStore.isResolved && !credStore.hasCredential"
+      v-if="isStaff && credStore.unverified.length > 0"
       variant="warning"
-      :title="t('banners.credentialsMissing.title')"
-      :message="t('banners.credentialsMissing.message')"
-      :cta="t('banners.credentialsMissing.cta')"
+      :title="t('banners.credentialsUnverified.title')"
+      :message="t('banners.credentialsUnverified.message', { count: credStore.unverified.length })"
+      :cta="t('banners.credentialsUnverified.cta')"
       ctaTo="/user/openstack"
     />
     <CredentialMissingBanner
-      v-else-if="credStore.isResolved && credStore.lastError"
+      v-else-if="isStaff && credStore.failing.length > 0"
       variant="error"
       :title="t('banners.credentialsInvalid.title')"
-      :message="credStore.lastError"
+      :message="credStore.failing[0]?.last_validation_error ?? ''"
       :cta="t('banners.credentialsInvalid.cta')"
       ctaTo="/user/openstack"
     />
@@ -113,13 +150,31 @@ onMounted(() => {
       </template>
     </div>
 
-    <!-- Available resources — full width, two-column quotas list -->
-    <div class="dashboard-resources ui-card">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-borderSubtle">
+    <!-- OpenStack quota of one credential's project — staff only; it only
+         matters for VM apps (the Windows desktop). -->
+    <div v-if="isStaff" class="dashboard-resources ui-card">
+      <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-borderSubtle">
         <h2 class="text-sm font-semibold text-textHeading">{{ $t('DashboardView.availableResources') }}</h2>
-        <span v-if="quotasLoading && hasCachedQuotas" class="flex items-center gap-1.5 text-xs text-textFaint">
-          <Loader2 :size="12" class="animate-spin" />
-        </span>
+        <div class="flex items-center gap-3">
+          <span v-if="quotasLoading && hasCachedQuotas" class="flex items-center gap-1.5 text-xs text-textFaint">
+            <Loader2 :size="12" class="animate-spin" />
+          </span>
+          <select
+            v-if="credStore.usable.length > 1"
+            :value="quotaCredentialId ?? ''"
+            data-testid="quota-credential"
+            class="rounded-lg border border-borderSubtle bg-white py-1 px-2 text-xs text-textHeading"
+            :aria-label="t('DashboardView.quotaProject')"
+            @change="pickQuotaCredential(($event.target as HTMLSelectElement).value || null)"
+          >
+            <option v-for="c in credStore.usable" :key="c.credentialId" :value="c.credentialId">
+              {{ c.project_name || c.project_id }}
+            </option>
+          </select>
+          <span v-else-if="credStore.usable.length === 1" class="text-xs text-textMuted">
+            {{ credStore.usable[0]?.project_name || credStore.usable[0]?.project_id }}
+          </span>
+        </div>
       </div>
 
       <!-- Skeleton (initial load) -->
@@ -146,7 +201,7 @@ onMounted(() => {
               class="text-xs font-semibold tabular-nums"
               :class="quota.percentage >= 80 ? 'text-danger' : quota.percentage >= 60 ? 'text-warning' : 'text-textMuted'"
             >
-              {{ quota.used }}/{{ quota.limit }}{{ quota.unit }}
+              {{ quota.used }}/{{ quota.limit ?? '∞' }}{{ quota.unit }}
             </span>
           </div>
           <div class="w-full bg-surfaceMuted rounded-full h-1.5 overflow-hidden">
@@ -163,8 +218,8 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <!-- No credentials -->
-      <div v-else-if="needsCredentials" class="px-6 py-12 text-center">
+      <!-- No usable credential: only needed for VM apps -->
+      <div v-else-if="credStore.isResolved && !quotaCredentialId" class="px-6 py-12 text-center">
         <div class="w-12 h-12 rounded-full bg-surfaceMuted flex items-center justify-center mx-auto mb-3">
           <XCircle :size="22" class="text-textFaint" />
         </div>

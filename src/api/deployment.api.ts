@@ -100,19 +100,6 @@ export const deploymentApi = {
   },
 
   /**
-   * Re-send the per-user access mail for one team member of a
-   * deployment. Reuses the credentials from the latest successful
-   * DEPLOY task's terraform outputs, so this only works after a
-   * deploy has completed. 409 if there's nothing to resend yet,
-   * 502 if SMTP rejected the mail.
-   */
-  resendAccess: (deploymentId: string, teamId: string, userId: string) => {
-    return api.post(
-      `/deployments/${deploymentId}/teams/${teamId}/users/${userId}/resend-access`,
-    )
-  },
-
-  /**
    * Fetch the CALLER'S OWN access credentials for a deployment.
    *
    * Member counterpart to the owner-only outputs: a team member
@@ -183,6 +170,27 @@ export const deploymentApi = {
   redeployResource: (deploymentId: string, address: string) => {
     return api.post<{ task_id: string; status: 'redeploying' }>(
       `/deployments/${deploymentId}/resources/${encodeURIComponent(address)}/redeploy`,
+    )
+  },
+
+  /**
+   * Pod deployments: restart one team's or person's workload (a new pod);
+   * its data stays. Operate right, only from ``success`` or
+   * ``redeploy_failed``; 404 ``workload_not_found``. 202 like a redeploy.
+   */
+  restartWorkload: (deploymentId: string, workload: string) => {
+    return api.post<{ task_id: string; status: 'redeploying' }>(
+      `/deployments/${deploymentId}/workloads/${encodeURIComponent(workload)}/restart`,
+    )
+  },
+
+  /**
+   * Pod deployments: reset one workload — its volume is deleted and it
+   * starts from scratch. Same rules as ``restartWorkload``.
+   */
+  resetWorkload: (deploymentId: string, workload: string) => {
+    return api.post<{ task_id: string; status: 'redeploying' }>(
+      `/deployments/${deploymentId}/workloads/${encodeURIComponent(workload)}/reset`,
     )
   },
 }

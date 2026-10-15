@@ -11,6 +11,7 @@ import VariableInput from '@/components/VariableInput.vue'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
 import { useToast } from '@/composables/useToast'
+import { ensureLoaded, setCredential } from '@/composables/useOpenStackResourceCache'
 
 // --- MOCKS ---
 vi.mock('vue-router', () => ({
@@ -36,9 +37,10 @@ vi.mock('@/composables/useToast', () => ({
   }))
 }))
 
-// Mock für den dynamischen Import des OpenStack Caches
+// OpenStack resource lists (VM apps only) come from the chosen credential's project.
 vi.mock('@/composables/useOpenStackResourceCache', () => ({
-  ensureLoaded: vi.fn().mockResolvedValue(undefined)
+  ensureLoaded: vi.fn().mockResolvedValue(undefined),
+  setCredential: vi.fn()
 }))
 
 describe('NewDeploymentVariableView.vue', () => {
@@ -75,6 +77,9 @@ describe('NewDeploymentVariableView.vue', () => {
             appId: 'app-1',
             name: 'Test Deployment',
             releaseTag: '1.0.0',
+            runtime: 'openstack-vm',
+            scope: 'user',
+            credentialId: 'c-1',
             variables: {},
             userInputVar: '',
             variableDefinitions: [],
@@ -296,12 +301,54 @@ describe('NewDeploymentVariableView.vue', () => {
     expect(wrapper.text()).not.toContain('expert_packer')
   })
 
+  // ----------------------------------------------------------------
+  // Runtime: VM apps (Packer + Terraform) vs. pod apps (appstore.yaml)
+  // ----------------------------------------------------------------
+
+  it('a VM app lists OpenStack resources from the project of the chosen credential', async () => {
+    const mockVars = [
+      { name: 'flavor', source: 'terraform', type: 'string', required: false, default: 'm1', osType: 'flavor', osMode: 'name' }
+    ]
+
+    createWrapper({}, mockVars)
+    await flushPromises()
+
+    expect(setCredential).toHaveBeenCalledWith('c-1')
+    expect(ensureLoaded).toHaveBeenCalledWith('flavor')
+  })
+
+  it('a pod app has no Packer pane and no OpenStack project', async () => {
+    const mockVars = [
+      { name: 'greeting', source: 'terraform', type: 'string', required: false, default: 'hi' }
+    ]
+
+    const wrapper = createWrapper({ runtime: 'kubernetes', scope: 'team', credentialId: 'c-1' }, mockVars)
+    await flushPromises()
+
+    expect(setCredential).toHaveBeenCalledWith(null)
+    expect(wrapper.text()).not.toContain('deployment.summary.packerVars')
+    expect(wrapper.text()).toContain('deployment.summary.appSettings')
+    expect(wrapper.text()).toContain('greeting')
+  })
+
+  it('an enum variable is a choice, not an OpenStack resource: nothing is looked up', async () => {
+    const mockVars = [
+      { name: 'size', source: 'terraform', type: 'string', required: false, default: 's', osType: 'enum', values: ['s', 'm', 'l'] }
+    ]
+
+    const wrapper = createWrapper({ runtime: 'kubernetes', scope: 'team' }, mockVars)
+    await flushPromises()
+
+    expect(ensureLoaded).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('size')
+  })
+
   it('shows error toast when fetchAppVariables fails', async () => {
     const pinia = createTestingPinia({
       createSpy: vi.fn,
       initialState: {
         deployment: {
-          draft: { appId: 'app-1', variableDefinitions: [] }
+          draft: { appId: 'app-1', runtime: 'openstack-vm', credentialId: 'c-1', variableDefinitions: [] }
         }
       }
     })
