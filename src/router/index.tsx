@@ -71,8 +71,8 @@ export const appRoutes: RouteObject[] = [
       {
         element: <AppLayout />,
         children: [
-          guarded({ index: true, lazy: notMigrated('DashboardView') }, auth),
-          guarded({ path: 'dashboard', lazy: notMigrated('DashboardView') }, auth),
+          guarded({ index: true, lazy: lazyView(() => import('@/views/DashboardView')) }, auth),
+          guarded({ path: 'dashboard', lazy: lazyView(() => import('@/views/DashboardView')) }, auth),
           guarded(
             { path: 'courses', lazy: notMigrated('CoursesView') },
             { requiresAuth: true, requiresRole: ['teacher', 'admin'] as UserRole[] },
