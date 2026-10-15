@@ -5,6 +5,7 @@
 #   env-config.js           the VITE_* settings the app reads at start
 #   listen.conf             8080 on IPv4, and on IPv6 where the kernel has it
 #   security-headers.conf   Content-Security-Policy and framing
+#   api-gateway.conf        the API under /api (only with API_UPSTREAM)
 # Runs from /docker-entrypoint.d/ before nginx starts; any error stops the
 # container instead of serving with a broken or missing configuration.
 set -eu
@@ -76,3 +77,51 @@ CSP="$CSP; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancesto
     printf 'add_header X-Frame-Options "DENY" always;\n'
   fi
 } > "$RUNTIME_DIR/security-headers.conf"
+
+# The API under /api, where nothing else routes it (Kubernetes: the one
+# Ingress of the host points here). API_UPSTREAM is host:port of the API's
+# Service. As Caddy does on the VMs, the prefix is stripped; OpenTofu's state
+# backend under /api/internal/ is never routed (nginx matches the normalised
+# URI, so encoded or doubled slashes and dot segments end up here too).
+# Without API_UPSTREAM (Compose: Caddy routes /api) the file stays empty.
+API_UPSTREAM="${API_UPSTREAM:-}"
+if [ -n "$API_UPSTREAM" ]; then
+  case "$API_UPSTREAM" in
+    *[!A-Za-z0-9.:_-]*)
+      echo "env-config: API_UPSTREAM must be host:port" >&2
+      exit 1
+      ;;
+  esac
+  cat > "$RUNTIME_DIR/api-gateway.conf" <<EOF
+location = /api { return 404; }
+location = /api/internal { return 404; }
+location ^~ /api/internal/ { return 404; }
+location /api/ {
+  proxy_pass http://$API_UPSTREAM/;
+  proxy_http_version 1.1;
+  proxy_set_header Connection "";
+  proxy_set_header Host \$host;
+  proxy_set_header X-Real-IP \$remote_addr;
+  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto \$appstore_forwarded_proto;
+  proxy_set_header X-Forwarded-Host \$host;
+  # Uploads stream through instead of being written to /tmp first.
+  client_max_body_size 50m;
+  proxy_request_buffering off;
+  # The live stream (SSE) of a deployment runs as long as its job.
+  proxy_buffering off;
+  proxy_read_timeout 1h;
+  proxy_send_timeout 1h;
+  # API responses get their own headers, not the SPA's (its CSP would block
+  # the inline script of the LTI launch page): no sniffing, no caching, no
+  # referrer, framing only where the SPA may be framed.
+  proxy_hide_header Cache-Control;
+  add_header Cache-Control "no-store" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header Content-Security-Policy "frame-ancestors $FRAME_ANCESTORS" always;
+}
+EOF
+else
+  : > "$RUNTIME_DIR/api-gateway.conf"
+fi
