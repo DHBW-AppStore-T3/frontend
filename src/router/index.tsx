@@ -83,7 +83,7 @@ export const appRoutes: RouteObject[] = [
           ),
           guarded({ path: 'apps', lazy: lazyView(() => import('@/views/AppsView')) }, auth),
           guarded({ path: 'apps/create', lazy: lazyView(() => import('@/views/AddAppsView')) }, auth),
-          guarded({ path: 'apps/:id', lazy: notMigrated('AppsDetailView') }, auth),
+          guarded({ path: 'apps/:id', lazy: lazyView(() => import('@/views/AppsDetailView')) }, auth),
           guarded({ path: 'help', lazy: lazyView(() => import('@/views/HelpView')) }, auth),
           guarded(
             {
