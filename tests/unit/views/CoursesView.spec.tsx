@@ -172,7 +172,7 @@ describe('CoursesView', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: de.CoursesView.deleteModal.delete }))
 
     await waitFor(() => expect(courseApi.delete).toHaveBeenCalledWith('c-77'))
-    expect(toastMessages()).toContainEqual(['success', 'CoursesView.toasts.deleteSuccess'])
+    expect(toastMessages()).toContainEqual(['success', de.CoursesView.toasts.deleteSuccess])
     await waitFor(() => expect(screen.queryByText('Zu löschender Kurs')).not.toBeInTheDocument())
   })
 
