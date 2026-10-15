@@ -98,7 +98,7 @@ export const appRoutes: RouteObject[] = [
           ),
           guarded({ path: 'deployment/new/config', lazy: lazyView(() => import('@/views/NewDeploymentConfigView')) }, auth),
           guarded(
-            { path: 'deployment/new/teams', lazy: notMigrated('NewDeploymentGroupsAssignmentView') },
+            { path: 'deployment/new/teams', lazy: lazyView(() => import('@/views/NewDeploymentGroupsAssignmentView')) },
             auth,
             wizardFields,
           ),
