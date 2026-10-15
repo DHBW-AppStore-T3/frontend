@@ -125,7 +125,7 @@ export const appRoutes: RouteObject[] = [
         element: <UserLayout />,
         children: [
           guarded({ path: 'user', lazy: lazyView(() => import('@/views/UserView')) }, auth),
-          guarded({ path: 'user/openstack', lazy: notMigrated('SettingsOpenStackView') }, auth),
+          guarded({ path: 'user/openstack', lazy: lazyView(() => import('@/views/SettingsOpenStackView')) }, auth),
         ],
       },
 
