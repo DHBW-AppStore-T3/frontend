@@ -120,6 +120,7 @@ location /api/ {
   add_header X-Content-Type-Options "nosniff" always;
   add_header Referrer-Policy "no-referrer" always;
   add_header Content-Security-Policy "frame-ancestors $FRAME_ANCESTORS" always;
+  add_header Strict-Transport-Security \$appstore_hsts always;
 }
 EOF
 else
