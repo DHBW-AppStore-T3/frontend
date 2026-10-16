@@ -2,10 +2,11 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'spike/**']
     tags: ['v*.*.*']
   pull_request:
     branches: [main, dev]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
