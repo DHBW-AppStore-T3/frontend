@@ -17,12 +17,13 @@
  * in when ``clamp`` > 0.
  *
  * The HTML is run through DOMPurify before it hits ``v-html``, so user
- * markdown like ``<img src=x onerror=alert(1)>`` is neutralised.
+ * markdown like ``<img src=x onerror=alert(1)>`` is neutralised (rules in
+ * ``utils/markdown-html.ts``).
  */
 import { computed, ref, onMounted, watch, nextTick } from 'vue'
 import { marked, Renderer } from 'marked'
-import DOMPurify from 'dompurify'
 import { useI18n } from 'vue-i18n'
+import { escapeHtml, sanitizeMarkdownHtml } from '@/utils/markdown-html'
 
 const props = withDefaults(defineProps<{
   /** Raw markdown source. ``null`` / empty renders nothing. */
@@ -79,9 +80,6 @@ const buildRenderer = (): Renderer => {
   return r
 }
 
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
 const html = computed(() => {
   const raw = (props.source ?? '').trim()
   if (!raw) return ''
@@ -92,10 +90,7 @@ const html = computed(() => {
     renderer,
     async: false,
   }) as string
-  return DOMPurify.sanitize(parsed, {
-    USE_PROFILES: { html: true },
-    ADD_ATTR: ['target', 'rel'],
-  })
+  return sanitizeMarkdownHtml(parsed, raw)
 })
 
 const contentClass = computed(() => {
