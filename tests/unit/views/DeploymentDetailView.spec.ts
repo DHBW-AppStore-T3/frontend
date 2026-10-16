@@ -601,6 +601,25 @@ describe('DeploymentDetailView.vue — member self-access', () => {
     expect(link.attributes('rel')).toBe('noopener noreferrer')
   })
 
+  it('verlinkt keine Skript-URL aus den Outputs einer App', async () => {
+    // A VM app's outputs come from its author's OpenTofu code: a crafted
+    // "url" must not become a link that runs script in the AppStore.
+    mocks.mockGetMyAccess.mockResolvedValue({
+      data: {
+        user_accounts: {
+          'Team Alpha-member1': { username: 'member1', team: 'Team Alpha', type: 'none', url: 'javascript:alert(document.domain)' },
+        },
+        team_vms: { 'Team Alpha': { url: 'javascript:alert(1)' } },
+      },
+    })
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    const hrefs = wrapper.findAll('a').map((a) => a.attributes('href') ?? '')
+    expect(hrefs.some((h) => h.toLowerCase().startsWith('javascript:'))).toBe(false)
+  })
+
   it('ruft /my-access NICHT auf, wenn der Nutzer in keinem Team ist', async () => {
     serve(baseDeployment({ permissions: OWNER }))
     mockAuthUserId.value = 'user-owner'

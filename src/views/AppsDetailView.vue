@@ -14,6 +14,7 @@ import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.sto
 import { useAuthStore } from '@/stores/auth.store'
 import { useRole } from '@/composables/useRole'
 import { formatDate, MAX_IMAGE_BYTES } from '@/utils/format'
+import { safeHttpUrl } from '@/utils/safe-url'
 import AppLogo from '@/components/ui/AppLogo.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -475,7 +476,7 @@ onMounted(async () => {
                 <span class="flex items-center gap-1 bg-surfaceMuted px-2 py-1 rounded">
                   <GitBranch :size="14" /> {{ app.versions?.length || 0 }} {{ $t('AppsDetailView.versionsAvailable') }}
                 </span>
-                <a v-if="app.git_link" :href="app.git_link" target="_blank" rel="noopener noreferrer" class="text-info hover:underline cursor-pointer truncate max-w-xs block">
+                <a v-if="app.git_link" :href="safeHttpUrl(app.git_link)" target="_blank" rel="noopener noreferrer" class="text-info hover:underline cursor-pointer truncate max-w-xs block">
                   {{ app.git_link }}
                 </a>
               </div>
@@ -592,7 +593,7 @@ onMounted(async () => {
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-textMuted">{{ $t('AppsDetailView.versionLink') }}</span>
-                <a v-if="versionInfo.html_url" :href="versionInfo.html_url" target="_blank" rel="noopener" class="font-medium text-info hover:underline break-all">{{ versionInfo.html_url }}</a>
+                <a v-if="versionInfo.html_url" :href="safeHttpUrl(versionInfo.html_url)" target="_blank" rel="noopener noreferrer" class="font-medium text-info hover:underline break-all">{{ versionInfo.html_url }}</a>
                 <span v-else class="font-medium text-right">-</span>
               </div>
             </div>

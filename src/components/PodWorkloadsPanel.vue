@@ -14,6 +14,7 @@ import { Boxes, RefreshCw, AlertCircle, RotateCcw, Eraser, ExternalLink } from '
 import { useI18n } from 'vue-i18n'
 
 import type { PodWorkload } from '@/types'
+import { safeHttpUrl } from '@/utils/safe-url'
 
 defineProps<{
     workloads: PodWorkload[]
@@ -94,7 +95,7 @@ const phaseLabel = (w: PodWorkload): string => {
                 <tbody class="divide-y divide-borderSubtle">
                     <tr v-for="w in workloads" :key="w.workload" :data-testid="`workload-${w.workload}`">
                         <td class="py-2.5 pr-4 font-mono text-textHeading">
-                            <a v-if="w.url" :href="w.url" target="_blank" rel="noopener noreferrer"
+                            <a v-if="safeHttpUrl(w.url)" :href="safeHttpUrl(w.url)" target="_blank" rel="noopener noreferrer"
                                class="inline-flex items-center gap-1 text-info hover:underline">
                                 {{ w.workload }} <ExternalLink :size="12" />
                             </a>

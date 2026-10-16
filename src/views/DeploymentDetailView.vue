@@ -20,6 +20,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { formatDateTime } from '@/utils/format'
 import { errorReason, localizedError } from '@/utils/http-error'
 import { sshCommandFor, rdpCommandFor, userUrlFor } from '@/utils/connection-commands'
+import { safeHttpUrl } from '@/utils/safe-url'
 import { highlightJson, prettyJson } from '@/utils/json-view'
 
 import { Eye, EyeOff } from 'lucide-vue-next'
@@ -1220,7 +1221,7 @@ const deselectTask = () => {
                     </div>
                     <div>
                         <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Git Repository</div>
-                        <a :href="deployment.app.git_link ?? undefined" target="_blank"
+                        <a :href="safeHttpUrl(deployment.app.git_link)" target="_blank" rel="noopener noreferrer"
                             class="text-sm text-blue-600 hover:text-blue-800 underline break-all">
                             {{ deployment.app.git_link }}
                         </a>
@@ -1568,7 +1569,7 @@ const deselectTask = () => {
                                 <div v-if="member.account.data.url && !team.vm?.url"
                                     class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-[280px]">
                                     <span class="text-gray-400 font-sans text-[10px] uppercase tracking-wider flex-shrink-0">URL:</span>
-                                    <a :href="member.account.data.url" target="_blank" rel="noopener noreferrer"
+                                    <a :href="safeHttpUrl(member.account.data.url)" target="_blank" rel="noopener noreferrer"
                                         class="text-blue-600 hover:underline truncate">{{ member.account.data.url.replace(/^https?:\/\//, '') }}</a>
                                     <button
                                         @click="copyToClipboard(member.account.data.url ?? '', 'acturl-' + member.account.key)"
@@ -1593,7 +1594,7 @@ const deselectTask = () => {
                                 <div v-else-if="team.vm?.url"
                                     class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-[280px]">
                                     <span class="text-gray-400 font-sans text-[10px] uppercase tracking-wider flex-shrink-0">URL:</span>
-                                    <a :href="team.vm.url" target="_blank" rel="noopener noreferrer"
+                                    <a :href="safeHttpUrl(team.vm.url)" target="_blank" rel="noopener noreferrer"
                                         class="text-blue-600 hover:underline truncate">{{ team.vm.url.replace(/^https?:\/\//, '') }}</a>
                                     <button
                                         @click="copyToClipboard(team.vm.url, 'vmurl-' + member.account.key)"
