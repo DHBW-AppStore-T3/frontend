@@ -1,6 +1,6 @@
 # frontend
 
-Frontend des DHBW-AppStore (Vue 3, Pinia, Tailwind CSS, Vite, TypeScript).
+Frontend des DHBW-AppStore (React 19, Zustand, React Router 7, react-i18next, Tailwind CSS, Vite, TypeScript).
 Harness-Gesamtkonzept: siehe https://github.com/DHBW-AppStore-T3/.github/blob/main/docs/HARNESS.md
 
 ## Die 2 Flows
@@ -10,7 +10,7 @@ Harness-Gesamtkonzept: siehe https://github.com/DHBW-AppStore-T3/.github/blob/ma
 
 ## Lokale Befehle
 - Dev-Server: `npm run dev`
-- Build & Typecheck: `npm run build` (`vue-tsc -b && vite build`)
+- Build & Typecheck: `npm run build` (`tsc -b && vite build`)
 - Tests & Coverage: `npm run test` / `npm run test:coverage`
 - OpenAPI Typen synchronisieren: `npx openapi-typescript ../backend/openapi.json -o src/types/api.generated.ts`
 - Lebendes Übergabedokument: `claude_docs/HANDOVER.md`

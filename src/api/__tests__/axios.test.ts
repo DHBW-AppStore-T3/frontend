@@ -6,12 +6,12 @@ const mocks = vi.hoisted(() => ({
   login: vi.fn(),
 }))
 
-vi.mock('@/composables/useKeycloak', () => ({
-  useKeycloak: () => ({
+vi.mock('@/services/keycloak.service', () => ({
+  keycloak: {
     getAccessToken: mocks.getAccessToken,
     ensureValidToken: mocks.ensureValidToken,
     login: mocks.login,
-  }),
+  },
 }))
 
 // `api` is a module-level singleton built once at import time; grabbing its

@@ -1,19 +1,14 @@
-import { computed } from 'vue'
-import type { ComputedRef, MaybeRefOrGetter } from 'vue'
-import { toValue } from 'vue'
+import { useMemo } from 'react'
 import type { App } from '@/types'
 
-export function useDeploymentConstraints(app: MaybeRefOrGetter<App | null>): {
-  forcedGroupMode: ComputedRef<'eachUser' | null>
-  groupModeReason: ComputedRef<string | null>
+export function useDeploymentConstraints(app: App | null): {
+  forcedGroupMode: 'eachUser' | null
+  groupModeReason: string | null
 } {
-  const forcedGroupMode = computed<'eachUser' | null>(() =>
-    toValue(app)?.name.toLowerCase().includes('windows') ? 'eachUser' : null
-  )
-
-  const groupModeReason = computed<string | null>(() =>
-    forcedGroupMode.value !== null ? 'deployment.assignment.windowsConstraintText' : null
-  )
-
-  return { forcedGroupMode, groupModeReason }
+  return useMemo(() => {
+    const forcedGroupMode = app?.name.toLowerCase().includes('windows') ? 'eachUser' : null
+    const groupModeReason =
+      forcedGroupMode !== null ? 'deployment.assignment.windowsConstraintText' : null
+    return { forcedGroupMode, groupModeReason }
+  }, [app])
 }

@@ -17,7 +17,7 @@ Copilot acts as a **frontend engineer on this project**.
 
 Copilot should:
 - understand the domain: OpenStack AppStore for teaching environments
-- generate Vue 3 + TypeScript code consistent with our architecture
+- generate React 19 + TypeScript code consistent with our architecture
 - reuse existing modules, stores, services and patterns
 - help build features that integrate cleanly with the backend API
 - propose UI that feels consistent with the rest of the application
@@ -55,7 +55,7 @@ An **App = Deployment Blueprint**
 - versionable + reproducible deployment package
 
 ### High Level Architecture
-Frontend (Vue 3)  
+Frontend (React 19)  
 ↓  
 Keycloak (Authentication & User Management)  
 ↓  
@@ -85,15 +85,15 @@ Important:
 ## 🛠️ Technology Stack (Copilot must respect this)
 
 ### Frontend
-- Vue 3
+- React 19
 - `<script setup>` Composition API
 - **TypeScript**
 - Vite
-- Pinia (state)
-- Vue Router
+- Zustand (state)
+- React Router 7
 - Tailwind CSS
 - Axios (HTTP client)
-- Vue i18n (internationalization)
+- react-i18next (internationalization)
 - **oidc-client-ts** (Keycloak OIDC integration)
 
 ### Backend Stack (for context)
@@ -118,11 +118,11 @@ No new frameworks should be added without team discussion.
 
 Copilot is allowed to:
 
-- create Vue 3 components
+- create React function components
 - build pages & views
 - extend routing
-- create composables
-- create Pinia stores
+- create hooks
+- create Zustand stores
 - extend existing UI
 - call backend APIs
 - suggest improvements consistent with existing code
@@ -161,14 +161,14 @@ Copilot MUST NOT:
 If Copilot is unsure:
 → Prefer minimal, extensible, conventional code
 → Follow patterns already used in repo
-→ Check existing composables (useKeycloak, useAuth) before creating new ones
+→ Check existing hooks (useAuth, useRole) before creating new ones
 
 ---
 
 ## 🧩 Architecture Rules (Frontend)
 
 ### State Management
-Use Pinia.
+Use Zustand.
 Keep stores focused.
 One domain = one store.
 
@@ -188,9 +188,9 @@ One domain = one store.
 
 ### Authentication Layer
 - **Keycloak OIDC** (Authorization Code + PKCE)
-- composable: `useKeycloak()` for OIDC operations
-- composable: `useAuth()` for auth state
-- store: `authStore` (Pinia) manages user state
+- service: `keycloak` (src/services/keycloak.service.ts) for OIDC operations
+- hook: `useAuth()` for auth state
+- store: `useAuthStore` (Zustand) manages user state
 - flow:
   1. User clicks login → redirect to Keycloak
   2. Keycloak redirects back to `/callback` with code
@@ -263,7 +263,7 @@ optional association
 If Copilot generates tests:
 
 - Use Vitest
-- Use Vue Testing Library
+- Use React Testing Library
 - Focus on:
   - rendering
   - behavior
@@ -282,42 +282,36 @@ Do not:
 Copilot should generate code like:
 
 ### Example 1: Protected Route Component
-```vue
-<script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useAuthStore } from '@/stores/auth.store';
-import { deploymentService } from '@/services/deployment.service';
+```tsx
+import { useEffect, useState } from 'react'
+import { deploymentService } from '@/services/deployment.service'
 
-const authStore = useAuthStore();
-const deployments = ref([]);
-const loading = ref(true);
-const error = ref<string | null>(null);
+export function DeploymentsList() {
+  const [deployments, setDeployments] = useState<Deployment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-onMounted(async () => {
-  try {
-    deployments.value = await deploymentService.list();
-  } catch (e) {
-    error.value = 'Failed to load deployments';
-  } finally {
-    loading.value = false;
-  }
-});
-</script>
+  useEffect(() => {
+    deploymentService
+      .list()
+      .then(setDeployments)
+      .catch(() => setError('Failed to load deployments'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  // render loading / error / list
+}
 ```
 
-### Example 2: Using Keycloak composable
+### Example 2: Using Keycloak service
 ```typescript
-import { useKeycloak } from '@/composables/useKeycloak';
+import { keycloak } from '@/services/keycloak.service'
 
-const { login, logout, isAuthenticated } = useKeycloak();
-
-const handleLogin = () => {
-  login('/dashboard'); // returnUrl
-};
+const handleLogin = () => keycloak.login('/dashboard') // returnUrl
 ```
 
 ### Key Patterns:
-- Uses existing composables/stores
+- Uses existing hooks/stores
 - TypeScript types
 - Loading + error states
 - Clean async/await

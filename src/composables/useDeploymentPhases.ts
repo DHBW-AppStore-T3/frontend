@@ -1,7 +1,7 @@
 /**
  * Phase-stepper state for a deployment's live progress UI.
  *
- * Extracted from DeploymentDetailView.vue, which had grown to ~2590 lines and
+ * Extracted from DeploymentDetailView, which had grown to ~2590 lines and
  * carried this alongside resource loading, VM drawer state, the delete and
  * pause/resume flows, SSE wiring, JSON highlighting and clipboard helpers.
  *
@@ -12,7 +12,7 @@
  * length rather than assumed.
  */
 
-import { computed, type Ref } from 'vue'
+import { useMemo } from 'react'
 
 import type { Task } from '@/types'
 
@@ -24,15 +24,15 @@ export const DEFAULT_PHASE_COUNT = 11
 
 export interface DeploymentPhaseSources {
     /** Live phase total from the worker; 0 before the first event. */
-    streamTotalPhases: Ref<number>
+    streamTotalPhases: number
     /** Authoritative phase-name list from the worker, once it has arrived. */
-    streamPhaseNames: Ref<string[] | null>
+    streamPhaseNames: string[] | null
     /** 1-based index of the active phase, or null pre-first-event. */
-    streamCurrentPhaseIndex: Ref<number | null>
+    streamCurrentPhaseIndex: number | null
     /** Percent complete 0..100, or null pre-first-event. */
-    streamProgress: Ref<number | null>
+    streamProgress: number | null
     /** The task the stepper is describing. */
-    activeTask: Ref<Task | null>
+    activeTask: Task | null
 }
 
 /**
@@ -40,6 +40,28 @@ export interface DeploymentPhaseSources {
  * currently active.
  */
 export function useDeploymentPhases(sources: DeploymentPhaseSources) {
+    const {
+        streamTotalPhases,
+        streamPhaseNames,
+        streamCurrentPhaseIndex,
+        streamProgress,
+        activeTask,
+    } = sources
+    const activeType = activeTask?.type
+
+    return useMemo(
+        () => derivePhases({
+            streamTotalPhases,
+            streamPhaseNames,
+            streamCurrentPhaseIndex,
+            streamProgress,
+            activeTask: activeType ? ({ type: activeType } as Task) : null,
+        }),
+        [streamTotalPhases, streamPhaseNames, streamCurrentPhaseIndex, streamProgress, activeType],
+    )
+}
+
+function derivePhases(sources: DeploymentPhaseSources) {
     const {
         streamTotalPhases,
         streamPhaseNames,
@@ -140,9 +162,8 @@ export function useDeploymentPhases(sources: DeploymentPhaseSources) {
     // which cover the fixed shapes (single-image deploy / destroy / pause / resume
     // / redeploy); multi-image slots show generic numbers until ``phase_names`` lands.
 
-    const phaseStepCount = computed<number>(() => {
-        return streamTotalPhases.value > 0 ? streamTotalPhases.value : DEFAULT_PHASE_COUNT
-    })
+    const phaseStepCount: number =
+        streamTotalPhases > 0 ? streamTotalPhases : DEFAULT_PHASE_COUNT
 
     // Return the label for a given 0-based index. Order of precedence:
     //   1. ``streamPhaseNames`` — authoritative, ships from the worker on
@@ -157,7 +178,7 @@ export function useDeploymentPhases(sources: DeploymentPhaseSources) {
     //      doesn't collapse during the loading flicker.
     const phaseStepLabel = (idx: number): string => {
         // 1. Worker-authoritative list.
-        const fromStream = streamPhaseNames.value
+        const fromStream = streamPhaseNames
         if (Array.isArray(fromStream) && idx >= 0 && idx < fromStream.length) {
             return phaseLabel(fromStream[idx])
         }
@@ -165,7 +186,7 @@ export function useDeploymentPhases(sources: DeploymentPhaseSources) {
         // 2. Static fallback by active task type. Used until the first
         //    progress event lands.
         let table: readonly string[] | null = null
-        const activeType = activeTask.value?.type
+        const activeType = activeTask?.type
         if (activeType === 'pause') {
             table = PHASE_LABELS_PAUSE
         } else if (activeType === 'resume') {
@@ -182,15 +203,15 @@ export function useDeploymentPhases(sources: DeploymentPhaseSources) {
             // and let the loop fall through to numeric slot indices.
             // Once the first progress event arrives, ``phase_names`` takes
             // over and the predicted slots are replaced with real labels.
-            if (streamTotalPhases.value === PHASE_LABELS_DEPLOY_NO_PACKER.length) {
+            if (streamTotalPhases === PHASE_LABELS_DEPLOY_NO_PACKER.length) {
                 table = PHASE_LABELS_DEPLOY_NO_PACKER
-            } else if (streamTotalPhases.value === PHASE_LABELS_DEPLOY_FULL.length) {
+            } else if (streamTotalPhases === PHASE_LABELS_DEPLOY_FULL.length) {
                 table = PHASE_LABELS_DEPLOY_FULL
             }
         }
         // Length-based last resort (no active task type known yet).
         if (!table) {
-            const total = streamTotalPhases.value
+            const total = streamTotalPhases
             if (total === PHASE_LABELS_DEPLOY_FULL.length) table = PHASE_LABELS_DEPLOY_FULL
             else if (total === PHASE_LABELS_DEPLOY_NO_PACKER.length) table = PHASE_LABELS_DEPLOY_NO_PACKER
             else if (total === PHASE_LABELS_DESTROY.length) table = PHASE_LABELS_DESTROY
@@ -205,15 +226,15 @@ export function useDeploymentPhases(sources: DeploymentPhaseSources) {
     // 0-based index of the active dot. Prefer the worker's authoritative
     // ``phase_index`` (1-based) from the SSE payload — only fall back to
     // rounding ``progress_pct`` if no progress event has arrived yet.
-    const currentPhaseIndex = computed<number>(() => {
-        if (streamCurrentPhaseIndex.value !== null && streamCurrentPhaseIndex.value > 0) {
-            return streamCurrentPhaseIndex.value - 1
+    const currentPhaseIndex: number = (() => {
+        if (streamCurrentPhaseIndex !== null && streamCurrentPhaseIndex > 0) {
+            return streamCurrentPhaseIndex - 1
         }
-        if (streamProgress.value === null) return -1
-        const total = phaseStepCount.value
-        const pct = Math.max(0, Math.min(100, streamProgress.value))
+        if (streamProgress === null) return -1
+        const total = phaseStepCount
+        const pct = Math.max(0, Math.min(100, streamProgress))
         return Math.max(0, Math.min(total - 1, Math.round((pct / 100) * total) - 1))
-    })
+    })()
 
     const phaseLabel = (phase: unknown): string => {
         if (typeof phase !== 'string' || !phase) return ''

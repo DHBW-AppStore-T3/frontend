@@ -1,5 +1,5 @@
 /* Login visual contract. Values are reference pixels, scaled to fit the viewport.
-   Keep artwork geometry and responsive breakpoints in AuthLayout.vue. */
+   Keep artwork geometry and responsive breakpoints in AuthLayout.tsx. */
 .auth-page {
   --auth-reference-width: 1672;
   --auth-reference-height: 941;

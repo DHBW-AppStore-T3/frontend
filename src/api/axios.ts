@@ -1,5 +1,5 @@
 import axios, { type AxiosError } from 'axios'
-import { useKeycloak } from '@/composables/useKeycloak'
+import { keycloak } from '@/services/keycloak.service'
 import { env } from '@/env'
 
 const api = axios.create({
@@ -13,7 +13,6 @@ const api = axios.create({
 // Token from Keycloak automatically added to requests
 api.interceptors.request.use(
   async (config) => {
-    const keycloak = useKeycloak()
     const token = await keycloak.getAccessToken()
     
     if (token) {
@@ -30,8 +29,7 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     // 401: Not authenticated -> Try to refresh, then redirect to login
     if (error.response?.status === 401) {
-      const keycloak = useKeycloak()
-      
+        
       // Try to ensure valid token (silent refresh)
       const hasValidToken = await keycloak.ensureValidToken()
       

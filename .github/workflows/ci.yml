@@ -2,10 +2,11 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'spike/**']
     tags: ['v*.*.*']
   pull_request:
     branches: [main, dev]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -33,15 +34,14 @@ jobs:
         run: npm ci
 
       - name: Run type check
-        run: npx vue-tsc -b --noEmit
+        run: npx tsc -b --noEmit
 
   # ================================================================
   # 🧹 LINT
   # ================================================================
-  # vue-tsc above covers types. ESLint covers what a type-checker
-  # cannot see: a template referencing something <script setup> never
-  # declared, a v-for without :key, a mutated prop, an unused import
-  # left behind by a refactor. Warnings are not fatal (there are ~157,
+  # tsc above covers types. ESLint covers what a type-checker
+  # cannot see: the rules of hooks, effect dependency arrays, an unused
+  # import left behind by a refactor. Warnings are not fatal (there are ~157,
   # mostly `any`s forced by the hand-maintained API types); errors are.
   lint:
     name: "🧹 Lint"

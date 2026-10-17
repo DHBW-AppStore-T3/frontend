@@ -1,8 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { liveStore } from '../../../tests/helpers/liveStore'
+
+const keycloakState = { isAuthenticated: false }
+const keycloakListeners = new Set<(s: typeof keycloakState) => void>()
 
 const keycloakMock = {
-  isAuthenticated: { value: false },
+  getState: () => keycloakState,
+  subscribe: vi.fn((listener: (s: typeof keycloakState) => void) => {
+    keycloakListeners.add(listener)
+    return () => keycloakListeners.delete(listener)
+  }),
   initialize: vi.fn(),
   login: vi.fn(),
   handleCallback: vi.fn(),
@@ -11,8 +18,8 @@ const keycloakMock = {
   setHandoffUser: vi.fn(() => Promise.resolve()),
 }
 
-vi.mock('@/composables/useKeycloak', () => ({
-  useKeycloak: () => keycloakMock,
+vi.mock('@/services/keycloak.service', () => ({
+  keycloak: keycloakMock,
 }))
 
 vi.mock('@/composables/useOpenStackResourceCache', () => ({
@@ -20,10 +27,12 @@ vi.mock('@/composables/useOpenStackResourceCache', () => ({
 }))
 
 vi.mock('@/stores/openstack-credentials.store', () => ({
-  useOpenStackCredentialsStore: () => ({
-    fetch: vi.fn(() => Promise.resolve()),
-    reset: vi.fn(),
-  }),
+  useOpenStackCredentialsStore: {
+    getState: () => ({
+      fetch: vi.fn(() => Promise.resolve()),
+      reset: vi.fn(),
+    }),
+  },
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -37,7 +46,8 @@ vi.mock('@/services/auth.service', () => ({
 describe('auth.store — LTI and handoff', () => {
   beforeEach(() => {
     vi.resetModules()
-    setActivePinia(createPinia())
+    keycloakState.isAuthenticated = false
+    keycloakListeners.clear()
     vi.clearAllMocks()
   })
 
@@ -45,7 +55,7 @@ describe('auth.store — LTI and handoff', () => {
     const { AuthService } = await import('@/services/auth.service')
     vi.mocked(AuthService.fetchMe).mockImplementation(() => new Promise(() => {}))
     const { useAuthStore } = await import('../auth.store')
-    const store = useAuthStore()
+    const store = liveStore(useAuthStore)
 
     await store.setLtiUser('teacher@dhbw.de', 'lti-token', 'teacher')
 
@@ -65,7 +75,7 @@ describe('auth.store — LTI and handoff', () => {
     }
     vi.mocked(AuthService.fetchMe).mockResolvedValueOnce(realUser)
     const { useAuthStore } = await import('../auth.store')
-    const store = useAuthStore()
+    const store = liveStore(useAuthStore)
 
     await store.setLtiUser('teacher@dhbw.de', 'lti-token', 'teacher')
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -85,7 +95,7 @@ describe('auth.store — LTI and handoff', () => {
     }
     vi.mocked(AuthService.fetchMe).mockResolvedValueOnce(realUser)
     const { useAuthStore } = await import('../auth.store')
-    const store = useAuthStore()
+    const store = liveStore(useAuthStore)
 
     await store.setHandoffUser('student@dhbw.de', 'handoff-token')
 
@@ -97,11 +107,55 @@ describe('auth.store — LTI and handoff', () => {
     const { AuthService } = await import('@/services/auth.service')
     vi.mocked(AuthService.fetchMe).mockRejectedValueOnce(new Error('network error'))
     const { useAuthStore } = await import('../auth.store')
-    const store = useAuthStore()
+    const store = liveStore(useAuthStore)
 
     await store.setLtiUser('teacher@dhbw.de', 'lti-token', 'teacher')
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(store.user).toMatchObject({ email: 'teacher@dhbw.de', role: 'teacher' })
+  })
+
+  it('mirrors keycloak.isAuthenticated into the store and follows changes', async () => {
+    keycloakState.isAuthenticated = true
+    const { useAuthStore } = await import('../auth.store')
+    const store = liveStore(useAuthStore)
+    expect(store.isAuthenticated).toBe(true)
+
+    keycloakState.isAuthenticated = false
+    keycloakListeners.forEach((l) => l(keycloakState))
+    expect(store.isAuthenticated).toBe(false)
+  })
+
+  it('hasRole / hasAnyRole reflect the current user', async () => {
+    const { useAuthStore } = await import('../auth.store')
+    const store = liveStore(useAuthStore)
+    expect(store.hasAnyRole('admin')).toBe(false)
+
+    await store.setLtiUser('t@dhbw.de', 'tok', 'teacher')
+
+    expect(store.hasRole('teacher')).toBe(true)
+    expect(store.hasAnyRole('admin', 'teacher')).toBe(true)
+    expect(store.hasAnyRole('admin')).toBe(false)
+  })
+
+  it('selectors derive role flags and userId from the user', async () => {
+    const { useAuthStore, selectIsTeacherOrAdmin, selectUserId, selectIsStudent } = await import('../auth.store')
+    const store = liveStore(useAuthStore)
+    await store.setLtiUser('t@dhbw.de', 'tok', 'teacher')
+
+    expect(selectUserId(store)).toBe('t@dhbw.de')
+    expect(selectIsTeacherOrAdmin(store)).toBe(true)
+    expect(selectIsStudent(store)).toBe(false)
+  })
+
+  it('logout clears the user, resets credentials and signs out of keycloak', async () => {
+    const { useAuthStore } = await import('../auth.store')
+    const store = liveStore(useAuthStore)
+    await store.setLtiUser('t@dhbw.de', 'tok', 'teacher')
+
+    await store.logout()
+
+    expect(store.user).toBeNull()
+    expect(keycloakMock.logout).toHaveBeenCalled()
   })
 })

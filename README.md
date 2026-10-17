@@ -1,6 +1,6 @@
 # Frontend
 
-Vue 3 SPA für den App Store. Studierende und Dozierende verwalten hier Apps, deployen sie auf OpenStack und sehen ihre Deployments.
+React-SPA (TypeScript) für den App Store. Studierende und Dozierende verwalten hier Apps, deployen sie auf OpenStack und sehen ihre Deployments.
 
 ## Setup
 
@@ -24,10 +24,10 @@ Lint, Type-Check und Tests laufen im Frontend-Container — `make shell-frontend
 ```bash
 npm run lint            # ESLint (eslint.config.js)
 npm run lint:fix        # ESLint mit --fix
-npx vue-tsc -b --noEmit # Type-Check (kein eigenes npm-Skript)
+npx tsc -b --noEmit # Type-Check (kein eigenes npm-Skript)
 npm run test            # Vitest, einmaliger Lauf
 npm run test:coverage   # Vitest + Coverage (istanbul)
-npm run build           # vue-tsc + vite build
+npm run build           # tsc + vite build
 ```
 
 ### API-Typen aus dem Backend-Schema
@@ -42,7 +42,7 @@ poetry run python scripts/export_openapi.py        # oder: make openapi aus depl
 # 2. Ergebnis nach frontend/src/types/openapi.json kopieren
 # 3. im frontend-Repo:
 npm run gen:api-types
-npx vue-tsc -b --noEmit
+npx tsc -b --noEmit
 ```
 
 Schritt 3 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die User-Typen bereits aus dem generierten Schema ab; die übrigen Blöcke sind noch handgepflegt und sollten bei Gelegenheit nachgezogen werden.
@@ -61,27 +61,27 @@ Neue Themes: [docs/themes.md](docs/themes.md).
 
 ## Technologie-Stack
 
-- **Vue 3** mit Composition API und TypeScript
-- **Pinia** für globalen State
-- **Vue Router** mit Auth-Guards
+- **React 19** mit Function Components, Hooks und TypeScript
+- **Zustand** für globalen State
+- **React Router 7** mit Auth-Guards (Route-Loader)
 - **Axios** mit Keycloak-Bearer-Interceptor
 - **Tailwind CSS** für Styling
-- **vue-i18n** für Mehrsprachigkeit (DE/EN)
+- **react-i18next** für Mehrsprachigkeit (DE/EN)
 - **oidc-client-ts** für Keycloak-Login
 
 ## Code-Struktur
 
-Der Code liegt in `src/`. Der typische Datenfluss von der Oberfläche bis zum Backend: eine **View** (eine Seite der App) liest ihre Daten aus einem **Store** — einem zentralen Datenspeicher, den sich mehrere Seiten teilen (umgesetzt mit der Bibliothek Pinia). Der Store holt bzw. schickt diese Daten über den **API-Layer** (`api/`) zum Backend. Dabei ergänzt `api/axios.ts` bei jedem Aufruf automatisch den Login-Token, sodass sich die einzelnen Aufrufe nicht selbst darum kümmern müssen.
+Der Code liegt in `src/`. Der typische Datenfluss von der Oberfläche bis zum Backend: eine **View** (eine Seite der App) liest ihre Daten aus einem **Store** — einem zentralen Datenspeicher, den sich mehrere Seiten teilen (umgesetzt mit der Bibliothek Zustand). Der Store holt bzw. schickt diese Daten über den **API-Layer** (`api/`) zum Backend. Dabei ergänzt `api/axios.ts` bei jedem Aufruf automatisch den Login-Token, sodass sich die einzelnen Aufrufe nicht selbst darum kümmern müssen.
 
 ```
 src/
-├── main.ts        # Startpunkt der App (registriert Store, Router, Übersetzungen)
+├── main.tsx       # Startpunkt der App (Router, Übersetzungen, Rendering)
 ├── views/         # Seiten der App (Ziele der Navigation), z.B. Deployment-Wizard, App-Katalog
 ├── layouts/       # Seitenrahmen (App/Auth/User), je nach Route gewählt
 ├── components/    # Wiederverwendbare Bausteine; ui/ = generische Elemente (Button, Dialog, ...)
 ├── stores/        # Gemeinsamer Datenspeicher mehrerer Seiten + zugehörige Aktionen (*.store.ts)
 ├── api/           # Aufrufe ans Backend, ein File pro Ressource (*.api.ts) + axios.ts
-├── composables/   # Wiederverwendbare Logik (use*), z.B. Login, Live-Updates
+├── composables/   # Wiederverwendbare Hooks (use*), z.B. Login, Live-Updates
 ├── services/      # Logik ohne Oberfläche (aktuell: auth.service fürs Keycloak-Login)
 ├── router/        # Definition der Seiten-Adressen + Zugriffsschutz (Login nötig ja/nein)
 ├── types/         # TypeScript-Typdefinitionen (OpenStack-Credentials, Quota, ...)
@@ -97,7 +97,7 @@ src/
 |---|---|
 | `api/axios.ts` | Zentrale Stelle für alle Backend-Aufrufe: hängt vor dem Absenden automatisch den Login-Token an (`Authorization: Bearer <token>`) und fängt abgelaufene Logins (Fehler 401) ab |
 | `stores/auth.store.ts` | Merkt sich, wer eingeloggt ist, und dessen Rolle (student/teacher/admin) |
-| `composables/useKeycloak.ts` | Login und Logout gegen Keycloak (via Bibliothek `oidc-client-ts`) |
+| `services/keycloak.service.ts` | Login und Logout gegen Keycloak (via Bibliothek `oidc-client-ts`) |
 | `composables/useDeploymentStream.ts` | Empfängt den Live-Fortschritt eines Deployments in Echtzeit vom Backend (Server-Sent Events) |
 | `router/index.ts` | Legt die Seiten-Adressen fest und schützt geschützte Seiten vor nicht eingeloggten Nutzern |
 

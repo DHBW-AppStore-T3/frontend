@@ -1,5 +1,4 @@
-﻿import type { Component } from 'vue'
-import { Box, Code2, Database, Globe, Server, Shield } from 'lucide-vue-next'
+import { Box, Code2, Database, Globe, Server, Shield, type LucideIcon } from 'lucide-react'
 import jupyter from '@/assets/apps/jupyter.svg'
 import gitlab from '@/assets/apps/gitlab.svg'
 import nextcloud from '@/assets/apps/nextcloud.svg'
@@ -11,7 +10,7 @@ export const APP_CATEGORIES = ['productivity', 'development', 'data', 'other'] a
 export type AppCategory = typeof APP_CATEGORIES[number]
 interface AppPresentation {
   category: AppCategory
-  icon: Component
+  icon: LucideIcon
   logo?: string
   tone?: string
   fullColor?: boolean

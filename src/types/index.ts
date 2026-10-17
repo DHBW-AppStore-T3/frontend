@@ -574,7 +574,7 @@ export interface OpenStackDisplayName {
 //  - backend/app/routers/apps.py (``_OS_TYPES``)
 //  - backend/app/routers/openstack_resources.py (list endpoints)
 //  - frontend/src/api/openstack-resources.api.ts (``OsResourceType``)
-//  - frontend/src/components/OpenStackResourcePicker.vue (render)
+//  - frontend/src/components/OpenStackResourcePicker.tsx (render)
 export type AppVariableOsType =
   | 'network'
   | 'subnet'

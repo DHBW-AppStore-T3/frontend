@@ -1,0 +1,88 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import BaseButton from '@/components/ui/BaseButton'
+import Modal from '@/components/ui/Modal'
+import type { AppVariableMarkerError } from '@/types'
+
+export interface SubmitVersionModalProps {
+  /** Version being submitted; the modal is shown while this is set. */
+  versionTag: string | null
+  isSubmitting: boolean
+  markerErrors: AppVariableMarkerError[]
+  onClose: () => void
+  onSubmit: (notes: string) => void
+}
+
+export default function SubmitVersionModal({
+  versionTag,
+  isSubmitting,
+  markerErrors,
+  onClose,
+  onSubmit,
+}: SubmitVersionModalProps) {
+  const { t } = useTranslation()
+  const [notes, setNotes] = useState('')
+
+  // Fresh notes for every version the modal is opened for.
+  const [lastTag, setLastTag] = useState(versionTag)
+  if (lastTag !== versionTag) {
+    setLastTag(versionTag)
+    setNotes('')
+  }
+
+  return (
+    <Modal
+      show={versionTag !== null}
+      onClose={onClose}
+      title={t('AppsDetailView.submitModal.title')}
+      body={
+        <div className="space-y-4">
+          <p className="text-sm text-textMuted">
+            {t('AppsDetailView.submitModal.description')}
+            <span className="font-mono bg-surfaceMuted px-1.5 py-0.5 rounded text-xs ml-1">{versionTag}</span>
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5">
+              {t('AppsDetailView.submitModal.notesLabel')}
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t('AppsDetailView.submitModal.notesPlaceholder')}
+              rows={3}
+              className="w-full rounded-lg border border-borderSubtle px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
+            />
+          </div>
+
+          {markerErrors.length > 0 ? (
+            <div className="rounded-lg border border-danger/30 bg-dangerTint p-3">
+              <p className="text-xs font-semibold text-red-700 mb-2">
+                {t('AppsDetailView.submitModal.markerErrorTitle')}
+              </p>
+              <ul className="space-y-1.5">
+                {markerErrors.map((e) => (
+                  <li key={e.variable + e.code} className="text-xs text-danger">
+                    <span className="font-mono font-medium">{e.variable}</span>
+                    <span className="text-danger mx-1">·</span>
+                    <span>{e.message}</span>
+                    {e.location ? <span className="text-danger ml-1 text-[10px]">({e.location})</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      }
+      footer={
+        <div className="flex justify-end gap-3">
+          <BaseButton variant="text" onClick={onClose} disabled={isSubmitting}>
+            {t('AppsDetailView.cancelButton')}
+          </BaseButton>
+          <BaseButton variant="primary" onClick={() => onSubmit(notes)} disabled={isSubmitting}>
+            {isSubmitting ? '...' : t('AppsDetailView.submitModal.submit')}
+          </BaseButton>
+        </div>
+      }
+    />
+  )
+}

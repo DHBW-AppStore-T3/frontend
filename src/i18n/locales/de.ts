@@ -306,6 +306,7 @@ export default {
   },
 
   DeploymentsView: {
+    checkingStatus: "Status wird geprüft...",
     title: "Deployments",
     subtitle: "Übersicht über Ihre Deployments",
     newDeployment: "Neues Deployment",
@@ -365,7 +366,8 @@ export default {
     deleteFailedAsyncToast: "Löschen fehlgeschlagen — das Deployment existiert weiterhin. Details siehe Logs unten; bitte erneut versuchen.",
     deploymentGroups: "Gruppen & VMs",
     deploymentNoGroups: "Keine Gruppen konfiguriert",
-    deploymentStudentCount: "{n} Student | {n} Studenten",
+    deploymentStudentCount_one: "{count} Student",
+    deploymentStudentCount_other: "{count} Studenten",
     deploymentGroupsBack: "Zurück",
     deploymentConfig: "Deployment-Konfiguration",
     deploymentLatestTask: "Letzter Task",

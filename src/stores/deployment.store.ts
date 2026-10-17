@@ -1,10 +1,12 @@
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
 import { deploymentApi } from '@/api/deployment.api'
 import { useAppStore } from './app.store'
 import { useAuthStore } from './auth.store'
 import { runRequest } from './_request'
+import { isMultiImagePackerLayout as isMultiImagePackerLayoutOf } from '@/utils/draft-variables'
 
 import type {
+  App,
   User,
   Course,
   Deployment,
@@ -38,56 +40,83 @@ const defaultDraft: DeploymentDraft = {
   fileUploads: {}
 }
 
-export const useDeploymentStore = defineStore('deployment', {
-  state: () => ({
-    deployments: [] as Deployment[],
+type DeploymentListParams = { userId?: string; appId?: string; status?: DeploymentStatus }
+type ApiResponse<K extends keyof typeof deploymentApi> = Awaited<ReturnType<(typeof deploymentApi)[K]>>
 
-    currentDeployment: null as DeploymentWithRelations | null,
-    isLoading: false,
-    error: null as string | null,
+interface DeploymentState {
+  deployments: Deployment[]
 
-    // The wizard state (draft).
-    draft: JSON.parse(JSON.stringify(defaultDraft)) as DeploymentDraft,
+  currentDeployment: DeploymentWithRelations | null
+  isLoading: boolean
+  error: string | null
 
-    // Global cache for students and courses (keycloak_id/courseId → object).
-    // These were `Map<string, any>` because the hand-written `User` type
-    // was missing keycloak_id / firstName / lastName, which the backend
-    // does return. `User` is derived from the OpenAPI schema now, so the
-    // cache can say what it actually holds.
-    studentCache: new Map<string, User>(),
-    courseCache: new Map<string, Course>(),
-  }),
+  // The wizard state (draft).
+  draft: DeploymentDraft
 
-  getters: {
-    myDeployments: (state) => {
-      const authStore = useAuthStore()
-      return state.deployments.filter((d) => d.userId === authStore.userId)
-    },
+  // Global cache for students and courses (keycloak_id/courseId → object).
+  // These were `Map<string, any>` because the hand-written `User` type
+  // was missing keycloak_id / firstName / lastName, which the backend
+  // does return. `User` is derived from the OpenAPI schema now, so the
+  // cache can say what it actually holds.
+  studentCache: Map<string, User>
+  courseCache: Map<string, Course>
 
-    deploymentsByStatus: (state) => {
-      return (status: DeploymentStatus) =>
-        state.deployments.filter((d) => d.status === status)
-    },
+  /** Deployments owned by the authenticated user (reads the auth store at call time). */
+  myDeployments: () => Deployment[]
+  deploymentsByStatus: (status: DeploymentStatus) => Deployment[]
+  /** The app selected in the wizard, resolved from the app store. */
+  draftAppDetails: () => App | null
 
-    draftAppDetails: (state) => {
-      const appStore = useAppStore()
-      if (!state.draft.appId) return null
-      return appStore.apps.find(a => a.appId === state.draft.appId) || null
-    }
+  fetchDeployments: (params?: DeploymentListParams) => Promise<void>
+  fetchDeploymentById: (id: string) => Promise<void>
+  createDeployment: (data: DeploymentCreate) => Promise<Deployment>
+  deleteDeployment: (id: string) => Promise<ApiResponse<'delete'>>
+  cancelDeployment: (id: string) => Promise<ApiResponse<'cancel'>>
+  pauseDeployment: (id: string) => Promise<ApiResponse<'pause'>>
+  resumeDeployment: (id: string) => Promise<ApiResponse<'resume'>>
+
+  /** Merge a partial update into the wizard draft (replaces in-place mutation). */
+  updateDraft: (patch: Partial<DeploymentDraft>) => void
+  resetDraft: () => void
+  submitDraft: () => Promise<Deployment>
+}
+
+export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
+  deployments: [],
+  currentDeployment: null,
+  isLoading: false,
+  error: null,
+  draft: JSON.parse(JSON.stringify(defaultDraft)) as DeploymentDraft,
+  studentCache: new Map<string, User>(),
+  courseCache: new Map<string, Course>(),
+
+  myDeployments() {
+    const userId = useAuthStore.getState().user?.userId
+    return get().deployments.filter((d) => d.userId === userId)
   },
-  actions: {
-    async fetchDeployments(params?: { userId?: string; appId?: string; status?: DeploymentStatus }) {
-      await runRequest(this, async () => {
+
+  deploymentsByStatus(status) {
+    return get().deployments.filter((d) => d.status === status)
+  },
+
+  draftAppDetails() {
+    const { draft } = get()
+    if (!draft.appId) return null
+    return useAppStore.getState().apps.find((a) => a.appId === draft.appId) || null
+  },
+
+    async fetchDeployments(params) {
+      await runRequest(set, async () => {
         const response = await deploymentApi.list(params)
-        this.deployments = response.data
+        set({ deployments: response.data })
       }, 'Failed to fetch deployments', { rethrow: false })
     },
 
-    async fetchDeploymentById(id: string) {
-      await runRequest(this, async () => {
+    async fetchDeploymentById(id) {
+      await runRequest(set, async () => {
         try {
           const response = await deploymentApi.getById(id)
-          this.currentDeployment = response.data
+          set({ currentDeployment: response.data })
         } catch (err) {
           // 404 = deployment was soft-deleted upstream (e.g. after a successful
           // destroy). This is not a UI error state: the DetailView's stream-ended
@@ -96,7 +125,7 @@ export const useDeploymentStore = defineStore('deployment', {
           // runRequest never sees it; other status codes (5xx, network timeout)
           // are re-thrown and take the normal error path.
           if ((err as { response?: { status?: number } })?.response?.status === 404) {
-            this.currentDeployment = null
+            set({ currentDeployment: null })
             return
           }
           throw err
@@ -104,10 +133,10 @@ export const useDeploymentStore = defineStore('deployment', {
       }, 'Failed to fetch deployment', { rethrow: false })
     },
 
-    async createDeployment(data: DeploymentCreate) {
-      return runRequest(this, async () => {
+    async createDeployment(data) {
+      return runRequest(set, async () => {
         const response = await deploymentApi.create(data)
-        this.deployments.push(response.data)
+        set((s) => ({ deployments: [...s.deployments, response.data] }))
         return response.data
       }, 'Failed to create deployment')
     },
@@ -123,10 +152,10 @@ export const useDeploymentStore = defineStore('deployment', {
      * sidebar list while it's running would only confuse the user;
      * the live progress lives in the detail view that issued the call.
      */
-    async deleteDeployment(id: string) {
-      return runRequest(this, async () => {
+    async deleteDeployment(id) {
+      return runRequest(set, async () => {
         const response = await deploymentApi.delete(id)
-        this.deployments = this.deployments.filter((d) => d.deploymentId !== id)
+        set((s) => ({ deployments: s.deployments.filter((d) => d.deploymentId !== id) }))
         return response
       }, 'Failed to delete deployment')
     },
@@ -146,12 +175,12 @@ export const useDeploymentStore = defineStore('deployment', {
      * ``{task_id, status: "destroying"}`` response so the detail view
      * can attach the live stream and watch the cleanup run.
      */
-    async cancelDeployment(id: string) {
-      return runRequest(this, () => deploymentApi.cancel(id), 'Failed to cancel deployment')
+    async cancelDeployment(id) {
+      return runRequest(set, () => deploymentApi.cancel(id), 'Failed to cancel deployment')
     },
 
-    async pauseDeployment(id: string) {
-      return runRequest(this, () => deploymentApi.pause(id), 'Failed to pause deployment')
+    async pauseDeployment(id) {
+      return runRequest(set, () => deploymentApi.pause(id), 'Failed to pause deployment')
     },
 
     /**
@@ -159,26 +188,31 @@ export const useDeploymentStore = defineStore('deployment', {
      * returns the 202 ``{task_id, status: "resuming"}`` response so
      * the detail view can attach the live stream.
      */
-    async resumeDeployment(id: string) {
-      return runRequest(this, () => deploymentApi.resume(id), 'Failed to resume deployment')
+    async resumeDeployment(id) {
+      return runRequest(set, () => deploymentApi.resume(id), 'Failed to resume deployment')
+    },
+
+    updateDraft(patch) {
+      set((s) => ({ draft: { ...s.draft, ...patch } }))
     },
 
     resetDraft() {
-      this.draft = JSON.parse(JSON.stringify(defaultDraft))
+      set({ draft: JSON.parse(JSON.stringify(defaultDraft)) })
     },
 
     async submitDraft() {
+      const draft = get().draft
       /**
        * Prepare and submit the current draft as a DeploymentCreate payload.
        * - Normalizes `releaseTag` which may come as string or object from UI
        * - Packs wizard selections (courses, groups, variables) into `userInputVar`
        * - Delegates creation to the API and returns the created deployment
        */
-      if (!this.draft.appId || !this.draft.name) {
+      if (!draft.appId || !draft.name) {
         throw new Error("App und Name sind Pflichtfelder")
       }
 
-      const rawTag: any = this.draft.releaseTag
+      const rawTag: any = draft.releaseTag
       let finalVersion = 'latest'
 
       if (rawTag && typeof rawTag === 'object') {
@@ -189,28 +223,28 @@ export const useDeploymentStore = defineStore('deployment', {
 
       // Teams: Array<{ name: string, userIds: string[] }>
       let teams: Array<{ name: string; userIds: string[] }> = []
-      if (Array.isArray(this.draft.groupNames) && Array.isArray(this.draft.assignments)) {
+      if (Array.isArray(draft.groupNames) && Array.isArray(draft.assignments)) {
         // assignments: Record<number, string[]>; groupNames: string[]
-        teams = this.draft.groupNames.map((name: string, idx: number) => ({
+        teams = draft.groupNames.map((name: string, idx: number) => ({
           name,
-          userIds: Array.isArray((this.draft.assignments as any)[idx]) ? (this.draft.assignments as any)[idx] : []
+          userIds: Array.isArray((draft.assignments as any)[idx]) ? (draft.assignments as any)[idx] : []
         }))
       }
 
       // Fallback: if no teams are defined, auto-create teams based on studentIds.
-      if (teams.length === 0 && this.draft.studentIds.length > 0) {
+      if (teams.length === 0 && draft.studentIds.length > 0) {
         // Create teams based on groupCount.
-        const groupCount = this.draft.groupCount
-        const studentsPerGroup = Math.floor(this.draft.studentIds.length / groupCount)
-        const remainder = this.draft.studentIds.length % groupCount
+        const groupCount = draft.groupCount
+        const studentsPerGroup = Math.floor(draft.studentIds.length / groupCount)
+        const remainder = draft.studentIds.length % groupCount
         
         teams = []
         let currentIndex = 0
         for (let i = 0; i < groupCount; i++) {
           const groupSize = studentsPerGroup + (i < remainder ? 1 : 0)
-          const groupStudents = this.draft.studentIds.slice(currentIndex, currentIndex + groupSize)
+          const groupStudents = draft.studentIds.slice(currentIndex, currentIndex + groupSize)
           teams.push({
-            name: this.draft.groupNames[i] || `Team-${i + 1}`,
+            name: draft.groupNames[i] || `Team-${i + 1}`,
             userIds: groupStudents
           })
           currentIndex += groupSize
@@ -225,23 +259,11 @@ export const useDeploymentStore = defineStore('deployment', {
 
       // userInputVar: { packer: {...}, terraform: {...} }
       const userInputVarObj: any = { packer: {}, terraform: {} }
-      if (this.draft.variables && typeof this.draft.variables === 'object') {
-        // Detect multi-image Packer layout: such apps store Packer values nested
-        // under ``draft.variables.packer[<template_key>][<name>]`` rather than
-        // flat under ``draft.variables[<name>]``. Reading only flat would leave
-        // ``val`` undefined for those variables. Same detection/resolution as in
-        // ``NewDeploymentSummaryView``.
-        const draftVars = this.draft.variables as Record<string, any>
+      if (draft.variables && typeof draft.variables === 'object') {
+        // Multi-image Packer apps nest their values per template key.
+        const draftVars = draft.variables as Record<string, any>
         const packerContainer = draftVars.packer
-        const isMultiImagePackerLayout =
-          packerContainer
-          && typeof packerContainer === 'object'
-          && !Array.isArray(packerContainer)
-          && Object.keys(packerContainer).length > 0
-          && Object.keys(packerContainer).every((k) => {
-            const slot = packerContainer[k]
-            return slot && typeof slot === 'object' && !Array.isArray(slot)
-          })
+        const isMultiImagePackerLayout = isMultiImagePackerLayoutOf(draftVars)
 
         const resolveValue = (def: AppVariable): any => {
           if (def.source === 'packer' && isMultiImagePackerLayout) {
@@ -253,8 +275,8 @@ export const useDeploymentStore = defineStore('deployment', {
         }
 
         // variableDefinitions carries whether each var is packer/terraform.
-        if (Array.isArray(this.draft.variableDefinitions)) {
-          for (const def of this.draft.variableDefinitions) {
+        if (Array.isArray(draft.variableDefinitions)) {
+          for (const def of draft.variableDefinitions) {
             // File-typed variables travel through ``files`` instead of
             // ``userInputVar``. Skipping them here keeps the variables
             // dict free of accidental ``undefined`` entries that would
@@ -297,7 +319,7 @@ export const useDeploymentStore = defineStore('deployment', {
           }
         } else {
           // Fallback: alles in terraform
-          userInputVarObj.terraform = { ...this.draft.variables }
+          userInputVarObj.terraform = { ...draft.variables }
         }
       }
 
@@ -306,8 +328,8 @@ export const useDeploymentStore = defineStore('deployment', {
       // ``{}``). Sending it would still hit the backend's ``file_var_empty``
       // guard with a confusing error.
       const fileUploads: Record<string, Record<string, any>> = {}
-      if (this.draft.fileUploads) {
-        for (const [varName, slotMap] of Object.entries(this.draft.fileUploads)) {
+      if (draft.fileUploads) {
+        for (const [varName, slotMap] of Object.entries(draft.fileUploads)) {
           const filledSlots: Record<string, any> = {}
           for (const [slotKey, file] of Object.entries(slotMap || {})) {
             if (file && file.content_b64) {
@@ -321,8 +343,8 @@ export const useDeploymentStore = defineStore('deployment', {
       }
 
       const payload: any = {
-        name: this.draft.name,
-        appId: this.draft.appId,
+        name: draft.name,
+        appId: draft.appId,
         releaseTag: finalVersion,
         userInputVar: userInputVarObj,
         teams
@@ -331,8 +353,7 @@ export const useDeploymentStore = defineStore('deployment', {
         payload.files = fileUploads
       }
 
-      const response = await this.createDeployment(payload as DeploymentCreate)
+      const response = await get().createDeployment(payload as DeploymentCreate)
       return response
     }
-  }
-})
+}))

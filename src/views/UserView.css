@@ -1,0 +1,13 @@
+.profile-page { max-width: 760px; }
+.profile-form { display: flex; flex-direction: column; gap: 22px; max-width: 480px; }
+.profile-form label { display: grid; gap: 8px; color: rgb(var(--color-text-heading)); font-size: 13px; font-weight: 600; }
+.profile-form input, .profile-form select { width: 100%; padding: 11px 12px; font-weight: 400; }
+.profile-hint { font-size: 12px; color: rgb(var(--color-text-muted)); margin-top: -10px; }
+.profile-account { margin: 36px 0 24px; color: rgb(var(--color-text-muted)); }
+.profile-account summary { cursor: pointer; font-size: 13px; }
+.profile-account dl { display: grid; gap: 14px; margin-top: 20px; }
+.profile-account dl div { display: flex; justify-content: space-between; gap: 20px; }
+.profile-account dd { overflow-wrap: anywhere; text-align: right; }
+.profile-settings { display: flex; align-items: center; gap: 16px; }
+.profile-settings span { flex: 1; display: grid; gap: 4px; }
+.profile-settings small { color: rgb(var(--color-text-muted)); }

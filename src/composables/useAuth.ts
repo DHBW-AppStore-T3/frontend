@@ -1,29 +1,14 @@
-import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 
 /**
- * Composable for Auth Helpers (Keycloak)
+ * Hook for auth helpers (Keycloak).
  */
 export function useAuth() {
-  const authStore = useAuthStore()
+  const user = useAuthStore((s) => s.user)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const isLoading = useAuthStore((s) => s.isLoading)
+  const login = useAuthStore((s) => s.login)
+  const logout = useAuthStore((s) => s.logout)
 
-  const user = computed(() => authStore.user)
-  const isAuthenticated = computed(() => authStore.isAuthenticated)
-  const isLoading = computed(() => authStore.isLoading)
-
-  const login = async (returnUrl?: string) => {
-    await authStore.login(returnUrl)
-  }
-
-  const logout = async () => {
-    await authStore.logout()
-  }
-
-  return {
-    user,
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
-  }
+  return { user, isAuthenticated, isLoading, login, logout }
 }

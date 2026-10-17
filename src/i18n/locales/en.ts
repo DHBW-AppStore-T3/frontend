@@ -334,6 +334,7 @@ export default {
     deploymentResumeFailed: "resume failed",
   },
   DeploymentDetailView: {
+    deploymentCreatedAt: "Created at",
     deploymentCreated: "Created on",
     deploymentCreatedBy: "Created by",
     deploymentDelete: "Delete",
@@ -368,7 +369,8 @@ export default {
     deploymentNoGroups: "No groups configured",
     deploymentLatestTask: "Latest Task",
     deploymentGroupsBack: "Back",
-    deploymentStudentCount: "{n} Student | {n} Students",
+    deploymentStudentCount_one: "{count} Student",
+    deploymentStudentCount_other: "{count} Students",
     deploymentConfig: "Deployment Configuration",
     deploymentLogs: "Deployment Logs",
     deploymentNoLogs: "No Logs available.",
