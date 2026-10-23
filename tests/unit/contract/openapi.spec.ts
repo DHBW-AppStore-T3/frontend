@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import openapi from '@/types/openapi.json'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+const openapi = JSON.parse(
+  readFileSync(resolve(__dirname, '../../../src/types/openapi.json'), 'utf8'),
+) as { paths: Record<string, Record<string, unknown>> }
 
 // The routes the pod frontend calls (frontend#36). They come from the
 // backend's OpenAPI document (spike/dev); if a regenerated document drops or
@@ -20,7 +25,7 @@ const REQUIRED_OPERATIONS: Array<[method: string, path: string]> = [
 const REMOVED_PATH_PREFIXES = ['/me/openstack/resources']
 
 describe('OpenAPI contract of the backend', () => {
-  const paths = openapi.paths as Record<string, Record<string, unknown>>
+  const { paths } = openapi
 
   it.each(REQUIRED_OPERATIONS)('serves %s %s', (method, path) => {
     expect(paths[path]?.[method]).toBeDefined()
