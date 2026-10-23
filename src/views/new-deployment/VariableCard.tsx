@@ -237,6 +237,7 @@ export default function VariableCard(props: VariableCardProps) {
               : t('deployment.variables.scopeTitleUser')}
           </p>
           <p
+            // eslint-disable-next-line no-restricted-syntax -- static translation, no parameters
             dangerouslySetInnerHTML={{
               __html: translateHtml(
                 scope === 'team' ? 'deployment.variables.scopeDescTeam' : 'deployment.variables.scopeDescUser',

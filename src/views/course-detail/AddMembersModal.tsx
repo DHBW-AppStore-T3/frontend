@@ -66,7 +66,7 @@ export default function AddMembersModal(props: AddMembersModalProps) {
         <div className="space-y-5">
           <div className="bg-infoTint text-blue-800 p-3.5 rounded-lg text-sm flex gap-3 items-start border border-blue-100">
             <Info size={18} className="mt-0.5 flex-shrink-0 text-info" />
-            {/* Static, trusted translation containing markup. */}
+            {/* eslint-disable-next-line no-restricted-syntax -- static translation, no parameters */}
             <p dangerouslySetInnerHTML={{ __html: translateHtml('CourseDetailView.addModal.info', {}, t) }} />
           </div>
 

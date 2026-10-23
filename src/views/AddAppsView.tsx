@@ -212,6 +212,7 @@ export default function AddAppsView() {
           <Info className="shrink-0 mt-0.5 text-blue-700" size={20} />
           <div>
             <span className="font-semibold block mb-1">{t('AppsCreateView.info.important')}</span>
+            {/* eslint-disable-next-line no-restricted-syntax -- static translation, no parameters */}
             <span dangerouslySetInnerHTML={{ __html: translateHtml('AppsCreateView.info.inviteText', {}, t) }} />
             <br />
             <a

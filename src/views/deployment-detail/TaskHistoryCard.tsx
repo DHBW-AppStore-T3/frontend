@@ -247,7 +247,7 @@ export default function TaskHistoryCard({
                         ) : (
                           <pre
                             className="text-gray-700 font-mono text-xs leading-relaxed whitespace-pre-wrap"
-                            // highlightJson escapes its input before wrapping tokens in spans.
+                            // eslint-disable-next-line no-restricted-syntax -- highlightJson escapes its input before wrapping tokens in spans
                             dangerouslySetInnerHTML={{ __html: highlightJson(prettyJson(selectedTask.logs)) }}
                           />
                         )}

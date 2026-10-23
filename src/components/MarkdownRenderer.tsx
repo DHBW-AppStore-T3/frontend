@@ -137,7 +137,7 @@ export default function MarkdownRenderer({
         ref={contentEl}
         className={contentClass}
         style={contentStyle}
-        // Sanitised by DOMPurify above.
+        // eslint-disable-next-line no-restricted-syntax -- sanitised by DOMPurify above
         dangerouslySetInnerHTML={{ __html: html }}
       />
       {showToggle ? (
