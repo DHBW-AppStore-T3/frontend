@@ -1,11 +1,9 @@
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
 import { AuthService } from '@/services/auth.service'
-import { useKeycloak } from '@/composables/useKeycloak'
+import { keycloak } from '@/services/keycloak.service'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { invalidateAll as invalidateOpenStackCache } from '@/composables/useOpenStackResourceCache'
 import type { User, UserRole } from '@/types'
-
-const keycloak = useKeycloak()
 
 // In-flight promises to dedupe concurrent calls. The router guard,
 // App mount, and view mounts can all trigger initialize/fetchMe at the
@@ -14,88 +12,110 @@ const keycloak = useKeycloak()
 let initializePromise: Promise<void> | null = null
 let fetchMePromise: Promise<void> | null = null
 
-export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    user: null as User | null,
+interface AuthState {
+  user: User | null
+  isLoading: boolean
+  error: string | null
+  // Mirrors `keycloak.getState().isAuthenticated`; kept in the store so React
+  // components re-render on login/logout and non-React code (router guards)
+  // can read it.
+  isAuthenticated: boolean
+
+  initialize: () => Promise<void>
+  login: (returnUrl?: string) => Promise<void>
+  handleCallback: () => Promise<string>
+  fetchMe: () => Promise<void>
+  logout: () => Promise<void>
+  setDevUser: (email: string) => Promise<void>
+  setLtiUser: (email: string, token: string, role?: UserRole) => Promise<void>
+  buildStubUser: (email: string, role: UserRole) => User
+  hasRole: (role: UserRole) => boolean
+  hasAnyRole: (...roles: UserRole[]) => boolean
+}
+
+type AuthData = Pick<AuthState, 'user'>
+
+// Derived values as selectors: `useAuthStore(selectIsAdmin)`.
+export const selectUserRole = (s: AuthData): UserRole | null => s.user?.role || null
+export const selectIsStudent = (s: AuthData) => s.user?.role === 'student'
+export const selectIsTeacher = (s: AuthData) => s.user?.role === 'teacher'
+export const selectIsAdmin = (s: AuthData) => s.user?.role === 'admin'
+export const selectIsTeacherOrAdmin = (s: AuthData) =>
+  s.user?.role === 'teacher' || s.user?.role === 'admin'
+export const selectUserId = (s: AuthData) => s.user?.userId || null
+
+export const useAuthStore = create<AuthState>()((set, get) => {
+  // Keep the mirrored flag in sync with Keycloak (login, silent refresh,
+  // logout, LTI/dev injection).
+  const syncAuthenticated = () => set({ isAuthenticated: keycloak.getState().isAuthenticated })
+  keycloak.subscribe(syncAuthenticated)
+
+  return {
+    user: null,
     isLoading: false,
-    error: null as string | null,
-  }),
+    error: null,
+    isAuthenticated: keycloak.getState().isAuthenticated,
 
-  getters: {
-    isAuthenticated: () => keycloak.isAuthenticated.value,
-    
-    userRole: (state): UserRole | null => state.user?.role || null,
-    
-    isStudent: (state) => state.user?.role === 'student',
-    isTeacher: (state) => state.user?.role === 'teacher',
-    isAdmin: (state) => state.user?.role === 'admin',
-    
-    isTeacherOrAdmin: (state) => 
-      state.user?.role === 'teacher' || state.user?.role === 'admin',
-    
-    userId: (state) => state.user?.userId || null,
-  },
-
-  // These actions deliberately do NOT use `runRequest` from ./_request.
-  // They wrap Keycloak/OIDC calls, not axios calls: the useful text is on
-  // `err.message`, there is no `response.data.detail` to extract, and
-  // `initialize`/`fetchMe` are promise-cached and log rather than setting
-  // `error`. Routing them through the shared helper would replace real
-  // Keycloak error messages with a generic fallback.
-  actions: {
+    // These actions deliberately do NOT use `runRequest` from ./_request.
+    // They wrap Keycloak/OIDC calls, not axios calls: the useful text is on
+    // `err.message`, there is no `response.data.detail` to extract, and
+    // `initialize`/`fetchMe` are promise-cached and log rather than setting
+    // `error`. Routing them through the shared helper would replace real
+    // Keycloak error messages with a generic fallback.
     async initialize() {
       if (initializePromise) return initializePromise
       initializePromise = (async () => {
-        this.isLoading = true
+        set({ isLoading: true })
         try {
           await keycloak.initialize()
+          syncAuthenticated()
 
-          if (keycloak.isAuthenticated.value) {
+          if (keycloak.getState().isAuthenticated) {
             const storedUser = AuthService.getStoredUser()
             if (storedUser) {
-              this.user = storedUser
+              set({ user: storedUser })
             }
 
-            this.fetchMe().catch(() => {})
+            get().fetchMe().catch(() => {})
           }
         } catch (error) {
           console.error('Auth initialization failed:', error)
         } finally {
-          this.isLoading = false
+          set({ isLoading: false })
         }
       })()
       return initializePromise
     },
 
-    async login(returnUrl?: string) {
-      this.error = null
+    async login(returnUrl) {
+      set({ error: null })
       try {
         await keycloak.login(returnUrl)
       } catch (err: any) {
-        this.error = err.message || 'Login failed'
+        set({ error: err.message || 'Login failed' })
         throw err
       }
     },
 
+    /**
+     * Finalize the Authorization Code + PKCE flow.
+     * Resolves return URL from Keycloak, then loads the current user from backend.
+     */
     async handleCallback() {
-      /**
-       * Finalize the Authorization Code + PKCE flow.
-       * Resolves return URL from Keycloak, then loads the current user from backend.
-       */
-      this.isLoading = true
-      this.error = null
-      
+      set({ isLoading: true, error: null })
+
       try {
         const returnUrl = await keycloak.handleCallback()
-        
-        await this.fetchMe()
-        
+        syncAuthenticated()
+
+        await get().fetchMe()
+
         return returnUrl
       } catch (err: any) {
-        this.error = err.message || 'Callback handling failed'
+        set({ error: err.message || 'Callback handling failed' })
         throw err
       } finally {
-        this.isLoading = false
+        set({ isLoading: false })
       }
     },
 
@@ -103,11 +123,11 @@ export const useAuthStore = defineStore('auth', {
       if (fetchMePromise) return fetchMePromise
       fetchMePromise = (async () => {
         try {
-          this.user = await AuthService.fetchMe()
-          useOpenStackCredentialsStore().fetch().catch(() => {})
+          set({ user: await AuthService.fetchMe() })
+          useOpenStackCredentialsStore.getState().fetch().catch(() => {})
         } catch (error) {
           console.error('Failed to fetch user:', error)
-          this.user = null
+          set({ user: null })
           throw error
         } finally {
           fetchMePromise = null
@@ -118,11 +138,10 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       AuthService.clearStoredUser()
-      this.user = null
-      this.error = null
+      set({ user: null, error: null })
       initializePromise = null
       fetchMePromise = null
-      useOpenStackCredentialsStore().reset()
+      useOpenStackCredentialsStore.getState().reset()
       // Clear the OpenStack resource display cache — the next user has their own
       // credentials and a different project, so old resource lists must not persist.
       invalidateOpenStackCache()
@@ -132,19 +151,19 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         console.error('Logout failed:', error)
       }
+      syncAuthenticated()
     },
 
     /**
      * Dev-only bridge: inject a pre-authenticated user via ?sso_handoff=email
-     * without a running self-service-ui or Keycloak flow. Never the
-     * production self-service-ui path — see setHandoffUser for that.
+     * without a running Keycloak flow (`import.meta.env.DEV` builds only).
      */
-    async setDevUser(email: string) {
+    async setDevUser(email) {
       await keycloak.setDevUser(email)
-      this.user = this.buildStubUser(email, 'student')
-      this.fetchMe().catch(() => {
-        this.user = this.buildStubUser(email, 'student')
-      })
+      syncAuthenticated()
+      const stub = () => set({ user: get().buildStubUser(email, 'student') })
+      stub()
+      get().fetchMe().catch(stub)
     },
 
     /**
@@ -154,29 +173,15 @@ export const useAuthStore = defineStore('auth', {
      * record. If fetchMe() fails, the stub stays — better than bouncing an
      * LTI-launched user back to an unauthenticated state.
      */
-    async setLtiUser(email: string, token: string, role: UserRole = 'student') {
+    async setLtiUser(email, token, role = 'student') {
       await keycloak.setLtiUser(email, token)
-      this.user = this.buildStubUser(email, role)
-      this.fetchMe().catch(() => {
-        this.user = this.buildStubUser(email, role)
-      })
+      syncAuthenticated()
+      const stub = () => set({ user: get().buildStubUser(email, role) })
+      stub()
+      get().fetchMe().catch(stub)
     },
 
-    /**
-     * Authenticate from a self-service-ui handoff. Backend already
-     * validated self-service-ui's Keycloak bearer and minted a handoff
-     * token; role is unknown until fetchMe() resolves, so the stub defaults
-     * to 'student' and is replaced (or kept, on failure) same as LTI.
-     */
-    async setHandoffUser(email: string, token: string) {
-      await keycloak.setHandoffUser(email, token)
-      this.user = this.buildStubUser(email, 'student')
-      this.fetchMe().catch(() => {
-        this.user = this.buildStubUser(email, 'student')
-      })
-    },
-
-    buildStubUser(email: string, role: UserRole): User {
+    buildStubUser(email, role) {
       return {
         userId: email,
         email,
@@ -187,13 +192,14 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    hasRole(role: UserRole): boolean {
-      return this.user?.role === role
+    hasRole(role) {
+      return get().user?.role === role
     },
 
-    hasAnyRole(...roles: UserRole[]): boolean {
-      if (!this.user?.role) return false
-      return roles.includes(this.user.role as UserRole)
+    hasAnyRole(...roles) {
+      const role = get().user?.role
+      if (!role) return false
+      return roles.includes(role as UserRole)
     },
-  },
+  }
 })

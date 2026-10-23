@@ -1,0 +1,7 @@
+.detail-app-logo { width: 72px; height: 72px; }
+.app-detail-heading { display: flex; align-items: flex-start; gap: 24px; margin-bottom: 32px; }
+.app-detail-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 28px; }
+.deployment-options { align-self: start; scroll-margin-top: 24px; }
+@media (max-width: 1100px) { .app-detail-grid { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .detail-app-logo { width: 72px; height: 72px; }
+.app-detail-heading { flex-wrap: wrap; } }

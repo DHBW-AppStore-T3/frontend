@@ -190,7 +190,11 @@ export interface paths {
         };
         /**
          * Get Course
-         * @description Get course by ID with all users
+         * @description Get course by ID with all users.
+         *
+         *     The member list is personal data (e-mail addresses): teachers and
+         *     admins may read it, students get 403 (.github#7 F, security review
+         *     M-2).
          */
         get: operations["get_course_courses__course_id__get"];
         /**
@@ -230,7 +234,7 @@ export interface paths {
          * List Course Members
          * @description List the users currently enrolled in ``course_id``.
          *
-         *     Teacher/Admin only — student rosters are management data.
+         *     Teachers and admins only — student rosters are management data.
          */
         get: operations["list_course_members_courses__course_id__users_get"];
         put?: never;
@@ -242,6 +246,11 @@ export interface paths {
          *     as the deployment-team picker, so by the time we get here the
          *     user-ids exist in our DB. Returns the post-update member list of
          *     the course so the UI can refresh without a second round trip.
+         *
+         *     Course-teachers of THIS course and admins only; moving a user out of
+         *     another course also needs that right on the other course (.github#7 F,
+         *     security review H-1/A-3): nobody pulls someone from a course they do
+         *     not manage into their own.
          */
         post: operations["add_course_members_courses__course_id__users_post"];
         delete?: never;
@@ -266,6 +275,7 @@ export interface paths {
          *
          *     Returns 404 if the user isn't actually enrolled in this course —
          *     we never silently detach somebody from a different course.
+         *     Course-teachers of THIS course and admins only (.github#7 F).
          */
         delete: operations["remove_course_member_courses__course_id__users__user_id__delete"];
         options?: never;
@@ -335,8 +345,10 @@ export interface paths {
         /**
          * Create App
          * @description Create a new app
-         *     - **All authenticated users** can create apps
-         *     - **Git repository access is verified** before creating the app
+         *     - Teachers and admins only (403 ``role_required``, .github#7 F)
+         *     - The repository must be public and on an allowed host
+         *       (``APP_GIT_ALLOWED_HOSTS``); 422 otherwise, 403 if it cannot be read
+         *     - The stored ``git_link`` is the normalised, credential-free HTTPS URL
          */
         post: operations["create_app_apps__post"];
         delete?: never;
@@ -360,6 +372,10 @@ export interface paths {
          *     that still reference them can render their app name, git link,
          *     etc. They just don't show up in the apps list / deploy wizard
          *     (those use the default-filtered ``get_apps``).
+         *
+         *     The owner and admins see every tag. Everyone else sees the approved
+         *     versions whose tag still points to the approved commit; a moved tag
+         *     disappears until it is submitted and approved again.
          */
         get: operations["get_app_apps__app_id__get"];
         /**
@@ -369,7 +385,9 @@ export interface paths {
          *     ``git_link`` is immutable after creation — sending it in the body
          *     returns HTTP 400. Use ``is_private`` to toggle visibility.
          *
-         *     Owner OR admin only.
+         *     Owner OR admin only. An app an admin deactivated (``hidden_by_admin``)
+         *     can be made public again only by an admin (403 ``app_hidden_by_admin``
+         *     for the owner); an admin doing so lifts the deactivation (.github#7 R).
          */
         put: operations["update_app_apps__app_id__put"];
         post?: never;
@@ -408,8 +426,36 @@ export interface paths {
          *     - description: Variable description
          *     - default: Default value (if any)
          *     - required: Whether variable is required
+         *
+         *     Reads the commit ``version`` points to now; 404 for an unknown tag,
+         *     502 when the repository cannot be read.
          */
         get: operations["get_app_variables_apps__app_id__variables_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/apps/{app_id}/runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get App Runtime
+         * @description Whether ``version`` runs as pods (``kubernetes``) or VMs (``openstack-vm``).
+         *
+         *     The wizard skips the OpenStack steps for pods and takes the group mode
+         *     from ``scope`` (a VM app without an appstore.yaml has none). Same
+         *     visibility and errors as the variables; 422 (with field paths in
+         *     ``errors``) for an invalid appstore.yaml.
+         */
+        get: operations["get_app_runtime_apps__app_id__runtime_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -429,10 +475,12 @@ export interface paths {
         put?: never;
         /**
          * Submit Version
-         * @description Submit a specific version tag for admin review.
+         * @description Submit a version tag for admin review, at the commit it points to now.
          *
-         *     Owner OR admin only. A REJECTED version can be resubmitted; PENDING
-         *     and APPROVED cannot.
+         *     Owner OR admin only. A REJECTED version, or one whose tag has moved
+         *     since its review, can be resubmitted; a PENDING or APPROVED one at the
+         *     same commit cannot (409). 422 for invalid ``@openstack`` markers, 404
+         *     for an unknown tag, 502 when the repository cannot be read.
          */
         post: operations["submit_version_apps__app_id__versions__version_tag__submit_post"];
         /**
@@ -501,11 +549,17 @@ export interface paths {
         put?: never;
         /**
          * Approve Version
-         * @description Approve a PENDING version — makes it deployable by all users.
+         * @description Approve a submitted version at its submitted commit — makes exactly
+         *     that commit deployable by all users (.github#7 G).
          *
-         *     Validates the ``@openstack`` markers in this version's Terraform/Packer
-         *     variable files before flipping the status, using the same helper as
-         *     ``GET /apps/{id}/variables``.
+         *     - 404: the app or the version submission does not exist.
+         *     - 409 ``version_moved``: the tag no longer points to the submitted
+         *       commit; the admin would approve code that was not submitted.
+         *     - 409: the version is already approved, or was submitted before
+         *       versions were pinned to commits.
+         *     - 422: invalid ``@openstack`` markers in the submitted commit's
+         *       Terraform/Packer variable files (``marker_errors`` lists them).
+         *     - 502: the repository cannot be read; nothing is approved unchecked.
          */
         post: operations["approve_version_admin_apps__app_id__versions__version_tag__approve_post"];
         delete?: never;
@@ -564,8 +618,12 @@ export interface paths {
         get?: never;
         /**
          * Deactivate App
-         * @description Emergency deactivation: set app to private so it disappears from
+         * @description Emergency deactivation: set the app to private so it disappears from
          *     the store immediately. Does not delete the app or its deployments.
+         *
+         *     Marks it ``hidden_by_admin``: the owner can no longer make it public
+         *     again, only an admin can (``PUT /apps/{id}`` with ``is_private: false``,
+         *     .github#7 R).
          */
         put: operations["deactivate_app_admin_apps__app_id__put"];
         post?: never;
@@ -594,6 +652,8 @@ export interface paths {
          *       * **Students** (and any non-staff role): deployments they own
          *         OR are a member of — either via a team mapping or a direct
          *         ``UserToDeployment`` row.
+         *       * Either way also every VM deployment in an OpenStack project the
+         *         caller holds a verified credential for (project peers).
          *
          *     A ``?scope=course`` branch used to sit here, listing every
          *     deployment whose owner was in a course the caller teaches. It had
@@ -613,7 +673,7 @@ export interface paths {
          *     with deployment dispatch. The deployment row, teams, user mappings,
          *     and the initial PENDING task row are all inserted in a single
          *     transaction, so the user can never end up with a deployment row
-         *     that has no matching task. Celery dispatch happens AFTER commit;
+         *     that has no matching task. The queue dispatch happens AFTER commit;
          *     if it fails, the task row is flipped to FAILED so the deployment
          *     surfaces an honest error instead of hanging in PENDING forever.
          */
@@ -725,11 +785,78 @@ export interface paths {
          *     down all the team VMs, which is not what a one-VM "fix it" action
          *     should do.
          *
-         *     Concurrency: same per-user advisory lock as create/destroy/pause
-         *     so a parallel redeploy can't race a destroy. The lock is held
-         *     only for the row insert; Celery dispatch happens after commit.
+         *     Lifecycle (.github#7 L): only from ``success`` or ``redeploy_failed``,
+         *     under the same per-deployment advisory lock as pause, resume, destroy
+         *     and cancel, so a concurrent pause and redeploy cannot both pass the
+         *     status check. A failed redeploy surfaces as ``redeploy_failed`` (retry,
+         *     pause, destroy; never delete). The lock is held only for the row
+         *     insert; the queue dispatch happens after commit.
          */
         post: operations["redeploy_deployment_resource_deployments__deployment_id__resources__address__redeploy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deployments/{deployment_id}/workloads/{workload}/restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restart Workload
+         * @description Restart one team's or person's workload (a new pod); its data stays.
+         */
+        post: operations["restart_workload_deployments__deployment_id__workloads__workload__restart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deployments/{deployment_id}/workloads/{workload}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Workload
+         * @description Reset one workload: its volume is deleted, it starts from scratch.
+         */
+        post: operations["reset_workload_deployments__deployment_id__workloads__workload__reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deployments/{deployment_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Deployment
+         * @description Stop an in-flight deployment and clean up everything it created.
+         *
+         *     Owner-only, same gate as Destroy. Returns ``202 + {task_id,
+         *     status: "destroying"}`` so the frontend can stay on the live SSE
+         *     view and watch the cleanup run.
+         */
+        post: operations["cancel_deployment_deployments__deployment_id__cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -824,63 +951,22 @@ export interface paths {
          * Get My Access
          * @description Return the calling member's OWN access credentials for a deployment.
          *
-         *     The full terraform ``outputs`` are owner-view-only (they carry every
-         *     teammate's credentials in one object). This endpoint is the member
-         *     counterpart: a team member — typically a student — retrieves only
-         *     THEIR OWN account, extracted server-side from the latest successful
-         *     deploy. Teammates' credentials are never included in the response.
+         *     The only way to the credentials (no mails, .github#7 I). The full
+         *     outputs carry every teammate's credentials and are owner-view only;
+         *     a team member — typically a student — gets exactly their own account
+         *     entry, matched exactly by ``services.access`` (.github#7 H), plus their
+         *     team's VM block. Never a teammate's.
          *
-         *     Authorisation reuses :func:`ensure_resend_access` with the target set
-         *     to the caller themself, which collapses to the member-view gate
-         *     (owner, staff, team-member, or direct mapping). A caller with no
-         *     access to the deployment gets 403; the resend endpoint uses the same
-         *     gate for the self-resend button, so the two stay consistent.
+         *     Member-view gate: owner, team member or direct mapping; anyone else
+         *     gets 403.
          *
          *     Returns 200 with empty maps when there's no successful deploy yet or
-         *     the app issued no per-user credential for this user — the UI renders
-         *     a "no credentials yet" state rather than treating it as an error.
+         *     no entry belongs to the caller exactly — the UI renders a "no
+         *     credentials yet" state rather than treating it as an error.
          */
         get: operations["get_my_access_deployments__deployment_id__my_access_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/deployments/{deployment_id}/teams/{team_id}/users/{user_id}/resend-access": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Resend Access Credentials
-         * @description Re-send the per-user access mail for one team member.
-         *
-         *     Reuses the original notify pipeline — same template, same
-         *     credential extraction from the latest successful DEPLOY task's
-         *     ``terraform_outputs``. Useful when the user lost their first mail
-         *     or the deploy ran before the user's email got fixed.
-         *
-         *     Access control: caller must have access to the deployment (owner
-         *     or teacher/admin). The endpoint is intentionally idempotent —
-         *     each call sends one mail to the targeted user. There's no rate
-         *     limit at the API level; SMTP and Gmail's per-account quota are
-         *     the natural backstops.
-         *
-         *     Mapping ResendError to HTTP:
-         *       * ``deployment_not_found`` → 404
-         *       * ``team_not_in_deployment`` / ``user_not_in_team`` → 404
-         *       * ``no_successful_deploy`` → 409 (nothing to resend yet)
-         *       * ``no_credentials_for_user`` → 409 (template didn't issue
-         *         per-user creds, or matcher missed despite the fuzzy logic)
-         */
-        post: operations["resend_access_credentials_deployments__deployment_id__teams__team_id__users__user_id__resend_access_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -898,10 +984,9 @@ export interface paths {
          * Stream Deployment Events
          * @description Live progress + log stream for one deployment as Server-Sent Events.
          *
-         *     The connection is authenticated with the same Keycloak dependency
-         *     used elsewhere; the standard auth middleware also vets the token
-         *     before this handler runs. After auth we attach to the in-process
-         *     pubsub for this deployment and forward every event to the client.
+         *     Streams the events of the deployment's latest task and ends with its
+         *     terminal event. Starts with a ``snapshot`` event; for a task that is
+         *     already finished (or no task at all) the stream ends right after it.
          */
         get: operations["stream_deployment_events_deployments__deployment_id__stream_get"];
         put?: never;
@@ -961,17 +1046,15 @@ export interface paths {
         };
         /**
          * List Teams
-         * @description Get all teams, optionally filtered to a single deployment.
-         *
-         *     All authenticated users may list teams; per-team membership gating
-         *     happens at ``GET /teams/{team_id}``.
+         * @description The teams of ``deployment_id`` the caller may read (all of them with
+         *     the owner view, otherwise their own). 403 without access to the
+         *     deployment.
          */
         get: operations["list_teams_teams__get"];
         put?: never;
         /**
          * Create Team
-         * @description Create a new team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Create a team on a deployment the caller may operate.
          */
         post: operations["create_team_teams__post"];
         delete?: never;
@@ -989,20 +1072,18 @@ export interface paths {
         };
         /**
          * Get Team
-         * @description Get team by ID with all members
+         * @description A team with its members: owner view of the deployment or membership.
          */
         get: operations["get_team_teams__team_id__get"];
         /**
          * Update Team
-         * @description Update a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Rename a team of a deployment the caller may operate.
          */
         put: operations["update_team_teams__team_id__put"];
         post?: never;
         /**
          * Delete Team
-         * @description Delete a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Delete a team of a deployment the caller may operate.
          */
         delete: operations["delete_team_teams__team_id__delete"];
         options?: never;
@@ -1021,46 +1102,14 @@ export interface paths {
         put?: never;
         /**
          * Add User To Team
-         * @description Add a user to a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Add an existing user, who is in no other team of the deployment.
          */
         post: operations["add_user_to_team_teams__team_id__users__user_id__post"];
         /**
          * Remove User From Team
-         * @description Remove a user from a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Remove a user from a team of a deployment the caller may operate.
          */
         delete: operations["remove_user_from_team_teams__team_id__users__user_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/quotas/overview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Quota Overview
-         * @description Fetch the OpenStack quota overview for compute, storage and network
-         *     from the user's **personal** OpenStack project.
-         *
-         *     Declared sync (not async) on purpose: every call inside hits the
-         *     OpenStack SDK with blocking network I/O. A sync def runs in
-         *     Starlette's threadpool, so a slow OpenStack response doesn't stall
-         *     the event loop and starve other endpoints (e.g. /dashboard/stats,
-         *     /users/me) that are mounted on the same dashboard view.
-         *
-         *     Returns:
-         *         QuotaOverviewResponse with used/limit/available for all resources
-         */
-        get: operations["get_quota_overview_quotas_overview_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1113,6 +1162,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lti13/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lti13 Login Get
+         * @description Step 1 (GET): the OIDC login initiation from Moodle, parameters in the query string.
+         */
+        get: operations["lti13LoginGet"];
+        put?: never;
+        /**
+         * Lti13 Login Post
+         * @description Step 1 (POST): the same initiation with form-encoded parameters.
+         *
+         *     Moodle sends this as a POST (observed against a real Moodle 5.x
+         *     instance, 2026-09-25) even though the IMS spec allows either GET or
+         *     POST for the 3rd-party-initiated login, so both are accepted. Two
+         *     routes rather than one for both methods: each gets its own OpenAPI
+         *     operation id (one shared id broke the generated frontend types).
+         */
+        post: operations["lti13LoginPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lti13/launch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lti13 Launch
+         * @description Step 3: Moodle POSTs the id_token here after the OIDC dance.
+         */
+        post: operations["lti13_launch_lti13_launch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lti13/jwks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lti13 Jwks
+         * @description Expose this tool's public JWKS.
+         *
+         *     For the demo the tool does not sign messages back to the platform, so
+         *     this returns an empty key set. Replace with actual RSA keys if Assignment
+         *     & Grade Services (AGS) or deep linking is needed.
+         */
+        get: operations["lti13_jwks_lti13_jwks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/openstack-credentials": {
         parameters: {
             query?: never;
@@ -1121,25 +1244,24 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get My Credentials
-         * @description Always 200 — returns has_credential=False when none configured.
+         * List My Credentials
+         * @description List the caller's OpenStack credentials, one per project, without secrets.
          *
-         *     Lock state is included regardless so the frontend can render the
-         *     correct guard UI without a second request.
+         *     Each entry reports the result of the last Keystone check and the number of
+         *     the caller's live deployments that need it.
          */
-        get: operations["get_my_credentials_me_openstack_credentials_get"];
+        get: operations["list_my_credentials_me_openstack_credentials_get"];
+        put?: never;
         /**
-         * Upsert My Credentials
-         * @description Auto-validates against Keystone before persisting.
+         * Save My Credential
+         * @description Check against Keystone, then store (201) or replace the one for the same project (200).
          *
-         *     On a successful authorize we record `last_validated_at`. On failure
-         *     we still persist the row (so the user can fix it via the UI) and
-         *     record the human-readable error message.
+         *     422 ``openstack_credentials_invalid`` with a ``cause`` when Keystone
+         *     does not accept it (``auth_url_not_allowed`` for a Keystone URL outside
+         *     the allowlist); nothing is stored then.
          */
-        put: operations["upsert_my_credentials_me_openstack_credentials_put"];
-        post?: never;
-        /** Delete My Credentials */
-        delete: operations["delete_my_credentials_me_openstack_credentials_delete"];
+        post: operations["save_my_credential_me_openstack_credentials_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1153,8 +1275,89 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Upsert My Credentials From Yaml */
-        put: operations["upsert_my_credentials_from_yaml_me_openstack_credentials_from_yaml_put"];
+        put?: never;
+        /**
+         * Save My Credential From Yaml
+         * @description Same as the plain POST, from a pasted `clouds.yaml`.
+         *
+         *     ``cloud_name`` picks the entry when the file holds several clouds. Parse
+         *     errors answer 422; otherwise status codes as for the plain POST.
+         */
+        post: operations["save_my_credential_from_yaml_me_openstack_credentials_from_yaml_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/openstack-credentials/{credential_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test My Credential
+         * @description Ask Keystone again and record the outcome (e.g. a revoked application credential).
+         *
+         *     Always answers 200 with the updated credential; a failure shows up in its
+         *     validation fields (``project_changed`` when the credential now scopes to a
+         *     different project). An unverified credential becomes verified with the
+         *     project Keystone names, and the caller's deployments whose project was
+         *     unknown are placed in it. 404 for a credential that is not the caller's.
+         */
+        post: operations["test_my_credential_me_openstack_credentials__credential_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/openstack-credentials/{credential_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete My Credential
+         * @description Delete one of the caller's credentials (204).
+         *
+         *     404 when it is not the caller's; 409 ``openstack_credentials_locked`` with
+         *     ``active_deployments`` while the caller still owns live deployments that
+         *     need it.
+         */
+        delete: operations["delete_my_credential_me_openstack_credentials__credential_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/openstack-credentials/{credential_id}/quota": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Quota
+         * @description Quota and usage (compute, storage, network) of the credential's project.
+         *
+         *     Asked with the caller's own credential; 404 for anyone else's, 502 when
+         *     OpenStack does not answer. Declared sync on purpose: the SDK does
+         *     blocking network I/O, and a sync def runs in Starlette's threadpool
+         *     instead of stalling the event loop.
+         */
+        get: operations["get_project_quota_me_openstack_credentials__credential_id__quota_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1162,7 +1365,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack-credentials/test": {
+    "/me/openstack-credentials/{credential_id}/resources/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -1172,41 +1375,23 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Test My Credentials
-         * @description Re-authorize the stored credential and refresh validation metadata.
+         * Refresh Resource Cache
+         * @description Drop the cached resource lists of this credential (204).
          *
-         *     Allowed even while locked — purely read-only against Keystone.
+         *     Triggered by the refresh button next to a wizard picker — the user has
+         *     just created a resource in Horizon and wants to see it. With ``kind``
+         *     only that kind is dropped (the ``@openstack:<kind>`` marker names, e.g.
+         *     ``network``, ``security_group``, ``availability_zone``); 422 for an
+         *     unknown one. 404 for a credential that is not the caller's.
          */
-        post: operations["test_my_credentials_me_openstack_credentials_test_post"];
+        post: operations["refresh_resource_cache_me_openstack_credentials__credential_id__resources_refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Refresh Cache
-         * @description Cache bust for the calling user. Triggered by a click on the
-         *     "Refresh" button next to a picker — the user has just created a
-         *     new resource in Horizon and wants to see it.
-         */
-        post: operations["refresh_cache_me_openstack_resources_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/networks": {
+    "/me/openstack-credentials/{credential_id}/resources/networks": {
         parameters: {
             query?: never;
             header?: never;
@@ -1215,12 +1400,13 @@ export interface paths {
         };
         /**
          * List Networks
-         * @description Lists all networks that the user can see in their project.
+         * @description List all networks visible to the credential's project.
          *
-         *     ``shared`` and ``router_external`` are included so the frontend can
-         *     render "External Network" hints.
+         *     ``shared`` and ``external`` are included so the frontend can render
+         *     "External Network" hints. Like every endpoint here: 404 for a credential
+         *     that is not the caller's, 502 when OpenStack fails.
          */
-        get: operations["list_networks_me_openstack_resources_networks_get"];
+        get: operations["list_networks_me_openstack_credentials__credential_id__resources_networks_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1229,7 +1415,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/subnets": {
+    "/me/openstack-credentials/{credential_id}/resources/subnets": {
         parameters: {
             query?: never;
             header?: never;
@@ -1238,12 +1424,12 @@ export interface paths {
         };
         /**
          * List Subnets
-         * @description With ``network_id``: subnets of that network. Without: all subnets in
-         *     the project. Filtering happens server-side (OpenStack API), not only
-         *     after the cache — otherwise we would have a separate cache key per
-         *     network, and the unfiltered list cache would never help.
+         * @description List subnets, optionally only those of ``network_id``.
+         *
+         *     The filter is passed to the OpenStack API, and each filter value is
+         *     cached under its own key next to the unfiltered list.
          */
-        get: operations["list_subnets_me_openstack_resources_subnets_get"];
+        get: operations["list_subnets_me_openstack_credentials__credential_id__resources_subnets_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1252,7 +1438,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/flavors": {
+    "/me/openstack-credentials/{credential_id}/resources/flavors": {
         parameters: {
             query?: never;
             header?: never;
@@ -1261,11 +1447,12 @@ export interface paths {
         };
         /**
          * List Flavors
-         * @description Compute flavors with the three spec fields the user really wants
-         *     (CPU/RAM/Disk). ``is_public=False`` means private — we still emit
-         *     it, the frontend can render a note.
+         * @description List compute flavors with vCPUs, RAM (MB) and disk (GB).
+         *
+         *     Private flavors (``is_public=false``) are included; the frontend can
+         *     render a note.
          */
-        get: operations["list_flavors_me_openstack_resources_flavors_get"];
+        get: operations["list_flavors_me_openstack_credentials__credential_id__resources_flavors_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1274,7 +1461,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/images": {
+    "/me/openstack-credentials/{credential_id}/resources/images": {
         parameters: {
             query?: never;
             header?: never;
@@ -1283,11 +1470,12 @@ export interface paths {
         };
         /**
          * List Images
-         * @description Default ``status=active`` — we do not want to show "queued" or
-         *     "deleted" images in the picker. ``status=all`` for power users who
-         *     really want to see everything.
+         * @description List Glance images visible to the project, by default only ``active`` ones.
+         *
+         *     Default ``status=active`` keeps "queued" or "deleted" images out of the
+         *     picker; ``status=all`` returns every image. ``size`` is in bytes.
          */
-        get: operations["list_images_me_openstack_resources_images_get"];
+        get: operations["list_images_me_openstack_credentials__credential_id__resources_images_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1296,7 +1484,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/keypairs": {
+    "/me/openstack-credentials/{credential_id}/resources/keypairs": {
         parameters: {
             query?: never;
             header?: never;
@@ -1305,11 +1493,12 @@ export interface paths {
         };
         /**
          * List Keypairs
-         * @description SSH keypairs of the user. Here the identity is always the ``name``,
-         *     never the ID — Keystone keypairs do have IDs but Terraform modules
-         *     use the name.
+         * @description List the SSH keypairs of the credential's OpenStack user.
+         *
+         *     Nova keypairs belong to the user, not the project, and Terraform modules
+         *     reference them by ``name``; ``id`` therefore repeats the name.
          */
-        get: operations["list_keypairs_me_openstack_resources_keypairs_get"];
+        get: operations["list_keypairs_me_openstack_credentials__credential_id__resources_keypairs_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1318,15 +1507,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/security-groups": {
+    "/me/openstack-credentials/{credential_id}/resources/security-groups": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Security Groups */
-        get: operations["list_security_groups_me_openstack_resources_security_groups_get"];
+        /**
+         * List Security Groups
+         * @description List the security groups visible to the credential's project.
+         */
+        get: operations["list_security_groups_me_openstack_credentials__credential_id__resources_security_groups_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1335,7 +1527,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/floating-ip-pools": {
+    "/me/openstack-credentials/{credential_id}/resources/floating-ip-pools": {
         parameters: {
             query?: never;
             header?: never;
@@ -1344,11 +1536,13 @@ export interface paths {
         };
         /**
          * List Floating Ip Pools
-         * @description There is no dedicated ``Pool`` resource in OpenStack — pools are
+         * @description List the floating IP pools, i.e. the external networks.
+         *
+         *     There is no dedicated ``Pool`` resource in OpenStack — pools are
          *     networks with ``router:external = true``. Terraform modules usually
          *     expect the **name** of the external network.
          */
-        get: operations["list_floating_ip_pools_me_openstack_resources_floating_ip_pools_get"];
+        get: operations["list_floating_ip_pools_me_openstack_credentials__credential_id__resources_floating_ip_pools_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1357,7 +1551,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/volumes": {
+    "/me/openstack-credentials/{credential_id}/resources/volumes": {
         parameters: {
             query?: never;
             header?: never;
@@ -1366,11 +1560,12 @@ export interface paths {
         };
         /**
          * List Volumes
-         * @description Cinder volumes. The frontend filters ``status`` itself if needed
-         *     — we emit all of them, because a user can well attach a second
-         *     instance to an ``in-use`` volume.
+         * @description List the project's Cinder volumes in every status (``size`` in GB).
+         *
+         *     The frontend filters ``status`` itself if needed; ``in-use`` volumes are
+         *     included because a multi-attach volume can take a second instance.
          */
-        get: operations["list_volumes_me_openstack_resources_volumes_get"];
+        get: operations["list_volumes_me_openstack_credentials__credential_id__resources_volumes_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1379,15 +1574,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/routers": {
+    "/me/openstack-credentials/{credential_id}/resources/routers": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Routers */
-        get: operations["list_routers_me_openstack_resources_routers_get"];
+        /**
+         * List Routers
+         * @description List the routers visible to the project, with their external gateway info.
+         */
+        get: operations["list_routers_me_openstack_credentials__credential_id__resources_routers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1396,7 +1594,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/availability-zones": {
+    "/me/openstack-credentials/{credential_id}/resources/availability-zones": {
         parameters: {
             query?: never;
             header?: never;
@@ -1405,10 +1603,12 @@ export interface paths {
         };
         /**
          * List Availability Zones
-         * @description AZs differ per service. Default: compute (Nova), because that is
-         *     the most common use case (VM placement).
+         * @description List the availability zones of one service; the zone name doubles as ``id``.
+         *
+         *     AZs differ per service. Default: compute (Nova), the common case (VM
+         *     placement). 400 for a ``service`` other than compute, network or volume.
          */
-        get: operations["list_availability_zones_me_openstack_resources_availability_zones_get"];
+        get: operations["list_availability_zones_me_openstack_credentials__credential_id__resources_availability_zones_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1484,8 +1684,32 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Hidden By Admin
+             * @default false
+             */
+            hidden_by_admin: boolean;
             /** Image */
             image?: string | null;
+        };
+        /**
+         * AppRuntimeResponse
+         * @description How one version runs, for the deploy wizard.
+         */
+        AppRuntimeResponse: {
+            /** Runtime */
+            runtime: string;
+            /** Scope */
+            scope?: string | null;
+            /** Egress */
+            egress?: string | null;
+            /**
+             * Access
+             * @default []
+             */
+            access: {
+                [key: string]: unknown;
+            }[];
         };
         /** AppUpdate */
         AppUpdate: {
@@ -1557,6 +1781,17 @@ export interface components {
             appId: string;
             /** Version Tag */
             version_tag: string;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /**
+             * Runtime
+             * @default openstack-vm
+             */
+            runtime: string;
+            /** Spec Sha256 */
+            spec_sha256?: string | null;
+            /** Image Digests */
+            image_digests?: string[] | null;
             status: components["schemas"]["AppVersionApprovalStatus"];
             /** Diff Url */
             diff_url?: string | null;
@@ -1600,6 +1835,17 @@ export interface components {
             appId: string;
             /** Version Tag */
             version_tag: string;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /**
+             * Runtime
+             * @default openstack-vm
+             */
+            runtime: string;
+            /** Spec Sha256 */
+            spec_sha256?: string | null;
+            /** Image Digests */
+            image_digests?: string[] | null;
             status: components["schemas"]["AppVersionApprovalStatus"];
             /** Diff Url */
             diff_url?: string | null;
@@ -1643,6 +1889,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Hidden By Admin
+             * @default false
+             */
+            hidden_by_admin: boolean;
             /** Image */
             image?: string | null;
             user: components["schemas"]["UserResponse"];
@@ -1654,7 +1905,30 @@ export interface components {
                 [key: string]: string;
             }[];
         };
-        /** ComputeQuotas */
+        /**
+         * AvailabilityZoneItem
+         * @description A compute availability zone.
+         */
+        AvailabilityZoneItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * State
+             * @default
+             */
+            state: string | {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ComputeQuotas
+         * @description Nova quotas; ``ram`` is in MB.
+         */
         ComputeQuotas: {
             instances: components["schemas"]["QuotaItem"];
             vcpus: components["schemas"]["QuotaItem"];
@@ -1734,7 +2008,7 @@ export interface components {
              */
             appId: string;
             /** Releasetag */
-            releaseTag?: string | null;
+            releaseTag: string;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;
@@ -1750,6 +2024,8 @@ export interface components {
              * @default []
              */
             teams: components["schemas"]["Team"][];
+            /** Credentialid */
+            credentialId?: string | null;
         };
         /**
          * DeploymentDetail
@@ -1775,6 +2051,15 @@ export interface components {
             userId: string;
             /** Releasetag */
             releaseTag?: string | null;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /** Os Project Id */
+            os_project_id?: string | null;
+            /**
+             * Runtime
+             * @default openstack-vm
+             */
+            runtime: string;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;
@@ -1794,6 +2079,19 @@ export interface components {
             outputs?: components["schemas"]["DeploymentOutputs"] | null;
             /** Logs */
             logs?: string | null;
+            /**
+             * @default {
+             *       "owner_view": false,
+             *       "operate": false,
+             *       "member": false
+             *     }
+             */
+            permissions: components["schemas"]["DeploymentPermissions"];
+            /**
+             * Actions
+             * @default []
+             */
+            actions: string[];
         };
         /**
          * DeploymentFileUpload
@@ -1827,6 +2125,32 @@ export interface components {
             } | null;
         };
         /**
+         * DeploymentPermissions
+         * @description What the caller may do with a deployment, decided by the API.
+         *
+         *     ``owner_view``: tasks, logs, the live stream, infrastructure and the
+         *     (redacted) outputs. ``operate``: pause, resume, destroy, redeploy,
+         *     cancel and team changes. ``member``: the caller is in one of its teams
+         *     and gets their own access through ``my-access``.
+         */
+        DeploymentPermissions: {
+            /**
+             * Owner View
+             * @default false
+             */
+            owner_view: boolean;
+            /**
+             * Operate
+             * @default false
+             */
+            operate: boolean;
+            /**
+             * Member
+             * @default false
+             */
+            member: boolean;
+        };
+        /**
          * DeploymentResourceListResponse
          * @description Wrap the list in an object so we can add cursor/refresh-stamp
          *     metadata later without a breaking API change.
@@ -1836,6 +2160,16 @@ export interface components {
             resources: components["schemas"]["DeploymentResourceSchema"][];
             /** Live */
             live: boolean;
+            /**
+             * Runtime
+             * @default openstack-vm
+             */
+            runtime: string;
+            /**
+             * Workloads
+             * @default []
+             */
+            workloads: components["schemas"]["PodWorkloadSchema"][];
         };
         /**
          * DeploymentResourceSchema
@@ -1905,6 +2239,15 @@ export interface components {
             userId: string;
             /** Releasetag */
             releaseTag?: string | null;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /** Os Project Id */
+            os_project_id?: string | null;
+            /**
+             * Runtime
+             * @default openstack-vm
+             */
+            runtime: string;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;
@@ -1941,6 +2284,59 @@ export interface components {
              */
             members: components["schemas"]["DeploymentTeamMember"][];
         };
+        /**
+         * DescribedItem
+         * @description A resource with a description (security groups, floating IP pools).
+         */
+        DescribedItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+        };
+        /**
+         * FlavorItem
+         * @description A Nova flavor.
+         */
+        FlavorItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Vcpus
+             * @default 0
+             */
+            vcpus: number;
+            /**
+             * Ram
+             * @description MB
+             * @default 0
+             */
+            ram: number;
+            /**
+             * Disk
+             * @description GB
+             * @default 0
+             */
+            disk: number;
+            /**
+             * Is Public
+             * @default true
+             */
+            is_public: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1964,6 +2360,63 @@ export interface components {
             availability_zone?: string | null;
             /** Launched At */
             launched_at?: string | null;
+        };
+        /**
+         * ImageItem
+         * @description A Glance image.
+         */
+        ImageItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Status
+             * @default
+             */
+            status: string;
+            /**
+             * Visibility
+             * @default
+             */
+            visibility: string;
+            /**
+             * Size
+             * @description bytes
+             * @default 0
+             */
+            size: number;
+            /**
+             * Disk Format
+             * @default
+             */
+            disk_format: string;
+        };
+        /**
+         * KeypairItem
+         * @description A Nova key pair of the credential's user.
+         */
+        KeypairItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Fingerprint
+             * @default
+             */
+            fingerprint: string;
+            /**
+             * Type
+             * @default ssh
+             */
+            type: string;
         };
         /**
          * LifecycleStatesSchema
@@ -2031,6 +2484,39 @@ export interface components {
             /** Mac */
             mac?: string | null;
         };
+        /**
+         * NetworkItem
+         * @description A Neutron network.
+         */
+        NetworkItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Shared
+             * @default false
+             */
+            shared: boolean;
+            /**
+             * External
+             * @default false
+             */
+            external: boolean;
+            /**
+             * Status
+             * @default
+             */
+            status: string;
+        };
         /** NetworkPortSchema */
         NetworkPortSchema: {
             /** Port Id */
@@ -2049,7 +2535,10 @@ export interface components {
              */
             security_group_ids: string[];
         };
-        /** NetworkQuotas */
+        /**
+         * NetworkQuotas
+         * @description Neutron quotas, counting only resources owned by the project.
+         */
         NetworkQuotas: {
             floating_ips: components["schemas"]["QuotaItem"];
             security_groups: components["schemas"]["QuotaItem"];
@@ -2081,42 +2570,44 @@ export interface components {
         };
         /**
          * OpenStackCredentialResponse
-         * @description Masked response — never returns identifier/secret material.
+         * @description A stored credential, masked — never identifier or secret material.
          *
-         *     When `has_credential` is False, base fields are absent/empty and the
-         *     consumer should branch on `has_credential`. `is_locked` and
-         *     `active_deployments` are populated regardless so the frontend can
-         *     render the appropriate guard UI even before any credential exists.
+         *     ``project_id``/``project_name`` are the project Keystone scoped the
+         *     credential to once ``project_verified``; a credential saved before
+         *     projects were checked is unverified until re-checked (``/test``) and
+         *     cannot be deployed with. ``active_deployments`` counts the caller's
+         *     live deployments in that project (for an unverified credential: those
+         *     whose project is still unknown); deleting the credential is refused
+         *     while there are any, so they cannot be orphaned.
          */
         OpenStackCredentialResponse: {
-            auth_type?: components["schemas"]["OpenStackAuthType"] | null;
+            /**
+             * Credentialid
+             * Format: uuid
+             */
+            credentialId: string;
+            auth_type: components["schemas"]["OpenStackAuthType"];
             /** Auth Url */
-            auth_url?: string | null;
+            auth_url: string;
             /** Region Name */
             region_name?: string | null;
-            /**
-             * Interface
-             * @default public
-             */
-            interface: string | null;
-            /**
-             * Identity Api Version
-             * @default 3
-             */
-            identity_api_version: string | null;
+            /** Interface */
+            interface?: string | null;
+            /** Identity Api Version */
+            identity_api_version?: string | null;
             /** Project Id */
             project_id?: string | null;
             /** Project Name */
             project_name?: string | null;
+            /**
+             * Project Verified
+             * @default false
+             */
+            project_verified: boolean;
             /** User Domain Name */
             user_domain_name?: string | null;
             /** Project Domain Name */
             project_domain_name?: string | null;
-            /**
-             * Has Credential
-             * @default true
-             */
-            has_credential: boolean;
             /** Last Validated At */
             last_validated_at?: string | null;
             /** Last Validation Error */
@@ -2125,11 +2616,6 @@ export interface components {
             created_at?: string | null;
             /** Updated At */
             updated_at?: string | null;
-            /**
-             * Is Locked
-             * @default false
-             */
-            is_locked: boolean;
             /**
              * Active Deployments
              * @default 0
@@ -2179,22 +2665,79 @@ export interface components {
              */
             secret: string;
         };
-        /** QuotaItem */
+        /**
+         * PodWorkloadSchema
+         * @description One workload of a pod deployment, read live from the cluster (.github#4).
+         */
+        PodWorkloadSchema: {
+            /** Workload */
+            workload: string;
+            /** Team */
+            team?: string | null;
+            /** User Id */
+            user_id?: string | null;
+            /**
+             * Ready
+             * @default false
+             */
+            ready: boolean;
+            /**
+             * Restarts
+             * @default 0
+             */
+            restarts: number;
+            /** Phase */
+            phase: string;
+            /** Url */
+            url?: string | null;
+            /** Lastevent */
+            lastEvent?: string | null;
+        };
+        /**
+         * QuotaItem
+         * @description One quota: current usage, the project's limit (-1: unlimited) and what is
+         *     left (may be negative when over quota; null when unlimited).
+         */
         QuotaItem: {
             /** Used */
             used: number;
             /** Limit */
             limit: number;
             /** Available */
-            available: number;
+            available: number | null;
             /** Unit */
             unit?: string | null;
         };
-        /** QuotaOverviewResponse */
+        /**
+         * QuotaOverviewResponse
+         * @description Quota and usage of one OpenStack project, grouped by service.
+         */
         QuotaOverviewResponse: {
             compute: components["schemas"]["ComputeQuotas"];
             storage: components["schemas"]["StorageQuotas"];
             network: components["schemas"]["NetworkQuotas"];
+        };
+        /**
+         * RouterItem
+         * @description A Neutron router.
+         */
+        RouterItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Status
+             * @default
+             */
+            status: string;
+            /** External Gateway Info */
+            external_gateway_info?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** SecurityGroupSummarySchema */
         SecurityGroupSummarySchema: {
@@ -2209,21 +2752,68 @@ export interface components {
             /** Egress Rules */
             egress_rules: number;
         };
-        /** StorageQuotas */
+        /**
+         * StorageQuotas
+         * @description Cinder quotas; ``gigabytes`` sums the size of all volumes.
+         */
         StorageQuotas: {
             volumes: components["schemas"]["QuotaItem"];
             snapshots: components["schemas"]["QuotaItem"];
             gigabytes: components["schemas"]["QuotaItem"];
         };
-        /** TaskResponse */
+        /**
+         * SubnetItem
+         * @description A Neutron subnet.
+         */
+        SubnetItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Cidr
+             * @default
+             */
+            cidr: string;
+            /**
+             * Ip Version
+             * @default 4
+             */
+            ip_version: number | null;
+            /** Network Id */
+            network_id?: string | null;
+            /**
+             * Gateway Ip
+             * @default
+             */
+            gateway_ip: string;
+        };
+        /**
+         * TaskResponse
+         * @description A task as the task API shows it to the owner view.
+         *
+         *     Deliberately without ``tf_state`` and ``outputs`` (.github#7 E): the
+         *     state holds every attribute of every resource, generated passwords
+         *     included, and the outputs hold every member's credentials. Members get
+         *     their own entry through ``my-access``; the owner view's outputs are
+         *     redacted (``task_results.redact_sensitive_outputs``).
+         */
         TaskResponse: {
+            /**
+             * Taskid
+             * Format: uuid
+             */
+            taskId: string;
             /**
              * Deploymentid
              * Format: uuid
              */
             deploymentId: string;
             /** Celerytaskid */
-            celeryTaskId: string;
+            celeryTaskId?: string | null;
             type: components["schemas"]["TaskType"];
             status: components["schemas"]["TaskStatus"];
             /** Started At */
@@ -2232,19 +2822,10 @@ export interface components {
             finished_at?: string | null;
             /** Logs */
             logs?: string | null;
-            /** Tf State */
-            tf_state?: string | null;
-            /** Outputs */
-            outputs?: string | null;
             /** Current Phase */
             current_phase?: string | null;
             /** Progress Pct */
             progress_pct?: number | null;
-            /**
-             * Taskid
-             * Format: uuid
-             */
-            taskId: string;
             /**
              * Created At
              * Format: date-time
@@ -2459,6 +3040,40 @@ export interface components {
             status?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /**
+         * VolumeItem
+         * @description A Cinder volume.
+         */
+        VolumeItem: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Size
+             * @description GB
+             * @default 0
+             */
+            size: number;
+            /**
+             * Status
+             * @default
+             */
+            status: string;
+            /**
+             * Volume Type
+             * @default
+             */
+            volume_type: string;
+            /**
+             * Bootable
+             * @default false
+             */
+            bootable: boolean;
         };
         /** _MarkerErrorPayload */
         _MarkerErrorPayload: {
@@ -3192,6 +3807,39 @@ export interface operations {
             };
         };
     };
+    get_app_runtime_apps__app_id__runtime_get: {
+        parameters: {
+            query: {
+                version: string;
+            };
+            header?: never;
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppRuntimeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_version_apps__app_id__versions__version_tag__submit_post: {
         parameters: {
             query?: never;
@@ -3672,6 +4320,101 @@ export interface operations {
             };
         };
     };
+    restart_workload_deployments__deployment_id__workloads__workload__restart_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: string;
+                workload: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_workload_deployments__deployment_id__workloads__workload__reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: string;
+                workload: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_deployment_deployments__deployment_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     pause_deployment_deployments__deployment_id__pause_post: {
         parameters: {
             query?: never;
@@ -3796,39 +4539,6 @@ export interface operations {
             };
         };
     };
-    resend_access_credentials_deployments__deployment_id__teams__team_id__users__user_id__resend_access_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                deployment_id: string;
-                team_id: string;
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     stream_deployment_events_deployments__deployment_id__stream_get: {
         parameters: {
             query?: never;
@@ -3924,10 +4634,10 @@ export interface operations {
     };
     list_teams_teams__get: {
         parameters: {
-            query?: {
+            query: {
+                deployment_id: string;
                 skip?: number;
                 limit?: number;
-                deployment_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -4143,26 +4853,6 @@ export interface operations {
             };
         };
     };
-    get_quota_overview_quotas_overview_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QuotaOverviewResponse"];
-                };
-            };
-        };
-    };
     get_dashboard_stats_dashboard_stats_get: {
         parameters: {
             query?: never;
@@ -4183,7 +4873,7 @@ export interface operations {
             };
         };
     };
-    get_my_credentials_me_openstack_credentials_get: {
+    lti13LoginGet: {
         parameters: {
             query?: never;
             header?: never;
@@ -4198,12 +4888,92 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpenStackCredentialResponse"];
+                    "application/json": unknown;
                 };
             };
         };
     };
-    upsert_my_credentials_me_openstack_credentials_put: {
+    lti13LoginPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    lti13_launch_lti13_launch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    lti13_jwks_lti13_jwks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_my_credentials_me_openstack_credentials_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenStackCredentialResponse"][];
+                };
+            };
+        };
+    };
+    save_my_credential_me_openstack_credentials_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4216,8 +4986,15 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Replaced the credential for the same project */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4236,25 +5013,7 @@ export interface operations {
             };
         };
     };
-    delete_my_credentials_me_openstack_credentials_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    upsert_my_credentials_from_yaml_me_openstack_credentials_from_yaml_put: {
+    save_my_credential_from_yaml_me_openstack_credentials_from_yaml_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4267,6 +5026,44 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Replaced the credential for the same project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenStackCredentialResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_my_credential_me_openstack_credentials__credential_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
             /** @description Successful Response */
             200: {
                 headers: {
@@ -4287,34 +5084,13 @@ export interface operations {
             };
         };
     };
-    test_my_credentials_me_openstack_credentials_test_post: {
+    delete_my_credential_me_openstack_credentials__credential_id__delete: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenStackCredentialResponse"];
-                };
+            path: {
+                credential_id: string;
             };
-        };
-    };
-    refresh_cache_me_openstack_resources_refresh_post: {
-        parameters: {
-            query?: {
-                /** @description Optional: nur diese Resource-Art invalidieren */
-                kind?: string | null;
-            };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -4337,11 +5113,13 @@ export interface operations {
             };
         };
     };
-    list_networks_me_openstack_resources_networks_get: {
+    get_project_quota_me_openstack_credentials__credential_id__quota_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4352,19 +5130,93 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["QuotaOverviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    list_subnets_me_openstack_resources_subnets_get: {
+    refresh_resource_cache_me_openstack_credentials__credential_id__resources_refresh_post: {
         parameters: {
             query?: {
-                /** @description Filter: nur Subnets in diesem Network */
+                /** @description Only invalidate this kind: a marker kind such as network or security_group */
+                kind?: string | null;
+            };
+            header?: never;
+            path: {
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_networks_me_openstack_credentials__credential_id__resources_networks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subnets_me_openstack_credentials__credential_id__resources_subnets_get: {
+        parameters: {
+            query?: {
+                /** @description Only subnets of this network */
                 network_id?: string | null;
             };
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4375,7 +5227,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SubnetItem"][];
                 };
             };
             /** @description Validation Error */
@@ -4389,11 +5241,13 @@ export interface operations {
             };
         };
     };
-    list_flavors_me_openstack_resources_flavors_get: {
+    list_flavors_me_openstack_credentials__credential_id__resources_flavors_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4404,19 +5258,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["FlavorItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    list_images_me_openstack_resources_images_get: {
+    list_images_me_openstack_credentials__credential_id__resources_images_get: {
         parameters: {
             query?: {
-                /** @description OS Image Status (default: active). Alle Stati: 'all' */
+                /** @description Image status to list (default: active); 'all' for every status */
                 status?: string;
             };
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4427,7 +5292,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ImageItem"][];
                 };
             };
             /** @description Validation Error */
@@ -4441,11 +5306,13 @@ export interface operations {
             };
         };
     };
-    list_keypairs_me_openstack_resources_keypairs_get: {
+    list_keypairs_me_openstack_credentials__credential_id__resources_keypairs_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4456,16 +5323,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["KeypairItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    list_security_groups_me_openstack_resources_security_groups_get: {
+    list_security_groups_me_openstack_credentials__credential_id__resources_security_groups_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4476,16 +5354,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DescribedItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    list_floating_ip_pools_me_openstack_resources_floating_ip_pools_get: {
+    list_floating_ip_pools_me_openstack_credentials__credential_id__resources_floating_ip_pools_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4496,16 +5385,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DescribedItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    list_volumes_me_openstack_resources_volumes_get: {
+    list_volumes_me_openstack_credentials__credential_id__resources_volumes_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4516,16 +5416,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["VolumeItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    list_routers_me_openstack_resources_routers_get: {
+    list_routers_me_openstack_credentials__credential_id__resources_routers_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4536,19 +5447,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["RouterItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    list_availability_zones_me_openstack_resources_availability_zones_get: {
+    list_availability_zones_me_openstack_credentials__credential_id__resources_availability_zones_get: {
         parameters: {
             query?: {
-                /** @description OpenStack-Service: compute (Nova), network (Neutron), volume (Cinder) */
+                /** @description OpenStack service: compute (Nova), network (Neutron) or volume (Cinder) */
                 service?: string;
             };
             header?: never;
-            path?: never;
+            path: {
+                credential_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4559,7 +5481,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["AvailabilityZoneItem"][];
                 };
             };
             /** @description Validation Error */

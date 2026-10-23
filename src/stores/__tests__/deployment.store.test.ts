@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { liveStore, resetStore } from '../../../tests/helpers/liveStore'
 import { useDeploymentStore } from '../deployment.store'
 
 vi.mock('@/api/deployment.api', () => ({
@@ -15,20 +15,23 @@ vi.mock('@/api/deployment.api', () => ({
 }))
 
 vi.mock('../auth.store', () => ({
-  useAuthStore: () => ({ userId: 'user-1' }),
+  useAuthStore: { getState: () => ({ user: { userId: 'user-1' } }) },
 }))
 
 vi.mock('../app.store', () => ({
-  useAppStore: () => ({ apps: [{ appId: 'app-1', name: 'Test App' }] }),
+  useAppStore: { getState: () => ({ apps: [{ appId: 'app-1', name: 'Test App' }] }) },
 }))
 
 describe('DeploymentStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    resetStore(useDeploymentStore)
+    // Specs mutate `draft` in place, which would otherwise leak through the
+    // shared initial-state object into later specs.
+    useDeploymentStore.getState().resetDraft()
   })
 
   it('initializes with empty state and a default draft', () => {
-    const store = useDeploymentStore()
+    const store = liveStore(useDeploymentStore)
     expect(store.deployments).toEqual([])
     expect(store.currentDeployment).toBeNull()
     expect(store.isLoading).toBe(false)
@@ -44,7 +47,7 @@ describe('DeploymentStore', () => {
       const deployments = [{ deploymentId: 'd-1', userId: 'user-1', status: 'success' }]
       vi.mocked(deploymentApi.list).mockResolvedValueOnce({ data: deployments } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await store.fetchDeployments()
 
       expect(store.deployments).toEqual(deployments)
@@ -56,7 +59,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.list).mockRejectedValueOnce(new Error('network down'))
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await expect(store.fetchDeployments()).resolves.toBeUndefined()
 
       expect(store.deployments).toEqual([])
@@ -71,7 +74,7 @@ describe('DeploymentStore', () => {
       const deployment = { deploymentId: 'd-1', status: 'success' }
       vi.mocked(deploymentApi.getById).mockResolvedValueOnce({ data: deployment } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await store.fetchDeploymentById('d-1')
 
       expect(store.currentDeployment).toEqual(deployment)
@@ -81,7 +84,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.getById).mockRejectedValueOnce({ response: { status: 404 } })
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.currentDeployment = { deploymentId: 'd-1' } as any
       await store.fetchDeploymentById('d-1')
 
@@ -93,7 +96,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.getById).mockRejectedValueOnce({ response: { status: 500, data: { detail: 'boom' } } })
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await store.fetchDeploymentById('d-1')
 
       expect(store.error).toBe('boom')
@@ -106,7 +109,7 @@ describe('DeploymentStore', () => {
       const created = { deploymentId: 'd-2', name: 'New' }
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: created } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       const result = await store.createDeployment({ name: 'New' } as any)
 
       expect(result).toEqual(created)
@@ -117,7 +120,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockRejectedValueOnce(new Error('rejected'))
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await expect(store.createDeployment({} as any)).rejects.toThrow('rejected')
       expect(store.error).toBe('rejected')
     })
@@ -128,7 +131,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.delete).mockResolvedValueOnce({ status: 204 } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.deployments = [{ deploymentId: 'd-1' }, { deploymentId: 'd-2' }] as any
 
       const response = await store.deleteDeployment('d-1')
@@ -143,7 +146,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.cancel).mockResolvedValueOnce({ data: { task_id: 't-1', status: 'destroying' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await store.cancelDeployment('d-1')
 
       expect(deploymentApi.cancel).toHaveBeenCalledWith('d-1')
@@ -153,7 +156,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.pause).mockResolvedValueOnce({ data: { task_id: 't-1', status: 'pausing' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await store.pauseDeployment('d-1')
 
       expect(deploymentApi.pause).toHaveBeenCalledWith('d-1')
@@ -163,26 +166,39 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.resume).mockResolvedValueOnce({ data: { task_id: 't-1', status: 'resuming' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       await store.resumeDeployment('d-1')
 
       expect(deploymentApi.resume).toHaveBeenCalledWith('d-1')
     })
   })
 
+  describe('updateDraft', () => {
+    it('merges a patch into the draft immutably', () => {
+      const before = useDeploymentStore.getState().draft
+      useDeploymentStore.getState().updateDraft({ name: 'Wizard', groupCount: 3 })
+
+      const after = useDeploymentStore.getState().draft
+      expect(after).not.toBe(before)
+      expect(after.name).toBe('Wizard')
+      expect(after.groupCount).toBe(3)
+      expect(after.groupMode).toBe(before.groupMode)
+    })
+  })
+
   describe('getters', () => {
     it('myDeployments filters by the current user id', () => {
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.deployments = [
         { deploymentId: 'd-1', userId: 'user-1' },
         { deploymentId: 'd-2', userId: 'someone-else' },
       ] as any
 
-      expect(store.myDeployments).toEqual([{ deploymentId: 'd-1', userId: 'user-1' }])
+      expect(store.myDeployments()).toEqual([{ deploymentId: 'd-1', userId: 'user-1' }])
     })
 
     it('deploymentsByStatus filters by the given status', () => {
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.deployments = [
         { deploymentId: 'd-1', status: 'success' },
         { deploymentId: 'd-2', status: 'failed' },
@@ -192,27 +208,27 @@ describe('DeploymentStore', () => {
     })
 
     it('draftAppDetails resolves the app from the app store by id', () => {
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
 
-      expect(store.draftAppDetails).toEqual({ appId: 'app-1', name: 'Test App' })
+      expect(store.draftAppDetails()).toEqual({ appId: 'app-1', name: 'Test App' })
     })
 
     it('draftAppDetails is null when no app is selected', () => {
-      const store = useDeploymentStore()
-      expect(store.draftAppDetails).toBeNull()
+      const store = liveStore(useDeploymentStore)
+      expect(store.draftAppDetails()).toBeNull()
     })
 
     it('draftAppDetails is null when the selected app id is unknown', () => {
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'does-not-exist'
-      expect(store.draftAppDetails).toBeNull()
+      expect(store.draftAppDetails()).toBeNull()
     })
   })
 
   describe('resetDraft', () => {
     it('restores the draft to its defaults', () => {
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.name = 'mutated'
       store.draft.appId = 'app-1'
 
@@ -225,7 +241,7 @@ describe('DeploymentStore', () => {
 
   describe('submitDraft', () => {
     it('throws when appId or name are missing', async () => {
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = null
       store.draft.name = ''
 
@@ -236,7 +252,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.releaseTag = 'v1.2.3'
@@ -252,7 +268,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.releaseTag = { version: 'v9.9.9' } as any
@@ -268,7 +284,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.releaseTag = '   '
@@ -284,7 +300,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.groupNames = ['Team-A', 'Team-B']
@@ -306,7 +322,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.studentIds = ['u-1', 'u-2', 'u-3']
@@ -328,7 +344,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.groupNames = ['Team-A']
@@ -345,7 +361,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.variables = { image_type: 'ubuntu', flavor: 'm1.small' }
@@ -370,7 +386,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.variables = { empty_str: '  ', nullish: null, present: 'value' }
@@ -391,7 +407,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.variables = { team_var: {} }
@@ -410,7 +426,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.variables = { cert: 'should-not-appear' }
@@ -429,7 +445,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.variables = {
@@ -452,7 +468,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.variables = { anything: 'goes' }
@@ -469,7 +485,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
       store.draft.fileUploads = {
@@ -490,7 +506,7 @@ describe('DeploymentStore', () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
 
@@ -505,13 +521,39 @@ describe('DeploymentStore', () => {
       const created = { deploymentId: 'd-99' }
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: created } as any)
 
-      const store = useDeploymentStore()
+      const store = liveStore(useDeploymentStore)
       store.draft.appId = 'app-1'
       store.draft.name = 'My Deployment'
 
       const result = await store.submitDraft()
 
       expect(result).toEqual(created)
+    })
+
+    describe('credential (project) of the deployment', () => {
+      async function submitWith(runtime: 'kubernetes' | 'openstack-vm' | null, credentialId: string | null) {
+        const { deploymentApi } = await import('@/api/deployment.api')
+        vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
+        const store = liveStore(useDeploymentStore)
+        store.draft.appId = 'app-1'
+        store.draft.name = 'My Deployment'
+        store.draft.runtime = runtime
+        store.draft.credentialId = credentialId
+        await store.submitDraft()
+        return vi.mocked(deploymentApi.create).mock.calls.at(-1)![0] as unknown as Record<string, unknown>
+      }
+
+      it('a VM app is created with the chosen credential', async () => {
+        expect(await submitWith('openstack-vm', 'c-1')).toMatchObject({ credentialId: 'c-1' })
+      })
+
+      it('a pod app sends none, even if one was left in the draft', async () => {
+        expect(await submitWith('kubernetes', 'c-1')).not.toHaveProperty('credentialId')
+      })
+
+      it('a VM app without a chosen credential sends none', async () => {
+        expect(await submitWith('openstack-vm', null)).not.toHaveProperty('credentialId')
+      })
     })
   })
 })

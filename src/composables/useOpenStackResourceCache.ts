@@ -15,13 +15,18 @@
  * - Cache TTL: matched to the backend cache (60s) — after that it is
  *   reloaded on the next picker open.
  *
- * REACTIVITY: the cache itself is a plain ``Map``, but a Vue ``ref``
- * (``cacheVersion``) is incremented on every ``prime``/``invalidate``.
- * Consumers read the cache via ``getDisplayName``, which also reads
- * ``cacheVersion.value`` — so the computeds calling it depend on Vue
- * reactivity and re-run as soon as another component updates the cache.
+ * CREDENTIAL: every list belongs to one of the caller's OpenStack
+ * credentials (the one the deployment will be created with). The wizard
+ * sets it with ``setCredential``; switching to another credential empties
+ * the cache, because another project has other resources.
+ *
+ * REACTIVITY: the cache itself is a plain ``Map``, but a version counter
+ * (``cacheVersion``) is incremented on every ``prime``/``invalidate`` and
+ * subscribers are notified. Components call ``useOpenStackCacheVersion()``
+ * and read the cache via ``getDisplayName`` — so they re-render as soon as
+ * another component updates the cache.
  */
-import { ref } from 'vue'
+import { useSyncExternalStore } from 'react'
 import {
   openstackResourcesApi,
   type OsResourceType,
@@ -48,11 +53,48 @@ interface CacheEntry {
 // In-memory cache, process-local per browser tab. Cleared on reload.
 const cache = new Map<OsResourceType, CacheEntry>()
 
-// Reactive version counter. Every cache mutation increments it; consumers read
-// ``cacheVersion.value`` in their computeds so Vue re-runs them on change.
-const cacheVersion = ref(0)
+// Version counter. Every cache mutation bumps it and notifies subscribers;
+// React consumers observe it through ``useOpenStackCacheVersion``.
+let cacheVersion = 0
+const listeners = new Set<() => void>()
+
+function bumpVersion(): void {
+  cacheVersion += 1
+  listeners.forEach((l) => l())
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+/**
+ * Subscribes the calling component to cache changes. Call it in any component
+ * that renders values from ``getDisplayName`` so it re-renders on updates.
+ */
+export function useOpenStackCacheVersion(): number {
+  return useSyncExternalStore(subscribe, () => cacheVersion)
+}
 
 const TTL_MS = 60_000
+
+// The credential the lists are read with (null: none chosen yet).
+let credentialId: string | null = null
+
+/**
+ * Read every list with `id` from now on. A different credential than before
+ * empties the cache (another project, other resources).
+ */
+export function setCredential(id: string | null): void {
+  if (credentialId === id) return
+  credentialId = id
+  invalidateAll()
+}
+
+/** The credential lists are read with, or null when none is chosen. */
+export function currentCredential(): string | null {
+  return credentialId
+}
 
 /**
  * Returns a cache entry no older than the TTL, or ``null`` if missing/expired.
@@ -78,21 +120,24 @@ export async function ensureLoaded(osType: OsResourceType): Promise<void> {
     return
   }
 
+  const requestedFor = credentialId
   const loading = (async () => {
     try {
       const res = await fetchList(osType)
+      // Another credential was chosen while this list was on its way.
+      if (credentialId !== requestedFor) return
       cache.set(osType, {
         items: res.map(toCachedItem),
         loadedAt: Date.now(),
       })
-      cacheVersion.value += 1
+      bumpVersion()
     } catch {
       // Deliberately no throw — cache stays empty, picker shows its own error UI.
     }
   })()
 
   // Set the pending marker so parallel calls wait instead of re-fetching. Don't
-  // increment ``cacheVersion``: the visible cache view hasn't changed yet.
+  // bump ``cacheVersion``: the visible cache view hasn't changed yet.
   cache.set(osType, {
     items: cache.get(osType)?.items || [],
     loadedAt: cache.get(osType)?.loadedAt || 0,
@@ -117,7 +162,7 @@ export function prime(osType: OsResourceType, items: ReadonlyArray<OsResourceBas
     items: items.map(toCachedItem),
     loadedAt: Date.now(),
   })
-  cacheVersion.value += 1
+  bumpVersion()
 }
 
 /**
@@ -125,7 +170,7 @@ export function prime(osType: OsResourceType, items: ReadonlyArray<OsResourceBas
  */
 export function invalidate(osType: OsResourceType): void {
   if (cache.delete(osType)) {
-    cacheVersion.value += 1
+    bumpVersion()
   }
 }
 
@@ -136,7 +181,7 @@ export function invalidate(osType: OsResourceType): void {
 export function invalidateAll(): void {
   if (cache.size === 0) return
   cache.clear()
-  cacheVersion.value += 1
+  bumpVersion()
 }
 
 /**
@@ -153,16 +198,14 @@ export function invalidateAll(): void {
  *
  * Returns ``null`` when ``value`` is empty.
  *
- * Reads ``cacheVersion.value`` so any computed calling this re-runs when the
- * cache changes.
+ * Components rendering this value must also call ``useOpenStackCacheVersion()``
+ * so they re-render when the cache changes.
  */
 export function getDisplayName(
   osType: OsResourceType,
   mode: 'id' | 'name',
   value: string | null | undefined,
 ): { name: string; known: boolean; modeMismatch?: boolean } | null {
-  // Register the reactive dependency — see module docstring.
-  void cacheVersion.value
   if (!value) return null
   const entry = cache.get(osType)
   if (!entry) {
@@ -190,29 +233,24 @@ export function getDisplayName(
 // ----------------------------------------------------------------
 // Internal: per-type Fetcher
 // ----------------------------------------------------------------
+type ListFetcher = (id: string) => Promise<{ data: any[] }>
+
+const LIST_FETCHERS: Record<OsResourceType, ListFetcher> = {
+  network: (id) => openstackResourcesApi.listNetworks(id),
+  subnet: (id) => openstackResourcesApi.listSubnets(id),
+  flavor: (id) => openstackResourcesApi.listFlavors(id),
+  image: (id) => openstackResourcesApi.listImages(id, 'active'),
+  keypair: (id) => openstackResourcesApi.listKeypairs(id),
+  security_group: (id) => openstackResourcesApi.listSecurityGroups(id),
+  floating_ip_pool: (id) => openstackResourcesApi.listFloatingIpPools(id),
+  volume: (id) => openstackResourcesApi.listVolumes(id),
+  router: (id) => openstackResourcesApi.listRouters(id),
+  availability_zone: (id) => openstackResourcesApi.listAvailabilityZones(id, 'compute'),
+}
+
 async function fetchList(osType: OsResourceType): Promise<any[]> {
-  switch (osType) {
-    case 'network':
-      return (await openstackResourcesApi.listNetworks()).data
-    case 'subnet':
-      return (await openstackResourcesApi.listSubnets()).data
-    case 'flavor':
-      return (await openstackResourcesApi.listFlavors()).data
-    case 'image':
-      return (await openstackResourcesApi.listImages('active')).data
-    case 'keypair':
-      return (await openstackResourcesApi.listKeypairs()).data
-    case 'security_group':
-      return (await openstackResourcesApi.listSecurityGroups()).data
-    case 'floating_ip_pool':
-      return (await openstackResourcesApi.listFloatingIpPools()).data
-    case 'volume':
-      return (await openstackResourcesApi.listVolumes()).data
-    case 'router':
-      return (await openstackResourcesApi.listRouters()).data
-    case 'availability_zone':
-      return (await openstackResourcesApi.listAvailabilityZones('compute')).data
-  }
+  if (!credentialId) return []
+  return (await LIST_FETCHERS[osType](credentialId)).data
 }
 
 function toCachedItem(raw: any): CachedItem {

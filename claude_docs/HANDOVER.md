@@ -7,7 +7,7 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 1. Status & Fokus
 
-- **Stack:** Vue 3, Pinia, Tailwind CSS, Vite, TypeScript, Vitest.
+- **Stack:** React 19, Zustand, React Router 7, react-i18next, Tailwind CSS, Vite, TypeScript, Vitest + React Testing Library.
 - **Die 2 Flows (Harness Engineering):**
   - **Flow 1 (`/user-story`):** Vorab-Spezifikation von UI/UX-Komponenten, Store-State und OpenAPI-Typen im Issue.
   - **Flow 2 (`/harness-workflow`):** Autonomer Feature-Bau gegen `dev` -> TDD (Vitest) -> PR auf `dev` -> CI grün -> Auto-Merge -> Automatisches Staging Deployment -> Hermes Discord Statusmeldung.
@@ -21,12 +21,15 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 - [x] Reengineering auf 2 Flows: `ci.yml` auf `dev`-Trunk und Test Coverage Gate für `main` umgestellt.
 - [x] Staging-Deploy-Trigger korrigiert auf `DHBW-AppStore-T3/deployment --ref dev`.
 - [ ] Typensichere API-Client-Integration mit generierten Typen (`api.generated.ts`) fortführen.
+- [ ] Pods/K8s-Frontend (frontend#36, Branch `spike/react-pods`): Port von `spike/vue-pods` abgeschlossen (AP0-AP7);
+      offen ist die E2E-Abnahme auf dem k8s-Staging und der Cutover (AP8, Checkliste in
+      `claude_docs/decisions/2026-react-pods.md`).
 
 ---
 
 ## 3. Bekannte Fallstricke & Blocker
 
-1. **Typensicherheit:** `vue-tsc -b` schlägt bei fehlerhaften Typen im CI Build fehl; Typen vor dem Commit immer lokal prüfen.
+1. **Typensicherheit:** `tsc -b` schlägt bei fehlerhaften Typen im CI Build fehl; Typen vor dem Commit immer lokal prüfen.
 2. **Coverage Gate:** PRs auf `main` verlangen mindestens 60% Zeilen-Abdeckung.
 3. **Security-Audit:** `js-yaml` und `nanoid` wurden über PR #3 gepatcht; `npm audit` regelmäßig prüfen.
 
@@ -34,6 +37,28 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-23 (Pods/K8s in React, frontend#36):** `spike/vue-pods` (Linux-Apps als Pods, ein Credential pro
+  OpenStack-Projekt, nginx als API-Gateway) ist auf `spike/react-pods` portiert. Vertrag: OpenAPI aus Backend
+  `spike/dev` (`794e9db`), byte-identisch zur Vue-Fassung (`tests/unit/contract`). Rechte auf der Deployment-Seite
+  kommen aus `permissions`/`actions` der API, Zugangsdaten nur aus `/my-access` an die eigene Zeile (per `userId`).
+  Studierende werden im Wizard per `userId` adressiert. Namen in Bestätigungen laufen über `BoldSlot` (Text), raw HTML
+  nur mit begründeter ESLint-Ausnahme. Rollout auf das k8s-Staging für React nur per `workflow_dispatch`, bis der
+  Vue-Trigger beim Cutover entfällt.
+
+- **2026-10-23 (Fachbereichs-Filter im App-Katalog, frontend#34):** Die generischen Kategorie-Tabs
+  (Produktivität/Entwicklung/Daten & KI/Weitere) in `AppsView.tsx` sind durch Fachbereiche ersetzt
+  (Maschinenbau, Informatik, Elektrotechnik, Wirtschaftsingenieurwesen, Fächerübergreifend; immer
+  genau ein Tab aktiv, Favoriten bleiben). Die Zuordnung steht zentral in
+  `src/config/department-catalog.ts`: kuratierte Tabelle `APP_DEPARTMENTS`, geschlüsselt über
+  normalisierte `git_link`-Aliasse (exakter Vergleich, **kein** Regex-/Keyword-/Repo-Name-Matching).
+  **Neue App aufnehmen = Eintrag in `APP_DEPARTMENTS` ergänzen**, sonst erscheint sie nur unter
+  „Alle“. `appPresentation()` liefert nur noch Logo/Icon (Feld `category` entfernt). Keine Backend-
+  oder DB-Änderung. **Offen, bewusst nicht Teil von #34:** Die Beschreibungen in der Datenbank haben
+  Mängel (Korrekturvorschläge im Anhang von Issue #34, u. a. Ubuntu-Version, Einsatzhinweise,
+  Klartext-Passwort in pgAdmin); die Datenkorrektur erfolgt gesondert und nur nach Freigabe. Nach dem
+  Staging-Deploy prüfen, ob alle Apps aus `GET /apps/` über ihren `git_link` zugeordnet werden.
+  **Abweichung vom Skill:** Branch von `origin/dev` statt `main`, da `main` hier 30 Commits hinter
+  dem React-Stand auf `dev` liegt. `node_modules` war veraltet (Vue-Stand) → `npm ci` nötig.
 - **2026-09-28 (T3-Redesign, frontend#21):** Drei-Phasen-Redesign auf einem Feature-Branch, ein
   finaler PR gegen `dev`. **Phase 1:** `src/styles/tokens.css` (Radius/Shadow/Spacing/Typografie,
   theme-unabhängig), Tailwind-Bindung dafür in `tailwind.config.js`, Allowlist-Guardrail gegen

@@ -1,4 +1,4 @@
-import { ref, watch, onBeforeUnmount, nextTick, type Ref } from 'vue'
+import { useEffect, useRef, type RefObject } from 'react'
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -7,75 +7,60 @@ const FOCUSABLE_SELECTOR =
  * Shared overlay primitive: backdrop-adjacent open/close plumbing used by both
  * Modal and Drawer — focus trap, Escape-to-close, scroll-lock, and returning
  * focus to whatever triggered the overlay once it closes.
+ *
+ * Attach the returned `containerRef` to the overlay's panel element.
  */
-export function useOverlay(options: { show: Ref<boolean>; onClose: () => void }): {
-  containerRef: Ref<HTMLElement | null>
+export function useOverlay<T extends HTMLElement = HTMLDivElement>(options: {
+  show: boolean
+  onClose: () => void
+}): {
+  containerRef: RefObject<T | null>
 } {
-  const containerRef = ref<HTMLElement | null>(null)
-  let previouslyFocused: HTMLElement | null = null
-  let locked = false
+  const { show, onClose } = options
+  const containerRef = useRef<T | null>(null)
 
-  function lockScroll() {
-    if (locked) return
-    locked = true
+  // Always call the latest handler without re-running the open/close effect.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
+  useEffect(() => {
+    if (!show) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
     document.body.style.overflow = 'hidden'
-  }
 
-  function unlockScroll() {
-    if (!locked) return
-    locked = false
-    document.body.style.overflow = ''
-  }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      options.onClose()
-      return
-    }
-    if (event.key === 'Tab' && containerRef.value) {
-      const focusable = Array.from(containerRef.value.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-      if (focusable.length === 0) return
-      const first = focusable[0]!
-      const last = focusable[focusable.length - 1]!
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
+    function handleKeydown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onCloseRef.current()
+        return
+      }
+      const container = containerRef.current
+      if (event.key === 'Tab' && container) {
+        const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+        if (focusable.length === 0) return
+        const first = focusable[0]!
+        const last = focusable[focusable.length - 1]!
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
       }
     }
-  }
 
-  function open() {
-    previouslyFocused = document.activeElement as HTMLElement | null
-    lockScroll()
     document.addEventListener('keydown', handleKeydown)
-    void nextTick(() => {
-      const focusable = containerRef.value?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
-      focusable?.focus()
-    })
-  }
+    containerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus()
 
-  function close() {
-    unlockScroll()
-    document.removeEventListener('keydown', handleKeydown)
-    previouslyFocused?.focus()
-    previouslyFocused = null
-  }
-
-  watch(
-    options.show,
-    (isShown) => {
-      if (isShown) open()
-      else close()
-    },
-    { immediate: true },
-  )
-
-  onBeforeUnmount(() => {
-    if (options.show.value) close()
-  })
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', handleKeydown)
+      previouslyFocused?.focus()
+    }
+  }, [show])
 
   return { containerRef }
 }

@@ -29,6 +29,6 @@ Closes # (issue)
 - [ ] I have performed a self-review of my code
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] My changes generate no new warnings
-- [ ] Code follows Vue 3 Composition API best practices
+- [ ] Code follows React hooks best practices (rules of hooks, effect dependencies)
 - [ ] Components are properly typed (TypeScript)
 - [ ] Tailwind CSS classes are used consistently

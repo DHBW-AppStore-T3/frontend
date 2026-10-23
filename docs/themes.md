@@ -9,7 +9,7 @@ To add a theme:
 1. Copy `src/theme/themes/t3.ts` to `src/theme/themes/<id>.ts`; set a new `id`, branding, and every required color channel. Keep image assets in `src/theme/assets/` and the favicon in `public/themes/<id>/`.
 2. Import and register it in `THEMES` in `src/theme/index.ts`.
 3. Select it locally with `VITE_THEME=<id> npm run dev` (PowerShell: `$env:VITE_THEME='<id>'; npm run dev`). In a container, pass `VITE_THEME=<id>`; `env-config.js` receives it at startup.
-4. Run `npm run lint`, `npx vue-tsc -b --noEmit`, `npm run test`, and `npm run build`.
+4. Run `npm run lint`, `npx tsc -b --noEmit`, `npm run test`, and `npm run build`.
 
 For example, a new campus theme could use `id: 'campus'`, its own logo/background/favicon, and `colors: { ...t3Theme.colors, primary: '0 85 140', 'primary-dark': '0 65 110' }`. Replace all inherited colors that should differ. Register `campusTheme` under its ID. No view changes are needed.
 

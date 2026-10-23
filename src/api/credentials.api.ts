@@ -1,28 +1,42 @@
 import api from './axios'
 import type {
+  OpenStackCredential,
   OpenStackCredentialFromYaml,
-  OpenStackCredentialResponse,
   OpenStackCredentialUpsert,
 } from '@/types/openstack-credential'
 
 // ----------------------------------------------------------------
-// OPENSTACK CREDENTIALS API
+// OPENSTACK CREDENTIALS API — one credential per OpenStack project
 // ----------------------------------------------------------------
+// Only VM apps (the Windows desktop) need a credential; pod apps run in
+// the cluster without one. Every route is scoped to the caller: another
+// person's credential id answers 404.
 export const credentialsApi = {
-  /** Read masked credential status for the current user. Always 200. */
-  get: () => api.get<OpenStackCredentialResponse>('/me/openstack-credentials'),
+  /** The caller's credentials, without secrets. */
+  list: () => api.get<OpenStackCredential[]>('/me/openstack-credentials'),
 
-  /** Replace credentials with a fully-formed payload. Auto-validates server-side. */
-  put: (payload: OpenStackCredentialUpsert) =>
-    api.put<OpenStackCredentialResponse>('/me/openstack-credentials', payload),
+  /**
+   * Check against Keystone, then store: 201 for a new project, 200 when the
+   * credential for the same project was replaced (how a secret is rotated).
+   * 422 ``openstack_credentials_invalid`` (with ``cause``) when Keystone
+   * refuses it; nothing is stored then.
+   */
+  save: (payload: OpenStackCredentialUpsert) =>
+    api.post<OpenStackCredential>('/me/openstack-credentials', payload),
 
-  /** Upload raw clouds.yaml; server picks the cloud apart and validates. */
-  putFromYaml: (body: OpenStackCredentialFromYaml) =>
-    api.put<OpenStackCredentialResponse>('/me/openstack-credentials/from-yaml', body),
+  /** Same as ``save``, from a pasted ``clouds.yaml``. */
+  saveFromYaml: (body: OpenStackCredentialFromYaml) =>
+    api.post<OpenStackCredential>('/me/openstack-credentials/from-yaml', body),
 
-  /** Re-authorize the stored credential and refresh `last_validated_at`. */
-  test: () => api.post<OpenStackCredentialResponse>('/me/openstack-credentials/test'),
+  /**
+   * Ask Keystone again. Always 200; a failure shows in the returned
+   * credential's ``last_validation_error``. An unverified credential becomes
+   * verified with the project Keystone names.
+   */
+  test: (credentialId: string) =>
+    api.post<OpenStackCredential>(`/me/openstack-credentials/${encodeURIComponent(credentialId)}/test`),
 
-  /** Remove the stored credential. */
-  remove: () => api.delete<void>('/me/openstack-credentials'),
+  /** 409 ``openstack_credentials_locked`` while live deployments need it. */
+  remove: (credentialId: string) =>
+    api.delete<void>(`/me/openstack-credentials/${encodeURIComponent(credentialId)}`),
 }

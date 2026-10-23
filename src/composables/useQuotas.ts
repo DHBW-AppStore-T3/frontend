@@ -1,155 +1,155 @@
-import { ref, computed } from 'vue'
-import axios from 'axios'
-import { Cpu, HardDrive, Network, Box, Layers } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
+import { useMemo } from 'react'
+import { create } from 'zustand'
+import { Cpu, HardDrive, Network, Box, Layers, type LucideIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { quotasApi } from '@/api/quotas.api'
 import type { QuotaOverview } from '@/types/quota'
 
 // ----------------------------------------------------------------
 // MODULE-SCOPED STATE (shared across all consumers)
 // ----------------------------------------------------------------
+// Quotas belong to the OpenStack project behind one of the caller's
+// credentials; the dashboard tile shows the one the user picked.
+//
 // Why module-scoped: the dashboard mounts/unmounts whenever the user
 // navigates, but we want the quota tile to keep showing the last known
 // numbers while the next fetch is in flight instead of flashing the
-// loading skeleton again. Lifting state above the composable factory is
-// the cheapest way to share it; sessionStorage extends that across
-// reloads inside the same browser session.
-const STORAGE_KEY = 'openstack.quotas.v1'
+// loading skeleton again. sessionStorage extends that across reloads
+// inside the same browser session, per credential.
+const STORAGE_PREFIX = 'openstack.quotas.v2.'
+const MB_PER_GB = 1024 // OpenStack reports RAM in MB
 
-function readCachedQuotas(): QuotaOverview | null {
+const COLOR_THRESHOLDS: Array<[minPercentage: number, cssClass: string]> = [
+  [90, 'bg-red-500'],
+  [75, 'bg-orange-500'],
+  [50, 'bg-yellow-500'],
+]
+const COLOR_DEFAULT = 'bg-green-500'
+
+function readCachedQuotas(credentialId: string | null): QuotaOverview | null {
+  if (!credentialId) return null
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as QuotaOverview
+    const raw = sessionStorage.getItem(STORAGE_PREFIX + credentialId)
+    return raw ? (JSON.parse(raw) as QuotaOverview) : null
   } catch {
     return null
   }
 }
 
-function writeCachedQuotas(value: QuotaOverview | null) {
+function writeCachedQuotas(credentialId: string, value: QuotaOverview | null) {
   try {
-    if (value) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-    else sessionStorage.removeItem(STORAGE_KEY)
+    if (value) sessionStorage.setItem(STORAGE_PREFIX + credentialId, JSON.stringify(value))
+    else sessionStorage.removeItem(STORAGE_PREFIX + credentialId)
   } catch {
     // sessionStorage may be unavailable (private mode, quota) — degrade silently
   }
 }
 
-const quotas = ref<QuotaOverview | null>(readCachedQuotas())
-const loading = ref(false)
-const error = ref<string | null>(null)
-const needsCredentials = ref(false)
+interface QuotaState {
+  credentialId: string | null
+  quotas: QuotaOverview | null
+  loading: boolean
+  error: string | null
+}
+
+export const useQuotaStore = create<QuotaState>()(() => ({
+  credentialId: null,
+  quotas: null,
+  loading: false,
+  error: null,
+}))
+
+// An unlimited quota (-1) never fills up.
+const getPercentage = (used: number, limit: number): number =>
+  limit <= 0 ? 0 : Math.round((used / limit) * 100)
+
+const getColorClass = (percentage: number): string =>
+  COLOR_THRESHOLDS.find(([min]) => percentage >= min)?.[1] ?? COLOR_DEFAULT
+
+/** Show the quota of `id`'s project from now on (cached numbers first). */
+const selectCredential = (id: string | null) => {
+  if (useQuotaStore.getState().credentialId === id) return
+  useQuotaStore.setState({ credentialId: id, quotas: readCachedQuotas(id), error: null })
+}
+
+const fetchQuotas = async () => {
+  const id = useQuotaStore.getState().credentialId
+  if (!id) {
+    useQuotaStore.setState({ quotas: null })
+    return
+  }
+  useQuotaStore.setState({ loading: true, error: null })
+  try {
+    const response = await quotasApi.getForCredential(id)
+    if (useQuotaStore.getState().credentialId !== id) return // switched meanwhile
+    useQuotaStore.setState({ quotas: response.data })
+    writeCachedQuotas(id, response.data)
+  } catch (err) {
+    // Keep the cached numbers visible — a transient error shouldn't blank
+    // out the tile.
+    useQuotaStore.setState({ error: 'Failed to fetch quotas' })
+    console.error('Quota fetch error:', err)
+  } finally {
+    useQuotaStore.setState({ loading: false })
+  }
+}
+
+export interface QuotaRow {
+  icon: LucideIcon
+  label: string
+  used: number
+  /** null: unlimited */
+  limit: number | null
+  percentage: number
+  unit: string
+}
+
+function quotaRow(
+  icon: QuotaRow['icon'],
+  label: string,
+  item: { used: number; limit: number },
+  unit = '',
+  scale = 1,
+): QuotaRow {
+  return {
+    icon,
+    label,
+    used: Math.round(item.used / scale),
+    limit: item.limit < 0 ? null : Math.round(item.limit / scale),
+    percentage: getPercentage(item.used, item.limit),
+    unit,
+  }
+}
 
 // ----------------------------------------------------------------
-// USE QUOTAS COMPOSABLE
+// USE QUOTAS HOOK
 // ----------------------------------------------------------------
 export const useQuotas = () => {
-  const { t } = useI18n()
-  const getPercentage = (used: number, limit: number): number => {
-    if (limit === 0) return 0
-    return Math.round((used / limit) * 100)
-  }
+  const { t } = useTranslation()
+  const { credentialId, quotas, loading, error } = useQuotaStore()
 
-  const getColorClass = (percentage: number): string => {
-    if (percentage >= 90) return 'bg-red-500'
-    if (percentage >= 75) return 'bg-orange-500'
-    if (percentage >= 50) return 'bg-yellow-500'
-    return 'bg-green-500'
-  }
-
-  const formattedQuotas = computed(() => {
-    if (!quotas.value) return []
-
-    const { compute, storage, network } = quotas.value
-
+  const formattedQuotas = useMemo<QuotaRow[]>(() => {
+    if (!quotas) return []
+    const { compute, storage, network } = quotas
     return [
-      {
-        icon: Box,
-        label: t('workspace.quotas.instances'),
-        used: compute.instances.used,
-        limit: compute.instances.limit,
-        percentage: getPercentage(compute.instances.used, compute.instances.limit),
-        unit: ''
-      },
-      {
-        icon: Cpu,
-        label: t('workspace.quotas.vcpus'),
-        used: compute.vcpus.used,
-        limit: compute.vcpus.limit,
-        percentage: getPercentage(compute.vcpus.used, compute.vcpus.limit),
-        unit: ''
-      },
-      {
-        icon: Layers,
-        label: t('workspace.quotas.ram'),
-        used: Math.round(compute.ram.used / 1024),
-        limit: Math.round(compute.ram.limit / 1024),
-        percentage: getPercentage(compute.ram.used, compute.ram.limit),
-        unit: 'GB'
-      },
-      {
-        icon: HardDrive,
-        label: t('workspace.quotas.volumes'),
-        used: storage.volumes.used,
-        limit: storage.volumes.limit,
-        percentage: getPercentage(storage.volumes.used, storage.volumes.limit),
-        unit: ''
-      },
-      {
-        icon: HardDrive,
-        label: t('workspace.quotas.storage'),
-        used: storage.gigabytes.used,
-        limit: storage.gigabytes.limit,
-        percentage: getPercentage(storage.gigabytes.used, storage.gigabytes.limit),
-        unit: 'GB'
-      },
-      {
-        icon: Network,
-        label: t('workspace.quotas.floatingIps'),
-        used: network.floating_ips.used,
-        limit: network.floating_ips.limit,
-        percentage: getPercentage(network.floating_ips.used, network.floating_ips.limit),
-        unit: ''
-      }
+      quotaRow(Box, t('workspace.quotas.instances'), compute.instances),
+      quotaRow(Cpu, t('workspace.quotas.vcpus'), compute.vcpus),
+      quotaRow(Layers, t('workspace.quotas.ram'), compute.ram, 'GB', MB_PER_GB),
+      quotaRow(HardDrive, t('workspace.quotas.volumes'), storage.volumes),
+      quotaRow(HardDrive, t('workspace.quotas.storage'), storage.gigabytes, 'GB'),
+      quotaRow(Network, t('workspace.quotas.floatingIps'), network.floating_ips),
     ]
-  })
-
-  const hasCachedQuotas = computed(() => quotas.value !== null)
-
-  const fetchQuotas = async () => {
-    loading.value = true
-    error.value = null
-    needsCredentials.value = false
-
-    try {
-      const response = await quotasApi.getOverview()
-      quotas.value = response.data
-      writeCachedQuotas(response.data)
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 412) {
-        needsCredentials.value = true
-        // Drop the cache: credentials are gone, the old numbers don't apply
-        quotas.value = null
-        writeCachedQuotas(null)
-      } else {
-        error.value = 'Failed to fetch quotas'
-        console.error('Quota fetch error:', err)
-        // Keep the existing cached numbers visible — a transient error
-        // shouldn't blank out the tile.
-      }
-    } finally {
-      loading.value = false
-    }
-  }
+  }, [quotas, t])
 
   return {
+    credentialId,
     quotas,
     loading,
     error,
-    needsCredentials,
     formattedQuotas,
-    hasCachedQuotas,
+    hasCachedQuotas: quotas !== null,
+    selectCredential,
     fetchQuotas,
-    getColorClass
+    getColorClass,
   }
 }

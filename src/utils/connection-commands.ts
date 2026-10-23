@@ -1,7 +1,7 @@
 /**
  * Copy-paste connection strings for a deployment's per-user accounts.
  *
- * Pure string builders, extracted from DeploymentDetailView.vue. They have no
+ * Pure string builders, extracted from DeploymentDetailView. They have no
  * Vue dependency and no component state, which makes them directly testable --
  * they previously sat at the top of a ~2590-line SFC where the only way to
  * exercise them was to mount the whole detail page.
@@ -9,7 +9,7 @@
 
 /** One account's connection details, as published in the Terraform outputs. */
 export interface ConnectionTarget {
-    username?: string
+    username?: string | null
     ip?: string
     port?: number
 }
@@ -47,7 +47,7 @@ export function rdpCommandFor(data: ConnectionTarget): string {
  * the team VM's URL carries (e.g. `/pgadmin4`). Returns null when the account
  * has no reachable address.
  */
-export function userUrlFor(data: ConnectionTarget, teamVmUrl?: string): string | null {
+export function userUrlFor(data: ConnectionTarget, teamVmUrl?: string | null): string | null {
     if (!data.ip || !data.port) return null
     let path = ''
     if (teamVmUrl) {

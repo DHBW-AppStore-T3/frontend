@@ -1,16 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
-import { useOpenStackCredentialsStore } from '../openstack-credentials.store'
+import { liveStore, resetStore } from '../../../tests/helpers/liveStore'
+import {
+  useOpenStackCredentialsStore,
+  isUsable,
+  selectCredentials,
+  selectHasAnyCredential,
+  selectHasUsableCredential,
+  selectUsableCredentials,
+  selectUnverifiedCredentials,
+  selectFailingCredentials,
+  selectIsResolved,
+  selectCredentialById,
+} from '../openstack-credentials.store'
+import type { OpenStackCredential } from '@/types/openstack-credential'
 
 vi.mock('@/api/credentials.api', () => ({
   credentialsApi: {
-    get: vi.fn(),
-    put: vi.fn(),
-    putFromYaml: vi.fn(),
+    list: vi.fn(),
+    save: vi.fn(),
+    saveFromYaml: vi.fn(),
     remove: vi.fn(),
     test: vi.fn(),
   },
 }))
+
+function credential(overrides: Partial<OpenStackCredential> = {}): OpenStackCredential {
+  return {
+    credentialId: 'c-1',
+    auth_type: 'v3applicationcredential',
+    auth_url: 'https://keystone.example/v3',
+    project_id: 'p-1',
+    project_name: 'Project One',
+    project_verified: true,
+    last_validated_at: '2026-10-15T08:00:00Z',
+    last_validation_error: null,
+    active_deployments: 0,
+    ...overrides,
+  }
+}
 
 function lockedError(activeDeployments = 2) {
   return {
@@ -24,277 +51,184 @@ function lockedError(activeDeployments = 2) {
 
 describe('OpenStackCredentialsStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    resetStore(useOpenStackCredentialsStore)
     vi.clearAllMocks()
   })
 
-  it('initializes with empty state', () => {
-    const store = useOpenStackCredentialsStore()
-    expect(store.status).toBeNull()
-    expect(store.loading).toBe(false)
-    expect(store.error).toBeNull()
+  it('initializes unresolved and empty', () => {
+    const store = liveStore(useOpenStackCredentialsStore)
+    expect(store.credentials).toBeNull()
+    expect(selectIsResolved(store)).toBe(false)
+    expect(selectHasAnyCredential(store)).toBe(false)
+    expect(selectHasUsableCredential(store)).toBe(false)
+    expect(selectCredentials(store)).toEqual([])
   })
 
   describe('getters', () => {
-    it('reflect an unresolved (never-fetched) state', () => {
-      const store = useOpenStackCredentialsStore()
-      expect(store.isResolved).toBe(false)
-      expect(store.hasCredential).toBe(false)
-      expect(store.isValidated).toBe(false)
-      expect(store.isLocked).toBe(false)
-      expect(store.activeDeployments).toBe(0)
-      expect(store.lastError).toBeNull()
+    it('split the credentials into usable, unverified and failing', () => {
+      const store = liveStore(useOpenStackCredentialsStore)
+      const ok = credential()
+      const old = credential({ credentialId: 'c-2', project_verified: false, project_id: 'typed' })
+      const broken = credential({ credentialId: 'c-3', project_id: 'p-3', last_validation_error: 'invalid_credentials' })
+      store.credentials = [ok, old, broken]
+
+      expect(selectIsResolved(store)).toBe(true)
+      expect(selectHasAnyCredential(store)).toBe(true)
+      expect(selectUsableCredentials(store).map((c) => c.credentialId)).toEqual(['c-1'])
+      expect(selectUnverifiedCredentials(store).map((c) => c.credentialId)).toEqual(['c-2'])
+      expect(selectFailingCredentials(store).map((c) => c.credentialId)).toEqual(['c-3'])
+      expect(selectHasUsableCredential(store)).toBe(true)
+      expect(selectCredentialById('c-2')(store)?.project_id).toBe('typed')
+      expect(selectCredentialById('nope')(store)).toBeNull()
+      expect(selectCredentialById(null)(store)).toBeNull()
     })
 
-    it('reflect a resolved, valid credential', () => {
-      const store = useOpenStackCredentialsStore()
-      store.status = {
-        has_credential: true,
-        last_validated_at: '2026-01-01T00:00:00Z',
-        last_validation_error: null,
-        is_locked: false,
-        active_deployments: 0,
-      } as any
-
-      expect(store.isResolved).toBe(true)
-      expect(store.hasCredential).toBe(true)
-      expect(store.isValidated).toBe(true)
-      expect(store.lastError).toBeNull()
-    })
-
-    it('reflect a credential that failed validation', () => {
-      const store = useOpenStackCredentialsStore()
-      store.status = {
-        has_credential: true,
-        last_validated_at: '2026-01-01T00:00:00Z',
-        last_validation_error: 'invalid token',
-        is_locked: false,
-        active_deployments: 0,
-      } as any
-
-      expect(store.isValidated).toBe(false)
-      expect(store.lastError).toBe('invalid token')
-    })
-
-    it('reflect a locked credential with active deployments', () => {
-      const store = useOpenStackCredentialsStore()
-      store.status = { has_credential: true, is_locked: true, active_deployments: 3 } as any
-
-      expect(store.isLocked).toBe(true)
-      expect(store.activeDeployments).toBe(3)
+    it('never counts an unverified credential as usable (its project id was typed)', () => {
+      expect(isUsable(credential({ project_verified: false }))).toBe(false)
+      expect(isUsable(credential({ last_validation_error: 'rejected' }))).toBe(false)
+      expect(isUsable(credential())).toBe(true)
     })
   })
 
   describe('fetch', () => {
-    it('sets status from the API', async () => {
+    it('stores the list from the API', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      const status = { has_credential: true }
-      vi.mocked(credentialsApi.get).mockResolvedValueOnce({ data: status } as any)
+      vi.mocked(credentialsApi.list).mockResolvedValueOnce({ data: [credential()] } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
 
-      const store = useOpenStackCredentialsStore()
       const result = await store.fetch()
 
-      expect(result).toEqual(status)
-      expect(store.status).toEqual(status)
+      expect(result).toHaveLength(1)
+      expect(store.credentials).toHaveLength(1)
       expect(store.loading).toBe(false)
-      expect(store.error).toBeNull()
     })
 
     it('dedupes concurrent calls into a single in-flight request', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      let resolve: (v: any) => void
-      vi.mocked(credentialsApi.get).mockReturnValueOnce(
-        new Promise((r) => { resolve = r }) as any,
-      )
+      vi.mocked(credentialsApi.list).mockResolvedValue({ data: [] } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
 
-      const store = useOpenStackCredentialsStore()
-      const first = store.fetch()
-      const second = store.fetch()
+      await Promise.all([store.fetch(), store.fetch(), store.fetch()])
 
-      resolve!({ data: { has_credential: false } })
-      const [a, b] = await Promise.all([first, second])
+      expect(credentialsApi.list).toHaveBeenCalledTimes(1)
+    })
 
-      expect(credentialsApi.get).toHaveBeenCalledTimes(1)
-      expect(a).toEqual(b)
+    it('treats an answer that is not a list (older backend) as an error, not as data', async () => {
+      const { credentialsApi } = await import('@/api/credentials.api')
+      vi.mocked(credentialsApi.list).mockResolvedValueOnce({ data: { has_credential: false } } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
+
+      expect(await store.fetch()).toBeNull()
+      expect(store.error).toContain('a list is expected')
+      expect(store.credentials).toBeNull()
+      expect(selectCredentials(store)).toEqual([])
     })
 
     it('swallows errors, records the message and resolves to null', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.get).mockRejectedValueOnce(new Error('offline'))
+      vi.mocked(credentialsApi.list).mockRejectedValueOnce(new Error('boom'))
+      const store = liveStore(useOpenStackCredentialsStore)
 
-      const store = useOpenStackCredentialsStore()
-      const result = await store.fetch()
-
-      expect(result).toBeNull()
-      expect(store.error).toBe('offline')
-      expect(store.loading).toBe(false)
-    })
-
-    it('surfaces a locked-credential message with the deployment count', async () => {
-      const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.get).mockRejectedValueOnce(lockedError(5))
-
-      const store = useOpenStackCredentialsStore()
-      await store.fetch()
-
-      expect(store.error).toBe('Credentials gesperrt — 5 aktive(s) Deployment(s)')
-    })
-
-    it('allows re-fetching after a prior call has settled', async () => {
-      const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.get).mockResolvedValueOnce({ data: { has_credential: false } } as any)
-      vi.mocked(credentialsApi.get).mockResolvedValueOnce({ data: { has_credential: true } } as any)
-
-      const store = useOpenStackCredentialsStore()
-      await store.fetch()
-      await store.fetch()
-
-      expect(credentialsApi.get).toHaveBeenCalledTimes(2)
-      expect(store.status).toEqual({ has_credential: true })
+      expect(await store.fetch()).toBeNull()
+      expect(store.error).toBe('boom')
+      expect(selectIsResolved(store)).toBe(false)
     })
   })
 
   describe('save', () => {
-    it('updates status on success', async () => {
+    it('posts and re-reads the list (a replaced credential keeps its id)', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      const status = { has_credential: true }
-      vi.mocked(credentialsApi.put).mockResolvedValueOnce({ data: status } as any)
+      vi.mocked(credentialsApi.save).mockResolvedValueOnce({ data: credential() } as any)
+      vi.mocked(credentialsApi.list).mockResolvedValueOnce({ data: [credential()] } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
 
-      const store = useOpenStackCredentialsStore()
-      const result = await store.save({ cloud_name: 'x' } as any)
+      const saved = await store.save({ auth_type: 'password', auth_url: 'https://k', identifier: 'u', secret: 's' })
 
-      expect(result).toEqual(status)
-      expect(store.status).toEqual(status)
+      expect(saved.project_name).toBe('Project One')
+      expect(credentialsApi.list).toHaveBeenCalledTimes(1)
+      expect(store.credentials).toHaveLength(1)
     })
 
-    it('re-throws on failure and records the error', async () => {
+    it('explains a Keystone rejection and re-throws', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.put).mockRejectedValueOnce(new Error('bad payload'))
+      vi.mocked(credentialsApi.save).mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { status: 422, data: { detail: { reason: 'openstack_credentials_invalid', cause: 'auth_url_not_allowed' } } },
+      })
+      const store = liveStore(useOpenStackCredentialsStore)
 
-      const store = useOpenStackCredentialsStore()
-      await expect(store.save({} as any)).rejects.toThrow('bad payload')
-      expect(store.error).toBe('bad payload')
-      expect(store.loading).toBe(false)
+      await expect(store.save({ auth_type: 'password', auth_url: 'https://evil', identifier: 'u', secret: 's' }))
+        .rejects.toBeTruthy()
+      expect(store.error).toContain('auth_url_not_allowed')
     })
 
-    it('refreshes status via fetch() when save fails due to a lock', async () => {
+    it('saveFromYaml posts the yaml and re-reads the list', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.put).mockRejectedValueOnce(lockedError(1))
-      vi.mocked(credentialsApi.get).mockResolvedValueOnce({ data: { has_credential: true, is_locked: true } } as any)
+      vi.mocked(credentialsApi.saveFromYaml).mockResolvedValueOnce({ data: credential() } as any)
+      vi.mocked(credentialsApi.list).mockResolvedValueOnce({ data: [credential()] } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
 
-      const store = useOpenStackCredentialsStore()
-      await expect(store.save({} as any)).rejects.toBeTruthy()
+      await store.saveFromYaml({ clouds_yaml: 'clouds: {}' })
 
-      expect(credentialsApi.get).toHaveBeenCalledTimes(1)
-      expect(store.status).toEqual({ has_credential: true, is_locked: true })
-    })
-  })
-
-  describe('saveFromYaml', () => {
-    it('updates status on success', async () => {
-      const { credentialsApi } = await import('@/api/credentials.api')
-      const status = { has_credential: true }
-      vi.mocked(credentialsApi.putFromYaml).mockResolvedValueOnce({ data: status } as any)
-
-      const store = useOpenStackCredentialsStore()
-      const result = await store.saveFromYaml({ yaml: 'clouds: {}' } as any)
-
-      expect(result).toEqual(status)
-      expect(store.status).toEqual(status)
-    })
-
-    it('re-throws with a yaml-specific fallback message', async () => {
-      const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.putFromYaml).mockRejectedValueOnce({ isAxiosError: true, response: {} })
-
-      const store = useOpenStackCredentialsStore()
-      await expect(store.saveFromYaml({} as any)).rejects.toBeTruthy()
-      expect(store.error).toBe('Failed to parse clouds.yaml')
-    })
-
-    it('refreshes status via fetch() when the upload fails due to a lock', async () => {
-      const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.putFromYaml).mockRejectedValueOnce(lockedError(2))
-      vi.mocked(credentialsApi.get).mockResolvedValueOnce({ data: { is_locked: true } } as any)
-
-      const store = useOpenStackCredentialsStore()
-      await expect(store.saveFromYaml({} as any)).rejects.toBeTruthy()
-
-      expect(credentialsApi.get).toHaveBeenCalledTimes(1)
+      expect(credentialsApi.saveFromYaml).toHaveBeenCalledWith({ clouds_yaml: 'clouds: {}' })
+      expect(store.credentials).toHaveLength(1)
     })
   })
 
   describe('remove', () => {
-    it('clears the credential and refreshes status', async () => {
+    it('drops the credential from the list', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
       vi.mocked(credentialsApi.remove).mockResolvedValueOnce({} as any)
-      vi.mocked(credentialsApi.get).mockResolvedValueOnce({ data: { has_credential: false } } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
+      store.credentials = [credential(), credential({ credentialId: 'c-2' })]
 
-      const store = useOpenStackCredentialsStore()
-      await store.remove()
+      await store.remove('c-1')
 
-      expect(credentialsApi.remove).toHaveBeenCalled()
-      expect(store.status).toEqual({ has_credential: false })
+      expect(credentialsApi.remove).toHaveBeenCalledWith('c-1')
+      expect(store.credentials?.map((c) => c.credentialId)).toEqual(['c-2'])
     })
 
-    it('re-throws on failure and records the error', async () => {
+    it('reports the active deployments of a locked credential and re-reads the list', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.remove).mockRejectedValueOnce(new Error('cannot delete'))
+      vi.mocked(credentialsApi.remove).mockRejectedValueOnce(lockedError(3))
+      vi.mocked(credentialsApi.list).mockResolvedValueOnce({ data: [credential({ active_deployments: 3 })] } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
+      store.credentials = [credential()]
 
-      const store = useOpenStackCredentialsStore()
-      await expect(store.remove()).rejects.toThrow('cannot delete')
-      expect(store.error).toBe('cannot delete')
-    })
+      await expect(store.remove('c-1')).rejects.toBeTruthy()
 
-    it('refreshes status via fetch() when removal fails due to a lock', async () => {
-      const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.remove).mockRejectedValueOnce(lockedError(4))
-      vi.mocked(credentialsApi.get).mockResolvedValueOnce({ data: { is_locked: true, active_deployments: 4 } } as any)
-
-      const store = useOpenStackCredentialsStore()
-      await expect(store.remove()).rejects.toBeTruthy()
-
-      expect(credentialsApi.get).toHaveBeenCalledTimes(1)
-      expect(store.activeDeployments).toBe(4)
+      expect(store.error).toContain('3')
+      expect(credentialsApi.list).toHaveBeenCalledTimes(1)
+      expect(store.credentials?.[0]?.active_deployments).toBe(3)
     })
   })
 
   describe('test', () => {
-    it('updates status on successful validation', async () => {
+    it('replaces the checked credential in the list (an old one becomes verified)', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
-      const status = { has_credential: true, last_validation_error: null }
-      vi.mocked(credentialsApi.test).mockResolvedValueOnce({ data: status } as any)
+      const verified = credential({ project_id: 'p-9', project_verified: true })
+      vi.mocked(credentialsApi.test).mockResolvedValueOnce({ data: verified } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
+      store.credentials = [credential({ project_verified: false, project_id: 'typed' })]
 
-      const store = useOpenStackCredentialsStore()
-      const result = await store.test()
+      const result = await store.test('c-1')
 
-      expect(result).toEqual(status)
-      expect(store.status).toEqual(status)
-    })
-
-    it('re-throws on failure without auto-refreshing on a lock (test never locks)', async () => {
-      const { credentialsApi } = await import('@/api/credentials.api')
-      vi.mocked(credentialsApi.test).mockRejectedValueOnce(new Error('invalid credentials'))
-
-      const store = useOpenStackCredentialsStore()
-      await expect(store.test()).rejects.toThrow('invalid credentials')
-      expect(store.error).toBe('invalid credentials')
-      expect(credentialsApi.get).not.toHaveBeenCalled()
+      expect(credentialsApi.test).toHaveBeenCalledWith('c-1')
+      expect(result.project_id).toBe('p-9')
+      expect(selectUsableCredentials(store).map((c) => c.project_id)).toEqual(['p-9'])
     })
   })
 
-  describe('reset', () => {
-    it('clears status, error and loading', () => {
-      const store = useOpenStackCredentialsStore()
-      store.status = { has_credential: true } as any
-      store.error = 'some error'
-      store.loading = true
+  it('reset clears the list, error and loading', () => {
+    const store = liveStore(useOpenStackCredentialsStore)
+    store.credentials = [credential()]
+    store.error = 'x'
+    store.loading = true
 
-      store.reset()
+    store.reset()
 
-      expect(store.status).toBeNull()
-      expect(store.error).toBeNull()
-      expect(store.loading).toBe(false)
-    })
+    expect(store.credentials).toBeNull()
+    expect(store.error).toBeNull()
+    expect(store.loading).toBe(false)
   })
 })

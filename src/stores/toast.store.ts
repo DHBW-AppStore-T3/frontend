@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
 
 export interface Toast {
   id: string
@@ -7,50 +7,43 @@ export interface Toast {
   duration?: number
 }
 
-export const useToastStore = defineStore('toast', {
-  state: () => ({
-    toasts: [] as Toast[],
-  }),
+interface ToastState {
+  toasts: Toast[]
+  addToast: (toast: Omit<Toast, 'id'>) => string
+  removeToast: (id: string) => void
+  success: (message: string, duration?: number) => string
+  error: (message: string, duration?: number) => string
+  warning: (message: string, duration?: number) => string
+  info: (message: string, duration?: number) => string
+  clear: () => void
+}
 
-  actions: {
-    addToast(toast: Omit<Toast, 'id'>) {
-      const id = Math.random().toString(36).substring(2, 9)
-      const duration = toast.duration || 5000
-      
-      this.toasts.push({ ...toast, id })
+export const useToastStore = create<ToastState>()((set, get) => ({
+  toasts: [],
 
-      setTimeout(() => {
-        this.removeToast(id)
-      }, duration)
+  addToast(toast) {
+    const id = Math.random().toString(36).substring(2, 9)
+    const duration = toast.duration || 5000
 
-      return id
-    },
+    set((s) => ({ toasts: [...s.toasts, { ...toast, id }] }))
 
-    removeToast(id: string) {
-      const index = this.toasts.findIndex((t) => t.id === id)
-      if (index > -1) {
-        this.toasts.splice(index, 1)
-      }
-    },
+    setTimeout(() => {
+      get().removeToast(id)
+    }, duration)
 
-    success(message: string, duration?: number) {
-      return this.addToast({ message, type: 'success', duration })
-    },
-
-    error(message: string, duration?: number) {
-      return this.addToast({ message, type: 'error', duration })
-    },
-
-    warning(message: string, duration?: number) {
-      return this.addToast({ message, type: 'warning', duration })
-    },
-
-    info(message: string, duration?: number) {
-      return this.addToast({ message, type: 'info', duration })
-    },
-
-    clear() {
-      this.toasts = []
-    },
+    return id
   },
-})
+
+  removeToast(id) {
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
+  },
+
+  success: (message, duration) => get().addToast({ message, type: 'success', duration }),
+  error: (message, duration) => get().addToast({ message, type: 'error', duration }),
+  warning: (message, duration) => get().addToast({ message, type: 'warning', duration }),
+  info: (message, duration) => get().addToast({ message, type: 'info', duration }),
+
+  clear() {
+    set({ toasts: [] })
+  },
+}))
