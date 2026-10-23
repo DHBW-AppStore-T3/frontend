@@ -135,7 +135,7 @@ describe('AppsDetailView', () => {
   })
 
   it('deaktiviert Deploy und verweist auf die Einstellungen, wenn keine Credentials hinterlegt sind', async () => {
-    useOpenStackCredentialsStore.setState({ status: { has_credential: false } as any })
+    useOpenStackCredentialsStore.setState({ credentials: [] })
     renderView()
     await screen.findByRole('heading', { name: 'Test App' })
 

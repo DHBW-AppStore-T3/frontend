@@ -3,13 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { Upload } from 'lucide-react'
 
 export interface YamlDropZoneProps {
-  disabled: boolean
   onFile: (file: File) => void
   onMissingFile: () => void
 }
 
 /** Drop-or-pick area for a ``clouds.yaml`` file. */
-export default function YamlDropZone({ disabled, onFile, onMissingFile }: YamlDropZoneProps) {
+export default function YamlDropZone({ onFile, onMissingFile }: YamlDropZoneProps) {
   const { t } = useTranslation()
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -17,7 +16,7 @@ export default function YamlDropZone({ disabled, onFile, onMissingFile }: YamlDr
   const hover = (event: DragEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    if (!disabled) setIsDragging(true)
+    setIsDragging(true)
   }
 
   const leave = (event: DragEvent) => {
@@ -30,7 +29,6 @@ export default function YamlDropZone({ disabled, onFile, onMissingFile }: YamlDr
     event.preventDefault()
     event.stopPropagation()
     setIsDragging(false)
-    if (disabled) return
     const file = event.dataTransfer?.files?.[0]
     if (file) onFile(file)
     else onMissingFile()
@@ -40,7 +38,7 @@ export default function YamlDropZone({ disabled, onFile, onMissingFile }: YamlDr
     <div
       className={`border-2 border-dashed rounded-xl p-6 mb-6 transition-colors text-center ${
         isDragging ? 'border-primary bg-primary/5' : 'border-borderSubtle bg-white'
-      } ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      }`}
       onDragEnter={hover}
       onDragOver={hover}
       onDragLeave={leave}
@@ -52,8 +50,7 @@ export default function YamlDropZone({ disabled, onFile, onMissingFile }: YamlDr
         {t('SettingsOpenStackView.dropZone.orPrefix')}{' '}
         <button
           type="button"
-          className="text-primary underline disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={disabled}
+          className="text-primary underline"
           onClick={() => inputRef.current?.click()}
         >
           {t('SettingsOpenStackView.dropZone.pickFile')}
@@ -66,7 +63,6 @@ export default function YamlDropZone({ disabled, onFile, onMissingFile }: YamlDr
         type="file"
         accept=".yaml,.yml,application/x-yaml,text/yaml"
         className="hidden"
-        disabled={disabled}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) onFile(file)

@@ -8,7 +8,7 @@ import { useDeploymentStore } from '@/stores/deployment.store'
 import {
   useOpenStackCredentialsStore,
   selectIsResolved,
-  selectHasCredential,
+  selectHasUsableCredential,
 } from '@/stores/openstack-credentials.store'
 import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
@@ -42,14 +42,14 @@ export default function NewDeploymentConfigView() {
 
   const draft = useDeploymentStore((s) => s.draft)
   const isResolved = useOpenStackCredentialsStore(selectIsResolved)
-  const hasCredential = useOpenStackCredentialsStore(selectHasCredential)
+  const hasCredential = useOpenStackCredentialsStore(selectHasUsableCredential)
   const directory = useStudentDirectory()
   const [activeTab, setActiveTab] = useState<Tab>('courses')
 
   // Make sure the credential state is fresh; the banner shows when missing.
   useEffect(() => {
     const creds = useOpenStackCredentialsStore.getState()
-    if (!creds.status) void creds.fetch()
+    if (!creds.credentials) void creds.fetch()
   }, [])
 
   const credentialsMissing = isResolved && !hasCredential

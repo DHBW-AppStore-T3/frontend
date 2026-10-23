@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useDeploymentConstraints } from '@/composables/useDeploymentConstraints'
+import { useDeploymentConstraints, type VersionShape } from '@/composables/useDeploymentConstraints'
 import type { App } from '@/types'
 
 const makeApp = (name: string): App => ({
@@ -48,5 +48,41 @@ describe('useDeploymentConstraints', () => {
     expect(result.current.forcedGroupMode).toBe('eachUser')
     rerender({ app: makeApp('Debian') })
     expect(result.current.forcedGroupMode).toBeNull()
+  })
+
+  describe('with the runtime and scope of the version (appstore.yaml)', () => {
+    const withVersion = (app: App, version: VersionShape) =>
+      renderHook(() => useDeploymentConstraints(app, version)).result.current
+
+    it('scope user forces one team per person, whatever the name', () => {
+      const { forcedGroupMode, groupModeReason } = withVersion(makeApp('Ubuntu'), { runtime: 'kubernetes', scope: 'user' })
+      expect(forcedGroupMode).toBe('eachUser')
+      expect(groupModeReason).toBe('deployment.assignment.perPersonConstraintText')
+    })
+
+    it('scope team leaves the grouping free, even for a "Windows" name', () => {
+      const { forcedGroupMode, groupModeReason } = withVersion(makeApp('Windows Lab'), { runtime: 'openstack-vm', scope: 'team' })
+      expect(forcedGroupMode).toBeNull()
+      expect(groupModeReason).toBeNull()
+    })
+
+    it('a pod app is never grouped by its name', () => {
+      expect(withVersion(makeApp('Windows Tools'), { runtime: 'kubernetes', scope: null }).forcedGroupMode).toBeNull()
+    })
+
+    it('only a VM app without a scope falls back to the name rule', () => {
+      const { forcedGroupMode, groupModeReason } = withVersion(makeApp('Windows 11'), { runtime: 'openstack-vm', scope: null })
+      expect(forcedGroupMode).toBe('eachUser')
+      expect(groupModeReason).toBe('deployment.assignment.windowsConstraintText')
+    })
+
+    it('reacts to the version changing', () => {
+      const { result, rerender } = renderHook(({ version }) => useDeploymentConstraints(makeApp('Ubuntu'), version), {
+        initialProps: { version: { runtime: 'kubernetes', scope: 'team' } as VersionShape },
+      })
+      expect(result.current.forcedGroupMode).toBeNull()
+      rerender({ version: { runtime: 'kubernetes', scope: 'user' } })
+      expect(result.current.forcedGroupMode).toBe('eachUser')
+    })
   })
 })

@@ -32,22 +32,19 @@ describe('keycloak service', () => {
     expect(await kc.getAccessToken()).toBe('lti-session-token')
   })
 
-  it('setHandoffUser sets isAuthenticated and stores token', async () => {
+  it('has no handoff login any more (.github#7 N)', async () => {
     vi.resetModules()
     const { keycloak: kc } = await import('../keycloak.service')
 
-    await kc.setHandoffUser('student@dhbw.de', 'handoff-token')
-
-    expect(kc.getState().isAuthenticated).toBe(true)
-    expect(await kc.getAccessToken()).toBe('handoff-token')
+    expect('setHandoffUser' in kc).toBe(false)
   })
 
-  it('getAccessToken prefers ltiToken over handoffToken over keycloak session', async () => {
+  it('getAccessToken prefers the LTI token over the dev token', async () => {
     vi.resetModules()
     const { keycloak: kc } = await import('../keycloak.service')
 
-    await kc.setHandoffUser('student@dhbw.de', 'handoff-token')
-    expect(await kc.getAccessToken()).toBe('handoff-token')
+    await kc.setDevUser('dev@dhbw.de')
+    expect(await kc.getAccessToken()).toBe('dev-sso-token')
 
     await kc.setLtiUser('teacher@dhbw.de', 'lti-session-token')
     expect(await kc.getAccessToken()).toBe('lti-session-token')

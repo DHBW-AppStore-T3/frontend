@@ -19,7 +19,6 @@ import Modal from '@/components/ui/Modal'
 import DeploymentInfrastructurePanel from '@/components/DeploymentInfrastructurePanel'
 import InfrastructureVmDrawer from '@/components/InfrastructureVmDrawer'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
-import { translateHtml } from '@/i18n/html'
 import { formatDateTime } from '@/utils/format'
 import { paths } from '@/router/paths'
 import { useDeploymentDetail } from './deployment-detail/useDeploymentDetail'
@@ -383,13 +382,8 @@ export default function DeploymentDetailView() {
             <TeamsCard
               teamCount={deployment.teams.length}
               teams={d.enrichedTeams}
-              isOwnerView={d.isOwnerView}
-              authUserId={d.authUserId}
-              isDeploymentBusy={d.isDeploymentBusy}
-              resendState={d.resendState}
               copiedKey={copiedKey}
               onCopy={(text, key) => void copy(text, key)}
-              onResend={(teamId, userId) => void d.resendAccess(teamId, userId)}
             />
           ) : null}
 
@@ -448,12 +442,7 @@ export default function DeploymentDetailView() {
         onClose={() => d.setShowCancelModal(false)}
         title={t('DeploymentDetailView.confirmStopTitle')}
         body={
-          <p
-            className="text-gray-700"
-            dangerouslySetInnerHTML={{
-              __html: translateHtml('DeploymentDetailView.confirmStopMessage', { name: deployment.name }, t),
-            }}
-          />
+          <p className="text-gray-700">{t('DeploymentDetailView.confirmStopMessage', { name: deployment.name })}</p>
         }
         footer={
           <div className="flex justify-end gap-3">
@@ -472,12 +461,7 @@ export default function DeploymentDetailView() {
         onClose={() => d.setShowDeleteModal(false)}
         title={t('DeploymentDetailView.confirmDeleteTitle')}
         body={
-          <p
-            className="text-gray-700"
-            dangerouslySetInnerHTML={{
-              __html: translateHtml('DeploymentDetailView.confirmDeleteMessage', { name: deployment.name }, t),
-            }}
-          />
+          <p className="text-gray-700">{t('DeploymentDetailView.confirmDeleteMessage', { name: deployment.name })}</p>
         }
         footer={
           <div className="flex justify-end gap-3">
@@ -536,18 +520,14 @@ export default function DeploymentDetailView() {
             : t('DeploymentDetailView.confirmResumeTitle')
         }
         body={
-          <p
-            className="text-gray-700"
-            dangerouslySetInnerHTML={{
-              __html: translateHtml(
-                d.pauseResumeAction === 'pause'
-                  ? 'DeploymentDetailView.confirmPauseMessage'
-                  : 'DeploymentDetailView.confirmResumeMessage',
-                { name: deployment.name },
-                t,
-              ),
-            }}
-          />
+          <p className="text-gray-700">
+            {t(
+              d.pauseResumeAction === 'pause'
+                ? 'DeploymentDetailView.confirmPauseMessage'
+                : 'DeploymentDetailView.confirmResumeMessage',
+              { name: deployment.name },
+            )}
+          </p>
         }
         footer={
           <div className="flex justify-end gap-3">

@@ -31,7 +31,10 @@ const renderView = () =>
   )
 
 const setCredentials = (has: boolean) =>
-  useOpenStackCredentialsStore.setState({ status: { has_credential: has } as any, fetch: vi.fn() } as any)
+  useOpenStackCredentialsStore.setState({
+    credentials: has ? [{ credentialId: 'c-1', project_verified: true, last_validation_error: null } as any] : [],
+    fetch: vi.fn(),
+  })
 const draft = () => useDeploymentStore.getState().draft
 const warnings = () => useToastStore.getState().toasts.filter((t) => t.type === 'warning').map((t) => t.message)
 

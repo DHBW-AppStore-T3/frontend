@@ -529,5 +529,31 @@ describe('DeploymentStore', () => {
 
       expect(result).toEqual(created)
     })
+
+    describe('credential (project) of the deployment', () => {
+      async function submitWith(runtime: 'kubernetes' | 'openstack-vm' | null, credentialId: string | null) {
+        const { deploymentApi } = await import('@/api/deployment.api')
+        vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
+        const store = liveStore(useDeploymentStore)
+        store.draft.appId = 'app-1'
+        store.draft.name = 'My Deployment'
+        store.draft.runtime = runtime
+        store.draft.credentialId = credentialId
+        await store.submitDraft()
+        return vi.mocked(deploymentApi.create).mock.calls.at(-1)![0] as unknown as Record<string, unknown>
+      }
+
+      it('a VM app is created with the chosen credential', async () => {
+        expect(await submitWith('openstack-vm', 'c-1')).toMatchObject({ credentialId: 'c-1' })
+      })
+
+      it('a pod app sends none, even if one was left in the draft', async () => {
+        expect(await submitWith('kubernetes', 'c-1')).not.toHaveProperty('credentialId')
+      })
+
+      it('a VM app without a chosen credential sends none', async () => {
+        expect(await submitWith('openstack-vm', null)).not.toHaveProperty('credentialId')
+      })
+    })
   })
 })

@@ -5,9 +5,12 @@ import { Routes, Route, useLocation } from 'react-router'
 
 // Assertions are on the payload handed to the API and the i18n *key* passed to
 // the toast, never on rendered German; data-testid is the testing contract.
+//
+// One credential per OpenStack project: the page lists them, adds new ones
+// (Keystone names the project) and checks or deletes each one.
 
 vi.mock('@/api/credentials.api', () => ({
-  credentialsApi: { get: vi.fn(), put: vi.fn(), test: vi.fn(), remove: vi.fn(), putFromYaml: vi.fn() },
+  credentialsApi: { list: vi.fn(), save: vi.fn(), test: vi.fn(), remove: vi.fn(), saveFromYaml: vi.fn() },
 }))
 vi.mock('@/utils/clouds-yaml', () => ({
   parseCloudsYaml: vi.fn(),
@@ -19,6 +22,7 @@ import { parseCloudsYaml } from '@/utils/clouds-yaml'
 import SettingsOpenStackView from '@/views/SettingsOpenStackView'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { useToastStore } from '@/stores/toast.store'
+import type { OpenStackCredential } from '@/types/openstack-credential'
 import { renderWithProviders } from '../../helpers/render'
 
 function Where() {
@@ -40,7 +44,24 @@ const renderView = (route = '/user/openstack') =>
 
 const toasts = () => useToastStore.getState().toasts.map((t) => [t.type, t.message])
 const field = (id: string) => screen.getByTestId(id) as HTMLInputElement
-const status = (over: Record<string, unknown> = {}) => ({ data: { has_credential: false, ...over } }) as any
+
+function credential(overrides: Partial<OpenStackCredential> = {}): OpenStackCredential {
+  return {
+    credentialId: 'c-1',
+    auth_type: 'v3applicationcredential',
+    auth_url: 'https://keystone.example/v3',
+    project_id: 'p-1',
+    project_name: 'Project One',
+    project_verified: true,
+    last_validated_at: '2026-10-15T08:00:00Z',
+    last_validation_error: null,
+    active_deployments: 0,
+    ...overrides,
+  } as OpenStackCredential
+}
+
+const listReturns = (rows: OpenStackCredential[]) =>
+  vi.mocked(credentialsApi.list).mockResolvedValue({ data: rows } as never)
 
 const fillAppForm = async () => {
   await userEvent.type(field('app-auth-url'), 'https://test.com')
@@ -56,85 +77,80 @@ beforeEach(() => {
   window.confirm = confirm
   useToastStore.setState({ toasts: [] })
   useOpenStackCredentialsStore.getState().reset()
-  vi.mocked(credentialsApi.get).mockResolvedValue(status())
+  listReturns([])
+  vi.mocked(credentialsApi.save).mockResolvedValue({ data: credential() } as never)
 })
 afterEach(() => {
   window.confirm = originalConfirm
 })
 
 describe('SettingsOpenStackView', () => {
-  it('loads the stored credential on mount', async () => {
+  it('loads the credentials on mount', async () => {
     renderView()
-    await waitFor(() => expect(credentialsApi.get).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(credentialsApi.list).toHaveBeenCalledTimes(1))
   })
 
-  it('prefills the form from an existing application credential', async () => {
-    vi.mocked(credentialsApi.get).mockResolvedValue(
-      status({
-        has_credential: true,
-        auth_type: 'v3applicationcredential',
-        auth_url: 'https://my-cloud.com:5000/v3',
-        region_name: 'RegionOne',
-      }),
-    )
+  it('without credentials explains that only VM apps need one', async () => {
     renderView()
 
-    await waitFor(() => expect(field('app-auth-url').value).toBe('https://my-cloud.com:5000/v3'))
-    expect(field('app-region').value).toBe('RegionOne')
+    expect(await screen.findByText('SettingsOpenStackView.status.noneTitle')).toBeInTheDocument()
+    expect(screen.getByText('SettingsOpenStackView.vmOnlyHint')).toBeInTheDocument()
   })
 
-  it('prefills the password tab for a password credential', async () => {
-    vi.mocked(credentialsApi.get).mockResolvedValue(
-      status({ has_credential: true, auth_type: 'password', auth_url: 'https://pwd', project_name: 'proj' }),
-    )
+  // --- the list ---
+
+  it('lists one row per project with its state', async () => {
+    listReturns([
+      credential(),
+      credential({ credentialId: 'c-2', project_id: 'typed', project_name: null, project_verified: false }),
+      credential({ credentialId: 'c-3', project_id: 'p-3', project_name: 'Project Three', last_validation_error: 'invalid_credentials' }),
+    ])
     renderView()
 
-    await waitFor(() => expect(field('pwd-auth-url').value).toBe('https://pwd'))
-    expect(field('pwd-project-name').value).toBe('proj')
-    expect(field('pwd-user-domain').value).toBe('Default')
+    const first = await screen.findByTestId('credential-c-1')
+    expect(first).toHaveTextContent('Project One')
+    expect(first).toHaveTextContent('SettingsOpenStackView.status.lastChecked')
+    // Saved before projects were checked: must be checked once before use.
+    expect(screen.getByTestId('credential-c-2')).toContainElement(screen.getByTestId('credential-unverified'))
+    expect(screen.getByTestId('credential-c-3')).toHaveTextContent('invalid_credentials')
   })
 
-  // --- locked state ---
-
-  it('disables the form and the destructive actions while deployments are active', async () => {
-    vi.mocked(credentialsApi.get).mockResolvedValue(
-      status({
-        has_credential: true,
-        auth_type: 'v3applicationcredential',
-        is_locked: true,
-        active_deployments: 2,
-      }),
-    )
+  it('a credential with active deployments cannot be deleted, the others can', async () => {
+    listReturns([
+      credential({ active_deployments: 2 }),
+      credential({ credentialId: 'c-2', project_id: 'p-2', project_name: 'Project Two' }),
+    ])
     renderView()
 
-    await screen.findByTestId('btn-delete')
-    expect(field('app-auth-url')).toBeDisabled()
-    expect(screen.getByTestId('btn-save')).toBeDisabled()
-    expect(screen.getByTestId('btn-delete')).toBeDisabled()
-    expect(screen.getByText('SettingsOpenStackView.lockBanner.title')).toBeInTheDocument()
+    const locked = await screen.findByTestId('btn-delete-c-1')
+    expect(locked).toBeDisabled()
+    expect(locked).toHaveAttribute('title', 'SettingsOpenStackView.tooltips.lockedActiveDeployments')
+    expect(screen.getByTestId('credential-c-1')).toHaveTextContent('SettingsOpenStackView.status.activeDeployments')
+    expect(screen.getByTestId('btn-delete-c-2')).toBeEnabled()
+    // Adding a credential for another project stays possible.
+    expect(screen.getByTestId('btn-save')).toBeEnabled()
   })
 
   // --- saving ---
 
   it('refuses to save with required fields missing and says why', async () => {
     renderView()
-    await waitFor(() => expect(credentialsApi.get).toHaveBeenCalled())
+    await waitFor(() => expect(credentialsApi.list).toHaveBeenCalled())
 
     await userEvent.click(screen.getByTestId('btn-save'))
 
-    expect(credentialsApi.put).not.toHaveBeenCalled()
+    expect(credentialsApi.save).not.toHaveBeenCalled()
     expect(toasts()).toContainEqual(['error', 'SettingsOpenStackView.errors.missingFields'])
   })
 
-  it('saves an application credential with the fields the API expects', async () => {
-    vi.mocked(credentialsApi.put).mockResolvedValue(status({ has_credential: true }))
+  it('saves an application credential and re-reads the list', async () => {
     renderView()
     await fillAppForm()
 
     await userEvent.click(screen.getByTestId('btn-save'))
 
     await waitFor(() =>
-      expect(credentialsApi.put).toHaveBeenCalledWith({
+      expect(credentialsApi.save).toHaveBeenCalledWith({
         auth_type: 'v3applicationcredential',
         auth_url: 'https://test.com',
         region_name: null,
@@ -144,57 +160,36 @@ describe('SettingsOpenStackView', () => {
         secret: 'my-secret-key',
       }),
     )
-    expect(toasts()).toContainEqual(['success', 'SettingsOpenStackView.toasts.saveSuccess'])
+    await waitFor(() => expect(toasts()).toContainEqual(['success', 'SettingsOpenStackView.toasts.saveSuccess']))
+    expect(credentialsApi.list).toHaveBeenCalledTimes(2)
   })
 
-  it('clears the secret from the form after a successful save', async () => {
-    vi.mocked(credentialsApi.put).mockResolvedValue(status({ has_credential: true }))
+  it('clears the identifier and secret from the form after a successful save', async () => {
     renderView()
     await fillAppForm()
 
     await userEvent.click(screen.getByTestId('btn-save'))
 
     await waitFor(() => expect(field('app-secret').value).toBe(''))
+    expect(field('app-identifier').value).toBe('')
   })
 
-  it('returns to the wizard after saving when ?next= is present', async () => {
-    vi.mocked(credentialsApi.put).mockResolvedValue(status({ has_credential: true }))
-    renderView('/user/openstack?next=/deployment/new/summary')
-    await fillAppForm()
-
-    await userEvent.click(screen.getByTestId('btn-save'))
-
-    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/summary'))
-  })
-
-  it('warns instead of celebrating when the credential saves but fails validation', async () => {
-    vi.mocked(credentialsApi.put).mockResolvedValue(
-      status({ has_credential: true, last_validation_error: 'invalid credentials' }),
-    )
-    renderView()
-    await fillAppForm()
-
-    await userEvent.click(screen.getByTestId('btn-save'))
-
-    await waitFor(() => expect(toasts().some(([type]) => type === 'warning')).toBe(true))
-    expect(toasts().some(([type]) => type === 'success')).toBe(false)
-  })
-
-  it('shows the store error when saving fails', async () => {
-    vi.mocked(credentialsApi.put).mockRejectedValue({
+  it('shows why Keystone rejected a credential and stores nothing', async () => {
+    vi.mocked(credentialsApi.save).mockRejectedValue({
       isAxiosError: true,
-      response: { data: { detail: 'bad payload' } },
+      response: { status: 422, data: { detail: { reason: 'openstack_credentials_invalid', cause: 'auth_url_not_allowed' } } },
     })
-    renderView()
+    renderView('/user/openstack?next=/deployment/new/config')
     await fillAppForm()
 
     await userEvent.click(screen.getByTestId('btn-save'))
 
-    await waitFor(() => expect(toasts().some(([type]) => type === 'error')).toBe(true))
+    await waitFor(() => expect(toasts().some(([type, msg]) => type === 'error' && String(msg).includes('auth_url_not_allowed'))).toBe(true))
+    expect(toasts().some(([type]) => type === 'success')).toBe(false)
+    expect(screen.getByTestId('where')).toHaveTextContent('/user/openstack')
   })
 
   it('saves a password credential from the second tab', async () => {
-    vi.mocked(credentialsApi.put).mockResolvedValue(status({ has_credential: true }))
     renderView()
 
     await userEvent.click(screen.getByTestId('tab-password'))
@@ -205,7 +200,7 @@ describe('SettingsOpenStackView', () => {
     await userEvent.click(screen.getByTestId('btn-save'))
 
     await waitFor(() =>
-      expect(credentialsApi.put).toHaveBeenCalledWith({
+      expect(credentialsApi.save).toHaveBeenCalledWith({
         auth_type: 'password',
         auth_url: 'https://pwd-cloud.com',
         region_name: null,
@@ -230,45 +225,86 @@ describe('SettingsOpenStackView', () => {
     await userEvent.type(field('pwd-secret'), 'super-secret')
     await userEvent.click(screen.getByTestId('btn-save'))
 
-    expect(credentialsApi.put).not.toHaveBeenCalled()
+    expect(credentialsApi.save).not.toHaveBeenCalled()
     expect(toasts()).toContainEqual(['error', 'SettingsOpenStackView.errors.missingFields'])
   })
 
-  // --- retest / delete ---
+  // --- back to the wizard ---
 
-  it('re-validates the stored credential', async () => {
-    vi.mocked(credentialsApi.get).mockResolvedValue(status({ has_credential: true }))
-    vi.mocked(credentialsApi.test).mockResolvedValue(
-      status({ has_credential: true, last_validated_at: '2026-01-01T00:00:00Z' }),
-    )
+  it('returns to the wizard step that sent the user here', async () => {
+    renderView('/user/openstack?next=/deployment/new/config')
+    await fillAppForm()
+
+    await userEvent.click(screen.getByTestId('btn-save'))
+
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config'))
+  })
+
+  it.each([
+    ['https://evil.example/phish'],
+    ['//evil.example/phish'],
+    ['/\\evil.example/phish'],
+    ['javascript:alert(1)'],
+  ])('never follows a return target outside the app (%s)', async (next) => {
+    renderView(`/user/openstack?next=${encodeURIComponent(next)}`)
+    await fillAppForm()
+
+    await userEvent.click(screen.getByTestId('btn-save'))
+
+    await waitFor(() => expect(credentialsApi.save).toHaveBeenCalled())
+    await waitFor(() => expect(toasts()).toContainEqual(['success', 'SettingsOpenStackView.toasts.saveSuccess']))
+    expect(screen.getByTestId('where')).toHaveTextContent('/user/openstack')
+  })
+
+  // --- check ---
+
+  it('re-checks a credential and reports a pass', async () => {
+    listReturns([credential()])
+    vi.mocked(credentialsApi.test).mockResolvedValue({ data: credential() } as never)
     renderView()
 
-    await userEvent.click(await screen.findByTestId('btn-retest'))
+    await userEvent.click(await screen.findByTestId('btn-retest-c-1'))
 
+    expect(credentialsApi.test).toHaveBeenCalledWith('c-1')
     await waitFor(() => expect(toasts()).toContainEqual(['success', 'SettingsOpenStackView.toasts.credentialsValid']))
   })
 
+  it('re-checks a credential and reports what Keystone said', async () => {
+    listReturns([credential()])
+    vi.mocked(credentialsApi.test).mockResolvedValue({
+      data: credential({ last_validation_error: 'invalid_credentials' }),
+    } as never)
+    renderView()
+
+    await userEvent.click(await screen.findByTestId('btn-retest-c-1'))
+
+    await waitFor(() => expect(toasts()).toContainEqual(['error', 'SettingsOpenStackView.errors.validationFailed']))
+  })
+
+  // --- delete ---
+
   it('does not delete when the confirmation dialog is dismissed', async () => {
-    vi.mocked(credentialsApi.get).mockResolvedValue(status({ has_credential: true }))
+    listReturns([credential()])
     confirm.mockReturnValue(false)
     renderView()
 
-    await userEvent.click(await screen.findByTestId('btn-delete'))
+    await userEvent.click(await screen.findByTestId('btn-delete-c-1'))
 
-    expect(confirm).toHaveBeenCalled()
+    expect(confirm).toHaveBeenCalledWith('SettingsOpenStackView.confirmDelete')
     expect(credentialsApi.remove).not.toHaveBeenCalled()
   })
 
-  it('deletes once the confirmation is accepted', async () => {
-    vi.mocked(credentialsApi.get).mockResolvedValue(status({ has_credential: true }))
-    vi.mocked(credentialsApi.remove).mockResolvedValue({} as any)
+  it('deletes once the confirmation is accepted, and the row disappears', async () => {
+    listReturns([credential()])
+    vi.mocked(credentialsApi.remove).mockResolvedValue({} as never)
     confirm.mockReturnValue(true)
     renderView()
 
-    await userEvent.click(await screen.findByTestId('btn-delete'))
+    await userEvent.click(await screen.findByTestId('btn-delete-c-1'))
 
-    await waitFor(() => expect(credentialsApi.remove).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(credentialsApi.remove).toHaveBeenCalledWith('c-1'))
     expect(toasts()).toContainEqual(['success', 'SettingsOpenStackView.status.deleteSuccess'])
+    await waitFor(() => expect(screen.queryByTestId('credential-c-1')).not.toBeInTheDocument())
   })
 
   // --- clouds.yaml upload ---
@@ -279,14 +315,14 @@ describe('SettingsOpenStackView', () => {
     fireEvent.change(screen.getByTestId('yaml-input'), { target: { files: [file] } })
   }
 
-  it('fills the form from an uploaded clouds.yaml', async () => {
+  it('fills the form from an uploaded clouds.yaml and stores nothing yet', async () => {
     vi.mocked(parseCloudsYaml).mockReturnValue({
       auth_type: 'v3applicationcredential',
       auth_url: 'https://yaml.com',
       region_name: 'RegionYaml',
       identifier: 'yaml-id',
       secret: 'yaml-secret',
-    } as any)
+    } as never)
     renderView()
 
     await uploadYaml('dummy yaml content')
@@ -294,6 +330,7 @@ describe('SettingsOpenStackView', () => {
     await waitFor(() => expect(field('app-auth-url').value).toBe('https://yaml.com'))
     expect(parseCloudsYaml).toHaveBeenCalledWith('dummy yaml content')
     expect(toasts()).toContainEqual(['success', 'SettingsOpenStackView.cloudsYamlImported'])
+    expect(credentialsApi.save).not.toHaveBeenCalled()
   })
 
   it('rejects an empty file', async () => {

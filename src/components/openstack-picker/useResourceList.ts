@@ -4,6 +4,7 @@ import {
   prime as primeDisplayCache,
   invalidate as invalidateDisplayCache,
   ensureLoaded,
+  currentCredential,
 } from '@/composables/useOpenStackResourceCache'
 
 export type AzService = 'compute' | 'network' | 'volume'
@@ -26,36 +27,45 @@ interface ListResult {
   error: ListError | null
 }
 
+/** No credential (project) is chosen yet, so there is nothing to list. */
+class NoCredentialChosen extends Error {}
+
+type Fetcher = (credentialId: string, options: { networkId?: string; azService: AzService }) => Promise<{ data: unknown[] }>
+
+const api = openstackResourcesApi
+const FETCHERS: Record<OsResourceType, Fetcher> = {
+  network: (id) => api.listNetworks(id),
+  subnet: (id, { networkId }) => api.listSubnets(id, networkId),
+  flavor: (id) => api.listFlavors(id),
+  image: (id) => api.listImages(id, 'active'),
+  keypair: (id) => api.listKeypairs(id),
+  security_group: (id) => api.listSecurityGroups(id),
+  floating_ip_pool: (id) => api.listFloatingIpPools(id),
+  volume: (id) => api.listVolumes(id),
+  router: (id) => api.listRouters(id),
+  availability_zone: (id, { azService }) => api.listAvailabilityZones(id, azService),
+}
+
+// Every list is read with the credential the deployment will be created
+// with (set by the wizard, `useOpenStackResourceCache.setCredential`).
 function fetchByType(osType: OsResourceType, filterNetworkId?: string | null, azService?: AzService) {
-  const api = openstackResourcesApi
-  switch (osType) {
-    case 'network':
-      return api.listNetworks()
-    case 'subnet':
-      return api.listSubnets(filterNetworkId || undefined)
-    case 'flavor':
-      return api.listFlavors()
-    case 'image':
-      return api.listImages('active')
-    case 'keypair':
-      return api.listKeypairs()
-    case 'security_group':
-      return api.listSecurityGroups()
-    case 'floating_ip_pool':
-      return api.listFloatingIpPools()
-    case 'volume':
-      return api.listVolumes()
-    case 'router':
-      return api.listRouters()
-    case 'availability_zone':
-      return api.listAvailabilityZones(azService || 'compute')
-  }
+  const credentialId = currentCredential()
+  if (!credentialId) return Promise.reject(new NoCredentialChosen())
+  return FETCHERS[osType](credentialId, {
+    networkId: filterNetworkId || undefined,
+    azService: azService || 'compute',
+  })
 }
 
 function toListError(err: any, fallbacks: Options['fallbackMessages']): ListError {
   const status = err?.response?.status
   const detail = err?.response?.data?.detail
-  if (status === 412 && detail?.reason === 'openstack_credentials_missing') {
+  // No credential chosen, or it is gone (404: not the caller's any more).
+  if (
+    err instanceof NoCredentialChosen ||
+    status === 404 ||
+    (status === 412 && detail?.reason === 'openstack_credentials_missing')
+  ) {
     return { reason: 'credentials_missing', message: '' }
   }
   if (status === 502 || detail?.reason === 'openstack_unavailable' || detail?.reason === 'openstack_list_failed') {
@@ -71,7 +81,7 @@ function toListError(err: any, fallbacks: Options['fallbackMessages']): ListErro
  */
 export function useResourceList({ osType, filterNetworkId, azService, enabled, fallbackMessages }: Options) {
   const [nonce, setNonce] = useState(0)
-  const key = `${osType}|${filterNetworkId ?? ''}|${azService ?? ''}|${nonce}`
+  const key = `${currentCredential() ?? ''}|${osType}|${filterNetworkId ?? ''}|${azService ?? ''}|${nonce}`
   const [result, setResult] = useState<ListResult>({ key: '', data: [], error: null })
   const fallbacks = useRef(fallbackMessages)
   useEffect(() => {
@@ -107,10 +117,13 @@ export function useResourceList({ osType, filterNetworkId, azService, enabled, f
 
   /** Re-fetches after dropping the backend's and the display cache's copies. */
   const refresh = async () => {
-    try {
-      await openstackResourcesApi.refresh(osType)
-    } catch (err) {
-      console.warn('[OsPicker] refresh failed:', err)
+    const credentialId = currentCredential()
+    if (credentialId) {
+      try {
+        await openstackResourcesApi.refresh(credentialId, osType)
+      } catch (err) {
+        console.warn('[OsPicker] refresh failed:', err)
+      }
     }
     invalidateDisplayCache(osType)
     setNonce((n) => n + 1)

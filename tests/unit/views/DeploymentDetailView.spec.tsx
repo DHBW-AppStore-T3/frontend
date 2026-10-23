@@ -20,7 +20,6 @@ const mocks = vi.hoisted(() => ({
   resume: vi.fn(),
   cancel: vi.fn(),
   listResources: vi.fn(),
-  resendAccess: vi.fn(),
   startStream: vi.fn(),
   stopStream: vi.fn(),
   stream: {
@@ -53,7 +52,6 @@ vi.mock('@/api/deployment.api', () => ({
     cancel: mocks.cancel,
     getMyAccess: mocks.getMyAccess,
     listResources: mocks.listResources,
-    resendAccess: mocks.resendAccess,
     redeployResource: vi.fn(),
     getResourceDetail: vi.fn(() => new Promise(() => {})),
   },
@@ -451,7 +449,7 @@ describe('DeploymentDetailView — member self-access', () => {
     expect(mocks.getMyAccess).not.toHaveBeenCalled()
   })
 
-  it('bietet Resend nur für die eigene Zeile an', async () => {
+  it('bietet kein Zugang-erneut-senden mehr an (die API stellt es nicht mehr bereit)', async () => {
     mocks.getDeployment.mockImplementation(async () => ({
       data: baseDeployment({
         userId: 'user-owner',
@@ -459,17 +457,14 @@ describe('DeploymentDetailView — member self-access', () => {
           {
             teamId: 'team-1',
             name: 'Team Alpha',
-            members: [
-              { userId: 'member-1', username: 'member.one', email: 'member1@example.com' },
-              { userId: 'member-2', username: 'member.two', email: 'member2@example.com' },
-            ],
+            members: [{ userId: 'member-1', username: 'member.one', email: 'member1@example.com' }],
           },
         ],
       }),
     }))
     renderView()
 
-    await screen.findByText('member.two')
-    expect(screen.getAllByText('DeploymentDetailView.resendAccessButton')).toHaveLength(1)
+    await screen.findByText('member.one')
+    expect(screen.queryByText('DeploymentDetailView.resendAccessButton')).not.toBeInTheDocument()
   })
 })

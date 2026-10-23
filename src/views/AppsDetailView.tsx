@@ -9,12 +9,11 @@ import { useDeploymentStore } from '@/stores/deployment.store'
 import {
   useOpenStackCredentialsStore,
   selectIsResolved,
-  selectHasCredential,
+  selectHasUsableCredential,
 } from '@/stores/openstack-credentials.store'
 import { useAuthStore, selectUserId } from '@/stores/auth.store'
 import { useRole } from '@/composables/useRole'
 import { useToast } from '@/composables/useToast'
-import { translateHtml } from '@/i18n/html'
 import { paths } from '@/router/paths'
 import { useAppDetail } from './app-detail/useAppDetail'
 import {
@@ -70,7 +69,7 @@ export default function AppsDetailView() {
   const { isAdmin } = useRole()
   const userId = useAuthStore(selectUserId)
   const credentialsResolved = useOpenStackCredentialsStore(selectIsResolved)
-  const hasCredential = useOpenStackCredentialsStore(selectHasCredential)
+  const hasCredential = useOpenStackCredentialsStore(selectHasUsableCredential)
 
   // Owner or admin may edit, delete and manage versions; mirrors the backend's
   // ``can_edit_app`` so the UI never offers actions that would 403.
@@ -249,12 +248,7 @@ export default function AppsDetailView() {
             title={t('AppsDetailView.confirmDeleteTitle')}
             body={
               <div className="space-y-3">
-                <p
-                  className="text-textMuted"
-                  dangerouslySetInnerHTML={{
-                    __html: translateHtml('AppsDetailView.confirmDeleteMessage', { name: app.name }, t),
-                  }}
-                />
+                <p className="text-textMuted">{t('AppsDetailView.confirmDeleteMessage', { name: app.name })}</p>
               </div>
             }
             footer={

@@ -5,7 +5,7 @@
  * owns: the deployment + task data, the member-self-access fallback, the
  * infrastructure resource list, the live-stream wiring (seeding from the DB
  * task, start/stop on relevance changes, post-stream refresh) and every
- * lifecycle action (cancel, delete, pause/resume, redeploy, resend access).
+ * lifecycle action (cancel, delete, pause/resume, redeploy).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -57,7 +57,6 @@ export const DELETE_STATUSES = [
 // Cancel is the only action offered while a deploy is still in flight.
 const CANCEL_STATUSES = ['pending', 'running']
 
-type ResendState = Record<string, 'sending' | 'sent' | 'error'>
 
 export function useDeploymentDetail(deploymentId: string) {
   const { t } = useTranslation()
@@ -140,8 +139,7 @@ export function useDeploymentDetail(deploymentId: string) {
     return list.filter((tk) => tk.taskId !== activeTask.taskId)
   }, [tasks, activeTask, isStreamRelevant])
 
-  // True while the deployment (or its active task) is still moving. The
-  // resend-access button stays disabled until the run is terminal.
+  // True while the deployment (or its active task) is still moving.
   const isDeploymentBusy =
     isLiveStatus(deployment?.status) ||
     isLiveStatus(activeTask?.status) ||
@@ -546,53 +544,6 @@ export function useDeploymentDetail(deploymentId: string) {
     }
   }
 
-  // Per-user resend-access state: userId → 'sending' | 'sent' | 'error'.
-  const [resendState, setResendState] = useState<ResendState>({})
-  const resendTimers = useRef<number[]>([])
-  useEffect(() => {
-    const timers = resendTimers.current
-    return () => timers.forEach((id) => window.clearTimeout(id))
-  }, [])
-
-  const clearResendLater = (userId: string, ms: number) => {
-    resendTimers.current.push(
-      window.setTimeout(() => {
-        setResendState((s) => {
-          const next = { ...s }
-          delete next[userId]
-          return next
-        })
-      }, ms),
-    )
-  }
-
-  const resendAccess = async (teamId: string, userId: string) => {
-    setResendState((s) => ({ ...s, [userId]: 'sending' }))
-    try {
-      await deploymentApi.resendAccess(deploymentId, teamId, userId)
-      setResendState((s) => ({ ...s, [userId]: 'sent' }))
-      toasts.addToast({ type: 'success', message: t('DeploymentDetailView.resendAccessSuccess') })
-      clearResendLater(userId, 2000)
-    } catch (err: any) {
-      setResendState((s) => ({ ...s, [userId]: 'error' }))
-      // Two reasons get a dedicated toast so the user understands WHY the mail
-      // didn't go out: smtp_disabled (503, platform kill-switch) and
-      // deployment_busy (409). Everything else gets the verbose failure toast.
-      const reason = err?.response?.data?.detail?.reason || err?.message || 'unknown'
-      const isSmtpDisabled = err?.response?.status === 503 && reason === 'smtp_disabled'
-      const isBusy = err?.response?.status === 409 && reason === 'deployment_busy'
-      toasts.addToast({
-        type: isSmtpDisabled || isBusy ? 'warning' : 'error',
-        message: isSmtpDisabled
-          ? t('DeploymentDetailView.resendAccessSmtpDisabled')
-          : isBusy
-            ? t('DeploymentDetailView.resendAccessDeploymentBusy')
-            : `${t('DeploymentDetailView.resendAccessError')}: ${reason}`,
-      })
-      clearResendLater(userId, 3000)
-    }
-  }
-
   // Selected group in the Groups card (overview ↔ detail).
   const [selectedGroup, setSelectedGroup] = useState<number | null>(null)
   const currentGroup = selectedGroup === null ? null : (groups[selectedGroup] ?? null)
@@ -670,8 +621,5 @@ export function useDeploymentDetail(deploymentId: string) {
     confirmRedeploy,
     confirmPauseResume,
 
-    // team access
-    resendState,
-    resendAccess,
   }
 }
