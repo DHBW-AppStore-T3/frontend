@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDate } from '@/utils/format'
+import { safeHttpUrl } from '@/utils/safe-url'
+import RuntimeStatus, { type RuntimeStatusProps } from './RuntimeStatus'
 import { paths } from '@/router/paths'
 import type { AppDetail, VersionInfo } from './versionInfo'
 
@@ -13,7 +15,14 @@ export interface OverviewTabProps {
   selectedVersion: string
   versionInfo: VersionInfo | null
   hasVersionInfo: boolean
+  /** Teachers and admins deploy; students use deployments. */
+  canDeploy: boolean
+  /** How the selected version runs, shown above the deploy button. */
+  runtimeStatus: RuntimeStatusProps
+  /** The version is a VM app and the caller has no usable OpenStack credential. */
   credentialsMissing: boolean
+  /** The caller may press "Deploy" now. */
+  deployEnabled: boolean
   /** Scroll to (and focus) the deployment options once, e.g. when arriving from "Deploy". */
   scrollToDeployOptions: boolean
   onSelectVersion: (version: string) => void
@@ -94,7 +103,7 @@ export default function OverviewTab(props: OverviewTabProps) {
                 <span className="text-textMuted">{t('AppsDetailView.versionLink')}</span>
                 {versionInfo.html_url ? (
                   <a
-                    href={versionInfo.html_url}
+                    href={safeHttpUrl(versionInfo.html_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-info hover:underline break-all"
@@ -120,6 +129,7 @@ export default function OverviewTab(props: OverviewTabProps) {
       </div>
 
       {/* Deploy sidebar */}
+      {props.canDeploy ? (
       <div id="deployment-options" ref={deployRef} className="detail-surface deployment-options">
         <h2 className="text-lg font-semibold text-textHeading mb-6">{t('AppsDetailView.startDeploymentTitle')}</h2>
 
@@ -141,10 +151,12 @@ export default function OverviewTab(props: OverviewTabProps) {
           </select>
         </div>
 
+        <RuntimeStatus {...props.runtimeStatus} />
+
         <button
           type="button"
           onClick={props.onDeploy}
-          disabled={!selectedVersion || credentialsMissing}
+          disabled={!props.deployEnabled}
           title={credentialsMissing ? t('AppsDetailView.missingCredsTitle') : ''}
           className="w-full bg-gradient-to-r from-primaryAction to-primaryActionHover text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
@@ -160,6 +172,7 @@ export default function OverviewTab(props: OverviewTabProps) {
           </p>
         ) : null}
       </div>
+      ) : null}
     </div>
   )
 }

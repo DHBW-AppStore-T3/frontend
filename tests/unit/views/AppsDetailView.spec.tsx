@@ -17,6 +17,7 @@ vi.mock('@/api/app.api', () => ({
     withdrawVersion: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    getRuntime: vi.fn(),
   },
 }))
 
@@ -61,7 +62,8 @@ function renderView(entries = ['/apps/app-123']) {
 }
 
 const toasts = () => useToastStore.getState().toasts.map((t) => [t.type, t.message])
-const setUser = (userId: string, role = 'student') => useAuthStore.setState({ user: { userId, role } as any })
+// Teachers and admins deploy; students do not.
+const setUser = (userId: string, role = 'teacher') => useAuthStore.setState({ user: { userId, role } as any })
 const tab = (key: string) => screen.getByRole('button', { name: new RegExp(`AppsDetailView\\.${key}`) })
 
 beforeEach(() => {
@@ -72,6 +74,8 @@ beforeEach(() => {
   setUser('owner')
   vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp() } as any)
   vi.mocked(appApi.listVersionApprovals).mockResolvedValue({ data: [] } as any)
+  // Pods by default: no OpenStack credential needed.
+  vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'kubernetes', scope: 'team' } } as any)
 })
 
 describe('AppsDetailView', () => {
@@ -118,11 +122,16 @@ describe('AppsDetailView', () => {
     await screen.findByRole('heading', { name: 'Test App' })
 
     await userEvent.selectOptions(screen.getByRole('combobox'), 'v2.0')
+    await waitFor(() => expect(appApi.getRuntime).toHaveBeenCalledWith('app-123', 'v2.0'))
+    await waitFor(() => expect(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ })).toBeEnabled())
     await userEvent.click(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ }))
 
     const draft = useDeploymentStore.getState().draft
     expect(draft.appId).toBe('app-123')
     expect(draft.releaseTag).toBe('v2.0')
+    // How the version runs travels with the draft (credential and group step).
+    expect(draft.runtime).toBe('kubernetes')
+    expect(draft.scope).toBe('team')
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
   })
 
@@ -134,16 +143,70 @@ describe('AppsDetailView', () => {
     expect(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ })).toBeDisabled()
   })
 
-  it('deaktiviert Deploy und verweist auf die Einstellungen, wenn keine Credentials hinterlegt sind', async () => {
-    useOpenStackCredentialsStore.setState({ credentials: [] })
-    renderView()
-    await screen.findByRole('heading', { name: 'Test App' })
+  describe('wie die Version läuft', () => {
+    const deployButton = () => screen.getByRole('button', { name: /AppsDetailView\.deployButton/ })
 
-    expect(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ })).toBeDisabled()
-    expect(screen.getByRole('link', { name: 'AppsDetailView.missingCredsLink' })).toHaveAttribute(
-      'href',
-      '/user/openstack',
-    )
+    it('fragt die API nach der gewählten Version und zeigt die Laufzeit', async () => {
+      renderView()
+
+      await waitFor(() => expect(screen.getByTestId('version-runtime')).toHaveTextContent('runtime.kubernetes'))
+      expect(appApi.getRuntime).toHaveBeenCalledWith('app-123', 'v1.0')
+    })
+
+    it('eine Pod-Version braucht kein OpenStack-Credential', async () => {
+      useOpenStackCredentialsStore.setState({ credentials: [] })
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+
+      await waitFor(() => expect(deployButton()).toBeEnabled())
+    })
+
+    it('eine VM-Version braucht ein nutzbares Credential und verweist auf die Einstellungen', async () => {
+      vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'openstack-vm', scope: 'user' } } as any)
+      useOpenStackCredentialsStore.setState({ credentials: [] })
+      renderView()
+
+      await waitFor(() => expect(screen.getByTestId('version-runtime')).toHaveTextContent('runtime.openstackVm'))
+      expect(deployButton()).toBeDisabled()
+      expect(screen.getByRole('link', { name: 'AppsDetailView.missingCredsLink' })).toHaveAttribute('href', '/user/openstack')
+    })
+
+    it('eine VM-Version mit nutzbarem Credential kann deployt werden', async () => {
+      vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'openstack-vm', scope: 'user' } } as any)
+      useOpenStackCredentialsStore.setState({
+        credentials: [{ credentialId: 'c-1', project_verified: true, last_validation_error: null } as any],
+      })
+      renderView()
+
+      await waitFor(() => expect(deployButton()).toBeEnabled())
+    })
+
+    it('Studierende bekommen kein Deploy-Panel', async () => {
+      setUser('user-9', 'student')
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+
+      expect(document.getElementById('deployment-options')).toBeNull()
+      expect(screen.queryByRole('button', { name: /AppsDetailView\.deployButton/ })).not.toBeInTheDocument()
+    })
+
+    it('eine ungültige appstore.yaml sperrt das Deployment mit lesbarem Grund', async () => {
+      vi.mocked(appApi.getRuntime).mockRejectedValue({
+        response: { status: 422, data: { detail: { reason: 'invalid_app_spec' } } },
+      })
+      renderView()
+
+      expect(await screen.findByText('AppsDetailView.runtime.invalidSpec')).toBeInTheDocument()
+      expect(deployButton()).toBeDisabled()
+    })
+
+    it('sonstige Fehler beim Laden der Laufzeit sperren ebenfalls', async () => {
+      vi.mocked(appApi.getRuntime).mockRejectedValue(new Error('boom'))
+      renderView()
+
+      expect(await screen.findByText('AppsDetailView.runtime.loadError')).toBeInTheDocument()
+      expect(deployButton()).toBeDisabled()
+    })
   })
 
   // --- delete ---
@@ -276,7 +339,7 @@ describe('AppsDetailView', () => {
     })
 
     it('schaltet die Sichtbarkeit um', async () => {
-      vi.mocked(appApi.update).mockResolvedValue({ data: {} } as any)
+      vi.mocked(appApi.update).mockResolvedValue({ data: { is_private: true, hidden_by_admin: false } } as any)
       await openStore()
 
       await userEvent.click(screen.getByRole('switch'))
@@ -284,6 +347,49 @@ describe('AppsDetailView', () => {
       await waitFor(() => expect(appApi.update).toHaveBeenCalledWith('app-123', { is_private: true }))
       expect(toasts()).toContainEqual(['success', 'AppsDetailView.toasts.setPrivate'])
       expect(await screen.findByText('AppsDetailView.privateAppStoreHint')).toBeInTheDocument()
+    })
+
+    it('zeigt den Stand des Servers: macht ein Admin die App öffentlich, fällt die Sperre', async () => {
+      vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp({ is_private: true, hidden_by_admin: true }) } as any)
+      setUser('someone-else', 'admin')
+      vi.mocked(appApi.update).mockResolvedValue({ data: { is_private: false, hidden_by_admin: false } } as any)
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+      await userEvent.click(tab('tabStore'))
+      expect(screen.getByTestId('hidden-by-admin')).toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('switch'))
+
+      await waitFor(() => expect(toasts()).toContainEqual(['success', 'AppsDetailView.toasts.setPublic']))
+      expect(screen.queryByTestId('hidden-by-admin')).not.toBeInTheDocument()
+    })
+
+    it('von einem Admin deaktivierte Apps kann der Besitzer nicht wieder öffentlich machen', async () => {
+      vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp({ is_private: true, hidden_by_admin: true }) } as any)
+      await openStore()
+
+      expect(screen.getByTestId('hidden-by-admin')).toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeDisabled()
+    })
+
+    it('zeigt Laufzeit und Commit jeder eingereichten Version', async () => {
+      vi.mocked(appApi.listVersionApprovals).mockResolvedValue({
+        data: [
+          {
+            approvalId: 'a1',
+            appId: 'app-123',
+            version_tag: 'v1.0',
+            status: 'approved',
+            runtime: 'kubernetes',
+            commit_sha: 'abcdef0123456789',
+            created_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+      } as any)
+      await openStore()
+
+      expect(await screen.findByText('abcdef01')).toBeInTheDocument()
+      expect(screen.getByText('runtime.kubernetes')).toBeInTheDocument()
     })
   })
 

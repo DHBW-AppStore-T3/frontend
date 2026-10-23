@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
 import type { User } from '@/types'
+import BoldSlot from '@/i18n/BoldSlot'
 
 export interface RemoveMemberModalProps {
   member: User | null
@@ -21,7 +22,11 @@ export default function RemoveMemberModal({ member, isRemoving, onClose, onConfi
       body={
         <div className="space-y-3">
           <p className="text-textMuted">
-            {t('CourseDetailView.removeModal.confirmPrompt', { username: member?.username ?? '' })}
+            <BoldSlot
+              i18nKey="CourseDetailView.removeModal.confirmPrompt"
+              slot="username"
+              value={member?.username ?? ''}
+            />
           </p>
           <p className="text-sm text-textMuted">{t('CourseDetailView.removeModal.warning')}</p>
         </div>

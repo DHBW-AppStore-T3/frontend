@@ -14,6 +14,7 @@ import BaseInput from '@/components/ui/BaseInput'
 import Modal from '@/components/ui/Modal'
 import PageHeader from '@/components/ui/PageHeader'
 import EntityListState from '@/components/ui/EntityListState'
+import BoldSlot from '@/i18n/BoldSlot'
 import './CoursesView.css'
 
 export default function CoursesView() {
@@ -246,7 +247,7 @@ export default function CoursesView() {
         body={
           <div className="space-y-3">
             <p className="text-textMuted">
-              {t('CoursesView.deleteModal.confirmPrompt', { name: courseToDelete?.name ?? '' })}
+              <BoldSlot i18nKey="CoursesView.deleteModal.confirmPrompt" slot="name" value={courseToDelete?.name ?? ''} />
             </p>
             <p className="text-sm text-textMuted">{t('CoursesView.deleteModal.warning')}</p>
           </div>

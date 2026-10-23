@@ -21,6 +21,7 @@ import InfrastructureVmDrawer from '@/components/InfrastructureVmDrawer'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDateTime } from '@/utils/format'
 import { paths } from '@/router/paths'
+import BoldSlot from '@/i18n/BoldSlot'
 import { useDeploymentDetail } from './deployment-detail/useDeploymentDetail'
 import { useClipboard } from './deployment-detail/useClipboard'
 import { cleanVariableValue, getStatusStyles } from './deployment-detail/helpers'
@@ -442,7 +443,9 @@ export default function DeploymentDetailView() {
         onClose={() => d.setShowCancelModal(false)}
         title={t('DeploymentDetailView.confirmStopTitle')}
         body={
-          <p className="text-gray-700">{t('DeploymentDetailView.confirmStopMessage', { name: deployment.name })}</p>
+          <p className="text-gray-700">
+            <BoldSlot i18nKey="DeploymentDetailView.confirmStopMessage" slot="name" value={deployment.name} />
+          </p>
         }
         footer={
           <div className="flex justify-end gap-3">
@@ -461,7 +464,9 @@ export default function DeploymentDetailView() {
         onClose={() => d.setShowDeleteModal(false)}
         title={t('DeploymentDetailView.confirmDeleteTitle')}
         body={
-          <p className="text-gray-700">{t('DeploymentDetailView.confirmDeleteMessage', { name: deployment.name })}</p>
+          <p className="text-gray-700">
+            <BoldSlot i18nKey="DeploymentDetailView.confirmDeleteMessage" slot="name" value={deployment.name} />
+          </p>
         }
         footer={
           <div className="flex justify-end gap-3">
@@ -521,12 +526,15 @@ export default function DeploymentDetailView() {
         }
         body={
           <p className="text-gray-700">
-            {t(
-              d.pauseResumeAction === 'pause'
-                ? 'DeploymentDetailView.confirmPauseMessage'
-                : 'DeploymentDetailView.confirmResumeMessage',
-              { name: deployment.name },
-            )}
+            <BoldSlot
+              i18nKey={
+                d.pauseResumeAction === 'pause'
+                  ? 'DeploymentDetailView.confirmPauseMessage'
+                  : 'DeploymentDetailView.confirmResumeMessage'
+              }
+              slot="name"
+              value={deployment.name}
+            />
           </p>
         }
         footer={

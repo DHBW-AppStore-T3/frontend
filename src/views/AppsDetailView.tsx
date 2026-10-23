@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, GitBranch, Layers, Pencil, ShoppingBag, Trash2 } from 'lucide-react'
@@ -15,7 +15,11 @@ import { useAuthStore, selectUserId } from '@/stores/auth.store'
 import { useRole } from '@/composables/useRole'
 import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
+import { safeHttpUrl } from '@/utils/safe-url'
+import BoldSlot from '@/i18n/BoldSlot'
 import { useAppDetail } from './app-detail/useAppDetail'
+import { useVersionRuntime } from './app-detail/useVersionRuntime'
+import { canStartDeployment, needsCredential } from './app-detail/runtime'
 import {
   bannerStatusOf,
   hasVersionInfo as hasInfo,
@@ -66,10 +70,10 @@ export default function AppsDetailView() {
   const navigate = useNavigate()
   const { hash } = useLocation()
   const toast = useToast()
-  const { isAdmin } = useRole()
+  const { isAdmin, isStaff } = useRole()
   const userId = useAuthStore(selectUserId)
   const credentialsResolved = useOpenStackCredentialsStore(selectIsResolved)
-  const hasCredential = useOpenStackCredentialsStore(selectHasUsableCredential)
+  const hasUsableCredential = useOpenStackCredentialsStore(selectHasUsableCredential)
 
   // Owner or admin may edit, delete and manage versions; mirrors the backend's
   // ``can_edit_app`` so the UI never offers actions that would 403.
@@ -91,6 +95,22 @@ export default function AppsDetailView() {
   const versionDetails = versionDetailsOf(app, effectiveVersion)
   const approvalByVersion = useMemo(() => indexApprovalsByVersion(detail.approvals), [detail.approvals])
 
+  const versionRuntime = useVersionRuntime(app?.appId, effectiveVersion)
+  const gate = {
+    isStaff,
+    version: effectiveVersion,
+    runtime: versionRuntime.runtime,
+    credentialsResolved,
+    hasUsableCredential,
+  }
+
+  // Only VM apps need an OpenStack credential: read them for staff once.
+  useEffect(() => {
+    if (isStaff && !useOpenStackCredentialsStore.getState().credentials) {
+      void useOpenStackCredentialsStore.getState().fetch()
+    }
+  }, [isStaff])
+
   const isOwner = !!app && isOwnerOf(app)
   const canManageVersions = !!app && canManage(app)
   const banner = bannerStatusOf(app, detail.approvals)
@@ -100,9 +120,16 @@ export default function AppsDetailView() {
       toast.warning(t('AppsDetailView.toasts.selectVersionFirst'))
       return
     }
+    if (!canStartDeployment(gate)) return
     const drafts = useDeploymentStore.getState()
     drafts.resetDraft()
-    drafts.updateDraft({ appId: app.appId || app.id || null, releaseTag: effectiveVersion })
+    // How the version runs travels with the draft (credential and group step).
+    drafts.updateDraft({
+      appId: app.appId || app.id || null,
+      releaseTag: effectiveVersion,
+      runtime: versionRuntime.runtime?.runtime ?? null,
+      scope: versionRuntime.runtime?.scope ?? null,
+    })
     toast.success(t('AppsDetailView.toasts.preparingConfig', { name: app.name }))
     navigate(paths.deploymentConfig)
   }
@@ -154,7 +181,7 @@ export default function AppsDetailView() {
                     </span>
                     {app.git_link ? (
                       <a
-                        href={app.git_link}
+                        href={safeHttpUrl(app.git_link)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-info hover:underline cursor-pointer truncate max-w-xs block"
@@ -218,6 +245,7 @@ export default function AppsDetailView() {
               versionOptions={versionOptions}
               approvalByVersion={approvalByVersion}
               isOwner={isOwner}
+              isAdmin={isAdmin}
               isTogglingPrivacy={detail.isTogglingPrivacy}
               withdrawingVersion={detail.withdrawingVersion}
               onTogglePrivacy={() => void detail.togglePrivacy()}
@@ -231,7 +259,14 @@ export default function AppsDetailView() {
               selectedVersion={effectiveVersion}
               versionInfo={toVersionInfo(versionDetails)}
               hasVersionInfo={hasInfo(versionDetails)}
-              credentialsMissing={credentialsResolved && !hasCredential}
+              canDeploy={isStaff}
+              runtimeStatus={{
+                runtime: versionRuntime.runtime,
+                isLoading: versionRuntime.isLoading,
+                errorKey: versionRuntime.errorKey,
+              }}
+              credentialsMissing={needsCredential(gate)}
+              deployEnabled={canStartDeployment(gate)}
               scrollToDeployOptions={hash === DEPLOYMENT_OPTIONS_HASH}
               onSelectVersion={setSelectedVersion}
               onDeploy={startDeployment}
@@ -248,7 +283,9 @@ export default function AppsDetailView() {
             title={t('AppsDetailView.confirmDeleteTitle')}
             body={
               <div className="space-y-3">
-                <p className="text-textMuted">{t('AppsDetailView.confirmDeleteMessage', { name: app.name })}</p>
+                <p className="text-textMuted">
+                  <BoldSlot i18nKey="AppsDetailView.confirmDeleteMessage" slot="name" value={app.name} />
+                </p>
               </div>
             }
             footer={
