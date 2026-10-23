@@ -10,7 +10,7 @@ import EntityListState from '@/components/ui/EntityListState'
 import AppVersionStatusBadge from '@/components/ui/AppVersionStatusBadge'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { appApi } from '@/api/app.api'
-import { APP_CATEGORIES, appPresentation, type AppCategory } from '@/config/app-catalog'
+import { DEPARTMENTS, departmentsForGitLink, type Department } from '@/config/department-catalog'
 import { useFavorites } from '@/composables/useFavorites'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore, selectIsAdmin, selectUserId } from '@/stores/auth.store'
@@ -34,7 +34,7 @@ export default function AppsView() {
   // Admin-only filter
   const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<AppCategory | 'all' | 'favorites'>('all')
+  const [selectedFilter, setSelectedFilter] = useState<Department | 'all' | 'favorites'>('all')
   const [showFilters, setShowFilters] = useState(false)
   const { favorites, toggleFavorite } = useFavorites(userId)
 
@@ -53,19 +53,19 @@ export default function AppsView() {
 
   const categories = [
     { key: 'all' as const, count: visibleApps.length },
-    ...APP_CATEGORIES.map((key) => ({
+    ...DEPARTMENTS.map((key) => ({
       key,
-      count: visibleApps.filter((app) => appPresentation(app.name).category === key).length,
+      count: visibleApps.filter((app) => departmentsForGitLink(app.git_link).includes(key)).length,
     })),
     { key: 'favorites' as const, count: visibleApps.filter((app) => favorites.includes(app.appId)).length },
   ]
 
   const filteredApps = visibleApps.filter(
     (app) =>
-      selectedCategory === 'all' ||
-      (selectedCategory === 'favorites'
+      selectedFilter === 'all' ||
+      (selectedFilter === 'favorites'
         ? favorites.includes(app.appId)
-        : appPresentation(app.name).category === selectedCategory),
+        : departmentsForGitLink(app.git_link).includes(selectedFilter)),
   )
 
   const badgeStatusForApp = (app: App): AppVersionBadgeStatus | null => {
@@ -143,8 +143,11 @@ export default function AppsView() {
     </Link>
   )
 
-  const emptyMessage =
-    visibilityFilter === 'private'
+  const isDepartmentFilter = selectedFilter !== 'all' && selectedFilter !== 'favorites'
+
+  const emptyMessage = isDepartmentFilter
+    ? t('AppsView.noAppsInDepartment', { department: t(`workspace.categories.${selectedFilter}`) })
+    : visibilityFilter === 'private'
       ? t('AppsView.noPrivateApps')
       : visibilityFilter === 'public'
         ? t('AppsView.noPublicApps')
@@ -198,8 +201,8 @@ export default function AppsView() {
             key={category.key}
             type="button"
             className="catalog-tab"
-            aria-pressed={selectedCategory === category.key}
-            onClick={() => setSelectedCategory(category.key)}
+            aria-pressed={selectedFilter === category.key}
+            onClick={() => setSelectedFilter(category.key)}
           >
             {t(`workspace.categories.${category.key}`)} <span className="catalog-count">{category.count}</span>
           </button>
@@ -212,7 +215,7 @@ export default function AppsView() {
         icon={Inbox}
         emptyMessage={emptyMessage}
         loadingMessage={t('AppsView.loading')}
-        emptyAction={visibilityFilter === 'all' ? addAppButton : null}
+        emptyAction={visibilityFilter === 'all' && !isDepartmentFilter ? addAppButton : null}
       >
         <div className="app-catalog-grid">
           {filteredApps.map((app) => {

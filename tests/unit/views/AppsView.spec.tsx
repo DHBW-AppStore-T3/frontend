@@ -186,3 +186,104 @@ describe('AppsView', () => {
     expect(screen.getByText('AppsView.filterPrivate')).toBeInTheDocument()
   })
 })
+
+describe('AppsView – Fachbereichsfilter', () => {
+  const org = 'https://github.com/DHBW-AppStore'
+  const jupyter = { appId: '1', name: 'Jupyter-Notebook', userId: 'x', git_link: `${org}/Jupyter-Notebook.git` }
+  const latex = { appId: '2', name: 'Web-LaTeX', userId: 'x', git_link: `${org}/Web-LaTeX.git` }
+  const ide = { appId: '3', name: 'Online-IDE', userId: 'x', git_link: `${org}/Online-IDE.git` }
+  const unknown = { appId: '4', name: 'Fremde App', userId: 'x', git_link: 'https://github.com/fremd/web-latex.git' }
+  const noLink = { appId: '5', name: 'Ohne Link', userId: 'x', git_link: null }
+
+  const tab = (key: string) => screen.getByRole('button', { name: new RegExp(`workspace\\.categories\\.${key}`) })
+
+  const loadApps = async (apps: { name: string }[]) => {
+    vi.mocked(appApi.list).mockResolvedValue({ data: apps } as any)
+    renderView()
+    await screen.findByText(apps[0]!.name)
+  }
+
+  it('zeigt Alle, die fünf Fachbereiche und Favoriten – und keine alten Kategorien', async () => {
+    await loadApps([jupyter])
+
+    for (const key of ['all', 'maschinenbau', 'informatik', 'elektrotechnik', 'wirtschaftsingenieurwesen', 'faecheruebergreifend', 'favorites']) {
+      expect(tab(key)).toBeInTheDocument()
+    }
+    for (const key of ['productivity', 'development', 'data', 'other']) {
+      expect(screen.queryByRole('button', { name: new RegExp(`workspace\\.categories\\.${key}`) })).not.toBeInTheDocument()
+    }
+  })
+
+  it('zeigt unter Maschinenbau nur ausdrücklich zugeordnete Apps', async () => {
+    await loadApps([jupyter, latex, ide, unknown, noLink])
+
+    await userEvent.click(tab('maschinenbau'))
+
+    expect(screen.getByText('Jupyter-Notebook')).toBeInTheDocument()
+    expect(screen.getByText('Web-LaTeX')).toBeInTheDocument()
+    expect(screen.queryByText('Online-IDE')).not.toBeInTheDocument()
+    expect(screen.queryByText('Fremde App')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ohne Link')).not.toBeInTheDocument()
+  })
+
+  it('hält nicht zugeordnete Apps unter Alle sichtbar, aber aus jedem Fachbereich heraus', async () => {
+    await loadApps([ide, unknown, noLink])
+
+    expect(screen.getByText('Fremde App')).toBeInTheDocument()
+    expect(screen.getByText('Ohne Link')).toBeInTheDocument()
+
+    for (const key of ['maschinenbau', 'informatik', 'elektrotechnik', 'wirtschaftsingenieurwesen', 'faecheruebergreifend']) {
+      await userEvent.click(tab(key))
+      expect(screen.queryByText('Fremde App')).not.toBeInTheDocument()
+      expect(screen.queryByText('Ohne Link')).not.toBeInTheDocument()
+    }
+  })
+
+  it('schließt unter Fächerübergreifend keine reinen Informatik-Apps ein', async () => {
+    await loadApps([jupyter, ide])
+
+    await userEvent.click(tab('faecheruebergreifend'))
+
+    expect(screen.getByText('Jupyter-Notebook')).toBeInTheDocument()
+    expect(screen.queryByText('Online-IDE')).not.toBeInTheDocument()
+  })
+
+  it('zeigt die Anzahl pro Tab', async () => {
+    await loadApps([jupyter, latex, ide, unknown])
+
+    expect(tab('all')).toHaveTextContent('4')
+    expect(tab('maschinenbau')).toHaveTextContent('2')
+    expect(tab('informatik')).toHaveTextContent('3')
+    expect(tab('wirtschaftsingenieurwesen')).toHaveTextContent('1')
+  })
+
+  it('zeigt für einen leeren Fachbereich einen Empty State ohne "App hinzufügen"', async () => {
+    await loadApps([ide])
+
+    await userEvent.click(tab('maschinenbau'))
+
+    expect(screen.getByText('AppsView.noAppsInDepartment')).toBeInTheDocument()
+    expect(screen.queryByText('Online-IDE')).not.toBeInTheDocument()
+    // Only the permanent link in the page header remains; the empty-state action is omitted.
+    expect(screen.getAllByRole('link', { name: 'AppsView.addApp' })).toHaveLength(1)
+  })
+
+  it('kombiniert Fachbereich und Suche per UND', async () => {
+    await loadApps([jupyter, latex])
+
+    await userEvent.click(tab('maschinenbau'))
+    await userEvent.type(screen.getByRole('searchbox'), 'latex')
+
+    expect(screen.getByText('Web-LaTeX')).toBeInTheDocument()
+    expect(screen.queryByText('Jupyter-Notebook')).not.toBeInTheDocument()
+  })
+
+  it('markiert immer genau einen Tab als aktiv', async () => {
+    await loadApps([jupyter])
+
+    await userEvent.click(tab('informatik'))
+
+    expect(screen.getAllByRole('button', { pressed: true, name: /workspace\.categories\./ })).toHaveLength(1)
+    expect(tab('informatik')).toHaveAttribute('aria-pressed', 'true')
+  })
+})

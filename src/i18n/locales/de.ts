@@ -14,10 +14,11 @@ export default {
     "categories": {
       "label": "App-Kategorien",
       "all": "Alle",
-      "productivity": "Produktivität",
-      "development": "Entwicklung",
-      "data": "Daten & KI",
-      "other": "Weitere",
+      "maschinenbau": "Maschinenbau",
+      "informatik": "Informatik",
+      "elektrotechnik": "Elektrotechnik",
+      "wirtschaftsingenieurwesen": "Wirtschaftsingenieurwesen",
+      "faecheruebergreifend": "Fächerübergreifend",
       "favorites": "Favoriten"
     },
     "searchCourses": "Kurse suchen…",
@@ -424,6 +425,7 @@ export default {
     noAppsDesc: "Es wurden noch keine Apps in der Datenbank angelegt.",
     noPrivateApps: "Keine privaten Apps vorhanden.",
     noPublicApps: "Keine öffentlichen Apps vorhanden.",
+    noAppsInDepartment: "Für {department} sind derzeit keine Apps zugeordnet.",
     noDescription: "Keine Beschreibung verfügbar.",
     detailsDeploy: "Details & Deployment",
     loadError: "Apps konnten nicht geladen werden.",

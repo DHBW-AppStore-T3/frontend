@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { Box, Database, Code2 } from 'lucide-react'
-import { appPresentation, APP_CATEGORIES } from '@/config/app-catalog'
+import { appPresentation } from '@/config/app-catalog'
 
 describe('appPresentation', () => {
   it('matches known apps by name, case-insensitively, including their logo', () => {
     const p = appPresentation('JupyterHub')
-    expect(p.category).toBe('data')
     expect(p.icon).toBe(Database)
     expect(p.logo).toBeTruthy()
   })
@@ -15,13 +14,13 @@ describe('appPresentation', () => {
     expect(appPresentation('GitLab CE').logo).toBeTruthy()
   })
 
-  it('falls back to category "other" with a box icon', () => {
-    expect(appPresentation('Zzz')).toEqual({ category: 'other', icon: Box })
+  it('falls back to a box icon', () => {
+    expect(appPresentation('Zzz')).toEqual({ icon: Box })
   })
 
-  it('only emits categories from APP_CATEGORIES', () => {
+  it('carries no category any more (department filtering lives in department-catalog)', () => {
     for (const n of ['jupyter', 'vscode', 'nextcloud', 'security', 'linux', 'x']) {
-      expect(APP_CATEGORIES).toContain(appPresentation(n).category)
+      expect(appPresentation(n)).not.toHaveProperty('category')
     }
   })
 })
