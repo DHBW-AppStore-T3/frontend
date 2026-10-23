@@ -5,6 +5,7 @@
 #   env-config.js           the VITE_* settings the app reads at start
 #   listen.conf             8080 on IPv4, and on IPv6 where the kernel has it
 #   security-headers.conf   Content-Security-Policy and framing
+#   silent-refresh-headers.conf   the same for silent-refresh.html, which the app itself frames
 #   api-gateway.conf        the API under /api (only with API_UPSTREAM)
 # Runs from /docker-entrypoint.d/ before nginx starts; any error stops the
 # container instead of serving with a broken or missing configuration.
@@ -68,15 +69,25 @@ API_ORIGIN=$(origin "${VITE_API_URL:-}")
 CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:"
 CSP="$CSP; connect-src 'self'${API_ORIGIN:+ $API_ORIGIN}${KEYCLOAK_ORIGIN:+ $KEYCLOAK_ORIGIN}"
 CSP="$CSP; frame-src 'self'${KEYCLOAK_ORIGIN:+ $KEYCLOAK_ORIGIN}"
-CSP="$CSP; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors $FRAME_ANCESTORS"
+CSP="$CSP; object-src 'none'; base-uri 'self'; form-action 'self'"
+CSP_PAGE="$CSP; frame-ancestors $FRAME_ANCESTORS"
 
 {
-  printf 'add_header Content-Security-Policy "%s" always;\n' "$CSP"
+  printf 'add_header Content-Security-Policy "%s" always;\n' "$CSP_PAGE"
   # Browsers without CSP frame-ancestors only know X-Frame-Options.
   if [ "$FRAME_ANCESTORS" = "'none'" ]; then
     printf 'add_header X-Frame-Options "DENY" always;\n'
   fi
 } > "$RUNTIME_DIR/security-headers.conf"
+
+# The callback page of the silent token renew runs in a hidden iframe of the
+# app itself, so the app's own origin must be allowed to frame it (everyone
+# else still may not). With frame-ancestors 'none' the browser refuses the
+# iframe and a reload always ends at the login page.
+{
+  printf 'add_header Content-Security-Policy "%s; frame-ancestors '"'"'self'"'"'" always;\n' "$CSP"
+  printf 'add_header X-Frame-Options "SAMEORIGIN" always;\n'
+} > "$RUNTIME_DIR/silent-refresh-headers.conf"
 
 # The API under /api, where nothing else routes it (Kubernetes: the one
 # Ingress of the host points here). API_UPSTREAM is host:port of the API's

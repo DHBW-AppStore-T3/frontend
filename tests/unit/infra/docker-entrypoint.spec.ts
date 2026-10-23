@@ -76,6 +76,35 @@ describe.skipIf(!hasEnvsubst)('docker-entrypoint.sh', () => {
     expect(headers).not.toContain('X-Frame-Options')
   })
 
+  describe('silent-refresh.html (framed by the app itself)', () => {
+    it('may be framed by its own origin only, even when nobody may frame the app', () => {
+      run({ VITE_KEYCLOAK_URL: 'https://sso.example.org/' })
+
+      const silent = read('silent-refresh-headers.conf')
+      expect(silent).toContain("frame-ancestors 'self'")
+      expect(silent).toContain('X-Frame-Options "SAMEORIGIN"')
+      expect(silent).not.toContain("frame-ancestors 'none'")
+      expect(silent).not.toContain('"DENY"')
+      // the app pages keep refusing to be framed
+      expect(read('security-headers.conf')).toContain("frame-ancestors 'none'")
+    })
+
+    it('keeps the same script, connect and frame sources as the app', () => {
+      run({ VITE_API_URL: 'https://api.example.org', VITE_KEYCLOAK_URL: 'https://sso.example.org/' })
+
+      const silent = read('silent-refresh-headers.conf')
+      expect(silent).toContain("script-src 'self';")
+      expect(silent).toContain("connect-src 'self' https://api.example.org https://sso.example.org;")
+      expect(silent).toContain("frame-src 'self' https://sso.example.org;")
+    })
+
+    it('is not opened to Moodle when only the app is', () => {
+      run({ FRAME_ANCESTORS: 'https://moodle.example.org' })
+
+      expect(read('silent-refresh-headers.conf')).not.toContain('moodle.example.org')
+    })
+  })
+
   it('routes /api to the upstream and never /api/internal', () => {
     run({ API_UPSTREAM: 'appstore-api:8000' })
 
