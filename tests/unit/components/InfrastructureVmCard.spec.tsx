@@ -111,6 +111,12 @@ describe('InfrastructureVmCard', () => {
     expect(onRedeploy).toHaveBeenCalledWith('openstack_compute_instance_v2.web')
   })
 
+  it('hides the redeploy button when the caller may not redeploy', () => {
+    renderCard(make(), { canRedeploy: false })
+    expect(screen.queryByRole('button', { name: 'vm.actions.redeploy' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'vm.actions.showDetails' })).toBeInTheDocument()
+  })
+
   it('disables the redeploy button while a redeploy is in flight', () => {
     renderCard(make(), { redeploying: true })
     expect(screen.getByRole('button', { name: 'vm.actions.redeploying' })).toBeDisabled()

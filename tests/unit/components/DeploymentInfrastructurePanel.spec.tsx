@@ -14,6 +14,7 @@ vi.mock('@/components/InfrastructureVmCard', () => ({
     resource: { address: string }
     redeploying: boolean
     isExpanded: boolean
+    canRedeploy: boolean
     onOpenDetails: (a: string) => void
     onRedeploy: (a: string) => void
   }) => (
@@ -21,6 +22,7 @@ vi.mock('@/components/InfrastructureVmCard', () => ({
       className="vm-card"
       data-redeploying={String(props.redeploying)}
       data-expanded={String(props.isExpanded)}
+      data-can-redeploy={String(props.canRedeploy)}
     >
       <button className="open" onClick={() => props.onOpenDetails(props.resource.address)} />
       <button className="redeploy" onClick={() => props.onRedeploy(props.resource.address)} />
@@ -90,6 +92,15 @@ describe('DeploymentInfrastructurePanel', () => {
 
     const cards = [...container.querySelectorAll('.vm-card')]
     expect(cards.map((c) => c.getAttribute('data-redeploying'))).toEqual(['false', 'true'])
+  })
+
+  it('lets the cards redeploy unless the caller may not', () => {
+    const allowed = renderPanel({ vmResources: [vm('a')] })
+    expect(allowed.container.querySelector('.vm-card')?.getAttribute('data-can-redeploy')).toBe('true')
+    allowed.unmount()
+
+    const denied = renderPanel({ vmResources: [vm('a')], canRedeploy: false })
+    expect(denied.container.querySelector('.vm-card')?.getAttribute('data-can-redeploy')).toBe('false')
   })
 
   it('marks only the VM whose drawer is open', () => {

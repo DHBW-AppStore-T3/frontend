@@ -17,11 +17,12 @@
  *
  * The HTML is run through DOMPurify before it reaches
  * ``dangerouslySetInnerHTML``, so user markdown like
- * ``<img src=x onerror=alert(1)>`` is neutralised.
+ * ``<img src=x onerror=alert(1)>`` is neutralised (rules in
+ * ``utils/markdown-html.ts``).
  */
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { marked, Renderer } from 'marked'
-import DOMPurify from 'dompurify'
+import { sanitizeMarkdownHtml } from '@/utils/markdown-html'
 import { useTranslation } from 'react-i18next'
 
 export interface MarkdownRendererProps {
@@ -83,10 +84,7 @@ export default function MarkdownRenderer({
       renderer: buildRenderer(variant),
       async: false,
     }) as string
-    return DOMPurify.sanitize(parsed, {
-      USE_PROFILES: { html: true },
-      ADD_ATTR: ['target', 'rel'],
-    })
+    return sanitizeMarkdownHtml(parsed, raw)
   }, [source, variant])
 
   // Truncation can only be measured in the DOM, after layout.

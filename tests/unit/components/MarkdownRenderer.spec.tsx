@@ -96,4 +96,45 @@ describe('MarkdownRenderer', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, value: 0 })
   })
+
+  describe('what an app owner can put into a description', () => {
+    const renderMd = (source: string) => renderWithProviders(<MarkdownRenderer source={source} />).container
+
+    it('renders tables and task lists', () => {
+      const c = renderMd('[Doku](https://docs.example.org/)\n\n| a | b |\n|:-:|--:|\n| 1 | 2 |\n\n- [x] fertig')
+
+      expect(c.querySelector('a')?.getAttribute('href')).toBe('https://docs.example.org/')
+      expect(c.querySelector('th')?.getAttribute('align')).toBe('center')
+      expect(c.querySelector('input[type="checkbox"]')).toBeDisabled()
+    })
+
+    it('never gives a page opened from a link a handle on the AppStore window', () => {
+      const link = renderMd('<a href="https://evil.example/" target="_blank" rel="opener">Doku</a>').querySelector('a')!
+
+      expect(link.getAttribute('target')).toBe('_blank')
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    })
+
+    it('cannot restyle or overlay the page around it', () => {
+      const c = renderMd(
+        '<style>body { display: none }</style>' +
+          '<div style="position: fixed; inset: 0; z-index: 9999">Anmeldung abgelaufen</div>',
+      )
+
+      expect(c.querySelector('style')).toBeNull()
+      expect(c.querySelector('[style*="fixed"]')).toBeNull()
+      expect(c.textContent).toContain('Anmeldung abgelaufen')
+    })
+
+    it('renders no forms', () => {
+      const c = renderMd(
+        '<form action="/api/auth" method="post"><input name="password" type="password">' +
+          '<textarea></textarea><select></select><button>Anmelden</button></form>',
+      )
+
+      for (const tag of ['form', 'textarea', 'select', 'button']) {
+        expect(c.querySelector(tag)).toBeNull()
+      }
+    })
+  })
 })

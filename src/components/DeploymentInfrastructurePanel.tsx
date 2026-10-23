@@ -25,6 +25,8 @@ export interface DeploymentInfrastructurePanelProps {
   redeployInFlight: Set<string>
   /** Address of the VM whose detail drawer is open, if any. */
   openDrawerAddress: string | null
+  /** Operate right and the lifecycle allows a redeploy right now. */
+  canRedeploy?: boolean
   onRefresh: () => void
   onOpenVm: (address: string) => void
   onRedeployVm: (address: string) => void
@@ -38,6 +40,7 @@ export default function DeploymentInfrastructurePanel({
   resourcesError,
   redeployInFlight,
   openDrawerAddress,
+  canRedeploy = true,
   onRefresh,
   onOpenVm,
   onRedeployVm,
@@ -101,6 +104,7 @@ export default function DeploymentInfrastructurePanel({
                 resource={vm}
                 redeploying={redeployInFlight.has(vm.address)}
                 isExpanded={openDrawerAddress === vm.address}
+                canRedeploy={canRedeploy}
                 onOpenDetails={onOpenVm}
                 onRedeploy={onRedeployVm}
               />

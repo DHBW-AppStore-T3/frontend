@@ -108,4 +108,40 @@ describe('VariableInput', () => {
       expect(screen.queryByTestId('os-picker')).not.toBeInTheDocument()
     })
   })
+
+  describe('enum (pod apps: one of the values appstore.yaml declares)', () => {
+    const enumVar = (over: Record<string, unknown> = {}) => variable({ osType: 'enum', values: ['s', 'm', 'l'], ...over })
+
+    it('is a select over the declared values, not an OpenStack picker', () => {
+      renderWithProviders(<VariableInput variable={enumVar({ default: 'm' })} value="m" onChange={() => {}} />)
+
+      const select = screen.getByTestId('enum-input') as HTMLSelectElement
+      expect(Array.from(select.options).map((o) => o.text)).toEqual(['s', 'm', 'l'])
+      expect(select.value).toBe('m')
+      expect(screen.queryByTestId('os-picker')).not.toBeInTheDocument()
+    })
+
+    it('emits the chosen value', async () => {
+      const onChange = vi.fn()
+      renderWithProviders(<VariableInput variable={enumVar({ default: 'm' })} value="m" onChange={onChange} />)
+
+      await userEvent.selectOptions(screen.getByTestId('enum-input'), 'l')
+
+      expect(onChange).toHaveBeenCalledWith('l')
+    })
+
+    it('without a default it asks for a choice first', () => {
+      renderWithProviders(<VariableInput variable={enumVar({ values: ['a', 'b'] })} value="" onChange={() => {}} />)
+
+      const first = (screen.getByTestId('enum-input') as HTMLSelectElement).options[0]!
+      expect(first.text).toBe('variableInput.choose')
+      expect(first.disabled).toBe(true)
+    })
+
+    it('can be disabled', () => {
+      renderWithProviders(<VariableInput variable={enumVar()} value="" onChange={() => {}} disabled />)
+
+      expect(screen.getByTestId('enum-input')).toBeDisabled()
+    })
+  })
 })
