@@ -1,13 +1,16 @@
 /**
- * Read API for the current user's OpenStack resources.
+ * Read API for the OpenStack resources of one of the caller's credentials.
  *
  * Used by the ``OpenStackResourcePicker`` so wizard users don't have to copy
- * UUIDs from Horizon. The backend caches responses for 60s, so the frontend can
- * call freely without triggering a Keystone token storm.
+ * UUIDs from Horizon. Every list is read with the credential the deployment
+ * will be created with (``/me/openstack-credentials/{id}/resources/…``), so
+ * the picker shows exactly that project. The backend caches responses for
+ * 60s, so the frontend can call freely without triggering a Keystone token
+ * storm.
  *
- * Error strategy: the backend answers 412 (credentials missing) / 502
- * (OpenStack API down) / 200 (with data); the picker reads the status and
- * renders the matching fallback.
+ * Error strategy: the backend answers 404 (not the caller's credential) /
+ * 502 (OpenStack API down) / 200 (with data); the picker reads the status
+ * and renders the matching fallback.
  */
 import api from './axios'
 
@@ -93,41 +96,44 @@ export type OsResourceType =
 // ----------------------------------------------------------------
 // Endpoints
 // ----------------------------------------------------------------
-export const openstackResourcesApi = {
-  listNetworks: () => api.get<OsNetwork[]>('/me/openstack/resources/networks'),
+const base = (credentialId: string) =>
+  `/me/openstack-credentials/${encodeURIComponent(credentialId)}/resources`
 
-  listSubnets: (networkId?: string) =>
-    api.get<OsSubnet[]>('/me/openstack/resources/subnets', {
+export const openstackResourcesApi = {
+  listNetworks: (credentialId: string) => api.get<OsNetwork[]>(`${base(credentialId)}/networks`),
+
+  listSubnets: (credentialId: string, networkId?: string) =>
+    api.get<OsSubnet[]>(`${base(credentialId)}/subnets`, {
       params: networkId ? { network_id: networkId } : undefined,
     }),
 
-  listFlavors: () => api.get<OsFlavor[]>('/me/openstack/resources/flavors'),
+  listFlavors: (credentialId: string) => api.get<OsFlavor[]>(`${base(credentialId)}/flavors`),
 
-  listImages: (statusFilter: string = 'active') =>
-    api.get<OsImage[]>('/me/openstack/resources/images', {
+  listImages: (credentialId: string, statusFilter: string = 'active') =>
+    api.get<OsImage[]>(`${base(credentialId)}/images`, {
       params: { status: statusFilter },
     }),
 
-  listKeypairs: () => api.get<OsKeypair[]>('/me/openstack/resources/keypairs'),
+  listKeypairs: (credentialId: string) => api.get<OsKeypair[]>(`${base(credentialId)}/keypairs`),
 
-  listSecurityGroups: () =>
-    api.get<OsSecurityGroup[]>('/me/openstack/resources/security-groups'),
+  listSecurityGroups: (credentialId: string) =>
+    api.get<OsSecurityGroup[]>(`${base(credentialId)}/security-groups`),
 
-  listFloatingIpPools: () =>
-    api.get<OsFloatingIpPool[]>('/me/openstack/resources/floating-ip-pools'),
+  listFloatingIpPools: (credentialId: string) =>
+    api.get<OsFloatingIpPool[]>(`${base(credentialId)}/floating-ip-pools`),
 
-  listVolumes: () => api.get<OsVolume[]>('/me/openstack/resources/volumes'),
+  listVolumes: (credentialId: string) => api.get<OsVolume[]>(`${base(credentialId)}/volumes`),
 
-  listRouters: () => api.get<OsRouter[]>('/me/openstack/resources/routers'),
+  listRouters: (credentialId: string) => api.get<OsRouter[]>(`${base(credentialId)}/routers`),
 
-  listAvailabilityZones: (service: 'compute' | 'network' | 'volume' = 'compute') =>
-    api.get<OsAvailabilityZone[]>('/me/openstack/resources/availability-zones', {
+  listAvailabilityZones: (credentialId: string, service: 'compute' | 'network' | 'volume' = 'compute') =>
+    api.get<OsAvailabilityZone[]>(`${base(credentialId)}/availability-zones`, {
       params: { service },
     }),
 
-  /** Cache-bust for the user. ``kind`` optional, otherwise everything. */
-  refresh: (kind?: OsResourceType) =>
-    api.post('/me/openstack/resources/refresh', null, {
+  /** Cache-bust for the credential. ``kind`` optional, otherwise everything. */
+  refresh: (credentialId: string, kind?: OsResourceType) =>
+    api.post(`${base(credentialId)}/refresh`, null, {
       params: kind ? { kind } : undefined,
     }),
 }

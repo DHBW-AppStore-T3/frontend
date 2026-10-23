@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
     isAuthenticated: false,
     initialize: vi.fn(),
-    hasAnyRole: (..._r: string[]) => false,
+    hasAnyRole: (..._r: string[]): boolean => false,
   },
   draft: { appId: null, name: '', studentIds: [] as string[] },
 }))
@@ -28,6 +28,9 @@ vi.mock('@/stores/deployment.store', () => ({
 vi.mock('@/views/CoursesView', () => ({ default: () => <p>courses</p> }))
 vi.mock('@/views/AppsView', () => ({ default: () => <p>apps</p> }))
 vi.mock('@/views/DashboardView', () => ({ default: () => <p>dashboard</p> }))
+vi.mock('@/views/AddAppsView', () => ({ default: () => <p>add-app</p> }))
+vi.mock('@/views/NewDeploymentConfigView', () => ({ default: () => <p>wizard-config</p> }))
+vi.mock('@/views/SettingsOpenStackView', () => ({ default: () => <p>openstack-settings</p> }))
 vi.mock('@/views/DeploymentDetailView', () => ({
   default: () => <p data-testid="detail-view">detail</p>,
 }))
@@ -51,6 +54,13 @@ beforeEach(() => {
   mocks.auth.hasAnyRole = () => false
   mocks.draft = { appId: null, name: '', studentIds: [] }
 })
+
+// Role as the real store derives it: hasAnyRole looks at the user.
+const loginAs = (role: 'student' | 'teacher' | 'admin') => {
+  mocks.auth.isAuthenticated = true
+  mocks.auth.user = { userId: 'u', role }
+  mocks.auth.hasAnyRole = (...roles: string[]) => roles.includes(role)
+}
 
 describe('app routes', () => {
   it('redirects unauthenticated users from a protected route to /login with returnUrl', async () => {
@@ -84,8 +94,7 @@ describe('app routes', () => {
   })
 
   it('sends incomplete wizard deep-links back to the matching earlier step', async () => {
-    mocks.auth.isAuthenticated = true
-    mocks.auth.user = { userId: 'u', role: 'teacher' }
+    loginAs('teacher')
     const router = renderAt('/deployment/new/summary')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/apps'))
@@ -102,6 +111,54 @@ describe('app routes', () => {
     const router = renderAt('/does/not/exist')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+})
+
+describe('staff-only routes (teachers and admins register apps, deploy, manage credentials)', () => {
+  const STAFF_ONLY = [
+    '/apps/create',
+    '/deployment/new/config',
+    '/deployment/new/teams',
+    '/deployment/new/variables',
+    '/deployment/new/summary',
+    '/user/openstack',
+    '/courses',
+  ]
+
+  it.each(STAFF_ONLY)('sends a student from %s to /forbidden', async (url) => {
+    loginAs('student')
+    const router = renderAt(url)
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/forbidden'))
+  })
+
+  it.each([
+    ['teacher', '/apps/create'],
+    ['admin', '/apps/create'],
+    ['teacher', '/deployment/new/config'],
+    ['teacher', '/user/openstack'],
+    ['admin', '/user/openstack'],
+  ] as const)('lets a %s open %s', async (role, url) => {
+    loginAs(role)
+    const router = renderAt(url)
+
+    await waitFor(() => expect(document.querySelector('.app-shell, .user-shell, main')).not.toBeNull())
+    expect(router.state.location.pathname).toBe(url)
+  })
+
+  it('keeps the admin review admin-only', async () => {
+    loginAs('teacher')
+    const router = renderAt('/admin/apps')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/forbidden'))
+  })
+
+  it('lets every signed-in role open the app catalogue and the deployments', async () => {
+    loginAs('student')
+    const router = renderAt('/apps')
+
+    await waitFor(() => expect(document.querySelector('.app-shell')).not.toBeNull())
+    expect(router.state.location.pathname).toBe('/apps')
   })
 })
 
