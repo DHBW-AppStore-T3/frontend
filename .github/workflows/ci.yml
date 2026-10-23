@@ -2,10 +2,17 @@ name: Frontend CI/CD
 
 on:
   push:
+    # spike/**: migration work (.github#4-#7); tested and, for spike/react-pods
+    # (the React port of the pod frontend), published as
+    # ghcr.io/...:spike-react-pods, never as dev/latest. Rolled out on the
+    # k8s staging only by hand (workflow_dispatch) until the cutover from
+    # spike/vue-pods (frontend#36).
     branches: [main, dev, 'spike/**']
     tags: ['v*.*.*']
   pull_request:
     branches: [main, dev]
+  # Runs the pipeline again for a branch (on spike/react-pods it also
+  # publishes and rolls out on the k8s staging).
   workflow_dispatch:
 
 env:
@@ -306,17 +313,21 @@ jobs:
           category: trivy-image
 
   # ================================================================
-  # 📦 PUSH — only on main
+  # 📦 PUSH — main, dev and spike/react-pods (as spike-react-pods)
   # ================================================================
   push:
     name: "📦 Push"
     runs-on: ubuntu-latest
     needs: [build, image-scan]
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
+    if: >-
+      ((github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push') ||
+      (github.ref == 'refs/heads/spike/react-pods' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
     timeout-minutes: 20
     permissions:
       contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.push-image.outputs.digest }}
 
     steps:
       - name: Checkout repository
@@ -343,11 +354,13 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=spike-react-pods,enable=${{ github.ref == 'refs/heads/spike/react-pods' }}
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push Docker image
+        id: push-image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -397,3 +410,28 @@ jobs:
             --ref main
         env:
           GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
+
+  # ================================================================
+  # ☸️ ROLL OUT ON K8S STAGING — spike/react-pods, by hand
+  # ================================================================
+  # The deployment repo pins the image just pushed (tag sha-<commit>) by its
+  # digest in k8s/env/appstore.yaml on its spike/dev; Argo CD's staging
+  # environment follows. Only one frontend branch may do this at a time:
+  # spike/vue-pods still rolls out on push, so this one runs on
+  # workflow_dispatch only. At the cutover (frontend#36) the Vue trigger is
+  # removed and this one also runs on push. Production only through
+  # k8s/promote.sh (a PR).
+  k8s-staging:
+    name: "☸️ Roll out on k8s staging"
+    runs-on: ubuntu-latest
+    needs: [push]
+    if: github.ref == 'refs/heads/spike/react-pods' && github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Pin the new image in the deployment repo
+        run: |
+          gh workflow run k8s-bump.yml --repo DHBW-AppStore-T3/deployment --ref spike/dev \
+            -f component=frontend -f tag="sha-${GITHUB_SHA::7}" -f digest="$DIGEST"
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
+          DIGEST: ${{ needs.push.outputs.digest }}
