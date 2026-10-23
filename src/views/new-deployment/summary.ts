@@ -2,7 +2,7 @@
  * Pure presentation logic of the wizard's summary step: turning draft values
  * and variable definitions into display rows, and backend errors into messages.
  */
-import type { AppVariable, DeploymentFile } from '@/types'
+import { isOsResourceVar, type AppVariable, type DeploymentFile } from '@/types'
 import { formatBytes } from '@/utils/format'
 import { isMultiImagePackerLayout, packerValueFor } from '@/utils/draft-variables'
 
@@ -71,7 +71,7 @@ export function renderOsValue(
 export function toSummaryEntry(def: AppVariable, val: unknown, ctx: SummaryContext): SummaryEntry {
   const { t, getDisplayName } = ctx
   const display = (raw: unknown) =>
-    def.osType
+    def.osType && isOsResourceVar(def)
       ? renderOsValue(def.osType, def.osMode || 'name', raw, !!def.osMulti, getDisplayName)
       : formatValue(raw, t)
 
@@ -82,7 +82,7 @@ export function toSummaryEntry(def: AppVariable, val: unknown, ctx: SummaryConte
     return { label: def.name, value: entries.map(([slot, raw]) => `${slot}: ${display(raw)}`).join(' · ') }
   }
 
-  if (def.osType) {
+  if (def.osType && isOsResourceVar(def)) {
     const shown = display(val)
     const rawString = formatValue(val, t)
     return { label: def.name, value: shown, raw: shown !== rawString ? rawString : undefined }
