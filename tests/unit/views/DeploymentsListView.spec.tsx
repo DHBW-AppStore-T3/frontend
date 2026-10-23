@@ -106,4 +106,31 @@ describe('DeploymentsListView', () => {
     expect(screen.getByText('Broken')).toBeInTheDocument()
     expect(screen.queryByText('Alive')).not.toBeInTheDocument()
   })
+
+  it('nennt je Deployment, ob es als Pods oder als VM läuft', () => {
+    setState([
+      deployment({ deploymentId: '1', name: 'Pods', runtime: 'kubernetes' }),
+      deployment({ deploymentId: '2', name: 'Windows', runtime: 'openstack-vm' }),
+    ])
+    renderView()
+
+    expect(screen.getAllByTestId('runtime-badge').map((b) => b.textContent).sort()).toEqual([
+      'runtime.kubernetesShort',
+      'runtime.openstackVmShort',
+    ])
+  })
+
+  it('zeigt ein Deployment mit fehlgeschlagenem Redeploy unter "aktiv", eines mit laufendem unter "in Arbeit"', async () => {
+    setState([
+      deployment({ deploymentId: '1', name: 'Failed redeploy', status: 'redeploy_failed' }),
+      deployment({ deploymentId: '2', name: 'Redeploying', status: 'redeploying' }),
+    ])
+    renderView()
+    expect(screen.getByText('Failed redeploy')).toBeInTheDocument()
+    expect(screen.queryByText('Redeploying')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /workspace\.statusTabs\.building/ }))
+
+    expect(screen.getByText('Redeploying')).toBeInTheDocument()
+  })
 })

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Check, X, RotateCcw } from 'lucide-react'
 import AppVersionStatusBadge from '@/components/ui/AppVersionStatusBadge'
 import { formatDate } from '@/utils/format'
+import ReviewScope from './ReviewScope'
 import type { AppVersionApproval } from '@/types'
 
 export interface VersionTableProps {
@@ -49,6 +50,7 @@ export default function VersionTable({ approvals, isBusy, onApprove, onReject, o
                 <span className="font-mono text-textHeading bg-surfaceMuted px-2 py-0.5 rounded text-xs">
                   {approval.version_tag}
                 </span>
+                <ReviewScope approval={approval} />
               </td>
               <td className="py-3 px-4">
                 <div className="space-y-1.5">

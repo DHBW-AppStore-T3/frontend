@@ -242,4 +242,42 @@ describe('AdminAppsView', () => {
       expect(toasts()).toContainEqual(['success', 'AdminAppsView.revokeSuccess'])
     })
   })
+
+  describe('was eine Freigabe festlegt', () => {
+    const expandWith = async (approvals: unknown[]) => {
+      vi.mocked(appApi.listVersionApprovals).mockResolvedValue({ data: approvals } as any)
+      renderView()
+      await expand()
+      return within(await screen.findByTestId('review-scope'))
+    }
+
+    it('zeigt bei einer Pod-Version Laufzeit, Commit, appstore.yaml-Hash und Image-Digests', async () => {
+      const scope = await expandWith([
+        {
+          approvalId: 'v-1',
+          version_tag: '1.0.0',
+          status: 'pending',
+          created_at: '2026-01-01T00:00:00Z',
+          runtime: 'kubernetes',
+          commit_sha: 'abcdef0123456789abcdef',
+          spec_sha256: '0123456789abcdef0123',
+          image_digests: ['sha256:aaaaaaaaaaaaaaaaaaaaaaaa', 'sha256:bbbbbbbbbbbbbbbbbbbbbbbb'],
+        },
+      ])
+
+      expect(scope.getByText('runtime.kubernetes')).toBeInTheDocument()
+      expect(scope.getByText('abcdef012345')).toBeInTheDocument()
+      expect(scope.getByText('0123456789ab')).toBeInTheDocument()
+      expect(scope.getAllByText(/^sha256:/)).toHaveLength(2)
+    })
+
+    it('weist eine Version ohne Commit darauf hin, dass sie neu eingereicht werden muss', async () => {
+      const scope = await expandWith([
+        { approvalId: 'v-1', version_tag: '1.0.0', status: 'pending', created_at: '2026-01-01T00:00:00Z', runtime: 'openstack-vm', commit_sha: null },
+      ])
+
+      expect(scope.getByText('AdminAppsView.notPinned')).toBeInTheDocument()
+      expect(scope.queryByText('AdminAppsView.specLabel')).not.toBeInTheDocument()
+    })
+  })
 })

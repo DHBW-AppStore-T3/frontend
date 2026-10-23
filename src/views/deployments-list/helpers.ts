@@ -1,8 +1,10 @@
 import type { Deployment } from '@/types'
 
 export const STATUS_GROUPS: Record<string, string[]> = {
-  active: ['success'],
-  building: ['pending', 'running', 'resuming', 'destroying', 'pausing'],
+  // `redeploy_failed` is still running (only one VM or workload is in doubt),
+  // so it counts as active.
+  active: ['success', 'redeploy_failed'],
+  building: ['pending', 'running', 'resuming', 'destroying', 'pausing', 'redeploying'],
   stopped: ['paused', 'failed', 'cancelled', 'destroyed', 'pause_failed', 'resume_failed'],
 }
 
@@ -48,6 +50,8 @@ const STATUS_PILL_CLASS: Record<string, string> = {
   resuming: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   pause_failed: 'bg-amber-100 text-amber-900 border-amber-300',
   resume_failed: 'bg-amber-100 text-amber-900 border-amber-300',
+  redeploying: 'bg-infoTint text-blue-800 border-blue-300',
+  redeploy_failed: 'bg-amber-100 text-amber-900 border-amber-300',
 }
 
 const DEFAULT_STATUS_PILL_CLASS = 'bg-surfaceMuted text-textHeading border-borderSubtle'
