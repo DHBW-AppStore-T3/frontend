@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/stores/app.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
-import { ensureLoaded } from '@/composables/useOpenStackResourceCache'
+import { ensureLoaded, setCredential } from '@/composables/useOpenStackResourceCache'
 import type { OsResourceType } from '@/api/openstack-resources.api'
 import { paths } from '@/router/paths'
-import type { AppVariable } from '@/types'
+import { isOsResourceVar, type AppVariable } from '@/types'
 import {
   buildDraftValues,
   buildWizardTeams,
@@ -68,6 +68,9 @@ export function useVariableForm() {
   const packerByTemplate = useMemo(() => groupPackerByTemplate(variables), [variables])
   const templateKeys = useMemo(() => Object.keys(packerByTemplate).sort(), [packerByTemplate])
   const isMultiImage = isMultiImageLayout(templateKeys)
+  // Pod apps declare their settings in appstore.yaml: no Packer, no Terraform,
+  // no OpenStack resources.
+  const isPods = draft.runtime === 'kubernetes'
   const terraformVariables = useMemo(() => variables.filter((v) => v.source === 'terraform'), [variables])
   // ---------------------------------------------------------- initial load
   useEffect(() => {
@@ -77,6 +80,10 @@ export function useVariableForm() {
       navigate(paths.apps, { replace: true })
       return
     }
+
+    // OpenStack resource lists come from the project of the credential the
+    // deployment will be created with (VM apps); pods have none.
+    setCredential(store.draft.runtime === 'kubernetes' ? null : (store.draft.credentialId ?? null))
 
     let cancelled = false
     const currentTeams = () => {
@@ -108,8 +115,9 @@ export function useVariableForm() {
         setVariables(defs)
 
         // Prime the display cache so pickers/summary show names right away.
+        // Only real OpenStack resources are cached (not files, not enums).
         const types = new Set<string>()
-        defs.forEach((v) => v.osType && v.osType !== 'file' && types.add(v.osType))
+        defs.forEach((v) => v.osType && isOsResourceVar(v) && types.add(v.osType))
         await Promise.allSettled([...types].map((type) => ensureLoaded(type as OsResourceType)))
         if (cancelled) return
 
@@ -229,6 +237,7 @@ export function useVariableForm() {
     packerByTemplate,
     terraformVariables,
     isMultiImage,
+    isPods,
     formValues,
     missingRequired,
     canSubmit: missingRequired.length === 0,

@@ -219,4 +219,25 @@ describe('NewDeploymentGroupsAssignmentView', () => {
     expect(screen.getByRole('button', { name: 'deployment.groups.custom' })).toBeDisabled()
     expect(screen.getByText('deployment.assignment.windowsConstraintTitle')).toBeInTheDocument()
   })
+
+  describe('nach Laufzeit und Scope der Version (appstore.yaml)', () => {
+    it('scope user erzwingt "Jeder einzeln", auch bei einer Pod-App ohne Windows im Namen', async () => {
+      useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
+      seed({ appId: 'lab', runtime: 'kubernetes', scope: 'user' })
+      renderView()
+
+      await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
+      expect(screen.getByText('deployment.assignment.perPersonConstraintText')).toBeInTheDocument()
+    })
+
+    it('scope team lässt die Gruppierung frei, auch bei einem "Windows"-Namen', async () => {
+      useAppStore.setState({ apps: [{ appId: 'win', name: 'Windows Lab' } as any] })
+      seed({ appId: 'win', runtime: 'openstack-vm', scope: 'team' })
+      renderView()
+
+      await screen.findByText('John Doe')
+      expect(screen.getByRole('button', { name: 'deployment.groups.one' })).toBeEnabled()
+      expect(screen.queryByText('deployment.assignment.windowsConstraintTitle')).not.toBeInTheDocument()
+    })
+  })
 })

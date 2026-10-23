@@ -45,7 +45,7 @@ export default function NewDeploymentGroupsAssignmentView() {
   const navigate = useNavigate()
   const draft = useDeploymentStore((s) => s.draft)
   const draftApp = useDeploymentStore((s) => s.draftAppDetails)()
-  const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(draftApp)
+  const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope })
 
   const [dragged, setDragged] = useState<string | null>(null)
   const [dragOverTeam, setDragOverTeam] = useState<number | null>(null)
