@@ -33,7 +33,8 @@ const renderView = () =>
     { route: '/apps' },
   )
 
-const asUser = (role = 'student', userId = 'me') =>
+// Teachers and admins register apps; students browse.
+const asUser = (role = 'teacher', userId = 'me') =>
   useAuthStore.setState({ user: { userId, role } as any })
 
 beforeEach(() => {
@@ -285,5 +286,17 @@ describe('AppsView – Fachbereichsfilter', () => {
 
     expect(screen.getAllByRole('button', { pressed: true, name: /workspace\.categories\./ })).toHaveLength(1)
     expect(tab('informatik')).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+describe('AppsView — wer Apps anlegen darf', () => {
+  it('Studierende sehen keinen "App hinzufügen"-Button, auch nicht in der leeren Liste', async () => {
+    asUser('student')
+    vi.mocked(appApi.list).mockResolvedValue({ data: [] } as any)
+    renderView()
+
+    await screen.findByText('AppsView.title')
+    await waitFor(() => expect(appApi.list).toHaveBeenCalled())
+    expect(screen.queryByText('AppsView.addApp')).not.toBeInTheDocument()
   })
 })

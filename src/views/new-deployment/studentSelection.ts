@@ -5,7 +5,7 @@ export function displayNameOf(student: User): string {
   if (student.firstName || student.lastName) {
     return `${student.firstName || ''} ${student.lastName || ''}`.trim()
   }
-  return student.username || student.email || student.keycloak_id || ''
+  return student.username || student.email || student.userId || ''
 }
 
 /** A course counts as selected when it has students and all of them are selected. */
@@ -40,13 +40,15 @@ export function deriveCourseIds(
 }
 
 /**
- * Merge students into a cache keyed by keycloak id. Existing entries are only
+ * Merge students into a cache keyed by the AppStore user id (`userId`: what
+ * the teams carry, and the one id every user has; people who came in through
+ * Moodle have no Keycloak id). Existing entries are only
  * replaced when the new object carries more information (first/last name).
  */
 export function mergeIntoCache(cache: Map<string, User>, students: User[]): Map<string, User> {
   const next = new Map(cache)
   for (const s of students || []) {
-    const id = s?.keycloak_id
+    const id = s?.userId
     if (!id || typeof id !== 'string' || !id.trim()) continue
     const existing = next.get(id)
     if (!existing || (s.firstName && !existing.firstName) || (s.lastName && !existing.lastName)) {

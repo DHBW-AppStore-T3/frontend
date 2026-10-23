@@ -12,6 +12,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { appApi } from '@/api/app.api'
 import { DEPARTMENTS, departmentsForGitLink, type Department } from '@/config/department-catalog'
 import { useFavorites } from '@/composables/useFavorites'
+import { useRole } from '@/composables/useRole'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore, selectIsAdmin, selectUserId } from '@/stores/auth.store'
 import { paths } from '@/router/paths'
@@ -26,6 +27,8 @@ export default function AppsView() {
   const navigate = useNavigate()
   const isAdmin = useAuthStore(selectIsAdmin)
   const userId = useAuthStore(selectUserId)
+  // Teachers and admins register apps (.github#7 F).
+  const { isStaff } = useRole()
 
   const [isLoading, setIsLoading] = useState(false)
   const [apps, setApps] = useState<App[]>([])
@@ -190,7 +193,7 @@ export default function AppsView() {
                 {filterButton('private', t('AppsView.filterPrivate'), <Lock size={13} />)}
               </div>
             ) : null}
-            {addAppButton}
+            {isStaff ? addAppButton : null}
           </>
         }
       />
@@ -215,7 +218,7 @@ export default function AppsView() {
         icon={Inbox}
         emptyMessage={emptyMessage}
         loadingMessage={t('AppsView.loading')}
-        emptyAction={visibilityFilter === 'all' && !isDepartmentFilter ? addAppButton : null}
+        emptyAction={isStaff && visibilityFilter === 'all' && !isDepartmentFilter ? addAppButton : null}
       >
         <div className="app-catalog-grid">
           {filteredApps.map((app) => {

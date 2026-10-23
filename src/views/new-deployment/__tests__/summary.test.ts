@@ -7,7 +7,6 @@ import {
   buildTerraformEntries,
   buildFileSummaries,
   formatSubmitError,
-  mapIdsToUserIds,
   versionLabelOf,
 } from '../summary'
 
@@ -124,23 +123,35 @@ describe('formatSubmitError', () => {
     expect(formatSubmitError(err({ reason: 'file_b64_invalid', variable: 'v', slot: 's' }), t)).toContain('"filename":"v/s"')
   })
 
+  it.each(['version_not_approved', 'role_required'])('maps the code %s', (code) => {
+    expect(formatSubmitError(err({ code }), t)).toBe(`deployment.summary.errors.${code}`)
+  })
+
+  it.each([
+    'invalid_teams',
+    'member_in_several_teams',
+    'too_many_workloads',
+    'openstack_credentials_unverified',
+    'invalid_app_spec',
+    'version_moved',
+    'git_host_not_allowed',
+  ])('maps the reason %s with the limit and workload numbers', (reason) => {
+    expect(formatSubmitError(err({ reason, limit: 5, workloads: 9 }), t)).toBe(
+      `deployment.summary.errors.${reason} {"limit":5,"workloads":9}`,
+    )
+  })
+
+  it('names the workload budget with the numbers the teacher needs', () => {
+    expect(formatSubmitError(err({ reason: 'workload_budget_exceeded', in_use: 8, requested: 4, budget: 10 }), t)).toBe(
+      'deployment.summary.errors.workload_budget_exceeded {"inUse":8,"requested":4,"budget":10}',
+    )
+  })
+
   it('falls back to a string detail, the error message, then the generic key', () => {
     expect(formatSubmitError(err('plain detail'), t)).toBe('plain detail')
     expect(formatSubmitError({ message: 'boom' }, t)).toBe('boom')
     expect(formatSubmitError({}, t)).toBe('deployment.summary.submitError')
     expect(formatSubmitError(err({ reason: 'weird' }, 'm'), t)).toBe('m')
-  })
-})
-
-describe('mapIdsToUserIds', () => {
-  it('maps keycloak ids to user ids, keeping unknown ids', () => {
-    const lookup = mapIdsToUserIds([
-      { keycloak_id: 'k1', userId: 'u1' },
-      { keycloak_id: null, userId: 'u2' },
-    ] as any)
-    expect(lookup('k1')).toBe('u1')
-    expect(lookup('u2')).toBe('u2')
-    expect(lookup('zzz')).toBe('zzz')
   })
 })
 

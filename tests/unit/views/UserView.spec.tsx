@@ -76,4 +76,10 @@ describe('User profile', () => {
     renderView()
     expect(screen.getByRole('link')).toHaveAttribute('href', '/user/openstack')
   })
+
+  it('hides the credentials settings from students (only VM apps need a credential)', () => {
+    setUser({ username: 'student', role: 'student' })
+    renderView()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
 })

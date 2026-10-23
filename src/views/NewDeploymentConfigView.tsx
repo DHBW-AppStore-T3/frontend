@@ -1,18 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Search, Check, Users, BookOpen, UserPlus } from 'lucide-react'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar'
 import CredentialMissingBanner from '@/components/CredentialMissingBanner'
 import { useDeploymentStore } from '@/stores/deployment.store'
-import {
-  useOpenStackCredentialsStore,
-  selectIsResolved,
-  selectHasUsableCredential,
-} from '@/stores/openstack-credentials.store'
 import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
 import { useStudentDirectory } from './new-deployment/useStudentDirectory'
+import { useDeploymentRuntime } from './new-deployment/useDeploymentRuntime'
+import CredentialPicker from './new-deployment/CredentialPicker'
 import {
   deriveCourseIds,
   displayNameOf,
@@ -41,18 +38,10 @@ export default function NewDeploymentConfigView() {
   const toast = useToast()
 
   const draft = useDeploymentStore((s) => s.draft)
-  const isResolved = useOpenStackCredentialsStore(selectIsResolved)
-  const hasCredential = useOpenStackCredentialsStore(selectHasUsableCredential)
   const directory = useStudentDirectory()
+  const runtime = useDeploymentRuntime()
+  const { credentialsMissing } = runtime
   const [activeTab, setActiveTab] = useState<Tab>('courses')
-
-  // Make sure the credential state is fresh; the banner shows when missing.
-  useEffect(() => {
-    const creds = useOpenStackCredentialsStore.getState()
-    if (!creds.credentials) void creds.fetch()
-  }, [])
-
-  const credentialsMissing = isResolved && !hasCredential
   const updateDraft = useDeploymentStore.getState().updateDraft
 
   // Keep the course selection in sync with the student selection.
@@ -78,9 +67,9 @@ export default function NewDeploymentConfigView() {
     applyStudentIds(toggleCourseSelection(current, memberIds))
   }
 
-  const toggleStudent = (keycloakId: string | null | undefined) => {
-    if (!keycloakId) return
-    applyStudentIds(toggleId(useDeploymentStore.getState().draft.studentIds, keycloakId))
+  const toggleStudent = (userId: string | null | undefined) => {
+    if (!userId) return
+    applyStudentIds(toggleId(useDeploymentStore.getState().draft.studentIds, userId))
   }
 
   const selectedStudents = useMemo(
@@ -90,12 +79,13 @@ export default function NewDeploymentConfigView() {
 
   // The backend already filtered by the query; reuse cached objects (richer data).
   const searchResults = directory.query.trim()
-    ? directory.students.map((s) => (s.keycloak_id ? (directory.cache.get(s.keycloak_id) ?? s) : s))
+    ? directory.students.map((s) => (s.userId ? (directory.cache.get(s.userId) ?? s) : s))
     : []
 
   const handleNext = () => {
-    if (!hasCredential) {
-      toast.warning(t('AppsDetailView.missingCredsTitle'))
+    // VM apps run in the project of a credential the caller picks; pods need none.
+    if (runtime.needsCredential && !runtime.credentialId) {
+      toast.warning(t('deployment.config.credentialRequired'))
       return
     }
     if (!draft.name || draft.name.trim() === '') {
@@ -139,6 +129,14 @@ export default function NewDeploymentConfigView() {
           </div>
         ) : (
           <>
+            {runtime.needsCredential ? (
+              <CredentialPicker
+                credentials={runtime.usableCredentials}
+                value={runtime.credentialId}
+                onChange={(credentialId) => updateDraft({ credentialId })}
+              />
+            ) : null}
+
             <div className="mb-8">
               <label className="block text-xl font-bold text-textHeading mb-3">
                 {t('deployment.config.nameLabel')}
@@ -228,12 +226,12 @@ export default function NewDeploymentConfigView() {
 
                       <div className="bg-surfaceMuted rounded-lg overflow-hidden border-2 border-borderSubtle max-h-[350px] overflow-y-auto">
                         {searchResults.map((student) => {
-                          const checked = draft.studentIds.includes(student.keycloak_id ?? '')
+                          const checked = draft.studentIds.includes(student.userId)
                           return (
                             <div
-                              key={student.keycloak_id ?? student.userId}
-                              onClick={() => toggleStudent(student.keycloak_id)}
-                              data-testid={`student-${student.keycloak_id}`}
+                              key={student.userId}
+                              onClick={() => toggleStudent(student.userId)}
+                              data-testid={`student-${student.userId}`}
                               className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-borderSubtle transition-colors select-none ${
                                 checked ? 'bg-primaryFaint' : 'hover:bg-surfaceMuted'
                               }`}
@@ -267,16 +265,16 @@ export default function NewDeploymentConfigView() {
                       <div className="space-y-2">
                         {selectedStudents.map((student) => (
                           <div
-                            key={student.keycloak_id ?? student.userId}
+                            key={student.userId}
                             className="flex items-center justify-between bg-white p-3 rounded-lg border border-borderSubtle"
                           >
                             <span className="text-textMuted font-medium">{displayNameOf(student)}</span>
                             <button
                               type="button"
-                              onClick={() => toggleStudent(student.keycloak_id)}
+                              onClick={() => toggleStudent(student.userId)}
                               className="text-danger hover:text-red-700 font-bold text-lg leading-none"
                               title={t('CourseDetailView.removeModal.remove')}
-                              data-testid={`remove-${student.keycloak_id ?? student.userId}`}
+                              data-testid={`remove-${student.userId}`}
                             >
                               ×
                             </button>
