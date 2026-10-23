@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   resume: vi.fn(),
   cancel: vi.fn(),
   listResources: vi.fn(),
+  restartWorkload: vi.fn(),
+  resetWorkload: vi.fn(),
   startStream: vi.fn(),
   stopStream: vi.fn(),
   stream: {
@@ -53,6 +55,8 @@ vi.mock('@/api/deployment.api', () => ({
     getMyAccess: mocks.getMyAccess,
     listResources: mocks.listResources,
     redeployResource: vi.fn(),
+    restartWorkload: mocks.restartWorkload,
+    resetWorkload: mocks.resetWorkload,
     getResourceDetail: vi.fn(() => new Promise(() => {})),
   },
 }))
@@ -70,6 +74,17 @@ import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
 import { keyEchoI18n } from '../../helpers/render'
+
+// What the API says the caller may do (`permissions` and `actions` of the detail).
+const OWNER = { owner_view: true, operate: true, member: false }
+const SEE_ONLY = { owner_view: true, operate: false, member: false }
+const MEMBER = { owner_view: false, operate: false, member: true }
+const ACTIONS_BY_STATUS: Record<string, string[]> = {
+  success: ['pause', 'destroy', 'redeploy'],
+  paused: ['resume', 'destroy'],
+  running: ['cancel'],
+  failed: ['delete'],
+}
 
 const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): DeploymentWithRelations => ({
   deploymentId: 'dep-1',
@@ -104,6 +119,9 @@ const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): Deplo
     releaseTag: 'v1.2.3',
     is_private: false,
   },
+  runtime: 'openstack-vm',
+  permissions: OWNER,
+  actions: ACTIONS_BY_STATUS[overrides.status ?? 'success'] ?? [],
   teams: [
     {
       teamId: 'team-1',
@@ -126,8 +144,6 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
   started_at: '2026-06-08T12:10:00Z',
   finished_at: '2026-06-08T12:20:00Z',
   logs: { logs: [{ timestamp: '2026-06-08T12:15:00Z', level: 'INFO', message: 'hello from the worker' }] },
-  tf_state: { resources: [{ name: 'vm-1' }] },
-  outputs: { url: 'https://example.org' },
   current_phase: 'OUTPUTS_AND_CLEANUP',
   progress_pct: 100,
   created_at: '2026-06-08T12:09:00Z',
@@ -229,14 +245,14 @@ describe('DeploymentDetailView', () => {
     renderView()
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/deployments'))
-    expect(toastCalls()).toContainEqual(['error', 'Deployment nicht gefunden.'])
+    expect(toastCalls()).toContainEqual(['error', 'DeploymentDetailView.notFound'])
   })
 
   // --- 2. Role & visibility logic ---
 
   it('blendet Tasks und Löschaktion für Nicht-Besitzer aus', async () => {
     asMember()
-    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment({ userId: 'user-owner' }) }))
+    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment({ permissions: MEMBER, actions: [] }) }))
     renderView()
 
     expect(await screen.findByText('DeploymentDetailView.tasksOwnerOnly')).toBeInTheDocument()
@@ -364,7 +380,7 @@ describe('DeploymentDetailView', () => {
 
   it('startet den Stream nicht für Mitglieder', async () => {
     asMember()
-    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment() }))
+    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment({ permissions: MEMBER, actions: [] }) }))
     renderView()
 
     await screen.findByText('DeploymentDetailView.tasksOwnerOnly')
@@ -403,7 +419,9 @@ describe('DeploymentDetailView', () => {
 describe('DeploymentDetailView — member self-access', () => {
   beforeEach(() => {
     asMember()
-    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment({ userId: 'user-owner' }) }))
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ permissions: MEMBER, actions: [] }),
+    }))
     mocks.listTasks.mockResolvedValue({ data: [] })
     mocks.getMyAccess.mockResolvedValue({
       data: {
@@ -441,12 +459,47 @@ describe('DeploymentDetailView — member self-access', () => {
     expect(screen.getByText('••••••••')).toBeInTheDocument()
   })
 
-  it('ruft /my-access NICHT auf, wenn der Nutzer Owner-View hat', async () => {
+  it('ruft /my-access NICHT auf, wenn der Nutzer kein Mitglied eines Teams ist', async () => {
     asStaff()
+    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment() }))
     renderView()
 
     await screen.findByText('owner@example.com')
     expect(mocks.getMyAccess).not.toHaveBeenCalled()
+  })
+
+  it('ruft /my-access auf, wenn die Besitzerin selbst in einem Team ist', async () => {
+    asStaff()
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ permissions: { owner_view: true, operate: true, member: true } }),
+    }))
+    renderView()
+
+    await waitFor(() => expect(mocks.getMyAccess).toHaveBeenCalledWith('dep-1'))
+  })
+
+  it('hängt die Zugangsdaten nur an die eigene Zeile, nie an einen Teamkollegen mit ähnlichem Namen', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({
+        permissions: MEMBER,
+        actions: [],
+        teams: [
+          {
+            teamId: 'team-1',
+            name: 'Team Alpha',
+            members: [
+              { userId: 'member-2', username: 'member1', email: 'member1@other.example' },
+              { userId: 'member-1', username: 'member.one', email: 'member1@example.com' },
+            ],
+          },
+        ],
+      }),
+    }))
+    renderView()
+
+    // Exactly one credential is shown: for member-1 (the caller), found by user id.
+    expect(await screen.findByText('ssh member1@10.0.0.5')).toBeInTheDocument()
+    expect(screen.getAllByText('ssh member1@10.0.0.5')).toHaveLength(1)
   })
 
   it('bietet kein Zugang-erneut-senden mehr an (die API stellt es nicht mehr bereit)', async () => {
@@ -466,5 +519,142 @@ describe('DeploymentDetailView — member self-access', () => {
 
     await screen.findByText('member.one')
     expect(screen.queryByText('DeploymentDetailView.resendAccessButton')).not.toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------
+// What the caller may do comes from the API, not from the role
+// ---------------------------------------------------------
+describe('DeploymentDetailView — Rechte aus der API', () => {
+  it('ein anderer Lehrer ohne Owner-View bekommt weder Tasks noch Löschen', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ permissions: MEMBER, actions: [] }),
+    }))
+    renderView() // signed in as a teacher
+
+    expect(await screen.findByText('DeploymentDetailView.tasksOwnerOnly')).toBeInTheDocument()
+    expect(mocks.listTasks).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('btn-delete-deployment')).not.toBeInTheDocument()
+  })
+
+  it('ein Admin, der nur sehen darf (VM-Deployment), kann nichts bedienen', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ permissions: SEE_ONLY }),
+    }))
+    renderView()
+
+    expect(await screen.findByTestId('btn-delete-deployment')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /DeploymentDetailView\.deploymentPause/ })).not.toBeInTheDocument()
+    expect(mocks.listTasks).toHaveBeenCalled()
+  })
+
+  it('zeigt Pause oder Fortsetzen je nach dem, was der Lifecycle jetzt erlaubt', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment({ status: 'paused' }) }))
+    renderView()
+
+    expect(await screen.findByRole('button', { name: /DeploymentDetailView\.deploymentResume/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /DeploymentDetailView\.deploymentPause/ })).not.toBeInTheDocument()
+  })
+
+  it('zeigt Abbrechen nur, wenn die API cancel erlaubt', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment({ status: 'running' }) }))
+    renderView()
+
+    expect(await screen.findByRole('button', { name: /DeploymentDetailView\.deploymentStop|DeploymentDetailView\.stop/ })).toBeInTheDocument()
+  })
+
+  it('nennt die Laufzeit und den Commit der Version', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ commit_sha: 'abcdef0123456789' } as any),
+    }))
+    renderView()
+
+    expect(await screen.findByTestId('deployment-runtime')).toHaveTextContent('runtime.openstackVm')
+    expect(screen.getByText('abcdef01')).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------
+// Pod deployments: workloads instead of VM infrastructure
+// ---------------------------------------------------------
+describe('DeploymentDetailView — Pod-Deployments', () => {
+  const workload = (over: Record<string, unknown> = {}) => ({
+    workload: 'team-alpha',
+    team: 'Team Alpha',
+    user_id: null,
+    ready: true,
+    restarts: 0,
+    phase: 'Running',
+    url: 'https://lab.example/team-alpha/',
+    lastEvent: null,
+    ...over,
+  })
+
+  beforeEach(() => {
+    mocks.getDeployment.mockImplementation(async () => ({ data: baseDeployment({ runtime: 'kubernetes' }) }))
+    mocks.listResources.mockResolvedValue({ data: { resources: [], live: true, runtime: 'kubernetes', workloads: [workload()] } })
+    mocks.restartWorkload.mockResolvedValue({ data: { task_id: 't', status: 'redeploying' } })
+    mocks.resetWorkload.mockResolvedValue({ data: { task_id: 't', status: 'redeploying' } })
+  })
+
+  it('zeigt die Workloads statt der VM-Infrastruktur und die Pod-Laufzeit', async () => {
+    renderView()
+
+    expect(await screen.findByTestId('workload-team-alpha')).toBeInTheDocument()
+    expect(screen.getByTestId('deployment-runtime')).toHaveTextContent('runtime.kubernetes')
+    expect(screen.queryByText('vm.title')).not.toBeInTheDocument()
+  })
+
+  it('startet einen Workload neu, ohne zu fragen', async () => {
+    renderView()
+
+    await userEvent.click(await screen.findByTestId('restart-team-alpha'))
+
+    await waitFor(() => expect(mocks.restartWorkload).toHaveBeenCalledWith('dep-1', 'team-alpha'))
+    expect(toastCalls()).toContainEqual(['success', 'pods.restartStarted'])
+    expect(mocks.resetWorkload).not.toHaveBeenCalled()
+  })
+
+  it('setzt einen Workload erst nach Rückfrage zurück (die Daten gehen verloren)', async () => {
+    renderView()
+
+    await userEvent.click(await screen.findByTestId('reset-team-alpha'))
+    expect(mocks.resetWorkload).not.toHaveBeenCalled()
+    expect(screen.getByText('pods.confirmResetTitle')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('btn-confirm-reset'))
+
+    await waitFor(() => expect(mocks.resetWorkload).toHaveBeenCalledWith('dep-1', 'team-alpha'))
+    expect(toastCalls()).toContainEqual(['success', 'pods.resetStarted'])
+  })
+
+  it('bricht ab, ohne etwas zu löschen, wenn die Rückfrage abgelehnt wird', async () => {
+    renderView()
+
+    await userEvent.click(await screen.findByTestId('reset-team-alpha'))
+    await userEvent.click(screen.getByRole('button', { name: 'DeploymentDetailView.cancelButton' }))
+
+    expect(mocks.resetWorkload).not.toHaveBeenCalled()
+  })
+
+  it('bietet Neustart und Reset nur an, wenn die API redeploy erlaubt', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ runtime: 'kubernetes', status: 'running', actions: ['cancel'] }),
+    }))
+    renderView()
+
+    await screen.findByTestId('workload-team-alpha')
+    expect(screen.queryByTestId('restart-team-alpha')).not.toBeInTheDocument()
+  })
+
+  it('übersetzt eine Ablehnung der API in einen lesbaren Hinweis', async () => {
+    mocks.restartWorkload.mockRejectedValue({
+      response: { status: 409, data: { detail: { reason: 'workload_not_found' } } },
+    })
+    renderView()
+
+    await userEvent.click(await screen.findByTestId('restart-team-alpha'))
+
+    await waitFor(() => expect(toastCalls().some(([type]) => type === 'error')).toBe(true))
   })
 })

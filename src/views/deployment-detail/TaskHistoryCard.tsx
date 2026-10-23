@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CircleArrowLeft, Loader2, Terminal, ChevronDown, Settings, AlertCircle, Check, Copy } from 'lucide-react'
+import { CircleArrowLeft, Loader2, Terminal, ChevronDown, AlertCircle, Check, Copy } from 'lucide-react'
 import type { Task } from '@/types'
 import { formatDateTime } from '@/utils/format'
 import { highlightJson, prettyJson } from '@/utils/json-view'
@@ -13,9 +13,7 @@ export interface TaskHistoryCardProps {
   loadingTasks: boolean
   selectedTask: Task | null
   loadingTaskDetail: boolean
-  activeDataTask: Task | null
   logCount: number | null
-  tfResourcesCount: number
   taskLogsSplit: { headline: string; details: string; isFailure: boolean }
   copiedKey: string | null
   onCopy: (text: string, key: string) => void
@@ -31,9 +29,7 @@ export default function TaskHistoryCard({
   loadingTasks,
   selectedTask,
   loadingTaskDetail,
-  activeDataTask,
   logCount,
-  tfResourcesCount,
   taskLogsSplit,
   copiedKey,
   onCopy,
@@ -275,50 +271,6 @@ export default function TaskHistoryCard({
                   </div>
                 </div>
               )}
-
-              {activeDataTask?.tf_state ? (
-                <div className="mb-4">
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between select-none">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-white rounded-md border border-blue-200">
-                          <Settings size={16} className="text-blue-600" />
-                        </div>
-                        <div className="flex flex-col text-left">
-                          <span className="font-semibold text-gray-900">{t('DeploymentDetailView.terraformState')}</span>
-                          <span className="text-xs text-gray-500">
-                            {tfResourcesCount > 0
-                              ? `${tfResourcesCount} verwaltete Ressourcen`
-                              : 'Erweiterte Details'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => onCopy(prettyJson(activeDataTask.tf_state), 'tf_state')}
-                        title={copiedKey === 'tf_state' ? 'Kopiert!' : 'In die Zwischenablage kopieren'}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors flex-shrink-0 ${
-                          copiedKey === 'tf_state'
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {CopyIcon('tf_state')}
-                        {copiedKey === 'tf_state' ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-
-                    <div className="bg-white p-4 overflow-y-auto max-h-[500px]">
-                      <div className="font-mono text-xs leading-relaxed text-left whitespace-pre-wrap select-text">
-                        <pre
-                          dangerouslySetInnerHTML={{ __html: highlightJson(prettyJson(activeDataTask.tf_state)) }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
             </div>
           )}
         </div>

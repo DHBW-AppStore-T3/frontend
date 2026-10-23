@@ -97,7 +97,7 @@ export default function TeamsCard({
                             <div className={PILL}>
                               <span className={PILL_LABEL}>User:</span>
                               <span>{data.username}</span>
-                              {copyButton(data.username, `user-${account.key}`, 'Username kopieren')}
+                              {copyButton(data.username ?? '', `user-${account.key}`, 'Username kopieren')}
                             </div>
                           ) : null}
 

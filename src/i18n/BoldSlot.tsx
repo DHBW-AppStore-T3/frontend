@@ -11,13 +11,15 @@ export interface BoldSlotProps {
   value: string
   /** Further message parameters. */
   params?: Record<string, unknown>
+  /** Show the value in a monospace font (identifiers such as workload names). */
+  mono?: boolean
 }
 
 /**
  * A message that shows one user-controlled value in bold. The value is a text
  * child, so it can never inject markup (the Vue `<i18n-t>` slot, in React).
  */
-export default function BoldSlot({ i18nKey, slot, value, params }: BoldSlotProps) {
+export default function BoldSlot({ i18nKey, slot, value, params, mono }: BoldSlotProps) {
   const { t } = useTranslation()
   const parts = t(i18nKey, { ...params, [slot]: SLOT_TOKEN }).split(SLOT_TOKEN)
 
@@ -25,7 +27,7 @@ export default function BoldSlot({ i18nKey, slot, value, params }: BoldSlotProps
     <>
       {parts.map((part, index) => (
         <Fragment key={index}>
-          {index > 0 ? <strong>{value}</strong> : null}
+          {index > 0 ? <strong className={mono ? 'font-mono' : undefined}>{value}</strong> : null}
           {part}
         </Fragment>
       ))}

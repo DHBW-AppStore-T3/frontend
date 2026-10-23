@@ -419,6 +419,7 @@ export default {
     copyUrl: "URL kopieren",
     deleteUnavailable: "Löschen ist im aktuellen Status nicht möglich.",
     lifecycleBusy: "Für dieses Deployment läuft bereits eine Aktion.",
+    taskDetailError: "Task-Details konnten nicht geladen werden.",
     noAccess: "Du hast keinen Zugriff auf dieses Deployment.",
     notFound: "Deployment nicht gefunden.",
     redeployFailed: "Neuaufbau fehlgeschlagen.",

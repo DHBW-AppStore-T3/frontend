@@ -16,22 +16,27 @@ import {
 } from 'lucide-react'
 import type { DeploymentTeam, Task } from '@/types'
 
-// Structure of a single account.
+// One account entry as an app publishes it (VM apps: Terraform outputs; pods:
+// the platform's own access data). Only ever the caller's own (`/my-access`).
 export interface UserAccount {
-  username: string
-  team: string
-  ip: string
-  port: number
-  auth: string
+  username?: string | null
+  team?: string
+  ip?: string
+  port?: number
+  auth?: string
   type?: 'password' | 'ssh_key' | 'oauth' | 'none' | string
   authtype?: 'ssh' | 'url' | 'rdp' | string
-  url?: string
+  url?: string | null
+  /** Pod apps: whose account this is and which workload it opens. */
+  user_id?: string
+  workload?: string
 }
 
 export interface TeamVm {
-  url?: string
+  url?: string | null
   floating_ip?: string
   fixed_ip?: string
+  workloads?: string[]
 }
 
 export type UserAccountMap = Record<string, UserAccount>
@@ -43,151 +48,48 @@ export interface AccountHit {
 }
 
 /**
- * Outputs may arrive as a raw JSON string from the DB text column or as an
- * already-parsed object. Returns the object, or ``undefined`` when it cannot
- * be interpreted (not JSON / not an object).
+ * Team-level, non-secret data (the URL of a team's app): the owner view reads
+ * every team's from the redacted outputs of the detail response, a member
+ * their own team's from `/my-access`.
  */
-function outputsObject(raw: unknown): Record<string, any> | undefined {
-  if (raw && typeof raw === 'object') return raw as Record<string, any>
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim()
-    if (!trimmed.startsWith('{')) return undefined
-    try {
-      return JSON.parse(trimmed) as Record<string, any>
-    } catch {
-      return undefined
-    }
-  }
-  return undefined
+export function teamVmsOf(
+  outputs: unknown,
+  mine: TeamVmMap | null,
+): TeamVmMap {
+  const raw = (outputs as { raw?: { team_vms?: { value?: unknown } } } | null | undefined)?.raw?.team_vms?.value
+  if (raw && typeof raw === 'object') return raw as TeamVmMap
+  return mine ?? {}
+}
+
+/** The caller's own account: `/my-access` names exactly one, or none. */
+export function ownAccountOf(accounts: UserAccountMap | null): AccountHit | null {
+  const entries = Object.entries(accounts ?? {})
+  if (entries.length !== 1) return null
+  const [key, data] = entries[0]!
+  return { key, data }
 }
 
 /**
- * ``user_accounts`` out of the active task's outputs (the map sits under
- * ``.value`` because Terraform stamps the output shape on the wrapper).
- * Non-owners have no outputs, so ``fallback`` (from ``/my-access``) is used
- * whenever anything along the way is missing.
- */
-export function extractUserAccounts(
-  rawOutputs: unknown,
-  fallback: UserAccountMap | null,
-): UserAccountMap | null {
-  if (!rawOutputs) return fallback
-  const obj = outputsObject(rawOutputs)
-  const container = obj?.user_accounts
-  if (container && container.value) return container.value as UserAccountMap
-  return fallback
-}
-
-/** ``team_vms`` out of the outputs, same unwrap chain as ``extractUserAccounts``. */
-export function extractTeamVms(rawOutputs: unknown, fallback: TeamVmMap | null): TeamVmMap | null {
-  if (!rawOutputs) return fallback
-  const vms = outputsObject(rawOutputs)?.team_vms?.value
-  return vms && typeof vms === 'object' ? (vms as TeamVmMap) : fallback
-}
-
-// Mirror the terraform key sanitisation: lowercase the local-part and replace
-// dots with dashes. Only dots — terraform's ``replace(local_part, ".", "-")``
-// does not touch other characters.
-function deriveExpectedKey(teamName: string, email: string | undefined): string | null {
-  if (!email) return null
-  const localPart = email.split('@')[0]
-  if (!localPart) return null
-  const sanitised = localPart.replace(/\./g, '-').toLowerCase()
-  return `${teamName.trim().toLowerCase()}-${sanitised}`
-}
-
-/**
- * Resolve member ↔ account.
- *
- * The canonical contract is the ``user_accounts`` MAP KEY, which every app
- * template constructs the same way: ``"<team>-" + email.split("@")[0].replace(".", "-")``.
- * The value's ``username`` field is not a reliable identifier (some templates
- * write the email local-part, others a shared pseudo-email), so we index by key
- * and look up the derived key per member. Three fallbacks cover other templates.
+ * Teams with their members. Only the caller's own row carries credentials:
+ * the owner view's outputs have every account redacted, and matching accounts
+ * to other members by name could hand one person another's password
+ * (.github#7 H). The row is found by user id, never by a name heuristic.
  */
 export function enrichTeams(
   teams: DeploymentTeam[] | undefined,
-  accounts: UserAccountMap | null,
-  teamVms: TeamVmMap | null,
+  teamVms: TeamVmMap,
+  ownUserId: string | null | undefined,
+  ownAccount: AccountHit | null,
 ) {
   if (!teams) return []
-
-  const accountByEmail = new Map<string, AccountHit>()
-  const accountByUsername = new Map<string, AccountHit>()
-  const accountByKey = new Map<string, AccountHit>()
-  if (accounts) {
-    for (const [key, acc] of Object.entries(accounts)) {
-      const candidate = acc?.username?.trim().toLowerCase()
-      if (candidate && candidate.includes('@')) {
-        accountByEmail.set(candidate, { key, data: acc })
-      } else if (candidate) {
-        accountByUsername.set(candidate, { key, data: acc })
-      }
-      accountByKey.set(key.trim().toLowerCase(), { key, data: acc })
-    }
-  }
-
-  return teams.map((team) => {
-    const vm = teamVms?.[team.name] ?? null
-    const teamNameLower = team.name.trim().toLowerCase()
-    return {
-      ...team,
-      vm,
-      members: team.members.map((member) => {
-        const memberEmail = member?.email?.trim().toLowerCase()
-        const memberName = member?.username?.trim().toLowerCase()
-
-        // Strategy 0 (canonical): derive the terraform key from member.email + team.name.
-        let hit: AccountHit | undefined
-        const expectedKey = deriveExpectedKey(team.name, memberEmail)
-        if (expectedKey) hit = accountByKey.get(expectedKey)
-
-        // Strategy 1: email-based (templates that write the member's email into ``account.username``).
-        if (!hit && memberEmail) hit = accountByEmail.get(memberEmail)
-
-        // Strategy 2: username substring against account.username.
-        if (!hit && memberName) {
-          for (const [accUser, entry] of accountByUsername) {
-            if (accUser.includes(memberName) || memberName.includes(accUser)) {
-              hit = entry
-              break
-            }
-          }
-        }
-
-        // Strategy 3: username substring against the account key (last resort).
-        if (!hit && memberName) {
-          for (const [accKey, entry] of accountByKey) {
-            if (accKey.includes(memberName)) {
-              hit = entry
-              break
-            }
-          }
-        }
-
-        // Team scope guard so an account from team A can't be attached to a member of team B.
-        const accountTeam = hit?.data.team?.trim().toLowerCase()
-        const keyLower = hit?.key.trim().toLowerCase()
-        const teamMatches =
-          hit &&
-          (accountTeam === teamNameLower ||
-            (keyLower?.startsWith(`${teamNameLower}-`) ?? false) ||
-            (keyLower?.includes(teamNameLower) ?? false))
-        return { ...member, account: teamMatches ? hit! : null }
-      }),
-    }
-  })
-}
-
-/** Counts the resources in a terraform state (object or JSON string). */
-export function countTfResources(state: unknown): number {
-  if (!state) return 0
-  try {
-    const parsed = typeof state === 'string' ? JSON.parse(state) : (state as any)
-    return parsed?.resources?.length || 0
-  } catch {
-    return 0
-  }
+  return teams.map((team) => ({
+    ...team,
+    vm: teamVms[team.name] ?? null,
+    members: team.members.map((member) => ({
+      ...member,
+      account: ownUserId && String(member.userId) === String(ownUserId) ? ownAccount : null,
+    })),
+  }))
 }
 
 /**

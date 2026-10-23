@@ -17,6 +17,7 @@ import {
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
 import DeploymentInfrastructurePanel from '@/components/DeploymentInfrastructurePanel'
+import PodWorkloadsPanel from '@/components/PodWorkloadsPanel'
 import InfrastructureVmDrawer from '@/components/InfrastructureVmDrawer'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDateTime } from '@/utils/format'
@@ -33,6 +34,13 @@ const HEADER_ICON_COLOR: Record<string, string> = {
   success: 'text-green-600',
   failed: 'text-red-600',
   running: 'text-blue-600',
+}
+
+const COMMIT_SHORT_LENGTH = 8
+
+function pauseResumeMessageKey(action: 'pause' | 'resume' | null, isPods: boolean): string {
+  const base = action === 'pause' ? 'confirmPauseMessage' : 'confirmResumeMessage'
+  return `DeploymentDetailView.${base}${isPods ? 'Pods' : ''}`
 }
 
 export default function DeploymentDetailView() {
@@ -171,6 +179,19 @@ export default function DeploymentDetailView() {
                       <GitBranch size={12} className="mr-1" />
                       {deployment.releaseTag}
                     </span>
+                    {deployment.commit_sha ? (
+                      <span className="ml-2 font-mono text-xs text-gray-500" title={deployment.commit_sha}>
+                        {deployment.commit_sha.slice(0, COMMIT_SHORT_LENGTH)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                    {t('DeploymentDetailView.runtime')}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900" data-testid="deployment-runtime">
+                    {d.isPods ? t('runtime.kubernetes') : t('runtime.openstackVm')}
                   </div>
                 </div>
                 <div>
@@ -388,8 +409,21 @@ export default function DeploymentDetailView() {
             />
           ) : null}
 
-          {/* Infrastructure — owner-only; the backend gates the endpoint the same way. */}
-          {d.isOwnerView ? (
+          {/* Pods: their workloads, live from the cluster. Owner view only; the
+              backend gates the endpoint the same way. */}
+          {d.isOwnerView && d.isPods ? (
+            <PodWorkloadsPanel
+              workloads={d.workloads}
+              loading={d.resourcesLoading}
+              error={d.resourcesError}
+              live={d.workloadsLive}
+              canAct={d.canRedeploy}
+              busy={d.workloadBusy}
+              onRefresh={() => void d.loadResources()}
+              onRestart={d.restartWorkload}
+              onReset={d.askResetWorkload}
+            />
+          ) : d.isOwnerView ? (
             <DeploymentInfrastructurePanel
               vmResources={d.vmResources}
               networkResources={d.networkResources}
@@ -398,6 +432,7 @@ export default function DeploymentDetailView() {
               resourcesError={d.resourcesError}
               redeployInFlight={d.redeployInFlight}
               openDrawerAddress={d.openDrawerAddress}
+              canRedeploy={d.canRedeploy}
               onRefresh={() => void d.loadResources()}
               onOpenVm={d.openVmDrawer}
               onRedeployVm={d.redeployVm}
@@ -412,9 +447,7 @@ export default function DeploymentDetailView() {
             loadingTasks={d.loadingTasks}
             selectedTask={d.selectedTask}
             loadingTaskDetail={d.loadingTaskDetail}
-            activeDataTask={d.activeDataTask}
             logCount={d.logCount}
-            tfResourcesCount={d.tfResourcesCount}
             taskLogsSplit={d.taskLogsSplit}
             copiedKey={copiedKey}
             onCopy={(text, key) => void copy(text, key)}
@@ -444,7 +477,11 @@ export default function DeploymentDetailView() {
         title={t('DeploymentDetailView.confirmStopTitle')}
         body={
           <p className="text-gray-700">
-            <BoldSlot i18nKey="DeploymentDetailView.confirmStopMessage" slot="name" value={deployment.name} />
+            <BoldSlot
+              i18nKey={d.isPods ? 'DeploymentDetailView.confirmStopMessagePods' : 'DeploymentDetailView.confirmStopMessage'}
+              slot="name"
+              value={deployment.name}
+            />
           </p>
         }
         footer={
@@ -465,7 +502,11 @@ export default function DeploymentDetailView() {
         title={t('DeploymentDetailView.confirmDeleteTitle')}
         body={
           <p className="text-gray-700">
-            <BoldSlot i18nKey="DeploymentDetailView.confirmDeleteMessage" slot="name" value={deployment.name} />
+            <BoldSlot
+              i18nKey={d.isPods ? 'DeploymentDetailView.confirmDeleteMessagePods' : 'DeploymentDetailView.confirmDeleteMessage'}
+              slot="name"
+              value={deployment.name}
+            />
           </p>
         }
         footer={
@@ -489,13 +530,10 @@ export default function DeploymentDetailView() {
       <Modal
         show={d.showRedeployModal}
         onClose={() => d.setShowRedeployModal(false)}
-        title="VM neu erstellen?"
+        title={t('DeploymentDetailView.confirmRedeployTitle')}
         body={
           <div className="space-y-3">
-            <p className="text-gray-700">
-              Diese VM wird zerstört und identisch neu erstellt. Andere VMs in diesem Deployment bleiben
-              unangetastet.
-            </p>
+            <p className="text-gray-700">{t('DeploymentDetailView.confirmRedeployMessage')}</p>
             {d.redeployTargetAddress ? (
               <p className="text-xs font-mono text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 break-all">
                 {d.redeployTargetAddress}
@@ -515,6 +553,33 @@ export default function DeploymentDetailView() {
         }
       />
 
+      {/* Reset one pod workload: its volume (the data) is deleted. */}
+      <Modal
+        show={d.showResetModal}
+        onClose={() => d.setShowResetModal(false)}
+        title={t('pods.confirmResetTitle')}
+        body={
+          <p className="text-gray-700">
+            <BoldSlot
+              i18nKey="pods.confirmResetMessage"
+              slot="workload"
+              value={d.resetTargetWorkload ?? ''}
+              mono
+            />
+          </p>
+        }
+        footer={
+          <div className="flex justify-end gap-3">
+            <BaseButton variant="text" onClick={() => d.setShowResetModal(false)}>
+              {t('DeploymentDetailView.cancelButton')}
+            </BaseButton>
+            <BaseButton variant="destructive" data-testid="btn-confirm-reset" onClick={() => void d.confirmResetWorkload()}>
+              {t('pods.reset')}
+            </BaseButton>
+          </div>
+        }
+      />
+
       {/* Pause / Resume confirmation; title/body switch on the action. */}
       <Modal
         show={d.showPauseResumeModal}
@@ -527,11 +592,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={
-                d.pauseResumeAction === 'pause'
-                  ? 'DeploymentDetailView.confirmPauseMessage'
-                  : 'DeploymentDetailView.confirmResumeMessage'
-              }
+              i18nKey={pauseResumeMessageKey(d.pauseResumeAction, d.isPods)}
               slot="name"
               value={deployment.name}
             />

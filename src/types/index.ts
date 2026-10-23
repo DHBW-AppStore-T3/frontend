@@ -467,10 +467,6 @@ export interface Task {
   current_phase: string | null
   progress_pct: number | null
   created_at: string
-  /** @deprecated The API no longer serves it; the readers go with AP6 (frontend#36). */
-  tf_state?: string | object | null
-  /** @deprecated The API no longer serves it; the readers go with AP6 (frontend#36). */
-  outputs?: string | object | null
 }
 
 // ----------------------------------------------------------------
