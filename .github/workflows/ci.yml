@@ -2,16 +2,12 @@ name: Frontend CI/CD
 
 on:
   push:
-    # spike/**: migration work (.github#4-#7); tested and, for spike/react-pods
-    # (the React port of the pod frontend), published as
-    # ghcr.io/...:spike-react-pods, never as dev/latest. Rolled out on the
-    # k8s staging, as the successor of spike/vue-pods (frontend#36).
-    branches: [main, dev, 'spike/**']
+    branches: [main, dev]
     tags: ['v*.*.*']
   pull_request:
     branches: [main, dev]
-  # Runs the pipeline again for a branch (on spike/react-pods it also
-  # publishes and rolls out on the k8s staging).
+  # Runs the pipeline again for a branch (on dev and main it also publishes
+  # and rolls out, as a push does).
   workflow_dispatch:
 
 env:
@@ -312,15 +308,15 @@ jobs:
           category: trivy-image
 
   # ================================================================
-  # 📦 PUSH — main, dev and spike/react-pods (as spike-react-pods)
+  # 📦 PUSH — on main and dev
   # ================================================================
   push:
     name: "📦 Push"
     runs-on: ubuntu-latest
     needs: [build, image-scan]
     if: >-
-      ((github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push') ||
-      (github.ref == 'refs/heads/spike/react-pods' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     timeout-minutes: 20
     permissions:
       contents: read
@@ -353,7 +349,6 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
-            type=raw,value=spike-react-pods,enable=${{ github.ref == 'refs/heads/spike/react-pods' }}
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -375,59 +370,23 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ================================================================
-  # 🚀 TRIGGER STAGING DEPLOY
-  # ================================================================
-  trigger-staging:
-    name: "🚀 Trigger Staging Deploy"
-    runs-on: ubuntu-latest
-    needs: [push]
-    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
-
-    steps:
-      - name: Trigger staging deployment
-        run: |
-          gh workflow run staging.yml \
-            --repo DHBW-AppStore-T3/deployment \
-            --ref dev
-        env:
-          GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
-
-  # ================================================================
-  # 🚀 TRIGGER PRODUCTION DEPLOY
-  # ================================================================
-  trigger-production:
-    name: "🚀 Trigger Production Deploy"
-    runs-on: ubuntu-latest
-    needs: [push]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Trigger production deployment
-        run: |
-          gh workflow run production.yml \
-            --repo DHBW-AppStore-T3/deployment \
-            --ref main
-        env:
-          GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
-
-  # ================================================================
-  # ☸️ ROLL OUT ON K8S STAGING — spike/react-pods, by hand
+  # ☸️ ROLL OUT ON KUBERNETES — dev -> staging, main -> prod
   # ================================================================
   # The deployment repo pins the image just pushed (tag sha-<commit>) by its
-  # digest in k8s/env/appstore.yaml on its spike/dev; Argo CD's staging
-  # environment follows. Only one frontend branch may do this at a time:
-  # since the cutover (frontend#36) it is this one; spike/vue-pods is frozen.
-  # Production only through k8s/promote.sh (a PR).
-  k8s-staging:
-    name: "☸️ Roll out on k8s staging"
+  # digest in k8s/images/<staging|prod>.yaml; Argo CD of that environment
+  # follows (see k8s-bump.yml there: a commit on dev, a PR on main).
+  k8s-rollout:
+    name: "☸️ Roll out on k8s"
     runs-on: ubuntu-latest
     needs: [push]
-    if: github.ref == 'refs/heads/spike/react-pods' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: >-
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
     steps:
       - name: Pin the new image in the deployment repo
         run: |
-          gh workflow run k8s-bump.yml --repo DHBW-AppStore-T3/deployment --ref spike/dev \
+          gh workflow run k8s-bump.yml --repo DHBW-AppStore-T3/deployment --ref "$GITHUB_REF_NAME" \
             -f component=frontend -f tag="sha-${GITHUB_SHA::7}" -f digest="$DIGEST"
         env:
           GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
