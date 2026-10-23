@@ -7,7 +7,6 @@ import { useToast } from '@/composables/useToast'
 import { extractErrorMessage } from '@/utils/http-error'
 import { useRole } from '@/composables/useRole'
 import { courseApi } from '@/api/course.api'
-import { translateHtml } from '@/i18n/html'
 import { paths } from '@/router/paths'
 import Card from '@/components/ui/Card'
 import BaseButton from '@/components/ui/BaseButton'
@@ -15,6 +14,7 @@ import BaseInput from '@/components/ui/BaseInput'
 import Modal from '@/components/ui/Modal'
 import PageHeader from '@/components/ui/PageHeader'
 import EntityListState from '@/components/ui/EntityListState'
+import BoldSlot from '@/i18n/BoldSlot'
 import './CoursesView.css'
 
 export default function CoursesView() {
@@ -246,12 +246,9 @@ export default function CoursesView() {
         header={<h2 className="text-xl font-semibold text-red-700">{t('CoursesView.deleteModal.title')}</h2>}
         body={
           <div className="space-y-3">
-            <p
-              className="text-textMuted"
-              dangerouslySetInnerHTML={{
-                __html: translateHtml('CoursesView.deleteModal.confirmPrompt', { name: courseToDelete?.name ?? '' }, t),
-              }}
-            />
+            <p className="text-textMuted">
+              <BoldSlot i18nKey="CoursesView.deleteModal.confirmPrompt" slot="name" value={courseToDelete?.name ?? ''} />
+            </p>
             <p className="text-sm text-textMuted">{t('CoursesView.deleteModal.warning')}</p>
           </div>
         }

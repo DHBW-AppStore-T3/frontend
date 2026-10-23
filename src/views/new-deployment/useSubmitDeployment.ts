@@ -1,20 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { userApi } from '@/api/user.api'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
-import { extractErrorMessage } from '@/utils/http-error'
 import { paths } from '@/router/paths'
-import { formatSubmitError, mapIdsToUserIds } from './summary'
+import { formatSubmitError } from './summary'
 
 /**
  * Submits the wizard draft.
  *
- * The draft stores Keycloak ids (they key the student cache). The backend wants
- * user ids, so they are mapped and patched into the draft only for the
- * duration of the submit, then rolled back on failure so steps 2/3 still show
- * the user's selection.
+ * The wizard selects students by their AppStore user id, which is what the
+ * teams carry; there is nothing to translate. On failure the draft stays as
+ * it is, so steps 2/3 still show the user's selection.
  */
 export function useSubmitDeployment() {
   const { t } = useTranslation()
@@ -28,30 +25,10 @@ export function useSubmitDeployment() {
     if (isSubmitting) return
     setIsSubmitting(true)
     try {
-      let users
-      try {
-        users = (await userApi.list()).data || []
-      } catch (err) {
-        toast.error(extractErrorMessage(err, t('deployment.summary.fetchUsersError')))
-        return
-      }
-
-      const toUserId = mapIdsToUserIds(users)
-      const store = useDeploymentStore.getState()
-      const original = {
-        assignments: store.draft.assignments,
-        studentIds: store.draft.studentIds,
-      }
-      store.updateDraft({
-        assignments: (original.assignments as string[][]).map((group) => (group || []).map(toUserId).filter(Boolean)),
-        studentIds: original.studentIds.map(toUserId).filter(Boolean),
-      })
-
       let deployment
       try {
         deployment = await useDeploymentStore.getState().submitDraft()
       } catch (err) {
-        useDeploymentStore.getState().updateDraft(original)
         toast.error(formatSubmitError(err, t))
         return
       }

@@ -45,7 +45,7 @@ export default function NewDeploymentGroupsAssignmentView() {
   const navigate = useNavigate()
   const draft = useDeploymentStore((s) => s.draft)
   const draftApp = useDeploymentStore((s) => s.draftAppDetails)()
-  const { forcedGroupMode, groupModeReason } = useDeploymentConstraints(draftApp)
+  const { forcedGroupMode, groupModeReason, groupModeTitle } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope })
 
   const [dragged, setDragged] = useState<string | null>(null)
   const [dragOverTeam, setDragOverTeam] = useState<number | null>(null)
@@ -243,7 +243,7 @@ export default function NewDeploymentGroupsAssignmentView() {
                 <AlertTriangle size={16} className="text-white" />
               </div>
               <div>
-                <p className="font-semibold text-amber-900 mb-1">{t('deployment.assignment.windowsConstraintTitle')}</p>
+                <p className="font-semibold text-amber-900 mb-1">{groupModeTitle ? t(groupModeTitle) : ''}</p>
                 <p className="text-sm text-amber-800">{groupModeReason ? t(groupModeReason) : ''}</p>
               </div>
             </div>

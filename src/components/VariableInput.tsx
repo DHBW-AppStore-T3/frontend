@@ -15,7 +15,7 @@
  * sections (Packer = blue, Terraform = purple) stay visually distinct.
  */
 import { useTranslation } from 'react-i18next'
-import type { AppVariable } from '@/types'
+import { isOsResourceVar, type AppVariable } from '@/types'
 import type { OsResourceType } from '@/api/openstack-resources.api'
 import OpenStackResourcePicker from '@/components/OpenStackResourcePicker'
 import { isBool, isList, isNumber } from '@/utils/variable-types'
@@ -36,8 +36,10 @@ export interface VariableInputProps {
 }
 
 // The picker wins over type-based inputs, including list(...) variables, since
-// it handles multi itself. ``file`` is rendered by the parent.
-const hasOsPicker = (v: AppVariable): boolean => Boolean(v.osType) && v.osType !== 'file'
+// it handles multi itself. ``file`` is rendered by the parent, ``enum``
+// (pod apps) is a select over the declared values.
+const hasOsPicker = isOsResourceVar
+const isEnum = (v: AppVariable): boolean => v.osType === 'enum'
 
 // Explicit class maps — Tailwind's JIT can't read class names assembled from
 // template-literal segments.
@@ -84,6 +86,31 @@ export default function VariableInput({
         onChange={onChange}
         onCredentialsMissing={onCredentialsMissing}
       />
+    )
+  }
+
+  // Pod apps: one of the values the appstore.yaml declares.
+  if (isEnum(variable)) {
+    return (
+      <select
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        id={id}
+        disabled={disabled}
+        data-testid="enum-input"
+        className={`${FIELD_BASE} font-medium bg-white ${colors.border}`}
+      >
+        {!variable.default ? (
+          <option value="" disabled>
+            {t('variableInput.choose')}
+          </option>
+        ) : null}
+        {(variable.values ?? []).map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     )
   }
 

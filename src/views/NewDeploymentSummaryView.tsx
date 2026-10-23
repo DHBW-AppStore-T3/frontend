@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, ArrowRight, ArrowLeft, Box, Layers } from 'lucide-react'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
+import { useOpenStackCredentialsStore, selectCredentialById } from '@/stores/openstack-credentials.store'
 import { getDisplayName, useOpenStackCacheVersion } from '@/composables/useOpenStackResourceCache'
 import { paths } from '@/router/paths'
 import { displayNameOf } from './new-deployment/studentSelection'
@@ -78,6 +79,16 @@ export default function NewDeploymentSummaryView() {
   const apps = useAppStore((s) => s.apps)
   const { defs, isLoading: isLoadingVariables } = useSummaryVariables()
   const { submit, isSubmitting } = useSubmitDeployment()
+
+  // Pods run in the cluster; VM apps in the project of the chosen credential.
+  const isPods = draft.runtime === 'kubernetes'
+  const credential = useOpenStackCredentialsStore(selectCredentialById(draft.credentialId))
+  const credentialProject = credential ? credential.project_name || credential.project_id || '' : ''
+  useEffect(() => {
+    if (!isPods && !useOpenStackCredentialsStore.getState().credentials) {
+      void useOpenStackCredentialsStore.getState().fetch()
+    }
+  }, [isPods])
 
   const selectedApp = apps.find((a) => a.appId === draft.appId)
   const nameOf = (id: string) => {
@@ -156,6 +167,25 @@ export default function NewDeploymentSummaryView() {
                 </p>
                 <p className="text-lg font-bold text-textHeading">{versionLabelOf(draft.releaseTag)}</p>
               </div>
+            </div>
+            {/* How it runs: pods in the cluster, or VMs in the chosen OpenStack project */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="summary-runtime">
+              <div className="bg-white rounded-lg p-4 border border-emerald-100">
+                <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">
+                  {t('deployment.summary.runtimeLabel')}
+                </p>
+                <p className="text-lg font-bold text-textHeading">
+                  {isPods ? t('runtime.kubernetes') : t('runtime.openstackVm')}
+                </p>
+              </div>
+              {isPods ? null : (
+                <div className="bg-white rounded-lg p-4 border border-emerald-100">
+                  <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">
+                    {t('deployment.summary.projectLabel')}
+                  </p>
+                  <p className="text-lg font-bold text-textHeading">{credentialProject || '-'}</p>
+                </div>
+              )}
             </div>
             <div className="mt-4 bg-white rounded-lg p-4 border border-emerald-100">
               <p className="text-xs text-textMuted mb-2 uppercase tracking-wider font-semibold">
@@ -247,18 +277,20 @@ export default function NewDeploymentSummaryView() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <VariableCard
-                tone="blue"
-                title={t('deployment.summary.packerVars')}
-                empty={t('deployment.summary.noPackerVars')}
-                entries={packerEntries}
-                icon={<Box size={18} className="text-blue-700" />}
-              />
+            <div className={`grid grid-cols-1 gap-4 ${isPods ? '' : 'lg:grid-cols-2'}`}>
+              {isPods ? null : (
+                <VariableCard
+                  tone="blue"
+                  title={t('deployment.summary.packerVars')}
+                  empty={t('deployment.summary.noPackerVars')}
+                  entries={packerEntries}
+                  icon={<Box size={18} className="text-blue-700" />}
+                />
+              )}
               <VariableCard
                 tone="purple"
-                title={t('deployment.summary.terraformVars')}
-                empty={t('deployment.summary.noTerraformVars')}
+                title={isPods ? t('deployment.summary.appSettings') : t('deployment.summary.terraformVars')}
+                empty={isPods ? t('deployment.summary.noAppSettings') : t('deployment.summary.noTerraformVars')}
                 entries={terraformEntries}
                 icon={<Layers size={18} className="text-purple-700" />}
               />
@@ -268,7 +300,7 @@ export default function NewDeploymentSummaryView() {
                 <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden col-span-1 md:col-span-2">
                   <div className="bg-amber-100 px-4 py-2 border-b border-amber-200 flex items-center gap-2">
                     <Layers size={18} className="text-amber-700" />
-                    <h4 className="font-bold text-amber-900 text-sm">Hochgeladene Dateien</h4>
+                    <h4 className="font-bold text-amber-900 text-sm">{t('deployment.summary.uploadedFiles')}</h4>
                     <span className="ml-auto text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">
                       {fileCount}
                     </span>
@@ -278,10 +310,10 @@ export default function NewDeploymentSummaryView() {
                       <div key={entry.name}>
                         <div className="text-xs font-semibold text-textMuted mb-1">
                           {entry.name}
-                          <span className="text-[10px] font-normal text-textMuted ml-1">(Scope: {entry.scope})</span>
+                          <span className="text-[10px] font-normal text-textMuted ml-1">({t('deployment.summary.scope', { scope: entry.scope })})</span>
                         </div>
                         {entry.chips.length === 0 ? (
-                          <div className="text-xs text-textFaint italic">Keine Datei hochgeladen</div>
+                          <div className="text-xs text-textFaint italic">{t('deployment.summary.noFileUploaded')}</div>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
                             {entry.chips.map((chip) => (

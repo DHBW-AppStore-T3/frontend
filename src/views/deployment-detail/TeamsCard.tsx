@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Users, User, Copy, Check, Eye, EyeOff, Send, Loader2, AlertCircle } from 'lucide-react'
+import { Users, User, Copy, Check, Eye, EyeOff } from 'lucide-react'
 import { sshCommandFor, rdpCommandFor, userUrlFor } from '@/utils/connection-commands'
 import type { enrichTeams } from './helpers'
 
@@ -9,13 +9,8 @@ type EnrichedTeam = ReturnType<typeof enrichTeams>[number]
 export interface TeamsCardProps {
   teamCount: number
   teams: EnrichedTeam[]
-  isOwnerView: boolean
-  authUserId: string | null | undefined
-  isDeploymentBusy: boolean
-  resendState: Record<string, 'sending' | 'sent' | 'error'>
   copiedKey: string | null
   onCopy: (text: string, key: string) => void
-  onResend: (teamId: string, userId: string) => void
 }
 
 const PILL = 'flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100'
@@ -23,17 +18,12 @@ const PILL_LABEL = 'text-gray-400 font-sans text-[10px] uppercase tracking-wider
 const COPY_BTN =
   'text-gray-400 hover:text-amber-600 p-0.5 rounded hover:bg-gray-200 transition-colors flex-shrink-0'
 
-/** Teams & members with per-member credentials and the resend-access action. */
+/** Teams & members with per-member credentials. */
 export default function TeamsCard({
   teamCount,
   teams,
-  isOwnerView,
-  authUserId,
-  isDeploymentBusy,
-  resendState,
   copiedKey,
   onCopy,
-  onResend,
 }: TeamsCardProps) {
   const { t } = useTranslation()
   // Password visibility, keyed by account key.
@@ -81,8 +71,6 @@ export default function TeamsCard({
                   const account = member.account
                   const data = account?.data
                   const vmUrl = team.vm?.url
-                  const resend = resendState[member.userId]
-                  const canResend = isOwnerView || String(member.userId) === String(authUserId)
                   const userUrl = data ? userUrlFor(data, vmUrl) : null
 
                   return (
@@ -109,7 +97,7 @@ export default function TeamsCard({
                             <div className={PILL}>
                               <span className={PILL_LABEL}>User:</span>
                               <span>{data.username}</span>
-                              {copyButton(data.username, `user-${account.key}`, 'Username kopieren')}
+                              {copyButton(data.username ?? '', `user-${account.key}`, 'Username kopieren')}
                             </div>
                           ) : null}
 
@@ -192,47 +180,6 @@ export default function TeamsCard({
                           ) : null}
                         </div>
                       ) : null}
-
-                      <div className="flex-shrink-0 flex lg:justify-end">
-                        {canResend ? (
-                          <button
-                            type="button"
-                            onClick={() => onResend(team.teamId, member.userId)}
-                            disabled={resend === 'sending' || isDeploymentBusy}
-                            title={
-                              isDeploymentBusy
-                                ? t('DeploymentDetailView.resendAccessBusyTooltip')
-                                : t('DeploymentDetailView.resendAccessTooltip')
-                            }
-                            className={`w-full lg:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
-                              resend === 'sent'
-                                ? 'bg-green-600 text-white border-green-600'
-                                : resend === 'error'
-                                  ? 'bg-red-50 text-red-700 border-red-300'
-                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                            }`}
-                          >
-                            {resend === 'sending' ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : resend === 'sent' ? (
-                              <Check size={14} />
-                            ) : resend === 'error' ? (
-                              <AlertCircle size={14} />
-                            ) : (
-                              <Send size={14} />
-                            )}
-                            <span>
-                              {resend === 'sending'
-                                ? t('DeploymentDetailView.resendAccessSending')
-                                : resend === 'sent'
-                                  ? t('DeploymentDetailView.resendAccessSent')
-                                  : resend === 'error'
-                                    ? t('DeploymentDetailView.resendAccessRetry')
-                                    : t('DeploymentDetailView.resendAccessButton')}
-                            </span>
-                          </button>
-                        ) : null}
-                      </div>
                     </div>
                   )
                 })}

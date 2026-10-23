@@ -12,7 +12,6 @@ vi.mock('@/theme/applyTheme', () => ({ applyTheme: (...a: unknown[]) => applyThe
 
 const authStoreMock = {
   setLtiUser: vi.fn(() => Promise.resolve()),
-  setHandoffUser: vi.fn(() => Promise.resolve()),
   setDevUser: vi.fn(() => Promise.resolve()),
   initialize: vi.fn(() => Promise.resolve()),
 }
@@ -54,54 +53,61 @@ describe('bootstrap dispatch', () => {
     expect(renderMock).toHaveBeenCalledTimes(1)
   })
 
-  it('boots into authenticated state when lti query params present', async () => {
-    setLocation('?lti=1&email=teacher@dhbw.de&name=Teacher&role=instructor&course=Math&courseId=1&session_token=jwt-abc')
+  it('boots into authenticated state from the LTI launch fragment', async () => {
+    setLocation('#lti=1&email=teacher@dhbw.de&role=instructor&session_token=jwt-abc')
 
     await boot()
 
     expect(authStoreMock.setLtiUser).toHaveBeenCalledWith('teacher@dhbw.de', 'jwt-abc', 'teacher')
+    expect(authStoreMock.initialize).not.toHaveBeenCalled()
     expect(renderMock).toHaveBeenCalled()
   })
 
   it('maps a non-instructor LTI role to student', async () => {
-    setLocation('?lti=1&email=s@dhbw.de&role=learner&session_token=jwt')
+    setLocation('#lti=1&email=s@dhbw.de&role=learner&session_token=jwt')
 
     await boot()
 
     expect(authStoreMock.setLtiUser).toHaveBeenCalledWith('s@dhbw.de', 'jwt', 'student')
   })
 
-  it('boots authenticated via handoff query params', async () => {
-    setLocation('?handoff=1&email=student@dhbw.de&handoff_token=jwt-xyz')
+  it('removes the LTI fragment before the app is rendered', async () => {
+    let hashAtRender: string | null = null
+    renderMock.mockImplementationOnce(() => {
+      hashAtRender = window.location.hash
+    })
+    setLocation('#lti=1&email=a@dhbw.de&role=learner&session_token=jwt-abc')
 
     await boot()
 
-    expect(authStoreMock.setHandoffUser).toHaveBeenCalledWith('student@dhbw.de', 'jwt-xyz')
-    expect(renderMock).toHaveBeenCalled()
+    expect(hashAtRender).toBe('')
+    expect(window.location.href).not.toContain('jwt-abc')
   })
 
-  it('strips lti/handoff query params after processing', async () => {
+  it('ignores LTI parameters in the query string (the token never travels there)', async () => {
     setLocation('?lti=1&email=teacher@dhbw.de&role=instructor&session_token=jwt-abc')
 
     await boot()
 
-    expect(window.location.search).toBe('')
+    expect(authStoreMock.setLtiUser).not.toHaveBeenCalled()
+    expect(authStoreMock.initialize).toHaveBeenCalled()
   })
 
-  it('strips handoff params too', async () => {
-    setLocation('?handoff=1&email=s@dhbw.de&handoff_token=t&keep=1')
+  it('ignores the removed self-service handoff parameters (.github#7 N)', async () => {
+    setLocation('?handoff=1&email=student@dhbw.de&handoff_token=jwt-xyz')
 
     await boot()
 
-    expect(window.location.search).toBe('?keep=1')
+    // No token from the URL is trusted: the normal Keycloak login runs.
+    expect(authStoreMock.initialize).toHaveBeenCalled()
+    expect(authStoreMock.setLtiUser).not.toHaveBeenCalled()
   })
 
-  it('falls back to normal keycloak initialize when no lti/handoff params present', async () => {
+  it('falls back to normal keycloak initialize when no LTI fragment is present', async () => {
     await boot()
 
     expect(authStoreMock.initialize).toHaveBeenCalled()
     expect(authStoreMock.setLtiUser).not.toHaveBeenCalled()
-    expect(authStoreMock.setHandoffUser).not.toHaveBeenCalled()
   })
 
   it('uses the dev SSO bridge when ?sso_handoff is present (DEV only)', async () => {

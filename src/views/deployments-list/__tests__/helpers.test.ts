@@ -24,6 +24,17 @@ describe('status groups', () => {
     expect(Object.keys(STATUS_GROUPS)).toEqual(['active', 'building', 'stopped'])
   })
 
+  it('a redeploy in flight is building; a failed one is still running, so active', () => {
+    expect(filterByGroup([dep('r', 'redeploying', null)], 'building')).toHaveLength(1)
+    expect(filterByGroup([dep('f', 'redeploy_failed', null)], 'active')).toHaveLength(1)
+    expect(filterByGroup([dep('f', 'redeploy_failed', null)], 'stopped')).toHaveLength(0)
+  })
+
+  it('colours the redeploy states', () => {
+    expect(statusPillClass('redeploying')).toContain('blue')
+    expect(statusPillClass('redeploy_failed')).toContain('amber')
+  })
+
   it('counts per group and for "all"', () => {
     expect(countByGroup(items)).toEqual([
       { key: 'active', count: 1 },

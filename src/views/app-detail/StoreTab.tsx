@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { AlertCircle, Clock, Globe, Lock, Send, Undo2 } from 'lucide-react'
 import AppVersionStatusBadge from '@/components/ui/AppVersionStatusBadge'
 import { formatDate } from '@/utils/format'
+import { runtimeLabelKey } from './runtime'
 import type { AppVersionApproval } from '@/types'
 import type { AppDetail, BannerStatus } from './versionInfo'
 
@@ -11,6 +12,8 @@ export interface StoreTabProps {
   versionOptions: string[]
   approvalByVersion: Record<string, AppVersionApproval>
   isOwner: boolean
+  /** Admins may make a deactivated app public again; nobody else. */
+  isAdmin: boolean
   isTogglingPrivacy: boolean
   withdrawingVersion: string | null
   onTogglePrivacy: () => void
@@ -18,15 +21,18 @@ export interface StoreTabProps {
   onWithdrawVersion: (version: string) => void
 }
 
+const COMMIT_SHORT_LENGTH = 8
 const PANEL = 'bg-surfaceMuted rounded-xl border border-borderSubtle p-5'
 const PANEL_TITLE = 'text-sm font-semibold text-textMuted uppercase tracking-wide mb-4'
 const LINK_ACTION = 'text-xs hover:underline flex items-center gap-1 disabled:opacity-50'
 
 export default function StoreTab(props: StoreTabProps) {
-  const { app, banner, versionOptions, approvalByVersion, isOwner } = props
+  const { app, banner, versionOptions, approvalByVersion, isOwner, isAdmin } = props
   const { t } = useTranslation()
   const isPrivate = !!app.is_private
   const VisibilityIcon = isPrivate ? Lock : Globe
+  // An admin deactivated the app; only an admin can make it public again.
+  const lockedByAdmin = !!app.hidden_by_admin && !isAdmin
 
   const actionFor = (ver: string) => {
     const approval = approvalByVersion[ver]
@@ -105,6 +111,11 @@ export default function StoreTab(props: StoreTabProps) {
               <p className="text-sm text-textMuted">
                 {isPrivate ? t('AppsDetailView.visibilityPrivateDesc') : t('AppsDetailView.visibilityPublicDesc')}
               </p>
+              {app.hidden_by_admin ? (
+                <p className="text-sm text-danger" data-testid="hidden-by-admin">
+                  {t('AppsDetailView.hiddenByAdmin')}
+                </p>
+              ) : null}
             </div>
           </div>
           <button
@@ -113,7 +124,8 @@ export default function StoreTab(props: StoreTabProps) {
             aria-checked={isPrivate}
             aria-label={t('AppsDetailView.storeVisibilityTitle')}
             onClick={props.onTogglePrivacy}
-            disabled={props.isTogglingPrivacy}
+            disabled={props.isTogglingPrivacy || lockedByAdmin}
+            title={lockedByAdmin ? t('AppsDetailView.hiddenByAdmin') : ''}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
               isPrivate ? 'bg-purple-500' : 'bg-success'
             }`}
@@ -141,6 +153,7 @@ export default function StoreTab(props: StoreTabProps) {
                   <tr className="border-b border-borderSubtle text-left text-xs text-textMuted uppercase tracking-wide">
                     <th className="pb-2 pr-4">{t('AppsDetailView.versionTableVersion')}</th>
                     <th className="pb-2 pr-4">{t('AppsDetailView.versionTableStatus')}</th>
+                    <th className="pb-2 pr-4">{t('AppsDetailView.versionTableRuntime')}</th>
                     <th className="pb-2 pr-4">{t('AppsDetailView.versionTableDate')}</th>
                     <th className="pb-2">{t('AppsDetailView.versionTableAction')}</th>
                   </tr>
@@ -156,6 +169,20 @@ export default function StoreTab(props: StoreTabProps) {
                             <AppVersionStatusBadge status={approval.status} />
                           ) : (
                             <span className="text-textFaint text-xs">–</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 pr-4 text-xs text-textMuted">
+                          {approval ? (
+                            <>
+                              {t(runtimeLabelKey(approval.runtime ?? 'openstack-vm'))}
+                              {approval.commit_sha ? (
+                                <span className="block font-mono text-textFaint" title={approval.commit_sha}>
+                                  {approval.commit_sha.slice(0, COMMIT_SHORT_LENGTH)}
+                                </span>
+                              ) : null}
+                            </>
+                          ) : (
+                            '–'
                           )}
                         </td>
                         <td className="py-2.5 pr-4 text-textMuted text-xs">

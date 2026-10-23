@@ -31,6 +31,9 @@ export interface InfrastructureVmCardProps {
    *  ``Ausblenden``) and a subtle accent on the card border so the
    *  user sees which card the open panel belongs to. */
   isExpanded?: boolean
+  /** Whether the caller may redeploy right now (operate right and the
+   *  lifecycle allows it); the button is hidden otherwise. */
+  canRedeploy?: boolean
   onOpenDetails: (address: string) => void
   onRedeploy: (address: string) => void
 }
@@ -39,6 +42,7 @@ export default function InfrastructureVmCard({
   resource,
   redeploying,
   isExpanded,
+  canRedeploy = true,
   onOpenDetails,
   onRedeploy,
 }: InfrastructureVmCardProps) {
@@ -206,19 +210,21 @@ export default function InfrastructureVmCard({
         >
           {isExpanded ? t('vm.actions.hideDetails') : t('vm.actions.showDetails')}
         </button>
-        <button
-          type="button"
-          onClick={() => onRedeploy(resource.address)}
-          disabled={redeploying}
-          className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded border transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed ${
-            resource.drift === 'missing'
-              ? 'bg-dangerTint text-red-700 border-danger/30 hover:bg-dangerTint'
-              : 'bg-white text-red-700 border-danger/30 hover:bg-dangerTint'
-          }`}
-        >
-          <RefreshCcw size={12} className={redeploying ? 'animate-spin' : ''} />
-          {redeploying ? t('vm.actions.redeploying') : t('vm.actions.redeploy')}
-        </button>
+        {canRedeploy ? (
+          <button
+            type="button"
+            onClick={() => onRedeploy(resource.address)}
+            disabled={redeploying}
+            className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded border transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed ${
+              resource.drift === 'missing'
+                ? 'bg-dangerTint text-red-700 border-danger/30 hover:bg-dangerTint'
+                : 'bg-white text-red-700 border-danger/30 hover:bg-dangerTint'
+            }`}
+          >
+            <RefreshCcw size={12} className={redeploying ? 'animate-spin' : ''} />
+            {redeploying ? t('vm.actions.redeploying') : t('vm.actions.redeploy')}
+          </button>
+        ) : null}
       </div>
     </div>
   )

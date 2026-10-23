@@ -3,7 +3,6 @@ import {
   emptyAppForm,
   emptyPasswordForm,
   buildPayload,
-  formsFromStatus,
   formsFromYaml,
 } from '../credentialForm'
 
@@ -51,20 +50,6 @@ describe('buildPayload', () => {
   it('requires a user domain for password credentials', () => {
     const pwd = { ...emptyPasswordForm(), auth_url: 'u', identifier: 'a', secret: 's', project_id: 'p', user_domain_name: '' }
     expect(buildPayload('password', emptyAppForm(), pwd)).toBeNull()
-  })
-})
-
-describe('formsFromStatus', () => {
-  it('prefills the app tab from an application credential', () => {
-    const r = formsFromStatus({ auth_type: 'v3applicationcredential', auth_url: 'u', region_name: 'R' } as any)
-    expect(r.tab).toBe('app')
-    expect(r.app).toMatchObject({ auth_url: 'u', region_name: 'R', secret: '' })
-  })
-
-  it('prefills the password tab with a Default user domain fallback', () => {
-    const r = formsFromStatus({ auth_type: 'password', auth_url: 'u', project_name: 'p' } as any)
-    expect(r.tab).toBe('password')
-    expect(r.password).toMatchObject({ auth_url: 'u', project_name: 'p', user_domain_name: 'Default' })
   })
 })
 

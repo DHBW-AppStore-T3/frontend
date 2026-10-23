@@ -69,13 +69,22 @@ describe('deploymentApi', () => {
     expect(api.post).toHaveBeenCalledWith('/deployments/d-1/resume')
   })
 
-  it('resendAccess() posts to the per-user resend endpoint', async () => {
+  it('restartWorkload() posts to the workload restart endpoint', async () => {
     const api = (await import('@/api/axios')).default
     const { deploymentApi } = await import('@/api/deployment.api')
 
-    deploymentApi.resendAccess('d-1', 't-1', 'u-1')
+    deploymentApi.restartWorkload('d-1', 'team-1')
 
-    expect(api.post).toHaveBeenCalledWith('/deployments/d-1/teams/t-1/users/u-1/resend-access')
+    expect(api.post).toHaveBeenCalledWith('/deployments/d-1/workloads/team-1/restart')
+  })
+
+  it('resetWorkload() posts to the workload reset endpoint', async () => {
+    const api = (await import('@/api/axios')).default
+    const { deploymentApi } = await import('@/api/deployment.api')
+
+    deploymentApi.resetWorkload('d-1', 'team-1')
+
+    expect(api.post).toHaveBeenCalledWith('/deployments/d-1/workloads/team-1/reset')
   })
 
   it('getMyAccess() fetches the caller-scoped access endpoint', async () => {

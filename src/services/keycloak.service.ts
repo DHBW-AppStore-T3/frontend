@@ -49,7 +49,6 @@ interface KeycloakState {
   isAuthenticated: boolean
   devEmail: string | null
   ltiToken: string | null
-  handoffToken: string | null
 }
 
 const state = createStore<KeycloakState>()(() => ({
@@ -58,7 +57,6 @@ const state = createStore<KeycloakState>()(() => ({
   isAuthenticated: false,
   devEmail: null,
   ltiToken: null,
-  handoffToken: null,
 }))
 
 // ----------------------------------------------------------------
@@ -186,9 +184,8 @@ function createKeycloak() {
    * refresh fails.
    */
   async function getAccessToken(): Promise<string | null> {
-    const { ltiToken, handoffToken, devEmail } = state.getState()
+    const { ltiToken, devEmail } = state.getState()
     if (ltiToken) return ltiToken
-    if (handoffToken) return handoffToken
     if (devEmail) return 'dev-sso-token'
     try {
       const currentUser = await userManager.getUser()
@@ -220,8 +217,8 @@ function createKeycloak() {
    * All concurrent callers share a single signinSilent() round-trip.
    */
   async function ensureValidToken(): Promise<boolean> {
-    const { ltiToken, handoffToken, devEmail } = state.getState()
-    if (ltiToken || handoffToken || devEmail) return true
+    const { ltiToken, devEmail } = state.getState()
+    if (ltiToken || devEmail) return true
     try {
       const currentUser = await userManager.getUser()
       if (!currentUser) return false
@@ -251,15 +248,6 @@ function createKeycloak() {
     state.setState({ ltiToken: token, devEmail: email, isAuthenticated: true, isLoading: false })
   }
 
-  /**
-   * Set the authenticated user from a self-service-ui handoff. Backend has
-   * already validated self-service-ui's Keycloak bearer and minted a
-   * short-lived HS256 handoff token — independent secret from the LTI path.
-   */
-  async function setHandoffUser(email: string, token: string): Promise<void> {
-    state.setState({ handoffToken: token, devEmail: email, isAuthenticated: true, isLoading: false })
-  }
-
   function getDevEmail(): string | null {
     return state.getState().devEmail
   }
@@ -280,7 +268,6 @@ function createKeycloak() {
     setDevUser,
     getDevEmail,
     setLtiUser,
-    setHandoffUser,
   }
 }
 

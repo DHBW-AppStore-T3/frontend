@@ -20,7 +20,7 @@ vi.mock('@/api/openstack-resources.api', () => ({
 
 import { openstackResourcesApi as api } from '@/api/openstack-resources.api'
 import OpenStackResourcePicker from '@/components/OpenStackResourcePicker'
-import { invalidateAll } from '@/composables/useOpenStackResourceCache'
+import { invalidateAll, setCredential } from '@/composables/useOpenStackResourceCache'
 import { useToastStore } from '@/stores/toast.store'
 import { renderWithProviders } from '../../helpers/render'
 
@@ -53,6 +53,7 @@ const openPanel = async () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  setCredential('c-1')
   invalidateAll()
   useToastStore.setState({ toasts: [] })
   vi.mocked(api.listFlavors).mockResolvedValue({ data: flavors } as any)
@@ -179,7 +180,7 @@ describe('OpenStackResourcePicker', () => {
 
     await userEvent.click(screen.getByTitle('openstackPicker.refreshList'))
 
-    await waitFor(() => expect(api.refresh).toHaveBeenCalledWith('flavor'))
+    await waitFor(() => expect(api.refresh).toHaveBeenCalledWith('c-1', 'flavor'))
     await waitFor(() =>
       expect(toasts()).toContainEqual(['warning', 'openstackPicker.toasts.removed']),
     )
@@ -197,12 +198,12 @@ describe('OpenStackResourcePicker', () => {
   it('restricts subnets to the given network and reloads when it changes', async () => {
     vi.mocked(api.listSubnets).mockResolvedValue({ data: [] } as any)
     const { rerender, onChange } = setup({ osType: 'subnet', filterNetworkId: 'net-1' })
-    await waitFor(() => expect(api.listSubnets).toHaveBeenCalledWith('net-1'))
+    await waitFor(() => expect(api.listSubnets).toHaveBeenCalledWith('c-1', 'net-1'))
 
     rerender(
       <OpenStackResourcePicker osType="subnet" osMode="name" value="" onChange={onChange} filterNetworkId="net-2" />,
     )
 
-    await waitFor(() => expect(api.listSubnets).toHaveBeenCalledWith('net-2'))
+    await waitFor(() => expect(api.listSubnets).toHaveBeenCalledWith('c-1', 'net-2'))
   })
 })

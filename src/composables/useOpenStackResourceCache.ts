@@ -15,6 +15,11 @@
  * - Cache TTL: matched to the backend cache (60s) — after that it is
  *   reloaded on the next picker open.
  *
+ * CREDENTIAL: every list belongs to one of the caller's OpenStack
+ * credentials (the one the deployment will be created with). The wizard
+ * sets it with ``setCredential``; switching to another credential empties
+ * the cache, because another project has other resources.
+ *
  * REACTIVITY: the cache itself is a plain ``Map``, but a version counter
  * (``cacheVersion``) is incremented on every ``prime``/``invalidate`` and
  * subscribers are notified. Components call ``useOpenStackCacheVersion()``
@@ -73,6 +78,24 @@ export function useOpenStackCacheVersion(): number {
 
 const TTL_MS = 60_000
 
+// The credential the lists are read with (null: none chosen yet).
+let credentialId: string | null = null
+
+/**
+ * Read every list with `id` from now on. A different credential than before
+ * empties the cache (another project, other resources).
+ */
+export function setCredential(id: string | null): void {
+  if (credentialId === id) return
+  credentialId = id
+  invalidateAll()
+}
+
+/** The credential lists are read with, or null when none is chosen. */
+export function currentCredential(): string | null {
+  return credentialId
+}
+
 /**
  * Returns a cache entry no older than the TTL, or ``null`` if missing/expired.
  */
@@ -97,9 +120,12 @@ export async function ensureLoaded(osType: OsResourceType): Promise<void> {
     return
   }
 
+  const requestedFor = credentialId
   const loading = (async () => {
     try {
       const res = await fetchList(osType)
+      // Another credential was chosen while this list was on its way.
+      if (credentialId !== requestedFor) return
       cache.set(osType, {
         items: res.map(toCachedItem),
         loadedAt: Date.now(),
@@ -207,29 +233,24 @@ export function getDisplayName(
 // ----------------------------------------------------------------
 // Internal: per-type Fetcher
 // ----------------------------------------------------------------
+type ListFetcher = (id: string) => Promise<{ data: any[] }>
+
+const LIST_FETCHERS: Record<OsResourceType, ListFetcher> = {
+  network: (id) => openstackResourcesApi.listNetworks(id),
+  subnet: (id) => openstackResourcesApi.listSubnets(id),
+  flavor: (id) => openstackResourcesApi.listFlavors(id),
+  image: (id) => openstackResourcesApi.listImages(id, 'active'),
+  keypair: (id) => openstackResourcesApi.listKeypairs(id),
+  security_group: (id) => openstackResourcesApi.listSecurityGroups(id),
+  floating_ip_pool: (id) => openstackResourcesApi.listFloatingIpPools(id),
+  volume: (id) => openstackResourcesApi.listVolumes(id),
+  router: (id) => openstackResourcesApi.listRouters(id),
+  availability_zone: (id) => openstackResourcesApi.listAvailabilityZones(id, 'compute'),
+}
+
 async function fetchList(osType: OsResourceType): Promise<any[]> {
-  switch (osType) {
-    case 'network':
-      return (await openstackResourcesApi.listNetworks()).data
-    case 'subnet':
-      return (await openstackResourcesApi.listSubnets()).data
-    case 'flavor':
-      return (await openstackResourcesApi.listFlavors()).data
-    case 'image':
-      return (await openstackResourcesApi.listImages('active')).data
-    case 'keypair':
-      return (await openstackResourcesApi.listKeypairs()).data
-    case 'security_group':
-      return (await openstackResourcesApi.listSecurityGroups()).data
-    case 'floating_ip_pool':
-      return (await openstackResourcesApi.listFloatingIpPools()).data
-    case 'volume':
-      return (await openstackResourcesApi.listVolumes()).data
-    case 'router':
-      return (await openstackResourcesApi.listRouters()).data
-    case 'availability_zone':
-      return (await openstackResourcesApi.listAvailabilityZones('compute')).data
-  }
+  if (!credentialId) return []
+  return (await LIST_FETCHERS[osType](credentialId)).data
 }
 
 function toCachedItem(raw: any): CachedItem {

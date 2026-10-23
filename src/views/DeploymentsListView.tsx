@@ -106,9 +106,17 @@ export default function DeploymentsListView() {
                 </div>
 
                 <div className="mt-auto pt-3 border-t border-borderSubtle flex items-center justify-between text-xs text-textMuted">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
-                    <GitBranch size={11} />
-                    {deployment.releaseTag}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
+                      <GitBranch size={11} />
+                      {deployment.releaseTag}
+                    </span>
+                    <span
+                      className="px-1.5 py-0.5 rounded border border-borderSubtle text-[10px] uppercase tracking-wide"
+                      data-testid="runtime-badge"
+                    >
+                      {deployment.runtime === 'kubernetes' ? t('runtime.kubernetesShort') : t('runtime.openstackVmShort')}
+                    </span>
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Clock size={11} />

@@ -3,18 +3,17 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
-vi.mock('@/api/user.api', () => ({ userApi: { list: vi.fn() } }))
 vi.mock('@/api/openstack-resources.api', () => ({ openstackResourcesApi: {} }))
 vi.mock('@/composables/useOpenStackResourceCache', async (orig) => {
   const mod = await orig<typeof import('@/composables/useOpenStackResourceCache')>()
-  return { ...mod, ensureLoaded: vi.fn(() => Promise.resolve()) }
+  return { ...mod, ensureLoaded: vi.fn(() => Promise.resolve()), setCredential: vi.fn() }
 })
 
-import { userApi } from '@/api/user.api'
 import NewDeploymentSummaryView from '@/views/NewDeploymentSummaryView'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
 import { useToastStore } from '@/stores/toast.store'
+import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { renderWithProviders } from '../../helpers/render'
 
 function Where() {
@@ -46,18 +45,18 @@ function seed(over: Record<string, unknown> = {}) {
   const store = useDeploymentStore.getState()
   store.resetDraft()
   store.studentCache.clear()
-  store.studentCache.set('kc1', { userId: 'u1', firstName: 'John', lastName: 'Doe', keycloak_id: 'kc1' } as any)
+  store.studentCache.set('u1', { userId: 'u1', firstName: 'John', lastName: 'Doe' } as any)
   store.updateDraft({
     name: 'My Deployment',
     appId: 'app-1',
     releaseTag: '1.0.0',
     groupCount: 1,
     groupMode: 'one',
-    studentIds: ['kc1'],
-    assignments: [['kc1']],
+    studentIds: ['u1'],
+    assignments: [['u1']],
     groupNames: ['Team Alpha'],
     variables: { region: 'eu-central-1', instance_type: 't2.micro' },
-    fileUploads: { ssh_key: { kc1: { name: 'id_rsa.pub', size: 1024, content_b64: 'x', content_type: 't' } } },
+    fileUploads: { ssh_key: { u1: { name: 'id_rsa.pub', size: 1024, content_b64: 'x', content_type: 't' } } },
     variableDefinitions: definitions as any,
     ...over,
   } as any)
@@ -67,8 +66,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   useToastStore.setState({ toasts: [] })
   useAppStore.setState({ apps: [{ appId: 'app-1', name: 'Test App', image: 'test.png' } as any] })
+  useOpenStackCredentialsStore.setState({ credentials: [], fetch: vi.fn() } as any)
   seed()
-  vi.mocked(userApi.list).mockResolvedValue({ data: [{ keycloak_id: 'kc1', userId: 'u1' }] } as any)
 })
 
 describe('NewDeploymentSummaryView', () => {
@@ -86,7 +85,7 @@ describe('NewDeploymentSummaryView', () => {
     // file summary: name + size, scope
     expect(screen.getByText('id_rsa.pub')).toBeInTheDocument()
     expect(screen.getByText('1 KB')).toBeInTheDocument()
-    expect(screen.getByText(/Scope: user/)).toBeInTheDocument()
+    expect(screen.getByText(/deployment\.summary\.scope/)).toBeInTheDocument()
   })
 
   it('zeigt die Version "latest" ohne Release-Tag', async () => {
@@ -103,9 +102,8 @@ describe('NewDeploymentSummaryView', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables')
   })
 
-  it('übersetzt Keycloak-IDs, sendet ab und leitet bei Erfolg zur Liste', async () => {
+  it('sendet die Auswahl unverändert (die Auswahl ist bereits nach User-ID) und leitet bei Erfolg zur Liste', async () => {
     const submitDraft = vi.fn().mockImplementation(async () => {
-      // IDs are mapped for the duration of the submit.
       const draft = useDeploymentStore.getState().draft
       expect(draft.studentIds).toEqual(['u1'])
       expect((draft.assignments as any)[0]).toEqual(['u1'])
@@ -124,7 +122,7 @@ describe('NewDeploymentSummaryView', () => {
     expect(useDeploymentStore.getState().draft.name).toBe('')
   })
 
-  it('übersetzt Backend-Fehler in einen Toast und rollt die IDs zurück', async () => {
+  it('übersetzt Backend-Fehler in einen Toast und lässt den Entwurf unberührt', async () => {
     useDeploymentStore.setState({
       submitDraft: vi.fn().mockRejectedValue({
         response: {
@@ -140,21 +138,47 @@ describe('NewDeploymentSummaryView', () => {
     await waitFor(() => expect(toasts().some(([type]) => type === 'error')).toBe(true))
     expect(toasts()[0]![1]).toContain('deployment.summary.errors.fileTooLarge')
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/summary')
-    // Back to the Keycloak ids so the wizard shows the selection again.
-    expect(useDeploymentStore.getState().draft.studentIds).toEqual(['kc1'])
+    expect(useDeploymentStore.getState().draft.studentIds).toEqual(['u1'])
   })
 
-  it('bricht ab, wenn die Nutzerliste nicht geladen werden kann', async () => {
-    vi.mocked(userApi.list).mockRejectedValue(new Error('down'))
-    const submitDraft = vi.fn()
-    useDeploymentStore.setState({ submitDraft } as any)
+  it.each([
+    [{ code: 'version_not_approved' }, 'deployment.summary.errors.version_not_approved'],
+    [{ reason: 'workload_budget_exceeded', in_use: 8, requested: 4, budget: 10 }, 'deployment.summary.errors.workload_budget_exceeded'],
+    [{ reason: 'openstack_credentials_unverified' }, 'deployment.summary.errors.openstack_credentials_unverified'],
+  ])('nennt den Grund einer Ablehnung durch die API (%j)', async (detail, key) => {
+    useDeploymentStore.setState({ submitDraft: vi.fn().mockRejectedValue({ response: { data: { detail } } }) } as any)
     renderView()
     await screen.findByText('My Deployment')
 
     await userEvent.click(deployButton())
 
-    await waitFor(() => expect(toasts().some(([type]) => type === 'error')).toBe(true))
-    expect(submitDraft).not.toHaveBeenCalled()
+    await waitFor(() => expect(toasts()[0]?.[1]).toContain(key))
+  })
+
+  describe('Laufzeit', () => {
+    it('eine Pod-App nennt die Laufzeit und zeigt weder Packer noch ein Projekt', async () => {
+      seed({ runtime: 'kubernetes' })
+      renderView()
+
+      const runtime = await screen.findByTestId('summary-runtime')
+      expect(runtime).toHaveTextContent('runtime.kubernetes')
+      expect(runtime).not.toHaveTextContent('deployment.summary.projectLabel')
+      expect(screen.queryByText('deployment.summary.packerVars')).not.toBeInTheDocument()
+      expect(screen.getByText('deployment.summary.appSettings')).toBeInTheDocument()
+    })
+
+    it('eine VM-App nennt das OpenStack-Projekt des gewählten Credentials', async () => {
+      useOpenStackCredentialsStore.setState({
+        credentials: [{ credentialId: 'c-1', project_name: 'Projekt Eins', project_verified: true }],
+      } as any)
+      seed({ runtime: 'openstack-vm', credentialId: 'c-1' })
+      renderView()
+
+      const runtime = await screen.findByTestId('summary-runtime')
+      expect(runtime).toHaveTextContent('runtime.openstackVm')
+      expect(runtime).toHaveTextContent('Projekt Eins')
+      expect(screen.getByText('deployment.summary.packerVars')).toBeInTheDocument()
+    })
   })
 
   it('verhindert einen Doppel-Submit', async () => {

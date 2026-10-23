@@ -22,7 +22,7 @@ vi.mock('@/stores/toast.store', () => ({
   useToastStore: { getState: () => ({ error: mocks.toastError }) },
 }))
 
-import { resolveRouteGuard, requireWizardStep } from '@/router/guards'
+import { resolveRouteGuard, requireWizardStep, staffOnly, STAFF_ROLES } from '@/router/guards'
 
 beforeEach(() => {
   mocks.auth.user = null
@@ -127,5 +127,24 @@ describe('requireWizardStep', () => {
   it('lets a complete draft through', () => {
     mocks.draft = { appId: 'a', name: 'n', studentIds: ['s'] }
     expect(requireWizardStep(['appId', 'name', 'studentIds'])).toBeNull()
+  })
+})
+
+describe('staffOnly', () => {
+  it('requires sign-in and one of the staff roles', () => {
+    expect(STAFF_ROLES).toEqual(['teacher', 'admin'])
+    expect(staffOnly).toEqual({ requiresAuth: true, requiresRole: ['teacher', 'admin'] })
+  })
+
+  it.each([
+    [true, null],
+    [false, '/forbidden'],
+  ])('with hasAnyRole=%s the guard answers %s', async (allowed, expected) => {
+    mocks.auth.isAuthenticated = true
+    mocks.auth.user = { userId: 'u' }
+    mocks.auth.hasAnyRole.mockReturnValue(allowed)
+
+    expect(await resolveRouteGuard(staffOnly, '/apps/create')).toBe(expected)
+    expect(mocks.auth.hasAnyRole).toHaveBeenCalledWith('teacher', 'admin')
   })
 })

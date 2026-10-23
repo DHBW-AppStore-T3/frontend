@@ -52,7 +52,7 @@ export function useStudentDirectory() {
         const res = await courseApi.getById(courseId)
         const users = (res.data.users || []) as User[]
         remember(users)
-        const ids = users.map((u) => u.keycloak_id as string)
+        const ids = users.map((u) => u.userId)
         setMembersByCourse((m) => new Map(m).set(courseId, ids))
         return ids
       } catch (err) {

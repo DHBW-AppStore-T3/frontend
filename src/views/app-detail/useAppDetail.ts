@@ -110,9 +110,11 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
     const next = !app.is_private
     setIsTogglingPrivacy(true)
     try {
-      await appApi.update(app.appId, { is_private: next })
-      setApp({ ...app, is_private: next })
-      toast.success(next ? t('AppsDetailView.toasts.setPrivate') : t('AppsDetailView.toasts.setPublic'))
+      const { data } = await appApi.update(app.appId, { is_private: next })
+      // The server's view: an admin making the app public also lifts hidden_by_admin.
+      const updated = { ...app, is_private: data.is_private, hidden_by_admin: data.hidden_by_admin }
+      setApp(updated)
+      toast.success(updated.is_private ? t('AppsDetailView.toasts.setPrivate') : t('AppsDetailView.toasts.setPublic'))
     } catch {
       toast.error(t('AppsDetailView.toasts.updateError'))
     } finally {

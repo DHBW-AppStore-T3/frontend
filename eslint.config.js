@@ -53,6 +53,15 @@ export default tseslint.config(
 
       ...reactHooks.configs.recommended.rules,
 
+      // Stored XSS (.github#7 J): a message with a user-controlled parameter
+      // never goes into HTML (use `BoldSlot` or plain text). The few sites that
+      // remain (DOMPurify'd Markdown, the escaping JSON highlighter, static
+      // translations) are allowed one by one, with a reason.
+      'no-restricted-syntax': ['error', {
+        selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+        message: 'Raw HTML needs a reason: sanitise it and allow this one line with an eslint-disable comment.',
+      }],
+
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'smart'],
     },

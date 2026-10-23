@@ -5,7 +5,7 @@
  * owns: the deployment + task data, the member-self-access fallback, the
  * infrastructure resource list, the live-stream wiring (seeding from the DB
  * task, start/stop on relevance changes, post-stream refresh) and every
- * lifecycle action (cancel, delete, pause/resume, redeploy, resend access).
+ * lifecycle action (cancel, delete, pause/resume, redeploy).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -13,21 +13,19 @@ import { useTranslation } from 'react-i18next'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
-import { useRole } from '@/composables/useRole'
 import { taskApi } from '@/api/task.api'
 import { deploymentApi } from '@/api/deployment.api'
 import { useDeploymentStream } from '@/composables/useDeploymentStream'
 import { useDeploymentPhases, DEFAULT_PHASE_COUNT } from '@/composables/useDeploymentPhases'
-import { extractErrorMessage } from '@/utils/http-error'
+import { extractErrorMessage, errorReason, localizedError } from '@/utils/http-error'
 import { paths } from '@/router/paths'
-import type { Task, DeploymentResource } from '@/types'
+import type { Task, DeploymentResource, PodWorkload } from '@/types'
 import {
   type UserAccountMap,
   type TeamVmMap,
-  extractUserAccounts,
-  extractTeamVms,
+  teamVmsOf,
+  ownAccountOf,
   enrichTeams,
-  countTfResources,
   logEntryCount,
   splitTaskLogs,
   parseGroups,
@@ -36,59 +34,36 @@ import {
   sortByCreatedDesc,
   isLiveStatus,
 } from './helpers'
-
-// Lifecycle action gating — mirrors backend/app/services/lifecycle.py:
-//   * success                 → Delete (dispatches Destroy), Pause
-//   * paused                  → Delete (dispatches Destroy), Resume
-//   * pause_failed            → Delete, Pause-Retry, Resume
-//   * resume_failed           → Delete, Resume-Retry, Pause
-//   * failed                  → Delete (Destroy or soft-delete)
-//   * cancelled               → Delete (soft-delete)
-//   * pending / running / destroying / pausing / resuming → 409, all disabled
-export const DELETE_STATUSES = [
-  'success',
-  'failed',
-  'cancelled',
-  'paused',
-  'pause_failed',
-  'resume_failed',
-]
-
-// Cancel is the only action offered while a deploy is still in flight.
-const CANCEL_STATUSES = ['pending', 'running']
-
-type ResendState = Record<string, 'sending' | 'sent' | 'error'>
+import { permissionsOf, lifecycleGates } from './access'
 
 export function useDeploymentDetail(deploymentId: string) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
 
   const deployment = useDeploymentStore((s) => s.currentDeployment)
   const authUserId = useAuthStore((s) => s.user?.userId)
-  const { isStaff } = useRole()
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [latestTaskOutputs, setLatestTaskOutputs] = useState<Task | null>(null)
   const [loadingTaskDetail, setLoadingTaskDetail] = useState(false)
-  // Member self-access: a non-owner can't read the owner-only task outputs, so
-  // their own credentials come from the dedicated ``/my-access`` endpoint.
+  // The caller's OWN access, from `/my-access` (members only): exactly their
+  // account entry, never a teammate's (.github#7 H), plus their team's block.
   const [myAccounts, setMyAccounts] = useState<UserAccountMap | null>(null)
   const [myTeamVms, setMyTeamVms] = useState<TeamVmMap | null>(null)
 
-  // Owner-view vs member-view — mirrors backend/app/utils/permissions.py
-  // ``is_deployment_owner_view``. Hides affordances that would 403 on click.
-  const isOwnerView = isStaff || (!!deployment?.userId && String(deployment.userId) === String(authUserId))
+  // What the caller may see and do comes from the API, not from the role.
+  const permissions = permissionsOf(deployment)
+  const isOwnerView = permissions.owner_view
+  const gates = lifecycleGates(deployment)
+  // Pods (Linux apps) or OpenStack VMs (the Windows desktop).
+  const isPods = deployment?.runtime === 'kubernetes'
 
-  // Imperative (non-render) reads, so async flows decide on fresh data.
-  const isOwnerViewNow = () => {
-    const auth = useAuthStore.getState()
-    const role = auth.user?.role
-    if (role === 'admin' || role === 'teacher') return true
-    const ownerId = useDeploymentStore.getState().currentDeployment?.userId
-    return !!ownerId && String(ownerId) === String(auth.user?.userId)
-  }
+  // Imperative (non-render) read, so async flows decide on fresh data.
+  const isOwnerViewNow = () =>
+    permissionsOf(useDeploymentStore.getState().currentDeployment).owner_view
+
+  const te = (key: string) => i18n.exists(key)
 
   const toasts = useToastStore.getState()
 
@@ -113,17 +88,25 @@ export function useDeploymentDetail(deploymentId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deploymentId])
 
-  // Always returns the currently active data task for the UI blocks.
-  const activeDataTask = selectedTask || latestTaskOutputs
-  const outputs = activeDataTask?.outputs
+  // Members (the owner included, when in a team) get their own access from
+  // `/my-access` — the only place credentials come from.
+  const loadMyAccess = useCallback(async () => {
+    if (!permissionsOf(useDeploymentStore.getState().currentDeployment).member) return
+    try {
+      const { data } = await deploymentApi.getMyAccess(deploymentId)
+      setMyAccounts((data.user_accounts ?? null) as UserAccountMap | null)
+      setMyTeamVms((data.team_vms ?? null) as TeamVmMap | null)
+    } catch (err) {
+      console.error('Error loading own access credentials:', err)
+    }
+  }, [deploymentId])
 
-  const typedUserAccounts = useMemo(() => extractUserAccounts(outputs, myAccounts), [outputs, myAccounts])
-  const teamVms = useMemo(() => extractTeamVms(outputs, myTeamVms), [outputs, myTeamVms])
+  const teamVms = useMemo(() => teamVmsOf(deployment?.outputs, myTeamVms), [deployment?.outputs, myTeamVms])
+  const ownAccount = useMemo(() => ownAccountOf(myAccounts), [myAccounts])
   const enrichedTeams = useMemo(
-    () => enrichTeams(deployment?.teams, typedUserAccounts, teamVms),
-    [deployment?.teams, typedUserAccounts, teamVms],
+    () => enrichTeams(deployment?.teams, teamVms, authUserId, ownAccount),
+    [deployment?.teams, teamVms, authUserId, ownAccount],
   )
-  const tfResourcesCount = countTfResources(selectedTask?.tf_state)
   const logCount = logEntryCount(selectedTask?.logs)
   const taskLogsSplit = splitTaskLogs(typeof selectedTask?.logs === 'string' ? selectedTask.logs : null)
   const groups = useMemo(() => parseGroups(deployment?.userInputVar), [deployment?.userInputVar])
@@ -140,8 +123,7 @@ export function useDeploymentDetail(deploymentId: string) {
     return list.filter((tk) => tk.taskId !== activeTask.taskId)
   }, [tasks, activeTask, isStreamRelevant])
 
-  // True while the deployment (or its active task) is still moving. The
-  // resend-access button stays disabled until the run is terminal.
+  // True while the deployment (or its active task) is still moving.
   const isDeploymentBusy =
     isLiveStatus(deployment?.status) ||
     isLiveStatus(activeTask?.status) ||
@@ -153,6 +135,10 @@ export function useDeploymentDetail(deploymentId: string) {
   const [resources, setResources] = useState<DeploymentResource[]>([])
   const [resourcesLoading, setResourcesLoading] = useState(false)
   const [resourcesError, setResourcesError] = useState<string | null>(null)
+  // Pod deployments: their workloads, read live from the cluster.
+  const [workloads, setWorkloads] = useState<PodWorkload[]>([])
+  const [workloadsLive, setWorkloadsLive] = useState(true)
+  const [workloadBusy, setWorkloadBusy] = useState<Set<string>>(new Set())
   // Addresses waiting on a redeploy task (disables the card button).
   const [redeployInFlight, setRedeployInFlight] = useState<Set<string>>(new Set())
   // Address of the VM whose inline detail panel is open; null = closed.
@@ -166,9 +152,13 @@ export function useDeploymentDetail(deploymentId: string) {
       try {
         const response = await deploymentApi.listResources(deploymentId, { refresh })
         setResources(response.data.resources)
+        setWorkloads(response.data.workloads ?? [])
+        setWorkloadsLive(response.data.live)
       } catch (err: any) {
         const status = err?.response?.status
-        if (status === 412) setResourcesError(t('vm.resourcesErrors.missingCredentials'))
+        const reason = errorReason(err)
+        if (reason && te(`errors.${reason}`)) setResourcesError(localizedError(err, t, te))
+        else if (status === 412 || status === 403) setResourcesError(t('vm.resourcesErrors.missingCredentials'))
         else if (status === 502) setResourcesError(t('vm.resourcesErrors.unreachable'))
         else if (status === 404) {
           // Soft-deleted upstream (e.g. right after a destroy): resources are
@@ -209,27 +199,6 @@ export function useDeploymentDetail(deploymentId: string) {
   const [showPauseResumeModal, setShowPauseResumeModal] = useState(false)
   const [cancelBusy, setCancelBusy] = useState(false)
   const [pauseResumeBusy, setPauseResumeBusy] = useState(false)
-
-  // -------------------------------------------------------- lifecycle gating
-  const status = deployment?.status ?? ''
-  const canCancel = isOwnerView && CANCEL_STATUSES.includes(status)
-  const canDelete = isOwnerView && DELETE_STATUSES.includes(status)
-  const deleteDisabledReason = canDelete
-    ? ''
-    : `Delete available when status is ${DELETE_STATUSES.join(', ')}`
-  const canPause =
-    isOwnerView && (status === 'success' || status === 'pause_failed' || status === 'resume_failed')
-  const canResume =
-    isOwnerView && (status === 'paused' || status === 'pause_failed' || status === 'resume_failed')
-  const canPauseOrResume = canPause || canResume
-  // Prefer the action matching the steady-state semantic of the status; from a
-  // failure state pick the retry that matches what just broke.
-  const pauseResumeAction: 'pause' | 'resume' | null =
-    status === 'success' || status === 'pause_failed'
-      ? 'pause'
-      : status === 'paused' || status === 'resume_failed'
-        ? 'resume'
-        : null
 
   // ------------------------------------------------------------ live stream
   const stream = useDeploymentStream(deploymentId)
@@ -278,12 +247,13 @@ export function useDeploymentDetail(deploymentId: string) {
       stopStream()
       // Refresh the task list once on completion so final logs/outputs land.
       void loadTasks()
+      void loadMyAccess()
       // A finished redeploy produced a new TF state: clear the in-flight set
       // and reload the resource list.
       setRedeployInFlight(new Set())
       void loadResources()
     }
-  }, [isStreamRelevant, startStream, stopStream, loadTasks, loadResources])
+  }, [isStreamRelevant, startStream, stopStream, loadTasks, loadMyAccess, loadResources])
 
   // When the SSE stream ends (terminal lifecycle event), reload deployment +
   // tasks so the view switches from live progress to the static render.
@@ -358,41 +328,16 @@ export function useDeploymentDetail(deploymentId: string) {
       const store = useDeploymentStore.getState()
       if (!store.currentDeployment) {
         toasts.error(
-          store.error ? 'Du hast keinen Zugriff auf dieses Deployment.' : 'Deployment nicht gefunden.',
+          store.error ? t('DeploymentDetailView.noAccess') : t('DeploymentDetailView.notFound'),
         )
         navigate(paths.deployments)
         return
       }
 
-      const loaded = await loadTasks() // history
+      await loadTasks() // history
       if (cancelled) return
 
-      if (isOwnerViewNow()) {
-        // Owner view: seed the top outputs from the latest task so the page
-        // can render the summary before the first SSE event arrives.
-        const latestTask = sortByCreatedDesc(loaded)[0]
-        if (latestTask) {
-          try {
-            const { data } = await taskApi.getById(latestTask.taskId)
-            if (!cancelled) setLatestTaskOutputs(data)
-          } catch (err) {
-            console.error('Error seeding top outputs:', err)
-          }
-        }
-      } else {
-        // Member view: fetch just this member's own credentials.
-        try {
-          const { data } = await deploymentApi.getMyAccess(deploymentId)
-          if (!cancelled) {
-            // The API type marks fields optional; the local UserAccount is
-            // stricter but structurally compatible at the point of use.
-            setMyAccounts((data.user_accounts ?? null) as UserAccountMap | null)
-            setMyTeamVms((data.team_vms ?? null) as TeamVmMap | null)
-          }
-        } catch (err) {
-          console.error('Error loading own access credentials:', err)
-        }
-      }
+      await loadMyAccess()
 
       // Separate roundtrip (OpenStack live-fetch ~1s): don't block the page.
       void loadResources()
@@ -412,7 +357,7 @@ export function useDeploymentDetail(deploymentId: string) {
       setSelectedTask(data)
     } catch (err) {
       console.error('Error loading task details:', err)
-      toasts.addToast({ type: 'error', message: 'Failed to load task details' })
+      toasts.addToast({ type: 'error', message: t('DeploymentDetailView.taskDetailError') })
     } finally {
       setLoadingTaskDetail(false)
     }
@@ -433,7 +378,7 @@ export function useDeploymentDetail(deploymentId: string) {
     } catch (err) {
       toasts.addToast({
         type: 'error',
-        message: extractErrorMessage(err, t('DeploymentDetailView.stopFailedToast')),
+        message: localizedError(err, t, te, t('DeploymentDetailView.stopFailedToast')),
       })
     } finally {
       setCancelBusy(false)
@@ -476,7 +421,7 @@ export function useDeploymentDetail(deploymentId: string) {
     setRedeployInFlight((s) => new Set(s).add(address))
     try {
       await deploymentApi.redeployResource(deploymentId, address)
-      toasts.success(`Redeploy gestartet für ${address}`)
+      toasts.success(t('DeploymentDetailView.redeployStarted', { address }))
       // Refresh tasks right away so the new REDEPLOY row becomes the active
       // task → the SSE stream attaches and live progress renders.
       await loadTasks()
@@ -486,17 +431,53 @@ export function useDeploymentDetail(deploymentId: string) {
         next.delete(address)
         return next
       })
-      const reason = err?.response?.data?.detail?.reason
-      if (reason === 'non_redeployable_resource_type') {
-        toasts.error('Nur Compute-Instanzen können einzeln redeployed werden.')
-      } else if (reason === 'resource_not_in_state') {
-        toasts.error('Diese Resource ist nicht mehr im aktuellen State.')
-      } else if (err?.response?.status === 409) {
-        toasts.error('Es läuft bereits eine Lifecycle-Aktion für dieses Deployment.')
+      if (err?.response?.status === 409 && !errorReason(err)) {
+        toasts.error(t('DeploymentDetailView.lifecycleBusy'))
       } else {
-        toasts.error(err?.message || 'Redeploy fehlgeschlagen.')
+        toasts.error(localizedError(err, t, te, t('DeploymentDetailView.redeployFailed')))
       }
     }
+  }
+
+  // Pod workloads: restart (a new pod, its data stays) or reset (its volume is
+  // deleted, so it asks first, in its own modal).
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetTargetWorkload, setResetTargetWorkload] = useState<string | null>(null)
+
+  const workloadAction = async (workload: string, reset: boolean) => {
+    if (workloadBusy.has(workload)) return
+    setWorkloadBusy((busy) => new Set(busy).add(workload))
+    try {
+      if (reset) await deploymentApi.resetWorkload(deploymentId, workload)
+      else await deploymentApi.restartWorkload(deploymentId, workload)
+      toasts.success(t(reset ? 'pods.resetStarted' : 'pods.restartStarted', { workload }))
+      await useDeploymentStore.getState().fetchDeploymentById(deploymentId)
+      await loadTasks()
+    } catch (err) {
+      if ((err as { response?: { status?: number } })?.response?.status === 409 && !errorReason(err)) {
+        toasts.error(t('DeploymentDetailView.lifecycleBusy'))
+      } else {
+        toasts.error(localizedError(err, t, te, t('DeploymentDetailView.redeployFailed')))
+      }
+    } finally {
+      setWorkloadBusy((busy) => {
+        const next = new Set(busy)
+        next.delete(workload)
+        return next
+      })
+    }
+  }
+
+  const askResetWorkload = (workload: string) => {
+    setResetTargetWorkload(workload)
+    setShowResetModal(true)
+  }
+
+  const confirmResetWorkload = async () => {
+    const workload = resetTargetWorkload
+    setShowResetModal(false)
+    setResetTargetWorkload(null)
+    if (workload) await workloadAction(workload, true)
   }
 
   // Close the modal first (immediate feedback), then dispatch the call.
@@ -515,7 +496,7 @@ export function useDeploymentDetail(deploymentId: string) {
   // SSE/activeTask plumbing take over. ``pauseResumeBusy`` debounces the call.
   const confirmPauseResume = async () => {
     if (!deploymentId || pauseResumeBusy) return
-    const action = pauseResumeAction
+    const action = gates.pauseResumeAction
     if (!action) return
     setPauseResumeBusy(true)
     try {
@@ -546,53 +527,6 @@ export function useDeploymentDetail(deploymentId: string) {
     }
   }
 
-  // Per-user resend-access state: userId → 'sending' | 'sent' | 'error'.
-  const [resendState, setResendState] = useState<ResendState>({})
-  const resendTimers = useRef<number[]>([])
-  useEffect(() => {
-    const timers = resendTimers.current
-    return () => timers.forEach((id) => window.clearTimeout(id))
-  }, [])
-
-  const clearResendLater = (userId: string, ms: number) => {
-    resendTimers.current.push(
-      window.setTimeout(() => {
-        setResendState((s) => {
-          const next = { ...s }
-          delete next[userId]
-          return next
-        })
-      }, ms),
-    )
-  }
-
-  const resendAccess = async (teamId: string, userId: string) => {
-    setResendState((s) => ({ ...s, [userId]: 'sending' }))
-    try {
-      await deploymentApi.resendAccess(deploymentId, teamId, userId)
-      setResendState((s) => ({ ...s, [userId]: 'sent' }))
-      toasts.addToast({ type: 'success', message: t('DeploymentDetailView.resendAccessSuccess') })
-      clearResendLater(userId, 2000)
-    } catch (err: any) {
-      setResendState((s) => ({ ...s, [userId]: 'error' }))
-      // Two reasons get a dedicated toast so the user understands WHY the mail
-      // didn't go out: smtp_disabled (503, platform kill-switch) and
-      // deployment_busy (409). Everything else gets the verbose failure toast.
-      const reason = err?.response?.data?.detail?.reason || err?.message || 'unknown'
-      const isSmtpDisabled = err?.response?.status === 503 && reason === 'smtp_disabled'
-      const isBusy = err?.response?.status === 409 && reason === 'deployment_busy'
-      toasts.addToast({
-        type: isSmtpDisabled || isBusy ? 'warning' : 'error',
-        message: isSmtpDisabled
-          ? t('DeploymentDetailView.resendAccessSmtpDisabled')
-          : isBusy
-            ? t('DeploymentDetailView.resendAccessDeploymentBusy')
-            : `${t('DeploymentDetailView.resendAccessError')}: ${reason}`,
-      })
-      clearResendLater(userId, 3000)
-    }
-  }
-
   // Selected group in the Groups card (overview ↔ detail).
   const [selectedGroup, setSelectedGroup] = useState<number | null>(null)
   const currentGroup = selectedGroup === null ? null : (groups[selectedGroup] ?? null)
@@ -611,12 +545,14 @@ export function useDeploymentDetail(deploymentId: string) {
     selectTask,
     deselectTask,
     activeTask,
-    activeDataTask,
     isStreamRelevant,
     isDeploymentBusy,
     taskLogsSplit,
     logCount,
-    tfResourcesCount,
+
+    // access and runtime
+    permissions,
+    isPods,
 
     // derived deployment data
     groups,
@@ -635,7 +571,16 @@ export function useDeploymentDetail(deploymentId: string) {
     streamTotalLogCount: stream.totalLogCount,
     ...phases,
 
-    // infrastructure
+    // infrastructure (VM apps) and workloads (pods)
+    workloads,
+    workloadsLive,
+    workloadBusy,
+    showResetModal,
+    setShowResetModal,
+    resetTargetWorkload,
+    restartWorkload: (workload: string) => void workloadAction(workload, false),
+    askResetWorkload,
+    confirmResetWorkload,
     vmResources,
     networkResources,
     securityResources,
@@ -649,11 +594,12 @@ export function useDeploymentDetail(deploymentId: string) {
     redeployVm,
 
     // lifecycle
-    canCancel,
-    canDelete,
-    deleteDisabledReason,
-    canPauseOrResume,
-    pauseResumeAction,
+    canCancel: gates.canCancel,
+    canDelete: gates.canDelete,
+    canRedeploy: gates.canRedeploy,
+    deleteDisabledReason: gates.canDelete ? '' : t('DeploymentDetailView.deleteUnavailable'),
+    canPauseOrResume: gates.canPauseOrResume,
+    pauseResumeAction: gates.pauseResumeAction,
     cancelBusy,
     pauseResumeBusy,
     showCancelModal,
@@ -670,8 +616,5 @@ export function useDeploymentDetail(deploymentId: string) {
     confirmRedeploy,
     confirmPauseResume,
 
-    // team access
-    resendState,
-    resendAccess,
   }
 }

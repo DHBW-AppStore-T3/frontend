@@ -37,7 +37,12 @@ const defaultDraft: DeploymentDraft = {
   // ``@openstack:file:<scope>``-marked variable contributes one entry
   // here, with inner-keys driven by the scope. ``submitDraft`` ships
   // the whole map under ``DeploymentCreate.files``.
-  fileUploads: {}
+  fileUploads: {},
+  // How the version runs and, for VM apps, the credential (project) to
+  // deploy with; set by the app detail page and the first wizard step.
+  runtime: null,
+  scope: null,
+  credentialId: null,
 }
 
 type DeploymentListParams = { userId?: string; appId?: string; status?: DeploymentStatus }
@@ -53,7 +58,7 @@ interface DeploymentState {
   // The wizard state (draft).
   draft: DeploymentDraft
 
-  // Global cache for students and courses (keycloak_id/courseId → object).
+  // Global cache for students and courses (userId/courseId → object).
   // These were `Map<string, any>` because the hand-written `User` type
   // was missing keycloak_id / firstName / lastName, which the backend
   // does return. `User` is derived from the OpenAPI schema now, so the
@@ -348,6 +353,11 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
         releaseTag: finalVersion,
         userInputVar: userInputVarObj,
         teams
+      }
+      // VM apps run in the project of the chosen credential; pods need none
+      // (the API ignores one sent for a pod app).
+      if (draft.runtime !== 'kubernetes' && draft.credentialId) {
+        payload.credentialId = draft.credentialId
       }
       if (Object.keys(fileUploads).length > 0) {
         payload.files = fileUploads

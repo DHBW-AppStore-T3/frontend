@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Cloud, ChevronRight, Plus } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
+import { useRole } from '@/composables/useRole'
 import { useToast } from '@/composables/useToast'
 import { saveLocale, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
 import { roleLabelKey } from '@/i18n/role-labels'
@@ -15,6 +16,8 @@ export default function UserView() {
   const { t, i18n } = useTranslation()
   const toast = useToast()
   const user = useAuthStore((s) => s.user) as UserWithCourse | null
+  // OpenStack credentials only matter to staff deploying VM apps.
+  const { isStaff } = useRole()
 
   const currentLocale: SupportedLocale = i18n.language === 'en' ? 'en' : 'de'
   // The draft follows the active language until the user picks something else.
@@ -94,14 +97,16 @@ export default function UserView() {
               ))}
             </dl>
           </details>
-          <Link to="/user/openstack" className="ui-card profile-settings">
-            <Cloud size={24} className="text-primary" />
-            <span>
-              <strong>{t('UserView.settings.openstackTitle')}</strong>
-              <small>{t('UserView.settings.openstackHint')}</small>
-            </span>
-            <ChevronRight size={18} />
-          </Link>
+          {isStaff ? (
+            <Link to="/user/openstack" className="ui-card profile-settings">
+              <Cloud size={24} className="text-primary" />
+              <span>
+                <strong>{t('UserView.settings.openstackTitle')}</strong>
+                <small>{t('UserView.settings.openstackHint')}</small>
+              </span>
+              <ChevronRight size={18} />
+            </Link>
+          ) : null}
         </>
       )}
     </div>

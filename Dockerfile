@@ -5,9 +5,9 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Nur Abhängigkeiten für sauberes Caching
+# Nur Abhängigkeiten für sauberes Caching; exakt die Versionen aus package-lock.json
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 # Restlichen Code kopieren
 COPY . .
@@ -42,18 +42,15 @@ RUN rm /etc/nginx/conf.d/default.conf
 # Eigene SPA-Config kopieren
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Gebautes Frontend übernehmen. ``--chown`` is required because the
-# entrypoint script rewrites env-config.js at container start, and that
-# only works if the runtime user (UID 101, nginx) can write to the
-# HTML directory. We also chown the directory itself (-R covers it)
-# plus the base-image 50x.html stub so the nginx user can create
-# new files alongside them.
-COPY --from=build --chown=nginx:nginx /app/dist /usr/share/nginx/html
-RUN chown -R nginx:nginx /usr/share/nginx/html
+# Gebautes Frontend übernehmen. It stays owned by root: the nginx user
+# serves it but cannot change it. Everything written at runtime goes to
+# /tmp (see nginx.conf), so the root filesystem can be read-only.
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Entrypoint: ersetzt Platzhalter in env-config.js mit echten Env-Vars
+# Entrypoint: writes env-config.js, the listen and the security-header
+# snippets into /tmp/runtime before nginx starts.
 COPY docker-entrypoint.sh /docker-entrypoint.d/00-env-config.sh
-RUN chmod +x /docker-entrypoint.d/00-env-config.sh
+RUN chmod 0755 /docker-entrypoint.d/00-env-config.sh
 
 # Drop privileges for runtime — nginx will bind to the unprivileged
 # 8080 port and serve as the `nginx` user (UID 101).

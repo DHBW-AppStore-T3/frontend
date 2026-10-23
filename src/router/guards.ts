@@ -11,6 +11,12 @@ export interface RouteMeta {
   requiresRole?: UserRole[]
 }
 
+/** Teachers and admins register apps, deploy and manage OpenStack credentials. */
+export const STAFF_ROLES: UserRole[] = ['teacher', 'admin']
+
+/** Route metadata for pages only staff may open (the API answers students with 403 anyway). */
+export const staffOnly: RouteMeta = { requiresAuth: true, requiresRole: STAFF_ROLES }
+
 /**
  * Global navigation guard (the former ``router.beforeEach``).
  *

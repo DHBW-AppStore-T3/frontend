@@ -19,8 +19,8 @@ describe('i18n', () => {
 
   it('interpolates {name} placeholders as used in the existing locale files', () => {
     expect(i18n.t('workspace.profile')).toBe('Profile')
-    expect(i18n.t('CoursesView.deleteModal.confirmPrompt', { name: 'Math' })).toContain(
-      '<strong>Math</strong>',
+    expect(i18n.t('CoursesView.deleteModal.confirmPrompt', { name: 'Math' })).toBe(
+      'Are you sure you want to delete the course Math?',
     )
   })
 
@@ -42,7 +42,7 @@ describe('i18n', () => {
   })
 
   it('translateHtml escapes interpolated params so user data cannot inject markup', () => {
-    const out = translateHtml('CoursesView.deleteModal.confirmPrompt', {
+    const out = translateHtml('DeploymentDetailView.confirmCancelMessage', {
       name: '<img src=x onerror=alert(1)>',
     })
     expect(out).toContain('<strong>')

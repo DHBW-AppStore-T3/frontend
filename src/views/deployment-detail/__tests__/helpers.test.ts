@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  extractUserAccounts,
-  extractTeamVms,
+  teamVmsOf,
+  ownAccountOf,
   enrichTeams,
-  countTfResources,
   logEntryCount,
   splitTaskLogs,
   getStatusStyles,
@@ -14,82 +13,79 @@ import {
   pickActiveTask,
 } from '../helpers'
 
-const accounts = {
-  'team a-lea-meyer': { username: 'lea.meyer', team: 'Team A', ip: '10.0.0.1', port: 22, auth: 'pw' },
-}
+const account = { username: 'lea.meyer', team: 'Team A', ip: '10.0.0.1', port: 22, auth: 'pw' }
+const teams = [
+  {
+    teamId: 't1',
+    name: 'Team A',
+    members: [
+      { userId: 'u-lea', username: 'lea.meyer', email: 'lea.meyer@x.de' },
+      { userId: 'u-max', username: 'max', email: 'max@x.de' },
+    ],
+  },
+  { teamId: 't2', name: 'Team B', members: [{ userId: 'u-ann', username: 'ann', email: 'ann@x.de' }] },
+] as any
 
-describe('extractUserAccounts / extractTeamVms', () => {
-  it('reads user_accounts from an object output', () => {
-    const outputs = { user_accounts: { value: accounts } }
-    expect(extractUserAccounts(outputs, null)).toBe(accounts)
+describe('teamVmsOf', () => {
+  it('reads every team from the redacted outputs of the owner view', () => {
+    const outputs = { raw: { team_vms: { value: { 'Team A': { url: 'https://a' } } } } }
+    expect(teamVmsOf(outputs, { 'Team X': { url: 'https://x' } })).toEqual({ 'Team A': { url: 'https://a' } })
   })
 
-  it('parses a JSON string output', () => {
-    const outputs = JSON.stringify({ user_accounts: { value: accounts }, team_vms: { value: { 'Team A': { url: 'https://x' } } } })
-    expect(extractUserAccounts(outputs, null)).toEqual(accounts)
-    expect(extractTeamVms(outputs, null)).toEqual({ 'Team A': { url: 'https://x' } })
+  it('falls back to the own team of /my-access, then to nothing', () => {
+    expect(teamVmsOf(undefined, { 'Team A': { url: 'https://a' } })).toEqual({ 'Team A': { url: 'https://a' } })
+    expect(teamVmsOf(null, null)).toEqual({})
+    expect(teamVmsOf({ raw: { team_vms: { value: 'nope' } } }, null)).toEqual({})
+  })
+})
+
+describe('ownAccountOf', () => {
+  it('is the single entry /my-access names', () => {
+    expect(ownAccountOf({ 'team-a-lea': account })).toEqual({ key: 'team-a-lea', data: account })
   })
 
-  it('falls back to the member data when there are no outputs', () => {
-    const mine = { k: { username: 'x', team: 't', ip: '', port: 0, auth: '' } }
-    expect(extractUserAccounts(null, mine)).toBe(mine)
-    expect(extractTeamVms(undefined, { T: { url: 'u' } })).toEqual({ T: { url: 'u' } })
-  })
-
-  it('falls back on unparsable or irrelevant outputs', () => {
-    expect(extractUserAccounts('{broken', 'fallback' as any)).toBe('fallback')
-    expect(extractUserAccounts({ other: 1 }, null)).toBeNull()
-    expect(extractTeamVms('{broken', null)).toBeNull()
+  it('is null for none or several entries (never guess which is the caller\'s)', () => {
+    expect(ownAccountOf(null)).toBeNull()
+    expect(ownAccountOf({})).toBeNull()
+    expect(ownAccountOf({ a: account, b: account })).toBeNull()
   })
 })
 
 describe('enrichTeams', () => {
-  const team = (members: any[], name = 'Team A') => ({ teamId: 't1', name, members })
+  const own = { key: 'team-a-lea', data: account }
 
-  it('matches by the derived terraform key (team + email local part, dots→dashes)', () => {
-    const [t] = enrichTeams([team([{ userId: 'u1', username: 'lea', email: 'Lea.Meyer@x.de' }])], accounts, null)
-    expect(t!.members[0]!.account?.key).toBe('team a-lea-meyer')
+  it('attaches the account only to the caller\'s own row, found by user id', () => {
+    const [teamA, teamB] = enrichTeams(teams, {}, 'u-lea', own)
+
+    expect(teamA!.members.map((m) => m.account)).toEqual([own, null])
+    expect(teamB!.members[0]!.account).toBeNull()
   })
 
-  it('matches by email in account.username', () => {
-    const acc = { k1: { username: 'lea@x.de', team: 'Team A', ip: '', port: 0, auth: '' } }
-    const [t] = enrichTeams([team([{ userId: 'u', username: 'zzz', email: 'lea@x.de' }])], acc, null)
-    expect(t!.members[0]!.account?.key).toBe('k1')
+  it('never hands another member the caller\'s credentials, whatever the names say', () => {
+    const lookalike = { ...teams[0], members: [{ userId: 'u-other', username: 'lea.meyer', email: 'lea.meyer@x.de' }] }
+
+    expect(enrichTeams([lookalike] as any, {}, 'u-lea', own)[0]!.members[0]!.account).toBeNull()
   })
 
-  it('matches by username substring against account.username and key', () => {
-    const acc = { 'team a-bob': { username: 'bobby', team: 'Team A', ip: '', port: 0, auth: '' } }
-    const [t] = enrichTeams([team([{ userId: 'u', username: 'bob', email: 'other@x.de' }])], acc, null)
-    expect(t!.members[0]!.account?.key).toBe('team a-bob')
+  it('compares ids as strings', () => {
+    expect(enrichTeams(teams, {}, 7 as any, own)[0]!.members.every((m) => m.account === null)).toBe(true)
+    expect(enrichTeams([{ ...teams[0], members: [{ userId: 7 }] }] as any, {}, 7 as any, own)[0]!.members[0]!.account).toBe(own)
   })
 
-  it('never attaches an account of another team', () => {
-    const acc = { 'team b-lea-meyer': { username: 'lea.meyer', team: 'Team B', ip: '', port: 0, auth: '' } }
-    const [t] = enrichTeams([team([{ userId: 'u', username: 'lea', email: 'lea.meyer@x.de' }])], acc, null)
-    expect(t!.members[0]!.account).toBeNull()
+  it('yields no account without a caller or an own account', () => {
+    expect(enrichTeams(teams, {}, undefined, own)[0]!.members.map((m) => m.account)).toEqual([null, null])
+    expect(enrichTeams(teams, {}, 'u-lea', null)[0]!.members.map((m) => m.account)).toEqual([null, null])
   })
 
   it('attaches the team vm block by team name', () => {
-    const [t] = enrichTeams([team([])], null, { 'Team A': { url: 'https://vm' } })
-    expect(t!.vm).toEqual({ url: 'https://vm' })
+    const [teamA, teamB] = enrichTeams(teams, { 'Team A': { url: 'https://a' } }, 'u-lea', own)
+
+    expect(teamA!.vm).toEqual({ url: 'https://a' })
+    expect(teamB!.vm).toBeNull()
   })
 
-  it('yields null accounts when there are no accounts at all', () => {
-    const [t] = enrichTeams([team([{ userId: 'u', username: 'a', email: 'a@x.de' }])], null, null)
-    expect(t!.members[0]!.account).toBeNull()
-    expect(t!.vm).toBeNull()
-  })
-})
-
-describe('countTfResources', () => {
-  it('counts resources in object and string state', () => {
-    expect(countTfResources({ resources: [1, 2] })).toBe(2)
-    expect(countTfResources(JSON.stringify({ resources: [1] }))).toBe(1)
-  })
-  it('returns 0 for missing or invalid state', () => {
-    expect(countTfResources(null)).toBe(0)
-    expect(countTfResources('{x')).toBe(0)
-    expect(countTfResources({})).toBe(0)
+  it('tolerates a deployment without teams', () => {
+    expect(enrichTeams(undefined, {}, 'u-lea', own)).toEqual([])
   })
 })
 

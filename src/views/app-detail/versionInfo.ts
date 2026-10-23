@@ -10,6 +10,8 @@ export interface AppDetail {
   image?: string | null
   git_link?: string | null
   is_private?: boolean
+  /** An admin deactivated the app; only an admin can make it public again. */
+  hidden_by_admin?: boolean
   userId?: string
   created_at?: string
   user?: { username?: string }

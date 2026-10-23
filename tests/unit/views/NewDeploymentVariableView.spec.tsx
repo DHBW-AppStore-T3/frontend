@@ -9,10 +9,11 @@ vi.mock('@/components/OpenStackResourcePicker', () => ({
 }))
 vi.mock('@/composables/useOpenStackResourceCache', async (orig) => {
   const mod = await orig<typeof import('@/composables/useOpenStackResourceCache')>()
-  return { ...mod, ensureLoaded: vi.fn(() => Promise.resolve()) }
+  return { ...mod, ensureLoaded: vi.fn(() => Promise.resolve()), setCredential: vi.fn() }
 })
 
 import { appApi } from '@/api/app.api'
+import { ensureLoaded, setCredential } from '@/composables/useOpenStackResourceCache'
 import NewDeploymentVariableView from '@/views/NewDeploymentVariableView'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -242,5 +243,45 @@ describe('NewDeploymentVariableView', () => {
     mockDefinitions([variable({ name: 'flavor', osType: 'flavor', osMode: 'id' })])
     renderView()
     expect(await screen.findByTestId('picker-flavor')).toBeInTheDocument()
+  })
+
+  describe('Laufzeit der Version', () => {
+    it('eine VM-App liest die OpenStack-Ressourcen aus dem Projekt des gewählten Credentials', async () => {
+      useDeploymentStore.getState().updateDraft({ runtime: 'openstack-vm', credentialId: 'c-1' })
+      mockDefinitions([variable({ name: 'flavor', osType: 'flavor', osMode: 'id' })])
+      renderView()
+
+      await screen.findByTestId('picker-flavor')
+      expect(setCredential).toHaveBeenCalledWith('c-1')
+      expect(ensureLoaded).toHaveBeenCalledWith('flavor')
+    })
+
+    it('eine Pod-App hat kein Packer, keine Terraform-Überschrift und kein Projekt', async () => {
+      useDeploymentStore.getState().updateDraft({ runtime: 'kubernetes', credentialId: 'c-1' })
+      mockDefinitions([variable({ name: 'greeting', default: 'hi' })])
+      renderView()
+
+      expect(await screen.findByText('deployment.summary.appSettings')).toBeInTheDocument()
+      expect(screen.queryByText('deployment.summary.packerVars')).not.toBeInTheDocument()
+      expect(screen.queryByText('deployment.summary.terraformVars')).not.toBeInTheDocument()
+      expect(setCredential).toHaveBeenCalledWith(null)
+    })
+
+    it('Enum-Variablen einer Pod-App sind eine Auswahl, kein OpenStack-Picker, und werden nicht vorgeladen', async () => {
+      useDeploymentStore.getState().updateDraft({ runtime: 'kubernetes' })
+      mockDefinitions([variable({ name: 'size', osType: 'enum', values: ['s', 'm'], default: 's' })])
+      renderView()
+
+      expect(await screen.findByTestId('enum-input')).toBeInTheDocument()
+      expect(screen.queryByTestId('picker-enum')).not.toBeInTheDocument()
+      expect(ensureLoaded).not.toHaveBeenCalled()
+    })
+
+    it('zeigt ohne Pod-Laufzeit weiterhin Packer und Terraform', async () => {
+      renderView()
+
+      expect(await screen.findByText('deployment.summary.packerVars')).toBeInTheDocument()
+      expect(screen.getByText('deployment.summary.terraformVars')).toBeInTheDocument()
+    })
   })
 })

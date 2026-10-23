@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
-import { translateHtml } from '@/i18n/html'
 import type { User } from '@/types'
+import BoldSlot from '@/i18n/BoldSlot'
 
 export interface RemoveMemberModalProps {
   member: User | null
@@ -21,16 +21,13 @@ export default function RemoveMemberModal({ member, isRemoving, onClose, onConfi
       header={<h2 className="text-xl font-semibold text-red-700">{t('CourseDetailView.removeModal.title')}</h2>}
       body={
         <div className="space-y-3">
-          <p
-            className="text-textMuted"
-            dangerouslySetInnerHTML={{
-              __html: translateHtml(
-                'CourseDetailView.removeModal.confirmPrompt',
-                { username: member?.username ?? '' },
-                t,
-              ),
-            }}
-          />
+          <p className="text-textMuted">
+            <BoldSlot
+              i18nKey="CourseDetailView.removeModal.confirmPrompt"
+              slot="username"
+              value={member?.username ?? ''}
+            />
+          </p>
           <p className="text-sm text-textMuted">{t('CourseDetailView.removeModal.warning')}</p>
         </div>
       }

@@ -28,7 +28,6 @@ interface AuthState {
   logout: () => Promise<void>
   setDevUser: (email: string) => Promise<void>
   setLtiUser: (email: string, token: string, role?: UserRole) => Promise<void>
-  setHandoffUser: (email: string, token: string) => Promise<void>
   buildStubUser: (email: string, role: UserRole) => User
   hasRole: (role: UserRole) => boolean
   hasAnyRole: (...roles: UserRole[]) => boolean
@@ -47,7 +46,7 @@ export const selectUserId = (s: AuthData) => s.user?.userId || null
 
 export const useAuthStore = create<AuthState>()((set, get) => {
   // Keep the mirrored flag in sync with Keycloak (login, silent refresh,
-  // logout, LTI/handoff/dev injection).
+  // logout, LTI/dev injection).
   const syncAuthenticated = () => set({ isAuthenticated: keycloak.getState().isAuthenticated })
   keycloak.subscribe(syncAuthenticated)
 
@@ -157,8 +156,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
 
     /**
      * Dev-only bridge: inject a pre-authenticated user via ?sso_handoff=email
-     * without a running self-service-ui or Keycloak flow. Never the
-     * production self-service-ui path — see setHandoffUser for that.
+     * without a running Keycloak flow (`import.meta.env.DEV` builds only).
      */
     async setDevUser(email) {
       await keycloak.setDevUser(email)
@@ -179,20 +177,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       await keycloak.setLtiUser(email, token)
       syncAuthenticated()
       const stub = () => set({ user: get().buildStubUser(email, role) })
-      stub()
-      get().fetchMe().catch(stub)
-    },
-
-    /**
-     * Authenticate from a self-service-ui handoff. Backend already
-     * validated self-service-ui's Keycloak bearer and minted a handoff
-     * token; role is unknown until fetchMe() resolves, so the stub defaults
-     * to 'student' and is replaced (or kept, on failure) same as LTI.
-     */
-    async setHandoffUser(email, token) {
-      await keycloak.setHandoffUser(email, token)
-      syncAuthenticated()
-      const stub = () => set({ user: get().buildStubUser(email, 'student') })
       stub()
       get().fetchMe().catch(stub)
     },

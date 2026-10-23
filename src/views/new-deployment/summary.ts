@@ -2,7 +2,7 @@
  * Pure presentation logic of the wizard's summary step: turning draft values
  * and variable definitions into display rows, and backend errors into messages.
  */
-import type { AppVariable, DeploymentFile, User } from '@/types'
+import { isOsResourceVar, type AppVariable, type DeploymentFile } from '@/types'
 import { formatBytes } from '@/utils/format'
 import { isMultiImagePackerLayout, packerValueFor } from '@/utils/draft-variables'
 
@@ -71,7 +71,7 @@ export function renderOsValue(
 export function toSummaryEntry(def: AppVariable, val: unknown, ctx: SummaryContext): SummaryEntry {
   const { t, getDisplayName } = ctx
   const display = (raw: unknown) =>
-    def.osType
+    def.osType && isOsResourceVar(def)
       ? renderOsValue(def.osType, def.osMode || 'name', raw, !!def.osMulti, getDisplayName)
       : formatValue(raw, t)
 
@@ -82,7 +82,7 @@ export function toSummaryEntry(def: AppVariable, val: unknown, ctx: SummaryConte
     return { label: def.name, value: entries.map(([slot, raw]) => `${slot}: ${display(raw)}`).join(' · ') }
   }
 
-  if (def.osType) {
+  if (def.osType && isOsResourceVar(def)) {
     const shown = display(val)
     const rawString = formatValue(val, t)
     return { label: def.name, value: shown, raw: shown !== rawString ? rawString : undefined }
@@ -150,11 +150,40 @@ const toMb = (bytes: unknown) => (Number(bytes || 0) / BYTES_PER_MB).toFixed(MB_
  * reason maps to an i18n key with the numbers the user needs. Unknown shapes
  * fall back to a string detail, the error message, or the generic key.
  */
+// Errors the API names with `detail.code`.
+const CODE_MESSAGES: Record<string, string> = {
+  version_not_approved: 'deployment.summary.errors.version_not_approved',
+  role_required: 'deployment.summary.errors.role_required',
+}
+
+// Errors the API names with `detail.reason` that need no more than a text
+// (team, workload, credential, app spec and version problems).
+const REASONS_WITH_MESSAGE = new Set([
+  'invalid_teams',
+  'unknown_team_member',
+  'member_in_several_teams',
+  'team_names_collide',
+  'no_workloads',
+  'too_many_workloads',
+  'openstack_credentials_missing',
+  'openstack_credential_not_found',
+  'openstack_credentials_unverified',
+  'auth_url_not_allowed',
+  'invalid_app_spec',
+  'version_moved',
+  'version_required',
+  'git_unreachable',
+  'git_host_not_allowed',
+])
+
 export function formatSubmitError(err: any, t: Translate): string {
   const detail = err?.response?.data?.detail
   const fallback =
     (typeof detail === 'string' ? detail : null) ?? err?.message ?? t('deployment.summary.submitError')
 
+  if (detail && typeof detail === 'object' && detail.code && CODE_MESSAGES[detail.code]) {
+    return t(CODE_MESSAGES[detail.code]!)
+  }
   if (!detail || typeof detail !== 'object' || !detail.reason) return fallback
 
   const filename = String(
@@ -179,19 +208,17 @@ export function formatSubmitError(err: any, t: Translate): string {
       return t('deployment.summary.errors.fileB64Invalid', { filename })
     case 'file_size_mismatch':
       return t('deployment.summary.errors.fileSizeMismatch', { filename })
+    case 'workload_budget_exceeded':
+      return t('deployment.summary.errors.workload_budget_exceeded', {
+        inUse: detail.in_use ?? 0,
+        requested: detail.requested ?? 0,
+        budget: detail.budget ?? 0,
+      })
     default:
-      return fallback
+      return REASONS_WITH_MESSAGE.has(detail.reason)
+        ? t(`deployment.summary.errors.${detail.reason}`, { limit: detail.limit ?? '', workloads: detail.workloads ?? '' })
+        : fallback
   }
-}
-
-/** Lookup keycloak id → backend user id; unknown ids are passed through. */
-export function mapIdsToUserIds(users: User[]): (id: string) => string {
-  const map = new Map<string, string>()
-  for (const u of users) {
-    if (u.keycloak_id) map.set(u.keycloak_id, u.userId)
-    map.set(u.userId, u.userId)
-  }
-  return (id) => map.get(id) || id
 }
 
 /** The release tag may arrive as string or ``{version}`` object. */

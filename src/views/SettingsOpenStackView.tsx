@@ -3,34 +3,24 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { KeyRound } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
-import CredentialMissingBanner from '@/components/CredentialMissingBanner'
-import {
-  useOpenStackCredentialsStore,
-  selectHasCredential,
-  selectIsValidated,
-  selectLastError,
-  selectIsLocked,
-  selectActiveDeployments,
-} from '@/stores/openstack-credentials.store'
+import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { useToastStore } from '@/stores/toast.store'
 import { parseCloudsYaml, CloudsYamlError } from '@/utils/clouds-yaml'
-import { paths } from '@/router/paths'
+import type { OpenStackCredential } from '@/types/openstack-credential'
 import {
   emptyAppForm,
   emptyPasswordForm,
   buildPayload,
-  formsFromStatus,
   formsFromYaml,
   type AppCredentialForm,
   type CredentialTab,
   type FormsState,
   type PasswordCredentialForm,
 } from './settings-openstack/credentialForm'
-import CredentialStatusCard from './settings-openstack/CredentialStatusCard'
+import { isDeletable, safeAppPath } from './settings-openstack/credentialStatus'
+import CredentialList from './settings-openstack/CredentialList'
 import YamlDropZone from './settings-openstack/YamlDropZone'
 import { AppCredentialFields, PasswordCredentialFields } from './settings-openstack/CredentialFields'
-
-const DISPLAY_LOCALE = 'de-DE'
 
 export default function SettingsOpenStackView() {
   const { t } = useTranslation()
@@ -38,13 +28,8 @@ export default function SettingsOpenStackView() {
   const [params] = useSearchParams()
   const toast = useToastStore.getState()
 
-  const status = useOpenStackCredentialsStore((s) => s.status)
+  const credentials = useOpenStackCredentialsStore((s) => s.credentials)
   const isLoading = useOpenStackCredentialsStore((s) => s.loading)
-  const hasCredential = useOpenStackCredentialsStore(selectHasCredential)
-  const isValidated = useOpenStackCredentialsStore(selectIsValidated)
-  const lastError = useOpenStackCredentialsStore(selectLastError)
-  const isLocked = useOpenStackCredentialsStore(selectIsLocked)
-  const activeDeployments = useOpenStackCredentialsStore(selectActiveDeployments)
 
   const [tab, setTab] = useState<CredentialTab>('app')
   const [appForm, setAppForm] = useState<AppCredentialForm>(emptyAppForm)
@@ -57,68 +42,51 @@ export default function SettingsOpenStackView() {
   }
 
   const clearSecrets = () => {
-    setAppForm((f) => ({ ...f, secret: '' }))
+    setAppForm((f) => ({ ...f, identifier: '', secret: '' }))
     setPasswordForm((f) => ({ ...f, secret: '' }))
   }
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      await useOpenStackCredentialsStore.getState().fetch()
-      const loaded = useOpenStackCredentialsStore.getState().status
-      // Pre-fill known non-secret fields if credentials exist.
-      if (!cancelled && loaded?.has_credential) applyForms(formsFromStatus(loaded))
-    })()
-    return () => {
-      cancelled = true
-    }
+    void useOpenStackCredentialsStore.getState().fetch()
   }, [])
 
-  const warnIfLocked = (): boolean => {
-    if (!isLocked) return false
-    toast.warning(t('SettingsOpenStackView.errors.lockedActiveDeployments', { count: activeDeployments }))
-    return true
-  }
-
-  // The store records failures in ``error``; surface them as a toast.
+  // The store records failures in `error`; surface them as a toast.
   const reportStoreError = () => {
     const { error } = useOpenStackCredentialsStore.getState()
     if (error) toast.error(error)
   }
 
   const returnToWizardIfRequested = () => {
-    const next = params.get('next')
+    const next = safeAppPath(params.get('next'))
     if (next) navigate(next)
   }
 
+  // Keystone checks the credential before anything is stored and names its
+  // project; saving another one for the same project replaces it (that is
+  // how a secret is rotated).
   const handleSave = async () => {
-    if (warnIfLocked()) return
     const payload = buildPayload(tab, appForm, passwordForm)
     if (!payload) {
       toast.error(t('SettingsOpenStackView.errors.missingFields'))
       return
     }
     try {
-      await useOpenStackCredentialsStore.getState().save(payload)
-      const validationError = selectLastError(useOpenStackCredentialsStore.getState())
-      if (validationError) {
-        toast.warning(t('SettingsOpenStackView.errors.validationFailedSaved', { error: validationError }))
-      } else {
-        toast.success(t('SettingsOpenStackView.toasts.saveSuccess'))
-        returnToWizardIfRequested()
-      }
+      const saved = await useOpenStackCredentialsStore.getState().save(payload)
+      toast.success(
+        t('SettingsOpenStackView.toasts.saveSuccess', { project: saved.project_name || saved.project_id }),
+      )
       clearSecrets()
+      returnToWizardIfRequested()
     } catch {
       reportStoreError()
     }
   }
 
-  const handleTest = async () => {
+  const handleTest = async (credential: OpenStackCredential) => {
     try {
-      await useOpenStackCredentialsStore.getState().test()
-      const validationError = selectLastError(useOpenStackCredentialsStore.getState())
-      if (validationError) {
-        toast.error(t('SettingsOpenStackView.errors.validationFailed', { error: validationError }))
+      const checked = await useOpenStackCredentialsStore.getState().test(credential.credentialId)
+      if (checked.last_validation_error) {
+        toast.error(t('SettingsOpenStackView.errors.validationFailed', { error: checked.last_validation_error }))
       } else {
         toast.success(t('SettingsOpenStackView.toasts.credentialsValid'))
       }
@@ -127,21 +95,24 @@ export default function SettingsOpenStackView() {
     }
   }
 
-  const handleDelete = async () => {
-    if (warnIfLocked()) return
-    if (!window.confirm(t('SettingsOpenStackView.confirmDelete'))) return
+  const handleDelete = async (credential: OpenStackCredential) => {
+    if (!isDeletable(credential)) {
+      toast.warning(
+        t('SettingsOpenStackView.errors.lockedActiveDeployments', { count: credential.active_deployments }),
+      )
+      return
+    }
+    const project = credential.project_name || credential.project_id || ''
+    if (!window.confirm(t('SettingsOpenStackView.confirmDelete', { project }))) return
     try {
-      await useOpenStackCredentialsStore.getState().remove()
+      await useOpenStackCredentialsStore.getState().remove(credential.credentialId)
       toast.success(t('SettingsOpenStackView.status.deleteSuccess'))
-      clearSecrets()
     } catch {
       reportStoreError()
     }
   }
 
   const importYamlFile = async (file: File) => {
-    if (warnIfLocked()) return
-
     let text: string
     try {
       text = await file.text()
@@ -165,10 +136,6 @@ export default function SettingsOpenStackView() {
     toast.success(t('SettingsOpenStackView.cloudsYamlImported'))
   }
 
-  const lastValidated = status?.last_validated_at
-    ? new Date(status.last_validated_at).toLocaleString(DISPLAY_LOCALE)
-    : null
-
   const tabClass = (name: CredentialTab) =>
     `flex-1 px-4 py-3 text-sm font-medium transition-colors ${
       tab === name ? 'text-primary border-b-2 border-primary' : 'text-textMuted hover:text-textMuted'
@@ -182,31 +149,19 @@ export default function SettingsOpenStackView() {
         subtitle={t('SettingsOpenStackView.intro')}
       />
 
-      {isLocked ? (
-        <div className="mb-6">
-          <CredentialMissingBanner
-            variant="lock"
-            title={t('SettingsOpenStackView.lockBanner.title')}
-            message={t('SettingsOpenStackView.lockBanner.message', { count: activeDeployments })}
-            cta={t('SettingsOpenStackView.lockBanner.cta')}
-            ctaTo={paths.deployments}
-          />
-        </div>
-      ) : null}
+      {/* Only VM apps (the Windows desktop) need a credential; pod apps run without. */}
+      <p className="text-sm text-textMuted mb-6">{t('SettingsOpenStackView.vmOnlyHint')}</p>
 
-      <CredentialStatusCard
+      <CredentialList
+        credentials={credentials}
         isLoading={isLoading}
-        hasCredential={hasCredential}
-        isValid={isValidated}
-        lastError={lastError}
-        lastValidated={lastValidated}
-        isLocked={isLocked}
-        onRetest={() => void handleTest()}
-        onDelete={() => void handleDelete()}
+        onRetest={(credential) => void handleTest(credential)}
+        onDelete={(credential) => void handleDelete(credential)}
       />
 
+      <h2 className="text-lg font-semibold text-textHeading mb-3">{t('SettingsOpenStackView.addTitle')}</h2>
+
       <YamlDropZone
-        disabled={isLocked}
         onFile={(file) => void importYamlFile(file)}
         onMissingFile={() => toast.error(t('SettingsOpenStackView.dropNoFile'))}
       />
@@ -228,17 +183,16 @@ export default function SettingsOpenStackView() {
         </div>
 
         {tab === 'app' ? (
-          <AppCredentialFields form={appForm} onChange={setAppForm} disabled={isLocked} />
+          <AppCredentialFields form={appForm} onChange={setAppForm} />
         ) : (
-          <PasswordCredentialFields form={passwordForm} onChange={setPasswordForm} disabled={isLocked} />
+          <PasswordCredentialFields form={passwordForm} onChange={setPasswordForm} />
         )}
 
         <div className="px-6 pb-6 flex justify-end">
           <button
             type="button"
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            disabled={isLoading || isLocked}
-            title={isLocked ? t('SettingsOpenStackView.tooltips.lockedActiveDeployments') : ''}
+            disabled={isLoading}
             data-testid="btn-save"
             onClick={() => void handleSave()}
           >

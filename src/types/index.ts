@@ -29,7 +29,18 @@ type Schemas = components['schemas']
 // ----------------------------------------------------------------
 export type UserRole = Schemas['UserRole']
 
-export type DeploymentStatus = 'pending' | 'running' | 'success' | 'failed' | 'destroying' | 'destroyed' | 'cancelled' | 'pausing' | 'paused' | 'resuming' | 'pause_failed' | 'resume_failed'
+export type DeploymentStatus =
+  | 'pending' | 'running' | 'success' | 'failed' | 'destroying' | 'destroyed' | 'cancelled'
+  | 'pausing' | 'paused' | 'resuming' | 'pause_failed' | 'resume_failed'
+  // A redeploy of one VM (or restart/reset of one pod workload) in flight / failed;
+  // the rest of the deployment keeps running.
+  | 'redeploying' | 'redeploy_failed'
+
+/** How a deployment runs: Linux apps as pods in the cluster, Windows as OpenStack VMs. */
+export type DeploymentRuntime = 'kubernetes' | 'openstack-vm'
+
+/** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
+export type DeploymentAction = 'destroy' | 'delete' | 'pause' | 'resume' | 'cancel' | 'redeploy'
 
 export type TaskType = 'deploy' | 'destroy' | 'update' | 'pause' | 'resume' | 'redeploy'
 
@@ -90,6 +101,20 @@ export interface App {
   // Data-URL ("data:image/png;base64,...") or null when the app
   // has no logo. Goes straight into ``<img :src=...>``.
   image?: string | null
+  // An admin deactivated the app; only an admin can make it public again.
+  hidden_by_admin?: boolean
+}
+
+/**
+ * ``GET /apps/{id}/runtime?version=``: how one version runs. ``scope`` is
+ * ``team`` (one workload or VM per team) or ``user`` (one per person); a VM
+ * app without an ``appstore.yaml`` has none. ``egress``/``access`` only for pods.
+ */
+export interface AppRuntime {
+  runtime: DeploymentRuntime
+  scope?: 'team' | 'user' | null
+  egress?: 'none' | 'internet' | null
+  access?: Array<Record<string, unknown>>
 }
 
 export interface AppWithUser extends App {
@@ -128,6 +153,12 @@ export interface AppVersionApproval {
   approvalId: string
   appId: string
   version_tag: string
+  // What the review covers: the commit the tag pointed to at submission and,
+  // for pod apps, the SHA-256 of its appstore.yaml and its image digests.
+  commit_sha?: string | null
+  runtime?: DeploymentRuntime
+  spec_sha256?: string | null
+  image_digests?: string[] | null
   status: AppVersionApprovalStatus
   diff_url: string | null
   notes: string | null
@@ -150,11 +181,24 @@ export interface Deployment {
   appId: string
   userId: string
   status: DeploymentStatus
-  commitHash: string | null
-  commitInfo: string | null
   userInputVar: string | null
   releaseTag: string
+  // The commit every job of the deployment runs.
+  commit_sha?: string | null
+  // VM deployments: the OpenStack project they live in.
+  os_project_id?: string | null
+  runtime?: DeploymentRuntime
   created_at: string
+}
+
+/** What the caller may do with a deployment, decided by the API. */
+export interface DeploymentPermissions {
+  // Tasks, logs, live stream, infrastructure, redacted outputs.
+  owner_view: boolean
+  // Pause, resume, destroy, redeploy, cancel.
+  operate: boolean
+  // In one of its teams: own access via ``my-access``.
+  member: boolean
 }
 
 export interface DeploymentTeamMember {
@@ -181,11 +225,12 @@ export interface DeploymentWithRelations extends Deployment {
     created_at: string;
   } | null;
   // Teams + members from the DeploymentDetail backend response. Used
-  // by the Teams card on the deployment detail page (resend-access
-  // buttons hang off of these IDs).
+  // by the Teams card on the deployment detail page.
   teams?: DeploymentTeam[];
   outputs?: any;
   logs?: string | null;
+  permissions?: DeploymentPermissions;
+  actions?: DeploymentAction[];
 }
 
 // One member's access credentials, mirroring the raw terraform
@@ -193,8 +238,11 @@ export interface DeploymentWithRelations extends Deployment {
 // own entry) by the ``/deployments/{id}/my-access`` endpoint so a
 // team member can see their own credentials without the owner view.
 export interface DeploymentUserAccount {
-  username: string;
+  username?: string | null;
   team?: string;
+  // Pod apps: whose account and which workload it opens.
+  user_id?: string;
+  workload?: string;
   ip?: string;
   port?: number;
   auth?: string;
@@ -210,7 +258,7 @@ export interface DeploymentUserAccount {
 // mean "no credentials yet".
 export interface MyAccessResponse {
   user_accounts: Record<string, DeploymentUserAccount>;
-  team_vms: Record<string, { url?: string; floating_ip?: string; fixed_ip?: string }>;
+  team_vms: Record<string, { url?: string | null; floating_ip?: string; fixed_ip?: string; workloads?: string[] }>;
 }
 
 export interface DeploymentCreate {
@@ -220,6 +268,9 @@ export interface DeploymentCreate {
   commitInfo?: string | null
   userInputVar?: Record<string, any> | null
   releaseTag: string
+  // VM apps: which of the caller's OpenStack credentials (and so which
+  // project) to deploy with. Pod apps need none.
+  credentialId?: string | null
   teams?: Array<{ name: string; userIds: string[] }>
   // Files-map keyed by ``@openstack:file:<scope>``-marked variable
   // name. Inner key:
@@ -357,11 +408,28 @@ export interface DeploymentResource {
   metadata?: Record<string, string> | null
 }
 
+/** One workload (team or person) of a pod deployment, read live from the cluster. */
+export interface PodWorkload {
+  workload: string
+  team: string | null
+  /** ``scope: user``: whose workload it is. */
+  user_id: string | null
+  ready: boolean
+  restarts: number
+  /** Running, Pending, Stopped, CrashLoopBackOff, ImagePullBackOff, Unschedulable, ... */
+  phase: string
+  url: string | null
+  lastEvent: string | null
+}
+
 export interface DeploymentResourceListResponse {
   resources: DeploymentResource[]
-  /** ``true`` when the backend overlaid live OpenStack data;
-   *  ``false`` when ``refresh=false`` was requested. */
+  /** ``true`` when the backend overlaid live OpenStack data (or, for pods,
+   *  could ask the cluster); ``false`` when ``refresh=false`` was requested. */
   live: boolean
+  runtime?: DeploymentRuntime
+  /** Pod deployments: their workloads instead of ``resources``. */
+  workloads?: PodWorkload[]
 }
 
 // ----------------------------------------------------------------
@@ -393,8 +461,6 @@ export interface Task {
   started_at: string | null
   finished_at: string | null
   logs: string | TaskLogsObject | null
-  tf_state: string | object | null
-  outputs: string | object | null
   // Live-progress fields. Backend persists them while the worker is
   // running so a page reload mid-deploy shows the last known phase
   // and percent without waiting for the next SSE event.
@@ -492,6 +558,12 @@ export interface DeploymentDraft {
   version: string
   groupNames: string[]
   variableDefinitions?: AppVariable[] // API definitions for the variables
+  // How the chosen version runs (``GET /apps/{id}/runtime``); null until known.
+  runtime?: DeploymentRuntime | null
+  // ``user``: one workload/VM per person, the group step puts everyone in a team of their own.
+  scope?: 'team' | 'user' | null
+  // VM apps: the OpenStack credential (project) to deploy with.
+  credentialId?: string | null
   // Wizard-side state for ``@openstack:file:<scope>``-marked variables.
   // Outer key: variable name. Inner key: scope routing token (``"all"``,
   // team name, or ``Team-User`` composite). Flushed verbatim into
@@ -519,8 +591,10 @@ export interface AppVariable {
   required?: boolean
   source?: 'terraform' | 'packer' | 'unknown'
   // Value-help metadata, set by the backend when the variable carries an
-  // ``@openstack:<type>[:<mode>][:<multi>]`` marker. Undefined for free-text inputs.
-  osType?: AppVariableOsType
+  // ``@openstack:<type>[:<mode>][:<multi>]`` marker. Null or undefined for
+  // free-text inputs. ``enum`` (pod apps): one of ``values``.
+  osType?: AppVariableOsType | null
+  values?: string[]
   // 'id' (UUID) or 'name'; defaults to 'name' for most resource kinds.
   osMode?: 'id' | 'name'
   // Multi-select, from the marker or derived from the HCL list/set type.
@@ -590,3 +664,10 @@ export type AppVariableOsType =
   // produces a base64 payload shipped to the backend in ``DeploymentCreate.files``.
   // ``osScope`` tells the wizard whether to render one zone, one per team, or one per user.
   | 'file'
+  // ``enum`` (pod apps, appstore.yaml): a choice among ``values``, no OpenStack lookup.
+  | 'enum'
+
+/** Whether the variable is filled from the user's OpenStack project (resource picker). */
+export function isOsResourceVar(v: Pick<AppVariable, 'osType'>): boolean {
+  return Boolean(v.osType) && v.osType !== 'file' && v.osType !== 'enum'
+}
