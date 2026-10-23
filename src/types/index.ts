@@ -115,6 +115,21 @@ export interface AppRuntime {
   scope?: 'team' | 'user' | null
   egress?: 'none' | 'internet' | null
   access?: Array<Record<string, unknown>>
+  // Containers whose cpu/memory a person may choose (``resourceBounds`` in appstore.yaml).
+  resources?: ResourceChoice[]
+}
+
+export interface ResourceRange {
+  default: string
+  min: string
+  max: string
+}
+
+/** What one container offers: default and range of its cpu and memory limits. */
+export interface ResourceChoice {
+  container: string
+  cpu: ResourceRange
+  memory: ResourceRange
 }
 
 export interface AppWithUser extends App {
@@ -564,6 +579,10 @@ export interface DeploymentDraft {
   scope?: 'team' | 'user' | null
   // VM apps: the OpenStack credential (project) to deploy with.
   credentialId?: string | null
+  // Pods: containers whose cpu/memory the app lets people choose; undefined until asked.
+  resourceChoices?: ResourceChoice[]
+  // The cpu/memory chosen per container; sent as ``userInputVar.resources``.
+  resources?: Record<string, { cpu: string; memory: string }>
   // Wizard-side state for ``@openstack:file:<scope>``-marked variables.
   // Outer key: variable name. Inner key: scope routing token (``"all"``,
   // team name, or ``Team-User`` composite). Flushed verbatim into

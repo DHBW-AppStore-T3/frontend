@@ -761,6 +761,15 @@ export default {
       perPersonConstraintTitle: "App läuft je Person",
     },
 
+    resources: {
+      title: 'Rechenressourcen',
+      desc: 'Wählen Sie, wie viele vCPUs und wie viel Arbeitsspeicher Ihr Deployment erhält. Die empfohlenen Werte sind vorausgewählt.',
+      container: 'Container',
+      cpu: 'vCPU',
+      memory: 'Arbeitsspeicher (RAM)',
+      vcpu: '{{count}} vCPU',
+      range: 'Erlaubt {{min}} – {{max}} · empfohlen {{default}}',
+    },
     variables: {
       title: 'Nutzerspezifische Variablen',
       description: 'Optionale Parameter für das Deployment.',

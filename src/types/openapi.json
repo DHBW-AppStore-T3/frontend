@@ -4193,6 +4193,15 @@
             "type": "array",
             "title": "Access",
             "default": []
+          },
+          "resources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Resources",
+            "default": []
           }
         },
         "type": "object",

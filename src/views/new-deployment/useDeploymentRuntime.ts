@@ -11,6 +11,13 @@ import {
 } from '@/stores/openstack-credentials.store'
 import { useToast } from '@/composables/useToast'
 import { chooseCredentialId } from './credentialChoice'
+import { defaultSelection } from '@/utils/resources'
+import type { ResourceChoice } from '@/types'
+
+function sameContainers(chosen: Record<string, unknown> | undefined, choices: ResourceChoice[]) {
+  const have = Object.keys(chosen ?? {}).sort().join()
+  return have === choices.map((c) => c.container).sort().join()
+}
 
 /**
  * Runtime and credential of the wizard's draft (first step).
@@ -37,12 +44,22 @@ export function useDeploymentRuntime() {
   const needsCredential = runtime === 'openstack-vm'
 
   useEffect(() => {
+    // Asked once per app/version; the choices come with the runtime.
     if (runtime || !appId || !releaseTag) return
     let cancelled = false
     appApi
       .getRuntime(appId, String(releaseTag))
       .then(({ data }) => {
-        if (!cancelled) useDeploymentStore.getState().updateDraft({ runtime: data.runtime, scope: data.scope ?? null })
+        if (cancelled) return
+        const choices = data.resources ?? []
+        const draft = useDeploymentStore.getState().draft
+        useDeploymentStore.getState().updateDraft({
+          runtime: data.runtime,
+          scope: data.scope ?? null,
+          resourceChoices: choices,
+          // A choice already made (back and forth in the wizard) stays.
+          resources: sameContainers(draft.resources, choices) ? draft.resources : defaultSelection(choices),
+        })
       })
       .catch(() => !cancelled && toast.error(t('AppsDetailView.runtime.loadError')))
     return () => {
