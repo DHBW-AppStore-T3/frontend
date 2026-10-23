@@ -758,6 +758,7 @@ export default {
       progress: 'Fortschritt',
       assignedCount: '{assigned} / {total} zugewiesen',
       perPersonConstraintText: "Diese App läuft je Person: Jede und jeder bekommt ein eigenes Team.",
+      perPersonConstraintTitle: "App läuft je Person",
     },
 
     variables: {

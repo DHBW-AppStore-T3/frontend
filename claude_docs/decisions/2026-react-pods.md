@@ -1,6 +1,6 @@
 # Pods/K8s im React-Frontend (frontend#36, Branch `spike/react-pods`)
 
-**Status:** umgesetzt (AP0-AP7), E2E-Abnahme und Cutover offen (AP8).
+**Status:** umgesetzt (AP0-AP7); E2E-Abnahme auf dem k8s-Staging am 2026-10-23 durchgeführt (siehe Ergebnis unten), Cutover in `ci.yml` vollzogen.
 
 ## Ausgangslage
 `spike/vue-pods` (Vue, Stand `48a6523`, eingefroren) stellt Linux-Apps als Pods dar, verwaltet ein
@@ -24,11 +24,32 @@ Es darf nur ein Frontend-Branch das k8s-Staging ausrollen (der Digest liegt in `
 deployment-Repos, Branch `spike/dev`). Bis zum Cutover löst `spike/vue-pods` den Rollout bei jedem Push aus,
 `spike/react-pods` nur per `workflow_dispatch` (Job `k8s-staging` in `ci.yml`).
 
-Cutover: (1) E2E-Checkliste unten auf dem Staging bestehen, (2) in `ci.yml` von `spike/vue-pods` den Rollout abschalten
-und bei `spike/react-pods` auch bei `push` zulassen, (3) in der deployment-README „frontend: push to spike/vue-pods"
-auf `spike/react-pods` ändern.
+Cutover: (1) E2E auf dem Staging, (2) `spike/react-pods` rollt auch bei `push` aus (`ci.yml`, erledigt;
+`spike/vue-pods` ist eingefroren), (3) in der deployment-README „frontend: push to spike/vue-pods" auf
+`spike/react-pods` ändern (PR im deployment-Repo, offen).
 
-## E2E-Checkliste (k8s-Staging, gleiche Ergebnisse wie die Vue-Version)
+## E2E-Ergebnis (k8s-Staging, 2026-10-23, React-Image aus `spike/react-pods`)
+Geprüft mit den Demo-Konten Dozent, Student und Admin im Browser.
+
+- [x] Login über Keycloak; Seiten-Reload behält die Sitzung (Fix: `silent-refresh.html` darf von der App selbst
+      gerahmt werden, vorher `X-Frame-Options: DENY`)
+- [x] Dashboard: Hinweis „Nur Windows/VM-Apps brauchen ein Credential“, Student ohne Quota-Kachel und Kurse
+- [x] App-Detail: Laufzeit-Anzeige „Pods im Cluster · je Person“, Deploy ohne Credential
+- [x] Wizard Pod-App (Scope `user`): Teams je Person erzwungen, Zusammenfassung mit Laufzeit, Absenden
+- [x] Deployment-Seite: Workloads live aus dem Cluster, Neustart mit Live-Stream, Reset-Dialog mit Rückfrage, Löschen
+      mit Pod-Text; Mitglieder sehen nur die eigene Zeile (Passwort verdeckt), keine Aktionen
+- [x] Rollen: Student wird bei Wizard und OpenStack-Settings auf „Zugriff verweigert“ geleitet
+- [x] Admin-Review: Laufzeit, Commit, appstore.yaml-Hash, Image-Digests
+- [ ] Nicht prüfbar auf dem Staging: VM-Wizard und Credentials anlegen/prüfen/löschen (kein OpenStack),
+      LTI-Start (`#lti=1…`, kein Moodle). Beides ist durch Unit-Tests abgedeckt.
+
+### Beobachtung außerhalb des Frontends
+Ein neues Deployment mit zwei Workloads (`scope: user`) scheiterte in der Phase `K8S_WAIT_READY` nach 0,1 s mit
+„Pod … cannot be scheduled … persistentvolumeclaim … not found“. Das Frontend zeigt den Fehler korrekt an. Ursache liegt
+im Worker (die Bereitschaftsprüfung wertet einen Pod als nicht planbar, bevor sein Volume angelegt ist). Gehört in ein
+Issue im Worker-Repo.
+
+## E2E-Checkliste (Vorlage)
 - [ ] Login über Keycloak; LTI-Start (`#lti=1…`) und Entfernen des Fragments aus der Adresszeile
 - [ ] Dashboard: Quota-Kachel mit Projektwahl (Staff), Banner für ungeprüfte/fehlerhafte Credentials
 - [ ] App-Detail: Laufzeit-Anzeige, ungültige `appstore.yaml` sperrt Deploy, Student sieht kein Deploy-Panel

@@ -228,6 +228,8 @@ describe('NewDeploymentGroupsAssignmentView', () => {
 
       await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
       expect(screen.getByText('deployment.assignment.perPersonConstraintText')).toBeInTheDocument()
+      expect(screen.getByText('deployment.assignment.perPersonConstraintTitle')).toBeInTheDocument()
+      expect(screen.queryByText('deployment.assignment.windowsConstraintTitle')).not.toBeInTheDocument()
     })
 
     it('scope team lässt die Gruppierung frei, auch bei einem "Windows"-Namen', async () => {

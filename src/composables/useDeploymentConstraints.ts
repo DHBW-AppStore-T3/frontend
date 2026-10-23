@@ -10,10 +10,14 @@ export interface VersionShape {
 export interface GroupConstraints {
   forcedGroupMode: 'eachUser' | null
   groupModeReason: string | null
+  /** Heading of the notice; names the licence only where the licence is the reason. */
+  groupModeTitle: string | null
 }
 
 const PER_PERSON_REASON = 'deployment.assignment.perPersonConstraintText'
 const WINDOWS_REASON = 'deployment.assignment.windowsConstraintText'
+const PER_PERSON_TITLE = 'deployment.assignment.perPersonConstraintTitle'
+const WINDOWS_TITLE = 'deployment.assignment.windowsConstraintTitle'
 
 const isWindowsByName = (app: App | null) => app?.name.toLowerCase().includes('windows') ?? false
 
@@ -33,10 +37,12 @@ function forcesOneTeamPerPerson(app: App | null, version?: VersionShape | null):
  * name contains 'windows'".
  */
 export function groupConstraints(app: App | null, version?: VersionShape | null): GroupConstraints {
-  if (!forcesOneTeamPerPerson(app, version)) return { forcedGroupMode: null, groupModeReason: null }
+  if (!forcesOneTeamPerPerson(app, version)) return { forcedGroupMode: null, groupModeReason: null, groupModeTitle: null }
+  const perPerson = version?.scope === 'user'
   return {
     forcedGroupMode: 'eachUser',
-    groupModeReason: version?.scope === 'user' ? PER_PERSON_REASON : WINDOWS_REASON,
+    groupModeReason: perPerson ? PER_PERSON_REASON : WINDOWS_REASON,
+    groupModeTitle: perPerson ? PER_PERSON_TITLE : WINDOWS_TITLE,
   }
 }
 

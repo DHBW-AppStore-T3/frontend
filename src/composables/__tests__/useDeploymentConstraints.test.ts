@@ -60,6 +60,16 @@ describe('useDeploymentConstraints', () => {
       expect(groupModeReason).toBe('deployment.assignment.perPersonConstraintText')
     })
 
+    it('names the licence in the heading only where the licence is the reason', () => {
+      expect(withVersion(makeApp('Ubuntu'), { runtime: 'kubernetes', scope: 'user' }).groupModeTitle).toBe(
+        'deployment.assignment.perPersonConstraintTitle',
+      )
+      expect(withVersion(makeApp('Windows 11'), { runtime: 'openstack-vm', scope: null }).groupModeTitle).toBe(
+        'deployment.assignment.windowsConstraintTitle',
+      )
+      expect(withVersion(makeApp('Ubuntu'), { runtime: 'kubernetes', scope: 'team' }).groupModeTitle).toBeNull()
+    })
+
     it('scope team leaves the grouping free, even for a "Windows" name', () => {
       const { forcedGroupMode, groupModeReason } = withVersion(makeApp('Windows Lab'), { runtime: 'openstack-vm', scope: 'team' })
       expect(forcedGroupMode).toBeNull()
