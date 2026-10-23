@@ -1,8 +1,10 @@
 export interface QuotaItem {
   used: number
+  /** -1: unlimited. */
   limit: number
-  available: number
-  unit?: string
+  /** null when the limit is unlimited; negative when over quota. */
+  available: number | null
+  unit?: string | null
 }
 
 export interface ComputeQuotas {
