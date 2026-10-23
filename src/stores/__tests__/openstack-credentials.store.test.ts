@@ -113,6 +113,17 @@ describe('OpenStackCredentialsStore', () => {
       expect(credentialsApi.list).toHaveBeenCalledTimes(1)
     })
 
+    it('treats an answer that is not a list (older backend) as an error, not as data', async () => {
+      const { credentialsApi } = await import('@/api/credentials.api')
+      vi.mocked(credentialsApi.list).mockResolvedValueOnce({ data: { has_credential: false } } as any)
+      const store = liveStore(useOpenStackCredentialsStore)
+
+      expect(await store.fetch()).toBeNull()
+      expect(store.error).toContain('a list is expected')
+      expect(store.credentials).toBeNull()
+      expect(selectCredentials(store)).toEqual([])
+    })
+
     it('swallows errors, records the message and resolves to null', async () => {
       const { credentialsApi } = await import('@/api/credentials.api')
       vi.mocked(credentialsApi.list).mockRejectedValueOnce(new Error('boom'))

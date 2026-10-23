@@ -30,6 +30,8 @@ type Data = Pick<State, 'credentials'>
 
 const LOCKED_REASON = 'openstack_credentials_locked'
 const INVALID_REASON = 'openstack_credentials_invalid'
+const UNEXPECTED_ANSWER =
+  'Unexpected answer from /me/openstack-credentials (a list is expected): is the backend the spike/dev version?'
 
 /** Usable for a deployment: Keystone named its project and the last check passed. */
 export function isUsable(c: OpenStackCredential): boolean {
@@ -116,6 +118,9 @@ export const useOpenStackCredentialsStore = create<State>()((set, get) => {
         set({ loading: true, error: null })
         try {
           const res = await credentialsApi.list()
+          // An older backend answers this route with a single status object,
+          // not a list: report that instead of crashing every consumer.
+          if (!Array.isArray(res.data)) throw new Error(UNEXPECTED_ANSWER)
           set({ credentials: res.data })
           return res.data
         } catch (err) {
