@@ -37,6 +37,11 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-24 (Verteilung „je Person", frontend#53):** In `NewDeploymentGroupsAssignmentView` steuert `isForced`
+  (`forcedGroupMode === 'eachUser'`) jetzt Hinweis, Buttons und Karten: Drag-&-Drop-Hinweis nicht gerendert, „Zufall" und
+  „Zurücksetzen" `disabled` (ausgegraut, ohne Hover-Wechsel), `dropOn` kehrt früh zurück. `UnassignedPool` und `TeamColumn`
+  haben die Prop `dragDisabled` (Karten nicht `draggable`, ohne `cursor-move`/Hover-Skalierung, kein Entfernen-Button).
+  Andere Modi unverändert; keine neuen Texte. Gelber Hinweis „App läuft je Person" bleibt.
 - **2026-10-24 (Sie-Form Nachtrag, frontend#52):** Der Test aus #52 hatte Lücken: „Durchstöbere" (Apps-Untertitel),
   „Aktualisiere" und „prüfe sie" (Fehlercode) blieben Du-Form. Texte korrigiert, Imperativ-Liste erweitert, zusätzlich prüft
   der Test jetzt Imperative nach `;` `,` `:` und „bitte". „Entferne..." ist als Ellipsen-Status erlaubt.

@@ -47,6 +47,8 @@ export default function NewDeploymentGroupsAssignmentView() {
   const draftApp = useDeploymentStore((s) => s.draftAppDetails)()
   const { forcedGroupMode, groupModeReason, groupModeTitle } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope })
 
+  const isForced = forcedGroupMode === 'eachUser'
+
   const [dragged, setDragged] = useState<string | null>(null)
   const [dragOverTeam, setDragOverTeam] = useState<number | null>(null)
   const [dragOverPool, setDragOverPool] = useState(false)
@@ -113,7 +115,7 @@ export default function NewDeploymentGroupsAssignmentView() {
   }
   const dropOn = (target: number | null) => (event: React.DragEvent) => {
     event.preventDefault()
-    if (dragged) apply({ ...teams, assignments: moveStudent(teams.assignments, dragged, target) })
+    if (dragged && !isForced) apply({ ...teams, assignments: moveStudent(teams.assignments, dragged, target) })
     setDragOverTeam(null)
     setDragOverPool(false)
   }
@@ -209,7 +211,8 @@ export default function NewDeploymentGroupsAssignmentView() {
                     assignments: shuffleIntoTeams(studentIds, teams.count, Math.random),
                   })
                 }
-                className="px-4 py-2.5 rounded-xl bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition-all flex items-center gap-2 border-2 border-purple-200"
+                disabled={isForced}
+                className="px-4 py-2.5 rounded-xl bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition-all flex items-center gap-2 border-2 border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-purple-100"
                 title={t('deployment.assignment.shuffleTooltip')}
               >
                 <Shuffle size={18} />
@@ -218,7 +221,8 @@ export default function NewDeploymentGroupsAssignmentView() {
               <button
                 type="button"
                 onClick={() => apply({ ...teams, assignments: clearAssignments(teams.count) })}
-                className="px-4 py-2.5 rounded-xl bg-dangerTint text-red-700 font-semibold hover:bg-red-200 transition-all flex items-center gap-2 border-2 border-danger/30"
+                disabled={isForced}
+                className="px-4 py-2.5 rounded-xl bg-dangerTint text-red-700 font-semibold hover:bg-red-200 transition-all flex items-center gap-2 border-2 border-danger/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-dangerTint"
                 title={t('deployment.assignment.resetTooltip')}
               >
                 <Trash2 size={18} />
@@ -227,15 +231,17 @@ export default function NewDeploymentGroupsAssignmentView() {
             </div>
           </div>
 
-          <div className="mt-4 bg-infoTint border-2 border-info/30 rounded-xl p-4 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-info flex items-center justify-center flex-shrink-0 mt-0.5">
-              <GripVertical size={16} className="text-white" />
+          {!isForced ? (
+            <div className="mt-4 bg-infoTint border-2 border-info/30 rounded-xl p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-info flex items-center justify-center flex-shrink-0 mt-0.5">
+                <GripVertical size={16} className="text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-blue-900 mb-1">{t('deployment.assignment.dragDropTitle')}</p>
+                <p className="text-sm text-blue-700">{t('deployment.assignment.dragDropText')}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-blue-900 mb-1">{t('deployment.assignment.dragDropTitle')}</p>
-              <p className="text-sm text-blue-700">{t('deployment.assignment.dragDropText')}</p>
-            </div>
-          </div>
+          ) : null}
 
           {forcedGroupMode !== null ? (
             <div className="mt-3 bg-amber-50 border-2 border-amber-300 rounded-xl p-4 flex items-start gap-3">
@@ -258,6 +264,7 @@ export default function NewDeploymentGroupsAssignmentView() {
                 studentIds={unassigned}
                 nameOf={nameOf}
                 isDragOver={dragOverPool}
+                dragDisabled={isForced}
                 onDragStart={startDrag}
                 onDragEnd={endDrag}
                 onDragEnter={() => setDragOverPool(true)}
@@ -276,6 +283,7 @@ export default function NewDeploymentGroupsAssignmentView() {
                     studentIds={studentsOfTeam ?? []}
                     nameOf={nameOf}
                     isDragOver={dragOverTeam === index}
+                    dragDisabled={isForced}
                     onRename={(name) =>
                       apply({ ...teams, names: teams.names.map((n, i) => (i === index ? name : n)) })
                     }

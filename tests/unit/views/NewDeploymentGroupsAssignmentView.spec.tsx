@@ -232,6 +232,89 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       expect(screen.queryByText('deployment.assignment.windowsConstraintTitle')).not.toBeInTheDocument()
     })
 
+    describe('App je Person (erzwungenes "Jeder einzeln")', () => {
+      const seedPerPerson = () => {
+        useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
+        seed({ appId: 'lab', runtime: 'kubernetes', scope: 'user' })
+      }
+
+      it('blendet den Drag-&-Drop-Hinweis aus, der Hinweis "App läuft je Person" bleibt', async () => {
+        seedPerPerson()
+        renderView()
+
+        await screen.findByText('deployment.assignment.perPersonConstraintTitle')
+        expect(screen.queryByText('deployment.assignment.dragDropTitle')).not.toBeInTheDocument()
+        expect(screen.queryByText('deployment.assignment.dragDropText')).not.toBeInTheDocument()
+      })
+
+      it('deaktiviert Zufall und Zurücksetzen ohne Wirkung', async () => {
+        seedPerPerson()
+        renderView()
+        await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
+        const before = JSON.stringify(draft().assignments)
+
+        const shuffle = screen.getByRole('button', { name: 'deployment.assignment.shuffle' })
+        const reset = screen.getByRole('button', { name: 'deployment.assignment.reset' })
+        expect(shuffle).toBeDisabled()
+        expect(reset).toBeDisabled()
+        await userEvent.click(shuffle)
+        await userEvent.click(reset)
+
+        expect(JSON.stringify(draft().assignments)).toBe(before)
+      })
+
+      it('macht Karten nicht ziehbar und zeigt keinen Entfernen-Button', async () => {
+        seedPerPerson()
+        const { container } = renderView()
+
+        await screen.findByText('John Doe')
+        expect(container.querySelector('[draggable="true"]')).toBeNull()
+        expect(screen.queryByTestId('btn-remove-student')).not.toBeInTheDocument()
+      })
+
+      it('lässt kein Ablegen zu', async () => {
+        seedPerPerson()
+        const { container } = renderView()
+        await screen.findByText('John Doe')
+        await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
+        const before = JSON.stringify(draft().assignments)
+
+        const dataTransfer = { setData: vi.fn(), getData: () => 'u2', effectAllowed: '', dropEffect: '' }
+        fireEvent.dragStart(screen.getByText('Jane Smith').closest('.group')!, { dataTransfer })
+        const zones = container.querySelectorAll('.min-h-\\[200px\\]')
+        expect(zones.length).toBeGreaterThan(0)
+        fireEvent.drop(zones[0], { dataTransfer })
+
+        expect(JSON.stringify(draft().assignments)).toBe(before)
+      })
+
+      it('gilt auch für Windows-Apps ohne Scope', async () => {
+        useAppStore.setState({ apps: [{ appId: 'win', name: 'Windows Server' } as any] })
+        seed({ appId: 'win' })
+        const { container } = renderView()
+
+        await screen.findByText('deployment.assignment.windowsConstraintTitle')
+        expect(screen.queryByText('deployment.assignment.dragDropTitle')).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'deployment.assignment.shuffle' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'deployment.assignment.reset' })).toBeDisabled()
+        expect(container.querySelector('[draggable="true"]')).toBeNull()
+      })
+    })
+
+    it('scope team zeigt Hinweis, aktive Buttons und ziehbare Karten', async () => {
+      useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
+      seed({ appId: 'lab', runtime: 'kubernetes', scope: 'team', assignments: [['u1'], []] })
+      const { container } = renderView()
+
+      await screen.findByText('John Doe')
+      expect(screen.getByText('deployment.assignment.dragDropTitle')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'deployment.assignment.shuffle' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'deployment.assignment.reset' })).toBeEnabled()
+      // one chip in a team column, one in the pool
+      expect(container.querySelectorAll('[draggable="true"]').length).toBe(2)
+      expect(screen.getByTestId('btn-remove-student')).toBeInTheDocument()
+    })
+
     it('scope team lässt die Gruppierung frei, auch bei einem "Windows"-Namen', async () => {
       useAppStore.setState({ apps: [{ appId: 'win', name: 'Windows Lab' } as any] })
       seed({ appId: 'win', runtime: 'openstack-vm', scope: 'team' })
