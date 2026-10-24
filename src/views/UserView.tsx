@@ -50,7 +50,6 @@ export default function UserView() {
   return (
     <div className="app-page profile-page">
       <PageHeader
-        eyebrow={t('workspace.profile')}
         title={t('workspace.personalInformation')}
         subtitle={t('workspace.profileSubtitle')}
       />

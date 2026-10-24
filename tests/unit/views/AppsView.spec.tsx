@@ -53,6 +53,13 @@ describe('AppsView', () => {
     expect(await screen.findByText('AppsView.noAppsDesc')).toBeInTheDocument()
   })
 
+  it('rendert keinen Eyebrow über der Überschrift', async () => {
+    vi.mocked(appApi.list).mockResolvedValue({ data: [] } as any)
+    const { container } = renderView()
+    await screen.findByText('AppsView.noAppsDesc')
+    expect(container.querySelector('.page-eyebrow')).toBeNull()
+  })
+
   it('zeigt eine Liste von Apps an, wenn die API Daten liefert', async () => {
     vi.mocked(appApi.list).mockResolvedValue({
       data: [

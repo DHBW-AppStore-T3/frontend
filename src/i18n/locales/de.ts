@@ -950,7 +950,6 @@ export default {
       keycloakId: 'Keycloak-ID',
     },
     settings: {
-      title: 'Einstellungen',
       openstackTitle: 'OpenStack-Credentials',
       openstackHint: 'Eigene Zugangsdaten für Deployments hinterlegen',
     },

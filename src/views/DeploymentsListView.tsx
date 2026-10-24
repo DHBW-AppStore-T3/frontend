@@ -51,7 +51,6 @@ export default function DeploymentsListView() {
   return (
     <div className="app-page">
       <PageHeader
-        eyebrow={t('nav.deployments')}
         title={t('DeploymentsView.title')}
         subtitle={t('DeploymentsView.subtitle')}
         actions={newDeploymentButton}

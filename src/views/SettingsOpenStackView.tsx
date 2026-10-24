@@ -144,7 +144,6 @@ export default function SettingsOpenStackView() {
   return (
     <div className="app-page max-w-4xl">
       <PageHeader
-        eyebrow={t('UserView.settings.title')}
         title={t('SettingsOpenStackView.title')}
         subtitle={t('SettingsOpenStackView.intro')}
       />

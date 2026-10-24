@@ -45,7 +45,7 @@ export default function HelpView() {
 
   return (
     <div className="app-page help-page">
-      <PageHeader eyebrow={t('nav.help')} title={t('HelpView.title')} subtitle={t('HelpView.subtitle')} />
+      <PageHeader title={t('HelpView.title')} subtitle={t('HelpView.subtitle')} />
       <label className="search-field help-search">
         <Search size={16} aria-hidden="true" />
         <input
