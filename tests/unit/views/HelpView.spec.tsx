@@ -28,6 +28,10 @@ for (const [lng, msgs] of Object.entries(locales)) {
       expect(text).toContain(msgs.HelpView.resources.frontendRepo)
     })
 
+    it('renders no eyebrow above the heading', () => {
+      expect(container.querySelector('.page-eyebrow')).toBeNull()
+    })
+
     it('renders all quickHelp steps (5)', () => {
       expect(container.querySelectorAll('ol li')).toHaveLength(5)
     })

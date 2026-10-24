@@ -159,7 +159,6 @@ export default function AppsView() {
   return (
     <div className="app-page">
       <PageHeader
-        eyebrow={t('nav.apps')}
         title={t('AppsView.title')}
         subtitle={t('AppsView.subtitle')}
         actions={

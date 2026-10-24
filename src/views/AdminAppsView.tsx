@@ -73,7 +73,6 @@ export default function AdminAppsView() {
   return (
     <div className="app-page">
       <PageHeader
-        eyebrow={t('nav.approvals')}
         title={t('AdminAppsView.title')}
         subtitle={t('AdminAppsView.subtitle')}
         actions={
