@@ -4202,6 +4202,12 @@
             "type": "array",
             "title": "Resources",
             "default": []
+          },
+          "network": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Network",
+            "default": {}
           }
         },
         "type": "object",
@@ -5592,6 +5598,7 @@
           },
           "email": {
             "type": "string",
+            "format": "email",
             "title": "Email"
           },
           "username": {

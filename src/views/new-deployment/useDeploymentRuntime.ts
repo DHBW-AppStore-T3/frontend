@@ -12,6 +12,7 @@ import {
 import { useToast } from '@/composables/useToast'
 import { chooseCredentialId } from './credentialChoice'
 import { defaultSelection } from '@/utils/resources'
+import { choiceFits, defaultNetwork } from '@/utils/network'
 import type { ResourceChoice } from '@/types'
 
 function sameContainers(chosen: Record<string, unknown> | undefined, choices: ResourceChoice[]) {
@@ -53,12 +54,16 @@ export function useDeploymentRuntime() {
         if (cancelled) return
         const choices = data.resources ?? []
         const draft = useDeploymentStore.getState().draft
+        const network = data.network ?? {}
+        const sameNetwork = choiceFits(draft.network, draft.networkChoices, network)
         useDeploymentStore.getState().updateDraft({
           runtime: data.runtime,
           scope: data.scope ?? null,
           resourceChoices: choices,
           // A choice already made (back and forth in the wizard) stays.
           resources: sameContainers(draft.resources, choices) ? draft.resources : defaultSelection(choices),
+          networkChoices: network,
+          network: sameNetwork ? draft.network : defaultNetwork(network),
         })
       })
       .catch(() => !cancelled && toast.error(t('AppsDetailView.runtime.loadError')))

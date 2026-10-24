@@ -1717,6 +1717,13 @@ export interface components {
             resources: {
                 [key: string]: unknown;
             }[];
+            /**
+             * Network
+             * @default {}
+             */
+            network: {
+                [key: string]: unknown;
+            };
         };
         /** AppUpdate */
         AppUpdate: {

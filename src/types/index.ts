@@ -117,6 +117,25 @@ export interface AppRuntime {
   access?: Array<Record<string, unknown>>
   // Containers whose cpu/memory a person may choose (``resourceBounds`` in appstore.yaml).
   resources?: ResourceChoice[]
+  // Network settings the app author lets people change (``userChoices`` in appstore.yaml);
+  // only the allowed keys are present, ``default`` is the author's value.
+  network?: NetworkChoices
+}
+
+/** One network setting an app offers; ``default`` is the start position in the wizard. */
+export interface NetworkSetting {
+  default: boolean
+}
+
+export interface NetworkChoices {
+  internet?: NetworkSetting
+  podNetwork?: NetworkSetting
+}
+
+/** The network settings a person chose; sent as ``userInputVar.network``. */
+export interface NetworkSelection {
+  internet?: boolean
+  podNetwork?: boolean
 }
 
 export interface ResourceRange {
@@ -583,6 +602,9 @@ export interface DeploymentDraft {
   resourceChoices?: ResourceChoice[]
   // The cpu/memory chosen per container; sent as ``userInputVar.resources``.
   resources?: Record<string, { cpu: string; memory: string }>
+  // Pods: network settings the app lets people choose (from ``/runtime``) and the choice made.
+  networkChoices?: NetworkChoices
+  network?: NetworkSelection
   // Wizard-side state for ``@openstack:file:<scope>``-marked variables.
   // Outer key: variable name. Inner key: scope routing token (``"all"``,
   // team name, or ``Team-User`` composite). Flushed verbatim into
