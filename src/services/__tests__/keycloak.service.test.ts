@@ -1,11 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const { signinRedirectCallback } = vi.hoisted(() => ({ signinRedirectCallback: vi.fn() }))
 
 vi.mock('oidc-client-ts', () => {
   class UserManager {
     getUser = vi.fn(() => Promise.resolve(null))
     signinSilent = vi.fn(() => Promise.resolve(null))
     signinRedirect = vi.fn()
-    signinRedirectCallback = vi.fn()
+    signinRedirectCallback = signinRedirectCallback
     signoutRedirect = vi.fn()
   }
   class WebStorageStateStore {}
@@ -23,6 +25,11 @@ vi.mock('@/env', () => ({
 }))
 
 describe('keycloak service', () => {
+  beforeEach(() => {
+    signinRedirectCallback.mockReset()
+    sessionStorage.clear()
+  })
+
   it('setLtiUser sets isAuthenticated and stores token', async () => {
     const { keycloak: kc } = await import('../keycloak.service')
 
@@ -82,5 +89,40 @@ describe('keycloak service', () => {
 
     expect(kc.getState().isAuthenticated).toBe(false)
     expect(kc.getState().isLoading).toBe(false)
+  })
+
+  describe('handleCallback', () => {
+    it('redeems the authorization code once for concurrent calls (StrictMode)', async () => {
+      vi.resetModules()
+      const { keycloak: kc } = await import('../keycloak.service')
+      let resolve!: (user: object) => void
+      signinRedirectCallback.mockReturnValue(new Promise((r) => (resolve = r)))
+      sessionStorage.setItem('returnUrl', '/apps')
+
+      const first = kc.handleCallback()
+      const second = kc.handleCallback()
+      resolve({ access_token: 'tok', expired: false })
+
+      expect(await first).toBe('/apps')
+      expect(await second).toBe('/apps')
+      expect(signinRedirectCallback).toHaveBeenCalledTimes(1)
+      expect(kc.getState().isAuthenticated).toBe(true)
+    })
+
+    it('shares a failure and allows a new attempt afterwards', async () => {
+      vi.resetModules()
+      const { keycloak: kc } = await import('../keycloak.service')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      signinRedirectCallback.mockRejectedValueOnce(new Error('Code not valid'))
+
+      const results = await Promise.allSettled([kc.handleCallback(), kc.handleCallback()])
+
+      expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
+      expect(signinRedirectCallback).toHaveBeenCalledTimes(1)
+
+      signinRedirectCallback.mockResolvedValueOnce({ access_token: 'tok', expired: false })
+      expect(await kc.handleCallback()).toBe('/')
+      expect(signinRedirectCallback).toHaveBeenCalledTimes(2)
+    })
   })
 })

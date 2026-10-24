@@ -88,6 +88,12 @@ async function refreshTokenSingleFlight(): Promise<User | null> {
   return refreshInFlight
 }
 
+// An authorization code can be redeemed exactly once, and Keycloak revokes the
+// whole session when it is presented a second time. React StrictMode (dev)
+// runs the callback view's effect twice, so concurrent callers must share
+// one code exchange.
+let callbackInFlight: Promise<string> | null = null
+
 // ----------------------------------------------------------------
 // SERVICE
 // ----------------------------------------------------------------
@@ -149,20 +155,26 @@ function createKeycloak() {
   /**
    * Handle callback from Keycloak after login
    */
-  async function handleCallback() {
-    try {
-      const callbackUser = await userManager.signinRedirectCallback()
-      state.setState({ user: callbackUser, isAuthenticated: true })
+  function handleCallback(): Promise<string> {
+    if (callbackInFlight) return callbackInFlight
+    callbackInFlight = (async () => {
+      try {
+        const callbackUser = await userManager.signinRedirectCallback()
+        state.setState({ user: callbackUser, isAuthenticated: true })
 
-      // Get return URL and clean up
-      const returnUrl = sessionStorage.getItem('returnUrl') || '/'
-      sessionStorage.removeItem('returnUrl')
+        // Get return URL and clean up
+        const returnUrl = sessionStorage.getItem('returnUrl') || '/'
+        sessionStorage.removeItem('returnUrl')
 
-      return returnUrl
-    } catch (error) {
-      console.error('Callback handling failed:', error)
-      throw error
-    }
+        return returnUrl
+      } catch (error) {
+        console.error('Callback handling failed:', error)
+        throw error
+      } finally {
+        callbackInFlight = null
+      }
+    })()
+    return callbackInFlight
   }
 
   /**
