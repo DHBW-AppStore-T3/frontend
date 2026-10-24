@@ -17,6 +17,7 @@ import {
   type SummaryEntry,
 } from './new-deployment/summary'
 import { useSummaryVariables } from './new-deployment/useSummaryVariables'
+import { networkDeviations } from '@/utils/network'
 import { useSubmitDeployment } from './new-deployment/useSubmitDeployment'
 
 function VariableCard(props: {
@@ -108,6 +109,8 @@ export default function NewDeploymentSummaryView() {
   const terraformEntries = buildTerraformEntries(defs, draft.variables, ctx)
   const fileSummaries = useMemo(() => buildFileSummaries(defs, draft.fileUploads), [defs, draft.fileUploads])
   const fileCount = fileSummaries.reduce((sum, v) => sum + v.chips.length, 0)
+  // Expert settings are only mentioned when they differ from the app's default.
+  const networkChanges = isPods ? networkDeviations(draft) : []
   const busy = isSubmitting || isStoreLoading
 
   return (
@@ -187,6 +190,19 @@ export default function NewDeploymentSummaryView() {
                 </div>
               )}
             </div>
+            {networkChanges.length > 0 ? (
+              <div className="mt-4 bg-white rounded-lg p-4 border border-emerald-100" data-testid="summary-network">
+                <p className="text-xs text-textMuted mb-2 uppercase tracking-wider font-semibold">
+                  {t('deployment.network.title')}
+                </p>
+                {networkChanges.map(({ key, value }) => (
+                  <p key={key} className="text-sm text-textHeading" data-testid={`summary-network-${key}`}>
+                    <span className="font-semibold">{t(`deployment.network.${key}.label`)}</span>:{' '}
+                    {value ? t('deployment.network.summaryOn') : t('deployment.network.summaryOff')}
+                  </p>
+                ))}
+              </div>
+            ) : null}
             <div className="mt-4 bg-white rounded-lg p-4 border border-emerald-100">
               <p className="text-xs text-textMuted mb-2 uppercase tracking-wider font-semibold">
                 {t('deployment.summary.selectedStudents', { count: draft.studentIds.length })}

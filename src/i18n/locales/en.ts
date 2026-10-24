@@ -758,6 +758,20 @@ export default {
       perPersonConstraintTitle: "Per-person app",
     },
 
+    network: {
+      title: 'Expert settings',
+      summaryOn: 'On',
+      summaryOff: 'Off',
+      internet: {
+        label: 'Internet access',
+        help: 'Lets the pods reach servers on the internet. Internal networks stay blocked.',
+        warning: 'Students will then be able to reach servers on the internet.',
+      },
+      podNetwork: {
+        label: 'Networked pods',
+        help: 'Lets the pods of this deployment reach each other. Other deployments stay separated.',
+      },
+    },
     resources: {
       title: 'Compute resources',
       desc: 'Choose how many vCPUs and how much memory your deployment gets. The recommended values are preselected.',
