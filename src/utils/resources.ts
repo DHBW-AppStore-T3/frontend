@@ -34,3 +34,10 @@ export const MEMORY_STEP_MIB = 512
 export function defaultSelection(choices: ResourceChoice[]): Record<string, { cpu: string; memory: string }> {
   return Object.fromEntries(choices.map((c) => [c.container, { cpu: c.cpu.default, memory: c.memory.default }]))
 }
+
+/** Remaining time as a short phrase part: ``15`` minutes, or hours and minutes; ``null`` below one minute. */
+export function etaParts(seconds: number): { hours: number; minutes: number } | null {
+  if (seconds < 60) return null
+  const total = Math.round(seconds / 60)
+  return { hours: Math.floor(total / 60), minutes: total % 60 }
+}

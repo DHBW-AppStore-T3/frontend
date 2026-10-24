@@ -12,7 +12,23 @@ import type { PodWorkload } from '@/types'
 const i18n = i18next.createInstance()
 void i18n.init({
   lng: 'de',
-  resources: { de: { translation: { pods: { phase: { Running: 'Läuft' } } } } },
+  resources: {
+    de: {
+      translation: {
+        pods: {
+          phase: { Running: 'Läuft' },
+          started: 'App erfolgreich gestartet',
+          setup: {
+            title: 'Einrichtung',
+            etaUnknown: 'Restzeit wird geschätzt',
+            etaSoon: 'gleich fertig',
+            etaMinutes: 'noch ca. {minutes} Min',
+            etaHours: 'noch ca. {hours} Std {minutes} Min',
+          },
+        },
+      },
+    },
+  },
   interpolation: { prefix: '{', suffix: '}', escapeValue: false },
   showSupportNotice: false,
   initImmediate: false,
@@ -139,5 +155,43 @@ describe('phaseTone', () => {
     [{ ready: false, phase: 'ImagePullBackOff' }, 'red'],
   ])('%j is %s', (workload, colour) => {
     expect(phaseTone(workload)).toContain(colour)
+  })
+})
+
+
+describe('PodWorkloadsPanel: started and setup', () => {
+  it('shows "app started successfully" instead of an old warning once the workload is ready', () => {
+    renderPanel({ workloads: [workload({ ready: true, lastEvent: 'Unhealthy: Readiness probe failed: dial tcp' })] })
+    expect(screen.getByTestId('started-team-alpha')).toHaveTextContent('App erfolgreich gestartet')
+    expect(screen.queryByText(/Readiness probe failed/)).not.toBeInTheDocument()
+  })
+
+  it('shows the last event while the workload is not ready', () => {
+    renderPanel({ workloads: [workload({ ready: false, phase: 'Pending', lastEvent: 'Pulling: image' })] })
+    expect(screen.getByText('Pulling: image')).toBeInTheDocument()
+    expect(screen.queryByTestId('started-team-alpha')).not.toBeInTheDocument()
+  })
+
+  it('shows a second bar with percent and the remaining time while the app sets itself up', () => {
+    renderPanel({ workloads: [workload({ setup: { percent: 37, step: 'MATLAB wird installiert', etaSeconds: 900 } })] })
+    const bar = screen.getByRole('progressbar', { name: 'Einrichtung' })
+    expect(bar).toHaveAttribute('aria-valuenow', '37')
+    expect(screen.getByTestId('setup-team-alpha')).toHaveTextContent('37 % · noch ca. 15 Min')
+    expect(screen.getByTestId('setup-team-alpha')).toHaveTextContent('MATLAB wird installiert')
+  })
+
+  it.each([
+    [undefined, 'Restzeit wird geschätzt'],
+    [null, 'Restzeit wird geschätzt'],
+    [20, 'gleich fertig'],
+    [3900, 'noch ca. 1 Std 5 Min'],
+  ])('describes an estimate of %s seconds', (eta, text) => {
+    renderPanel({ workloads: [workload({ setup: { percent: 5, etaSeconds: eta as number | null | undefined } })] })
+    expect(screen.getByTestId('setup-team-alpha')).toHaveTextContent(text)
+  })
+
+  it('shows no setup bar for an app without a setup', () => {
+    renderPanel()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })

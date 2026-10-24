@@ -6477,6 +6477,42 @@
         "title": "OpenStackCredentialUpsert",
         "description": "Body of PUT /me/openstack-credentials.\n\n`identifier` is either a username (password auth) or an\napplication-credential ID. `secret` is the corresponding password or\napplication-credential secret. Both are stored encrypted at rest."
       },
+      "PodSetupProgress": {
+        "properties": {
+          "percent": {
+            "type": "integer",
+            "title": "Percent"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "etaSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Etaseconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "percent"
+        ],
+        "title": "PodSetupProgress",
+        "description": "What an app reports about its first-start setup (an ``appstore-progress`` log line)."
+      },
       "PodWorkloadSchema": {
         "properties": {
           "workload": {
@@ -6540,6 +6576,16 @@
               }
             ],
             "title": "Lastevent"
+          },
+          "setup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PodSetupProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -7097,7 +7143,6 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email",
             "title": "Email"
           },
           "username": {
@@ -7247,7 +7292,6 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email",
             "title": "Email"
           },
           "username": {

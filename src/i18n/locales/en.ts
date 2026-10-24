@@ -1179,6 +1179,14 @@ export default {
     openstackVmShort: "VM",
   },
   pods: {
+    started: "App started successfully",
+    setup: {
+      title: "Setup",
+      etaUnknown: "estimating the remaining time …",
+      etaSoon: "almost done",
+      etaMinutes: "about {minutes} min left",
+      etaHours: "about {hours} h {minutes} min left",
+    },
     title: "Workloads",
     refresh: "Refresh",
     refreshTooltip: "Read the status from the cluster again",

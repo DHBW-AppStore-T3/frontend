@@ -454,6 +454,15 @@ export interface PodWorkload {
   phase: string
   url: string | null
   lastEvent: string | null
+  /** An app that sets itself up after it started (an installer) reports how far it is; null otherwise. */
+  setup?: PodSetupProgress | null
+}
+
+export interface PodSetupProgress {
+  percent: number
+  step?: string | null
+  /** Seconds the app expects to need still; null when it cannot tell yet. */
+  etaSeconds?: number | null
 }
 
 export interface DeploymentResourceListResponse {

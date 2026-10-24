@@ -230,6 +230,25 @@ export function useDeploymentDetail(deploymentId: string) {
     activeTask,
   })
 
+  // While a pod is still starting or an app sets itself up, ask the cluster again so
+  // the status and the setup bar move; a stopped workload does not change by itself.
+  const workloadsChanging = workloads.some((w) => w.phase !== 'Stopped' && (!w.ready || !!w.setup))
+  useEffect(() => {
+    if (!workloadsChanging) return
+    const id = setInterval(() => {
+      void deploymentApi
+        .listResources(deploymentId, { refresh: true })
+        .then((response) => {
+          setWorkloads(response.data.workloads ?? [])
+          setWorkloadsLive(response.data.live)
+        })
+        .catch(() => {
+          // The next tick tries again; the visible error belongs to the explicit refresh.
+        })
+    }, 10_000)
+    return () => clearInterval(id)
+  }, [workloadsChanging, deploymentId])
+
   // Latest values for the async stream-ended handler (avoids stale closures).
   const latest = useRef({ activeTask })
   useEffect(() => {
