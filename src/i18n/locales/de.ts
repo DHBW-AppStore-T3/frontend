@@ -761,14 +761,28 @@ export default {
       perPersonConstraintTitle: "App läuft je Person",
     },
 
+    network: {
+      title: 'Experteneinstellungen',
+      summaryOn: 'An',
+      summaryOff: 'Aus',
+      internet: {
+        label: 'Internetzugriff',
+        help: 'Erlaubt den Pods, Server im Internet zu erreichen. Interne Netze bleiben gesperrt.',
+        warning: 'Studierende können dann Server im Internet erreichen.',
+      },
+      podNetwork: {
+        label: 'Vernetzte Pods',
+        help: 'Erlaubt den Pods dieses Deployments, sich gegenseitig zu erreichen. Andere Deployments bleiben getrennt.',
+      },
+    },
     resources: {
       title: 'Rechenressourcen',
       desc: 'Wählen Sie, wie viele vCPUs und wie viel Arbeitsspeicher Ihr Deployment erhält. Die empfohlenen Werte sind vorausgewählt.',
       container: 'Container',
       cpu: 'vCPU',
       memory: 'Arbeitsspeicher (RAM)',
-      vcpu: '{{count}} vCPU',
-      range: 'Erlaubt {{min}} – {{max}} · empfohlen {{default}}',
+      vcpu: '{count} vCPU',
+      range: 'Erlaubt {min} – {max} · empfohlen {default}',
     },
     variables: {
       title: 'Nutzerspezifische Variablen',

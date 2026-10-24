@@ -7,6 +7,8 @@ import { isExpert, formKeyOf } from './new-deployment/variableForm'
 import { useVariableForm } from './new-deployment/useVariableForm'
 import VariableCard, { type Accent } from './new-deployment/VariableCard'
 import ResourcePicker from './new-deployment/ResourcePicker'
+import NetworkSettings from './new-deployment/NetworkSettings'
+import { visibleNetworkKeys } from '@/utils/network'
 import { useDeploymentStore } from '@/stores/deployment.store'
 
 type Form = ReturnType<typeof useVariableForm>
@@ -41,6 +43,8 @@ export default function NewDeploymentVariableView() {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const choices = useDeploymentStore((s) => s.draft.resourceChoices) ?? []
   const chosen = useDeploymentStore((s) => s.draft.resources) ?? {}
+  const draft = useDeploymentStore((s) => s.draft)
+  const hasNetwork = visibleNetworkKeys(draft).length > 0
 
   const card = (variable: AppVariable, accent: Accent, expert = false) => {
     const key = formKeyOf(variable, form.isMultiImage)
@@ -128,11 +132,18 @@ export default function NewDeploymentVariableView() {
         />
       ) : null}
 
+      {f.isPods && hasNetwork ? (
+        <NetworkSettings
+          draft={draft}
+          onChange={(network) => useDeploymentStore.getState().updateDraft({ network })}
+        />
+      ) : null}
+
       {/* Packer only exists for VM apps; pods declare their settings in appstore.yaml. */}
       {f.isPods ? null : packerPanel(f)}
 
       {/* Terraform (VM apps) or the app's own settings (pods) */}
-      {f.isPods && f.terraformVariables.length === 0 && choices.length > 0 ? null : (
+      {f.isPods && f.terraformVariables.length === 0 && (choices.length > 0 || hasNetwork) ? null : (
       <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border-2 border-purple-200 overflow-hidden">
         <div className="bg-purple-600 text-white px-6 py-4 flex items-center gap-3">
           <Layers size={24} />
@@ -194,7 +205,7 @@ export default function NewDeploymentVariableView() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3" />
             <span className="text-textFaint">{t('deployment.variables.loading')}</span>
           </div>
-        ) : form.variables.length === 0 && choices.length === 0 ? (
+        ) : form.variables.length === 0 && choices.length === 0 && !hasNetwork ? (
           <div className="text-center py-12 text-textMuted italic bg-surfaceMuted rounded-xl border border-dashed">
             {t('deployment.variables.noVariables')}
           </div>

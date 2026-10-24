@@ -1,4 +1,5 @@
 import { defaultSelection } from '@/utils/resources'
+import { defaultNetwork } from '@/utils/network'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
@@ -131,6 +132,8 @@ export default function AppsDetailView() {
       scope: versionRuntime.runtime?.scope ?? null,
       resourceChoices: versionRuntime.runtime?.resources ?? [],
       resources: defaultSelection(versionRuntime.runtime?.resources ?? []),
+      networkChoices: versionRuntime.runtime?.network ?? {},
+      network: defaultNetwork(versionRuntime.runtime?.network),
     })
     toast.success(t('AppsDetailView.toasts.preparingConfig', { name: app.name }))
     navigate(paths.deploymentConfig)

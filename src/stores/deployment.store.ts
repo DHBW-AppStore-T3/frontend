@@ -4,6 +4,7 @@ import { useAppStore } from './app.store'
 import { useAuthStore } from './auth.store'
 import { runRequest } from './_request'
 import { isMultiImagePackerLayout as isMultiImagePackerLayoutOf } from '@/utils/draft-variables'
+import { networkPayload } from '@/utils/network'
 
 import type {
   App,
@@ -351,6 +352,10 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
       if (draft.resources && Object.keys(draft.resources).length > 0) {
         userInputVarObj.resources = draft.resources
       }
+      // Internet / networked pods: only what the app allows, and pod networking
+      // only with two or more workloads (otherwise there is nobody to reach).
+      const network = networkPayload(draft)
+      if (network) userInputVarObj.network = network
       const payload: any = {
         name: draft.name,
         appId: draft.appId,
