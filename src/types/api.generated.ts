@@ -1212,6 +1212,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lti13/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lti13 Session
+         * @description Step 6: the frontend trades the launch's code (+ the binding cookie) for a session token.
+         *
+         *     400 ``lti_code_invalid`` for an unknown, used, expired or foreign code;
+         *     the code is gone after the first attempt either way.
+         */
+        post: operations["lti13_session_lti13_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lti13/jwks": {
         parameters: {
             query?: never;
@@ -2452,6 +2475,11 @@ export interface components {
             power_state?: string | null;
             /** Fault Message */
             fault_message?: string | null;
+        };
+        /** LtiSessionRequest */
+        LtiSessionRequest: {
+            /** Code */
+            code: string;
         };
         /**
          * MyAccessResponse
@@ -4950,6 +4978,39 @@ export interface operations {
                 };
                 content: {
                     "text/html": string;
+                };
+            };
+        };
+    };
+    lti13_session_lti13_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LtiSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
