@@ -270,6 +270,8 @@ describe('NewDeploymentGroupsAssignmentView', () => {
         await screen.findByText('John Doe')
         expect(container.querySelector('[draggable="true"]')).toBeNull()
         expect(screen.queryByTestId('btn-remove-student')).not.toBeInTheDocument()
+        // no grip handle either: it would still suggest the card can be moved
+        expect(container.querySelector('.lucide-grip-vertical')).toBeNull()
       })
 
       it('lässt kein Ablegen zu', async () => {
@@ -313,6 +315,7 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       // one chip in a team column, one in the pool
       expect(container.querySelectorAll('[draggable="true"]').length).toBe(2)
       expect(screen.getByTestId('btn-remove-student')).toBeInTheDocument()
+      expect(container.querySelector('.lucide-grip-vertical')).not.toBeNull()
     })
 
     it('scope team lässt die Gruppierung frei, auch bei einem "Windows"-Namen', async () => {

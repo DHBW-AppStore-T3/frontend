@@ -37,6 +37,11 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-24 (Nachtrag #53, Griff-Symbol):** Im Browser (Dev-Container, Entwurf per Dev-Store gesetzt) gegengeprüft: bei
+  „je Person" sind Hinweis weg, Zufall/Zurücksetzen disabled, 0 ziehbare Karten, echtes Ziehen ändert nichts. Offen war das
+  Griff-Symbol (⋮⋮) auf den Karten; es entfällt jetzt bei `dragDisabled`. Hinweis zum Testen: VM-Apps brauchen eine
+  OpenStack-Credential, ohne sie lässt sich der Wizard nicht regulär erreichen. Nach einem Branch-Wechsel oder langer Sitzung
+  Tab neu laden, der Vite-HMR im Docker-Mount liefert sonst veraltete Module (zwei Store-Instanzen `?t=…`).
 - **2026-10-24 (Verteilung „je Person", frontend#53):** In `NewDeploymentGroupsAssignmentView` steuert `isForced`
   (`forcedGroupMode === 'eachUser'`) jetzt Hinweis, Buttons und Karten: Drag-&-Drop-Hinweis nicht gerendert, „Zufall" und
   „Zurücksetzen" `disabled` (ausgegraut, ohne Hover-Wechsel), `dropOn` kehrt früh zurück. `UnassignedPool` und `TeamColumn`
