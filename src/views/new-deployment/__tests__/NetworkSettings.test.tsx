@@ -6,7 +6,7 @@ import NetworkSettings from '../NetworkSettings'
 const base = {
   scope: null,
   studentIds: [],
-  assignments: { 0: ['a'], 1: ['b'] },
+  groupNames: ['A', 'B'],
   groupCount: 2,
   networkChoices: { internet: { default: false }, podNetwork: { default: true } },
   network: { internet: false, podNetwork: true },
@@ -28,6 +28,8 @@ describe('NetworkSettings', () => {
     expect(screen.queryByTestId('network-settings-body')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Experteneinstellungen/ }))
     expect(screen.getByTestId('network-settings-body')).toBeInTheDocument()
+    const button = screen.getByRole('button', { name: /Experteneinstellungen/ })
+    expect(button.getAttribute('aria-controls')).toBe(screen.getByTestId('network-settings-body').id)
   })
 
   it('starts the switches at the defaults', () => {
@@ -38,7 +40,7 @@ describe('NetworkSettings', () => {
   })
 
   it('hides networked pods with fewer than two workloads', () => {
-    render(<NetworkSettings draft={{ ...base, assignments: { 0: ['a'] }, groupCount: 1 }} onChange={vi.fn()} />)
+    render(<NetworkSettings draft={{ ...base, groupNames: ['A'], groupCount: 1 }} onChange={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: /Experteneinstellungen/ }))
     expect(screen.getByRole('switch', { name: 'Internetzugriff' })).toBeInTheDocument()
     expect(screen.queryByRole('switch', { name: 'Vernetzte Pods' })).toBeNull()

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  choiceFits,
   defaultNetwork,
   networkDeviations,
   networkPayload,
@@ -14,7 +15,7 @@ const draft = (over: Record<string, unknown> = {}) =>
   ({
     scope: null,
     studentIds: [],
-    assignments: { 0: ['a'], 1: ['b'] },
+    groupNames: ['A', 'B'],
     groupCount: 2,
     networkChoices: both,
     network: defaultNetwork(both),
@@ -31,13 +32,13 @@ describe('network expert settings', () => {
 
   it('counts workloads per team, or per person for scope user', () => {
     expect(workloadCount(draft())).toBe(2)
-    expect(workloadCount(draft({ assignments: {}, groupCount: 3 }))).toBe(3)
+    expect(workloadCount(draft({ groupNames: [], groupCount: 3 }))).toBe(3)
     expect(workloadCount(draft({ scope: 'user', studentIds: ['a', 'b', 'c'] }))).toBe(3)
   })
 
   it('hides pod networking with fewer than two workloads', () => {
     expect(visibleNetworkKeys(draft())).toEqual(['internet', 'podNetwork'])
-    expect(visibleNetworkKeys(draft({ assignments: { 0: ['a'] }, groupCount: 1 }))).toEqual(['internet'])
+    expect(visibleNetworkKeys(draft({ groupNames: ['A'], groupCount: 1 }))).toEqual(['internet'])
     expect(visibleNetworkKeys(draft({ scope: 'user', studentIds: ['a'] }))).toEqual(['internet'])
   })
 
@@ -57,7 +58,7 @@ describe('network expert settings', () => {
   })
 
   it('does not send pod networking with a single workload', () => {
-    const one = draft({ assignments: { 0: ['a'] }, groupCount: 1, network: { internet: false, podNetwork: true } })
+    const one = draft({ groupNames: ['A'], groupCount: 1, network: { internet: false, podNetwork: true } })
     expect(networkPayload(one)).toEqual({ internet: false })
   })
 
@@ -72,7 +73,15 @@ describe('network expert settings', () => {
     ])
     // A hidden setting never shows up.
     expect(
-      networkDeviations(draft({ assignments: { 0: ['a'] }, groupCount: 1, network: { podNetwork: true } })),
+      networkDeviations(draft({ groupNames: ['A'], groupCount: 1, network: { podNetwork: true } })),
     ).toEqual([])
+  })
+
+  it('keeps a choice with the same keys and defaults, resets otherwise', () => {
+    const chosen = { internet: true, podNetwork: false }
+    expect(choiceFits(chosen, both, both)).toBe(true)
+    expect(choiceFits(chosen, both, { internet: { default: true }, podNetwork: { default: false } })).toBe(false)
+    expect(choiceFits(chosen, both, { internet: { default: false } })).toBe(false)
+    expect(choiceFits(undefined, undefined, both)).toBe(false)
   })
 })

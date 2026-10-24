@@ -12,7 +12,7 @@ import {
 import { useToast } from '@/composables/useToast'
 import { chooseCredentialId } from './credentialChoice'
 import { defaultSelection } from '@/utils/resources'
-import { defaultNetwork } from '@/utils/network'
+import { choiceFits, defaultNetwork } from '@/utils/network'
 import type { ResourceChoice } from '@/types'
 
 function sameContainers(chosen: Record<string, unknown> | undefined, choices: ResourceChoice[]) {
@@ -55,8 +55,7 @@ export function useDeploymentRuntime() {
         const choices = data.resources ?? []
         const draft = useDeploymentStore.getState().draft
         const network = data.network ?? {}
-        const sameNetwork =
-          Object.keys(draft.network ?? {}).sort().join() === Object.keys(defaultNetwork(network)).sort().join()
+        const sameNetwork = choiceFits(draft.network, draft.networkChoices, network)
         useDeploymentStore.getState().updateDraft({
           runtime: data.runtime,
           scope: data.scope ?? null,

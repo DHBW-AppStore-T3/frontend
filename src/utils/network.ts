@@ -6,7 +6,7 @@ const KEYS: NetworkKey[] = ['internet', 'podNetwork']
 /** Pod networking needs somebody to talk to: at least two workloads. */
 export const MIN_WORKLOADS_FOR_POD_NETWORK = 2
 
-type DraftShape = Pick<DeploymentDraft, 'scope' | 'studentIds' | 'assignments' | 'groupCount' | 'networkChoices' | 'network'>
+type DraftShape = Pick<DeploymentDraft, 'scope' | 'studentIds' | 'groupNames' | 'groupCount' | 'networkChoices' | 'network'>
 
 /** The author's defaults: the start position of every switch the app offers. */
 export function defaultNetwork(choices: NetworkChoices | undefined | null): NetworkSelection {
@@ -19,10 +19,10 @@ export function defaultNetwork(choices: NetworkChoices | undefined | null): Netw
 }
 
 /** One workload per person (``scope: user``) or per team. */
-export function workloadCount(draft: Pick<DraftShape, 'scope' | 'studentIds' | 'assignments' | 'groupCount'>): number {
+export function workloadCount(draft: Pick<DraftShape, 'scope' | 'studentIds' | 'groupNames' | 'groupCount'>): number {
   if (draft.scope === 'user') return draft.studentIds?.length ?? 0
-  const teams = Object.keys(draft.assignments ?? {}).length
-  return teams || draft.groupCount || 0
+  // The same source as submitDraft: one team per group name.
+  return draft.groupNames?.length || draft.groupCount || 0
 }
 
 /** The settings the wizard shows: allowed by the app, pod networking only with two workloads. */
@@ -50,4 +50,16 @@ export function networkDeviations(draft: DraftShape): Array<{ key: NetworkKey; v
   return visibleNetworkKeys(draft)
     .map((key) => ({ key, value: networkValue(draft, key) }))
     .filter(({ key, value }) => value !== !!draft.networkChoices?.[key]?.default)
+}
+
+/** Whether a choice made earlier still fits the offered settings: same keys and same author defaults. */
+export function choiceFits(
+  chosen: NetworkSelection | undefined,
+  previous: NetworkChoices | undefined,
+  offered: NetworkChoices,
+): boolean {
+  if (!chosen) return false
+  const sig = (c: NetworkChoices | undefined) =>
+    KEYS.filter((k) => c?.[k]).map((k) => `${k}=${!!c![k]!.default}`).join()
+  return sig(previous) === sig(offered) && Object.keys(chosen).sort().join() === Object.keys(defaultNetwork(offered)).sort().join()
 }

@@ -217,4 +217,40 @@ describe('NewDeploymentSummaryView', () => {
       await waitFor(() => expect(toasts()).toContainEqual(['error', 'deployment.summary.fetchVarsError500']))
     })
   })
+
+  describe('Experteneinstellungen', () => {
+    const choices = { internet: { default: false }, podNetwork: { default: false } }
+    const pods = (network: Record<string, boolean>, over: Record<string, unknown> = {}) =>
+      seed({
+        runtime: 'kubernetes',
+        groupCount: 2,
+        groupNames: ['Team A', 'Team B'],
+        networkChoices: choices,
+        network,
+        ...over,
+      })
+
+    it('zeigt nur die vom Default abweichende Einstellung', async () => {
+      pods({ internet: true, podNetwork: false })
+      renderView()
+      const line = await screen.findByTestId('summary-network-internet')
+      expect(line).toHaveTextContent('deployment.network.internet.label')
+      expect(line).toHaveTextContent('deployment.network.summaryOn')
+      expect(screen.queryByTestId('summary-network-podNetwork')).toBeNull()
+    })
+
+    it('zeigt nichts, wenn alles dem Default entspricht', async () => {
+      pods({ internet: false, podNetwork: false })
+      renderView()
+      await screen.findByText('My Deployment')
+      expect(screen.queryByTestId('summary-network')).toBeNull()
+    })
+
+    it('zeigt nichts bei einer VM-App', async () => {
+      pods({ internet: true, podNetwork: true }, { runtime: 'openstack-vm' })
+      renderView()
+      await screen.findByText('My Deployment')
+      expect(screen.queryByTestId('summary-network')).toBeNull()
+    })
+  })
 })

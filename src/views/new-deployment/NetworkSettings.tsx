@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react'
 import Toggle from '@/views/add-app/Toggle'
@@ -8,7 +8,7 @@ import { networkValue, visibleNetworkKeys } from '@/utils/network'
 interface Props {
   draft: Pick<
     DeploymentDraft,
-    'scope' | 'studentIds' | 'assignments' | 'groupCount' | 'networkChoices' | 'network'
+    'scope' | 'studentIds' | 'groupNames' | 'groupCount' | 'networkChoices' | 'network'
   >
   onChange: (next: NetworkSelection) => void
 }
@@ -20,6 +20,7 @@ interface Props {
 export default function NetworkSettings({ draft, onChange }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const bodyId = useId()
   const keys = visibleNetworkKeys(draft)
   if (keys.length === 0) return null
 
@@ -32,6 +33,7 @@ export default function NetworkSettings({ draft, onChange }: Props) {
       <button
         type="button"
         aria-expanded={open}
+        aria-controls={bodyId}
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-2 px-6 py-4 text-left font-semibold text-textHeading hover:bg-surfaceMuted"
       >
@@ -40,7 +42,7 @@ export default function NetworkSettings({ draft, onChange }: Props) {
       </button>
 
       {open ? (
-        <div className="px-6 pb-6 space-y-5 border-t border-borderSubtle pt-4" data-testid="network-settings-body">
+        <div id={bodyId} className="px-6 pb-6 space-y-5 border-t border-borderSubtle pt-4" data-testid="network-settings-body">
           {keys.map((key) => {
             const on = networkValue(draft, key)
             return (

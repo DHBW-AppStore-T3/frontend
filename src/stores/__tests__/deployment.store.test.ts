@@ -257,7 +257,6 @@ describe('DeploymentStore', () => {
         store.draft.name = 'N'
         store.draft.releaseTag = 'v1'
         store.draft.groupNames = ['A', 'B']
-        store.draft.assignments = { 0: ['u1'], 1: ['u2'] }
         Object.assign(store.draft, over)
         await store.submitDraft()
         return vi.mocked(deploymentApi.create).mock.calls.at(-1)![0] as any
@@ -281,7 +280,6 @@ describe('DeploymentStore', () => {
           networkChoices: { internet: { default: false }, podNetwork: { default: false } },
           network: { internet: false, podNetwork: true },
           groupNames: ['A'],
-          assignments: { 0: ['u1'] },
           groupCount: 1,
         })
         expect(payload.userInputVar.network).toEqual({ internet: false })
