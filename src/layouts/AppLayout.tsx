@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { Outlet, useLocation } from 'react-router'
-import { House, LayoutGrid, User, Layers, GraduationCap, HelpCircle, ShieldCheck } from 'lucide-react'
+import { House, LayoutGrid, User, Layers, GraduationCap, HelpCircle, ShieldCheck, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRole } from '@/composables/useRole'
 import { useTheme } from '@/theme/useTheme'
@@ -16,6 +16,7 @@ function pageTitleKey(path: string): string | null {
   if (path.startsWith('/courses')) return 'nav.courses'
   if (path === '/help') return 'nav.help'
   if (path === '/admin/apps') return 'nav.approvals'
+  if (path === '/admin/settings') return 'nav.adminSettings'
   return null
 }
 
@@ -40,6 +41,7 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
     { to: '/apps', label: 'nav.apps', icon: LayoutGrid },
     { to: '/courses', label: 'nav.courses', icon: GraduationCap, visible: isStaff },
     { to: '/admin/apps', label: 'nav.approvals', icon: ShieldCheck, visible: isAdmin },
+    { to: '/admin/settings', label: 'nav.adminSettings', icon: Settings, visible: isAdmin },
     { to: '/user', label: 'workspace.profile', icon: User, visible: pathname.startsWith('/user') },
     { to: '/help', label: 'nav.help', icon: HelpCircle },
   ].filter((item) => item.visible !== false)

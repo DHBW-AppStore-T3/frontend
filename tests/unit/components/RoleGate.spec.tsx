@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import RoleGate from '@/components/RoleGate'
 
-const mocks = vi.hoisted(() => ({ isAdmin: false, isStaff: false }))
+const mocks = vi.hoisted(() => ({ isAdmin: false, isStaff: false, isAdminView: false }))
 
 vi.mock('@/composables/useRole', () => ({
-  useRole: () => ({ isAdmin: mocks.isAdmin, isStaff: mocks.isStaff }),
+  useRole: () => ({ isAdmin: mocks.isAdmin, isStaff: mocks.isStaff, isAdminView: mocks.isAdminView }),
 }))
 
-function gate(props: { admin?: boolean; staff?: boolean; can?: boolean } = {}) {
+function gate(props: { admin?: boolean; staff?: boolean; can?: boolean; adminView?: boolean } = {}) {
   return render(
     <RoleGate {...props}>
       <span>secret</span>
@@ -19,6 +19,7 @@ function gate(props: { admin?: boolean; staff?: boolean; can?: boolean } = {}) {
 beforeEach(() => {
   mocks.isAdmin = false
   mocks.isStaff = false
+  mocks.isAdminView = false
 })
 
 describe('RoleGate', () => {
@@ -55,5 +56,15 @@ describe('RoleGate', () => {
   it('prioritizes the admin prop over staff/can when multiple are set', () => {
     mocks.isAdmin = true
     expect(gate({ admin: true, can: false })).toBe('secret')
+  })
+
+  it('hides adminView content while the admin view is off', () => {
+    mocks.isAdmin = true
+    expect(gate({ adminView: true })).toBe('')
+  })
+
+  it('shows adminView content when the admin view is on', () => {
+    mocks.isAdminView = true
+    expect(gate({ adminView: true })).toBe('secret')
   })
 })

@@ -153,6 +153,21 @@ describe('staff-only routes (teachers and admins register apps, deploy, manage c
     await waitFor(() => expect(router.state.location.pathname).toBe('/forbidden'))
   })
 
+  it('keeps the admin settings admin-only', async () => {
+    loginAs('teacher')
+    const router = renderAt('/admin/settings')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/forbidden'))
+  })
+
+  it('lets admins open the admin settings', async () => {
+    loginAs('admin')
+    const router = renderAt('/admin/settings')
+
+    await waitFor(() => expect(document.querySelector('.app-shell')).not.toBeNull())
+    expect(router.state.location.pathname).toBe('/admin/settings')
+  })
+
   it('lets every signed-in role open the app catalogue and the deployments', async () => {
     loginAs('student')
     const router = renderAt('/apps')

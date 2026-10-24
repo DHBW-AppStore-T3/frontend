@@ -98,6 +98,7 @@ export default {
     help: "Hilfe",
     config: "Konfiguration",
     approvals: "Freigaben",
+    adminSettings: "Admin-Einstellungen",
   },
 
   action: {
@@ -623,6 +624,16 @@ export default {
     published: "Veröffentlicht",
     rejected: "Abgelehnt",
     private: "Privat",
+  },
+
+  AdminSettingsView: {
+    title: "Admin-Einstellungen",
+    subtitle: "Einstellungen, die nur Administratoren sehen.",
+    adminView: {
+      title: "Admin-Ansicht",
+      description:
+        "Zeigt zusätzliche Verwaltungsfunktionen, zum Beispiel die Versionsverwaltung bei Apps. Ist die Admin-Ansicht aus, sehen Sie die Oberfläche wie ein Dozent.",
+    },
   },
 
   AdminAppsView: {

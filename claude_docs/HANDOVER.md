@@ -37,6 +37,13 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-24 (Admin-Ansicht, frontend#49):** Neue Seite `/admin/settings` (`AdminSettingsView`, nur Admins, Nav-Eintrag
+  „Admin-Einstellungen" immer sichtbar) mit Schalter „Admin-Ansicht" (Standard aus). Zustand in
+  `src/stores/admin-view.store.ts` (Zustand `persist`, Schlüssel `appstore.adminView`, pro `userId`, kein Backend).
+  `useRole()` liefert `isAdminView` (`isAdmin` und Schalter an), `<RoleGate adminView>` ist dafür ergänzt. Die Folge-Issues
+  („Empfohlen"-Filter, Version festlegen) steuern ihre Admin-Elemente darüber. Bestehende Admin-Funktionen (Freigaben,
+  Sichtbarkeitsfilter, Bearbeiten/Löschen) bleiben bewusst unabhängig vom Schalter. Hinweis: `routes.spec.tsx` mockt
+  `auth.store` ohne `selectUserId`; die View liest die `userId` deshalb per Inline-Selektor.
 - **2026-10-23 (Pods/K8s in React, frontend#36):** `spike/vue-pods` (Linux-Apps als Pods, ein Credential pro
   OpenStack-Projekt, nginx als API-Gateway) ist auf `spike/react-pods` portiert. Vertrag: OpenAPI aus Backend
   `spike/dev` (`794e9db`), byte-identisch zur Vue-Fassung (`tests/unit/contract`). Rechte auf der Deployment-Seite

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useRole } from '@/composables/useRole'
+import { useAdminViewStore } from '@/stores/admin-view.store'
 import type { App, Deployment, Course } from '@/types'
 
 // useRole subscribes to the auth store; mock it so the hook gets a controlled user.
@@ -26,6 +27,34 @@ const makeCourse = (partial: Partial<Course & { teacherIds?: string[] }> = {}): 
   ({ courseId: 'c1', ...partial } as Course & { teacherIds?: string[] })
 
 describe('useRole', () => {
+  describe('isAdminView', () => {
+    it('is true only for an admin with the switch on', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: true } })
+      mockUser = { userId: 'u1', role: 'admin' }
+      expect(setupRole().isAdminView).toBe(true)
+    })
+
+    it('is false for an admin with the switch off or unset', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: false } })
+      mockUser = { userId: 'u1', role: 'admin' }
+      expect(setupRole().isAdminView).toBe(false)
+      useAdminViewStore.setState({ enabledByAccount: {} })
+      expect(setupRole().isAdminView).toBe(false)
+    })
+
+    it('is false for a teacher even with a stored entry', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: true } })
+      mockUser = { userId: 'u1', role: 'teacher' }
+      expect(setupRole().isAdminView).toBe(false)
+    })
+
+    it('is false without a user', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: true } })
+      mockUser = null
+      expect(setupRole().isAdminView).toBe(false)
+    })
+  })
+
   describe('role flags', () => {
     it('isAdmin is true for "admin" role', () => {
       mockUser = { userId: 'u1', role: 'admin' }

@@ -112,6 +112,10 @@ export const appRoutes: RouteObject[] = [
             { path: 'admin/apps', lazy: lazyView(() => import('@/views/AdminAppsView')) },
             { requiresAuth: true, requiresRole: ['admin'] },
           ),
+          guarded(
+            { path: 'admin/settings', lazy: lazyView(() => import('@/views/AdminSettingsView')) },
+            { requiresAuth: true, requiresRole: ['admin'] },
+          ),
           guarded({ path: 'forbidden', lazy: lazyView(() => import('@/views/ForbiddenView')) }, auth),
         ],
       },

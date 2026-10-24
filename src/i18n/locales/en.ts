@@ -98,6 +98,7 @@ export default {
     help: "Help",
     config: "Configuration",
     approvals: "Approvals",
+    adminSettings: "Admin settings",
   },
 
   action: {
@@ -620,6 +621,16 @@ export default {
     published: "Published",
     rejected: "Rejected",
     private: "Private",
+  },
+
+  AdminSettingsView: {
+    title: "Admin settings",
+    subtitle: "Settings only administrators can see.",
+    adminView: {
+      title: "Admin view",
+      description:
+        "Shows additional management functions, for example version management on apps. With the admin view off, you see the interface as a teacher does.",
+    },
   },
 
   AdminAppsView: {

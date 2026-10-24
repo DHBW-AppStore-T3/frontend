@@ -36,12 +36,14 @@ describe('AppLayout', () => {
     const { unmount } = renderWithProviders(<AppLayout />)
     expect(screen.queryByText('nav.courses')).not.toBeInTheDocument()
     expect(screen.queryByText('nav.approvals')).not.toBeInTheDocument()
+    expect(screen.queryByText('nav.adminSettings')).not.toBeInTheDocument()
     unmount()
 
     useAuthStore.setState({ user: { userId: 'a', role: 'admin' } as any })
     renderWithProviders(<AppLayout />)
     expect(screen.getByText('nav.courses')).toBeInTheDocument()
     expect(screen.getByText('nav.approvals')).toBeInTheDocument()
+    expect(screen.getByText('nav.adminSettings')).toBeInTheDocument()
   })
 
   it('only lists the profile entry on /user routes', () => {
