@@ -37,6 +37,12 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-24 (Sie-Form, frontend#52):** Alle Du-Pronomen und Du-Imperative in `src/i18n/locales/de.ts` sind auf Sie-Form
+  umgestellt, `en.ts` unverändert. Neuer Test `tests/unit/i18n/sie-form.spec.ts` flacht `de.ts` ab und schlägt bei Du-Pronomen
+  oder Imperativ-Anfängen (Liste im Test, auch nach „Bitte") fehl. Ausnahmen: Statusmeldungen in Ellipsen-Form („Lade Kurs...")
+  und die Toasts „Setze/Lösche Deployment … — siehe Live-Fortschritt unten." Neue Imperative bei Bedarf in die Liste im Test
+  aufnehmen. Die Hilfe-Texte (`HelpView.*`) sind ebenfalls umgestellt; das Issue „Hilfe-Seite: Texte kürzen" schreibt sie neu,
+  Konflikte löst, wer später merged.
 - **2026-10-24 (Dashboard-Begrüßung, frontend#51):** Hero-Überschrift lautet „Hallo {Vorname}" (`DashboardView.greeting`),
   Fallback großgeschriebener Benutzername, ohne Nutzer „Hallo" (`greetingAnonymous`). Logik in
   `src/utils/user-display.ts` (`greetingNameOf`). Tageszeit-Eyebrow und `DashboardView.timeGreetings.*` sind entfernt;
