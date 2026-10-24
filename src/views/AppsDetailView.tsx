@@ -111,7 +111,6 @@ export default function AppsDetailView() {
     }
   }, [isStaff])
 
-  const isOwner = !!app && isOwnerOf(app)
   const canManageVersions = !!app && canManage(app)
   const banner = bannerStatusOf(app, detail.approvals)
 
@@ -244,7 +243,7 @@ export default function AppsDetailView() {
               banner={banner}
               versionOptions={versionOptions}
               approvalByVersion={approvalByVersion}
-              isOwner={isOwner}
+              canSubmitVersion={canManageVersions}
               isAdmin={isAdmin}
               isTogglingPrivacy={detail.isTogglingPrivacy}
               withdrawingVersion={detail.withdrawingVersion}
