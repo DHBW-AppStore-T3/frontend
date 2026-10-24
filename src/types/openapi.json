@@ -3087,6 +3087,46 @@
         }
       }
     },
+    "/lti13/session": {
+      "post": {
+        "tags": [
+          "LTI 1.3"
+        ],
+        "summary": "Lti13 Session",
+        "description": "Step 6: the frontend trades the launch's code (+ the binding cookie) for a session token.\n\n400 ``lti_code_invalid`` for an unknown, used, expired or foreign code;\nthe code is gone after the first attempt either way.",
+        "operationId": "lti13_session_lti13_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LtiSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/lti13/jwks": {
       "get": {
         "tags": [
@@ -5959,6 +5999,21 @@
         "type": "object",
         "title": "LifecycleStatesSchema",
         "description": "Server lifecycle quad + optional fault message.\n\nFields are pass-through from OpenStack's Nova response (stable\nstrings like ``\"ACTIVE\"`` / ``\"BUILD\"`` / ``\"ERROR\"``). The frontend\nrenders a pill from ``status`` + ``task_state`` and shows\n``fault_message`` as a banner when ``status == \"ERROR\"``."
+      },
+      "LtiSessionRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 16,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "LtiSessionRequest"
       },
       "MyAccessResponse": {
         "properties": {

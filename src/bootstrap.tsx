@@ -5,7 +5,7 @@ import { env } from '@/env'
 import { applyTheme } from '@/theme/applyTheme'
 import { resolveTheme } from '@/theme'
 import { useAuthStore } from '@/stores/auth.store'
-import { takeLtiLaunch } from '@/services/lti-launch'
+import { redeemLtiCode, takeLtiLaunch } from '@/services/lti-launch'
 
 import '@/style.css'
 
@@ -22,8 +22,11 @@ function stripParams(keys: string[]): void {
  */
 export async function bootstrap(): Promise<void> {
   applyTheme(resolveTheme(env.THEME))
-  // Before anything else sees the URL: the fragment carries a session token.
-  const ltiLaunch = takeLtiLaunch()
+  // Before anything else sees the URL: the fragment carries a one-time code.
+  const ltiCode = takeLtiLaunch()
+  // An invalid or expired code (a reload, a link from somewhere else) ends in
+  // the normal sign-in.
+  const ltiLaunch = ltiCode ? await redeemLtiCode(ltiCode).catch(() => null) : null
 
   const auth = useAuthStore.getState()
   const params = new URLSearchParams(window.location.search)
