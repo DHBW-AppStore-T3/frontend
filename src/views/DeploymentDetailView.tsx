@@ -21,6 +21,7 @@ import PodWorkloadsPanel from '@/components/PodWorkloadsPanel'
 import InfrastructureVmDrawer from '@/components/InfrastructureVmDrawer'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDateTime } from '@/utils/format'
+import { safeHttpUrl } from '@/utils/safe-url'
 import { paths } from '@/router/paths'
 import BoldSlot from '@/i18n/BoldSlot'
 import { useDeploymentDetail } from './deployment-detail/useDeploymentDetail'
@@ -238,7 +239,7 @@ export default function DeploymentDetailView() {
                   <div>
                     <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Git Repository</div>
                     <a
-                      href={deployment.app.git_link ?? undefined}
+                      href={safeHttpUrl(deployment.app.git_link)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-blue-600 hover:text-blue-800 underline break-all"

@@ -123,7 +123,7 @@ describe('formatSubmitError', () => {
     expect(formatSubmitError(err({ reason: 'file_b64_invalid', variable: 'v', slot: 's' }), t)).toContain('"filename":"v/s"')
   })
 
-  it.each(['version_not_approved', 'role_required'])('maps the code %s', (code) => {
+  it.each(['version_not_approved', 'role_required', 'app_deactivated'])('maps the code %s', (code) => {
     expect(formatSubmitError(err({ code }), t)).toBe(`deployment.summary.errors.${code}`)
   })
 

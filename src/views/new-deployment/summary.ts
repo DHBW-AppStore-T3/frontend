@@ -153,6 +153,7 @@ const toMb = (bytes: unknown) => (Number(bytes || 0) / BYTES_PER_MB).toFixed(MB_
 // Errors the API names with `detail.code`.
 const CODE_MESSAGES: Record<string, string> = {
   version_not_approved: 'deployment.summary.errors.version_not_approved',
+  app_deactivated: 'deployment.summary.errors.app_deactivated',
   role_required: 'deployment.summary.errors.role_required',
 }
 
