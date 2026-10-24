@@ -767,8 +767,8 @@ export default {
       container: 'Container',
       cpu: 'vCPU',
       memory: 'Arbeitsspeicher (RAM)',
-      vcpu: '{{count}} vCPU',
-      range: 'Erlaubt {{min}} – {{max}} · empfohlen {{default}}',
+      vcpu: '{count} vCPU',
+      range: 'Erlaubt {min} – {max} · empfohlen {default}',
     },
     variables: {
       title: 'Nutzerspezifische Variablen',
