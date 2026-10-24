@@ -1717,6 +1717,13 @@ export interface components {
             resources: {
                 [key: string]: unknown;
             }[];
+            /**
+             * Network
+             * @default {}
+             */
+            network: {
+                [key: string]: unknown;
+            };
         };
         /** AppUpdate */
         AppUpdate: {
@@ -2271,7 +2278,10 @@ export interface components {
              * Format: uuid
              */
             userId: string;
-            /** Email */
+            /**
+             * Email
+             * Format: email
+             */
             email: string;
             /** Username */
             username: string;
