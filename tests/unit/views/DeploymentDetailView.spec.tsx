@@ -216,6 +216,16 @@ describe('DeploymentDetailView', () => {
     expect(screen.getByText('Notebook Stack')).toBeInTheDocument()
   })
 
+  it('verlinkt das Git-Repository nur mit einer http(s)-Adresse', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ app: { ...baseDeployment().app!, git_link: 'javascript:alert(1)' } }),
+    }))
+    renderView()
+
+    const link = await screen.findByText('javascript:alert(1)')
+    expect(link.closest('a')).not.toHaveAttribute('href')
+  })
+
   it('zeigt einen Spinner solange das Deployment nicht geladen ist', () => {
     mocks.getDeployment.mockReturnValue(new Promise(() => {}))
     const { container } = renderView()
@@ -500,6 +510,21 @@ describe('DeploymentDetailView — member self-access', () => {
     // Exactly one credential is shown: for member-1 (the caller), found by user id.
     expect(await screen.findByText('ssh member1@10.0.0.5')).toBeInTheDocument()
     expect(screen.getAllByText('ssh member1@10.0.0.5')).toHaveLength(1)
+  })
+
+  it('verlinkt eine Zugangs-URL nur, wenn sie http(s) ist (kein javascript:)', async () => {
+    mocks.getMyAccess.mockResolvedValue({
+      data: {
+        user_accounts: {
+          'Team Alpha-member1': { username: 'member1', team: 'Team Alpha', auth: 'pw', type: 'password' },
+        },
+        team_vms: { 'Team Alpha': { url: 'javascript:alert(document.domain)' } },
+      },
+    })
+    renderView()
+
+    const text = await screen.findByText('javascript:alert(document.domain)')
+    expect(text.closest('a')).not.toHaveAttribute('href')
   })
 
   it('bietet kein Zugang-erneut-senden mehr an (die API stellt es nicht mehr bereit)', async () => {

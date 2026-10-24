@@ -538,7 +538,7 @@ export function useDeploymentDetail(deploymentId: string) {
             ? t('DeploymentDetailView.pauseErrorToast')
             : t('DeploymentDetailView.resumeErrorToast')) +
           ': ' +
-          extractErrorMessage(err),
+          localizedError(err, t, te),
       })
     } finally {
       setPauseResumeBusy(false)
