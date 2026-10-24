@@ -20,14 +20,15 @@ const IMPERATIVES = [
   'Wähle', 'Lade', 'Hinterlege', 'Prüfe', 'Sieh', 'Kontrolliere', 'Lege', 'Füge', 'Gib', 'Klicke',
   'Fülle', 'Verwalte', 'Frage', 'Starte', 'Öffne', 'Beachte', 'Speichere', 'Bestätige', 'Versuche',
   'Melde', 'Nutze', 'Verwende', 'Erstelle', 'Überprüfe', 'Vergib', 'Ziehe', 'Trage', 'Aktiviere',
-  'Kopiere', 'Ordne', 'Passe', 'Wende', 'Lösche', 'Warte', 'Setze', 'Suche',
+  'Kopiere', 'Ordne', 'Passe', 'Wende', 'Lösche', 'Warte', 'Setze', 'Suche', 'Durchstöbere', 'Aktualisiere', 'Durchsuche', 'Entferne', 'Ändere', 'Bearbeite',
+  'Schließe', 'Achte', 'Stelle', 'Folge', 'Lies', 'Teile', 'Wiederhole', 'Probiere', 'Kontaktiere', 'Schau',
 ]
 const IMPERATIVE_START = new RegExp(`^(Bitte )?(${IMPERATIVES.join('|')})\\b`, 'i')
 
 // Pure status messages address nobody, so a Sie-form would only make them
 // longer. Allowed: the ellipsis form ("Lade Kurs...") and the two progress
 // toasts that continue with "— siehe Live-Fortschritt unten.".
-const STATUS_ELLIPSIS = /^(Lade|Speichere|Lösche|Warte|Suche)\b.*(\.\.\.|…)$/
+const STATUS_ELLIPSIS = /^(Lade|Speichere|Lösche|Entferne|Warte|Suche)\b.*(\.\.\.|…)$/
 const STATUS_TOASTS = /^(Setze|Lösche) Deployment( fort)? — siehe Live-Fortschritt unten\.$/
 const isStatusMessage = (text: string) => STATUS_ELLIPSIS.test(text) || STATUS_TOASTS.test(text)
 
@@ -44,8 +45,8 @@ describe('de.ts uses the Sie-form throughout', () => {
     expect(fmt(hits)).toBe('')
   })
 
-  it('contains no Du-imperative after "bitte" mid-text', () => {
-    const re = new RegExp(`\\bbitte (${IMPERATIVES.join('|')})\\b`, 'i')
+  it('contains no Du-imperative after "bitte" or a clause break mid-text', () => {
+    const re = new RegExp(`(\\bbitte|[;,:]) (${IMPERATIVES.join('|')})\\b`, 'i')
     const hits = entries.filter(([, text]) => re.test(text))
     expect(fmt(hits)).toBe('')
   })
