@@ -74,10 +74,12 @@ export default function TeamColumn(props: TeamColumnProps) {
                   dragDisabled ? '' : 'cursor-move hover:border-primary hover:shadow-lg hover:scale-[1.02]'
                 }`}
               >
-                <GripVertical
-                  size={16}
-                  className="text-textFaint group-hover:text-primary transition-colors flex-shrink-0"
-                />
+                {dragDisabled ? null : (
+                  <GripVertical
+                    size={16}
+                    className="text-textFaint group-hover:text-primary transition-colors flex-shrink-0"
+                  />
+                )}
                 <span className="font-semibold text-textMuted group-hover:text-textHeading flex-1 text-sm transition-colors">
                   {nameOf(studentId)}
                 </span>

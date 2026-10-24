@@ -57,7 +57,9 @@ export default function UnassignedPool(props: UnassignedPoolProps) {
                   dragDisabled ? '' : 'cursor-move hover:border-textFaint hover:shadow-lg hover:scale-[1.02]'
                 }`}
               >
-                <GripVertical size={18} className="text-textFaint group-hover:text-textMuted transition-colors" />
+                {dragDisabled ? null : (
+                  <GripVertical size={18} className="text-textFaint group-hover:text-textMuted transition-colors" />
+                )}
                 <span className="font-semibold text-textMuted group-hover:text-textHeading flex-1 transition-colors">
                   {nameOf(studentId)}
                 </span>
