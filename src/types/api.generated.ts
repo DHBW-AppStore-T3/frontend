@@ -1710,6 +1710,13 @@ export interface components {
             access: {
                 [key: string]: unknown;
             }[];
+            /**
+             * Resources
+             * @default []
+             */
+            resources: {
+                [key: string]: unknown;
+            }[];
         };
         /** AppUpdate */
         AppUpdate: {

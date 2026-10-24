@@ -758,6 +758,15 @@ export default {
       perPersonConstraintTitle: "Per-person app",
     },
 
+    resources: {
+      title: 'Compute resources',
+      desc: 'Choose how many vCPUs and how much memory your deployment gets. The recommended values are preselected.',
+      container: 'Container',
+      cpu: 'vCPU',
+      memory: 'Memory (RAM)',
+      vcpu: '{{count}} vCPU',
+      range: 'Allowed {{min}} – {{max}} · recommended {{default}}',
+    },
     variables: {
       title: 'User-specific Variables',
       description: 'Optional parameters for the deployment.',

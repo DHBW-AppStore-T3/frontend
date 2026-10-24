@@ -347,6 +347,10 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
         }
       }
 
+      // cpu/memory the person chose for the containers the app lets them size.
+      if (draft.resources && Object.keys(draft.resources).length > 0) {
+        userInputVarObj.resources = draft.resources
+      }
       const payload: any = {
         name: draft.name,
         appId: draft.appId,
