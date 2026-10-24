@@ -31,9 +31,9 @@ export default {
       "all": "Alle"
     },
     "personalInformation": "Persönliche Informationen",
-    "profileSubtitle": "Verwalte deine Profildaten und Anzeigeeinstellungen.",
+    "profileSubtitle": "Verwalten Sie Ihre Profildaten und Anzeigeeinstellungen.",
     "name": "Name",
-    "accountManaged": "Name und E-Mail werden über dein Hochschulkonto verwaltet.",
+    "accountManaged": "Name und E-Mail werden über Ihr Hochschulkonto verwaltet.",
     "save": "Speichern",
     "preferencesSaved": "Anzeigeeinstellungen gespeichert.",
     "languages": {
@@ -47,7 +47,7 @@ export default {
       "faq": "FAQ",
       "faqDescription": "Häufig gestellte Fragen und Antworten.",
       "support": "Support",
-      "supportDescription": "Bei weiteren Fragen wende dich an den Administrator."
+      "supportDescription": "Bei weiteren Fragen wenden Sie sich an die Administration."
     },
     "quotas": {
       "instances": "VMs / Instanzen",
@@ -65,7 +65,7 @@ export default {
       emailLabel: "E-Mail",
       emailPlaceholder: "name@example.org",
       userLabel: "Benutzername",
-      userPlaceholder: "dein.username",
+      userPlaceholder: "ihr.username",
       passwordLabel: "Passwort",
       passwordPlaceholder: "••••••••",
       submit: "Login",
@@ -134,7 +134,7 @@ export default {
 
   CoursesView: {
     title: "Kurse",
-    subtitle: "Hier findest du die für dich verfügbaren Kurse und zugehörige Anwendungen.",
+    subtitle: "Hier finden Sie die für Sie verfügbaren Kurse und zugehörigen Anwendungen.",
     newCourse: "Neuer Kurs",
     loading: "Lädt Kurse...",
     noCourses: "Noch keine Kurse vorhanden",
@@ -146,7 +146,7 @@ export default {
     openToView: "Kurs öffnen für Details",
     createModal: {
       title: "Neuer Kurs",
-      intro: "Lege einen neuen Kurs an, dem du anschließend Teilnehmer hinzufügen kannst.",
+      intro: "Legen Sie einen neuen Kurs an, dem Sie anschließend Teilnehmer hinzufügen können.",
       nameLabel: "Kursname *",
       namePlaceholder: "z.B. WWI23SEB",
       cancel: "Abbrechen",
@@ -190,7 +190,7 @@ export default {
     },
     addModal: {
       title: "Mitglieder hinzufügen",
-      info: "Studenten können <strong>nur in einem Kurs gleichzeitig</strong> sein. Fügst du jemanden hinzu, der bereits in einem anderen Kurs ist, wird diese Person hierher verschoben.",
+      info: "Studenten können <strong>nur in einem Kurs gleichzeitig</strong> sein. Fügen Sie jemanden hinzu, der bereits in einem anderen Kurs ist, wird diese Person hierher verschoben.",
       searchPlaceholder: "Nach Benutzername oder E-Mail suchen...",
       loadingUsers: "Lade Benutzer...",
       noUsersFound: "Keine Benutzer gefunden.",
@@ -223,7 +223,7 @@ export default {
 
   DashboardView: {
     title: "Willkommen zurück zu {brand}!",
-    subtitle: "Willkommen zurück in deiner Deployment-Umgebung.",
+    subtitle: "Willkommen zurück in Ihrer Deployment-Umgebung.",
     greeting: "Hallo {name}",
     greetingAnonymous: "Hallo",
     deploymentNew: "Neues Deployment",
@@ -253,22 +253,22 @@ export default {
 
  HelpView: {
     title: "Hilfe & Unterstützung",
-    subtitle: "Hier findest du Hilfestellungen und Dokumentationen.",
+    subtitle: "Hier finden Sie Hilfestellungen und Dokumentationen.",
     quickTip: "Nur für eingeloggte Nutzer: direkte Hilfe für die wichtigsten Abläufe.",
-    intro: "Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Du erhältst hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.",
+    intro: "Diese Seite erklärt die wichtigsten Schritte für Nutzer, die bereits eingeloggt sind. Sie erhalten hier konkrete Hinweise für Deployments, Quotas und die nächsten praktischen Schritte.",
     loggedInUsers: {
       title: "Für wen ist diese Seite?",
-      description: "Diese Seite ist explizit für eingeloggte Nutzer. Du hast bereits Zugriff und suchst klare Antworten statt allgemeiner Onboarding-Texte.",
+      description: "Diese Seite ist explizit für eingeloggte Nutzer. Sie haben bereits Zugriff und suchen klare Antworten statt allgemeiner Onboarding-Texte.",
     },
     quickHelp: {
       title: "Schritt-für-Schritt-Anleitung",
       processTitle: "Deployment-Prozess",
-      step1: "Öffne die Deployments-Übersicht und starte ein neues Deployment.",
-      step2: "Wähle die gewünschte App und App-Version aus.",
-      step3: "Ordne das Deployment einem Kurs oder Team zu und passe die Einstellungen an.",
-      step4: "Kontrolliere deine aktuellen Quotas, bevor du das Deployment ausführst.",
-      step5: "Starte das Deployment und überwache den Status sowie die Logs in der Detailansicht.",
-      pagesTitle: "Was du auf den wichtigsten Seiten machen kannst",
+      step1: "Öffnen Sie die Deployments-Übersicht und starten Sie ein neues Deployment.",
+      step2: "Wählen Sie die gewünschte App und App-Version aus.",
+      step3: "Ordnen Sie das Deployment einem Kurs oder Team zu und passen Sie die Einstellungen an.",
+      step4: "Kontrollieren Sie Ihre aktuellen Quotas, bevor Sie das Deployment ausführen.",
+      step5: "Starten Sie das Deployment und überwachen Sie den Status sowie die Logs in der Detailansicht.",
+      pagesTitle: "Was Sie auf den wichtigsten Seiten machen können",
       pageDashboardTitle: "Dashboard",
       pageDashboard: "Schneller Überblick über Deployments, Systemstatus und verfügbare Ressourcen.",
       pageAppsTitle: "Apps",
@@ -280,7 +280,7 @@ export default {
       pageDeploymentsTitle: "Deployments",
       pageDeployments: "Neue Deployments anlegen, den Status prüfen und Fehler analysieren.",
       pageQuotasTitle: "Quotas",
-      pageQuotas: "Deine Limits einsehen und prüfen, ob neue Deployments möglich sind.",
+      pageQuotas: "Ihre Limits einsehen und prüfen, ob neue Deployments möglich sind.",
     },
     resources: {
       title: "Nützliche Projektlinks",
@@ -299,9 +299,9 @@ export default {
     },
     troubleshooting: {
       title: "Wenn etwas nicht funktioniert",
-      description: "Diese Checkliste hilft dir, die häufigsten Blocker schnell zu finden und zu verstehen, was du als nächstes prüfen solltest.",
-      item1: "Prüfe, ob du dein Quota-Limit erreicht hast.",
-      item2: "Sieh dir die Deployment-Details und Logs an, um den Fehler einzugrenzen.",
+      description: "Diese Checkliste hilft Ihnen, die häufigsten Blocker schnell zu finden und zu verstehen, was Sie als Nächstes prüfen sollten.",
+      item1: "Prüfen Sie, ob Sie Ihr Quota-Limit erreicht haben.",
+      item2: "Sehen Sie sich die Deployment-Details und Logs an, um den Fehler einzugrenzen.",
     },
   },
 
@@ -350,7 +350,7 @@ export default {
     confirmDeleteTitle: "Deployment löschen",
     confirmDeleteMessage: "Das Deployment {name} löschen? Falls noch OpenStack-Ressourcen existieren, werden sie zuerst automatisch via Terraform abgebaut (Live-Fortschritt im Anschluss).",
     confirmPauseTitle: "Deployment pausieren",
-    confirmPauseMessage: "Das Deployment {name} pausieren? Alle Compute-Instanzen werden gestoppt (Volumes und Netzwerke bleiben erhalten). RAM und CPU-Quota werden freigegeben; du kannst es später wieder fortsetzen.",
+    confirmPauseMessage: "Das Deployment {name} pausieren? Alle Compute-Instanzen werden gestoppt (Volumes und Netzwerke bleiben erhalten). RAM und CPU-Quota werden freigegeben; Sie können es später wieder fortsetzen.",
     confirmResumeTitle: "Deployment fortsetzen",
     confirmResumeMessage: "Das Deployment {name} fortsetzen? Alle Compute-Instanzen werden wieder gestartet.",
     pauseTooltip: "Compute-Instanzen stoppen; Volumes und Netzwerke bleiben erhalten.",
@@ -408,7 +408,7 @@ export default {
     destroyErrorToast: "Fehler beim Starten des Zerstörens.",
     runtime: "Laufzeit",
     confirmDeleteMessagePods: "Das Deployment {name} löschen? Sein Namespace mit allen Pods und Daten wird zuerst entfernt (Live-Fortschritt im Anschluss).",
-    confirmPauseMessagePods: "Das Deployment {name} pausieren? Alle Pods werden gestoppt, die Daten bleiben erhalten; du kannst es später fortsetzen.",
+    confirmPauseMessagePods: "Das Deployment {name} pausieren? Alle Pods werden gestoppt, die Daten bleiben erhalten; Sie können es später fortsetzen.",
     confirmResumeMessagePods: "Das Deployment {name} fortsetzen? Alle Pods werden wieder gestartet.",
     confirmStopMessagePods: "Stoppt {name} und entfernt alles bisher Erzeugte (den Namespace mit allen Pods).",
     confirmRedeployTitle: "VM neu erstellen?",
@@ -418,7 +418,7 @@ export default {
     deleteUnavailable: "Löschen ist im aktuellen Status nicht möglich.",
     lifecycleBusy: "Für dieses Deployment läuft bereits eine Aktion.",
     taskDetailError: "Task-Details konnten nicht geladen werden.",
-    noAccess: "Du hast keinen Zugriff auf dieses Deployment.",
+    noAccess: "Sie haben keinen Zugriff auf dieses Deployment.",
     notFound: "Deployment nicht gefunden.",
     redeployFailed: "Neuaufbau fehlgeschlagen.",
     redeployStarted: "Neuaufbau gestartet für {address}",
@@ -462,7 +462,7 @@ export default {
       visibilityPublic: "Öffentlich",
       visibilityPrivate: "Privat",
       visibilityPublicHint: "Andere können die App deployen, sobald eine Version freigegeben wurde.",
-      visibilityPrivateHint: "Nur du kannst diese App deployen.",
+      visibilityPrivateHint: "Nur Sie können diese App deployen.",
       submitAllLabel: "Alle Versionen einreichen",
       submitAllHint: "Alle vorhandenen Git-Tags werden sofort zur Prüfung eingereicht.",
     },
@@ -475,19 +475,19 @@ export default {
     },
     info: {
       important: "Wichtig:",
-      inviteText: "Bitte frage deine Administration, welches <strong>GitHub-Konto</strong> als Collaborator zum Repository eingeladen werden muss."
+      inviteText: "Bitte fragen Sie Ihre Administration, welches <strong>GitHub-Konto</strong> als Collaborator zum Repository eingeladen werden muss."
     },
     buttons: {
       saving: "Speichern...",
       add: "Hinzufügen"
     },
     messages: {
-      onlyImages: "Bitte lade nur Bilddateien hoch.",
+      onlyImages: "Bitte laden Sie nur Bilddateien hoch.",
       imageTooLarge: "Bild zu groß (max. {size} MB).",
       missingFields: "Bitte Namen und Repo-URL angeben.",
       invalidUrl: "Dies sieht nicht nach einer gültigen Git-URL aus (z.B. https://github.com/user/repo).",
       success: "App erfolgreich erstellt!",
-      noAccess: "Keine gültige URL oder kein Zugriff auf das Repository. Bitte prüfe die Berechtigungen.",
+      noAccess: "Keine gültige URL oder kein Zugriff auf das Repository. Bitte prüfen Sie die Berechtigungen.",
       serverError: "Server Fehler: {statusText}",
       networkError: "Fehler beim Erstellen der App. (Netzwerkfehler)"
     }
@@ -532,7 +532,7 @@ export default {
     missingCredsText: "hinterlegen, um diese App zu deployen.",
     toasts: {
       loadError: "App-Details konnten nicht geladen werden.",
-      selectVersionFirst: "Bitte wähle zuerst eine Version aus.",
+      selectVersionFirst: "Bitte wählen Sie zuerst eine Version aus.",
       preparingConfig: "Konfiguration für {name} wird vorbereitet.",
       submitSuccess: "Version erfolgreich eingereicht.",
       submitError: "Einreichung fehlgeschlagen.",
@@ -552,7 +552,7 @@ export default {
     visibilityPublic: "Öffentlich",
     visibilityPrivate: "Privat",
     visibilityPublicDesc: "Andere können diese App deployen, sobald eine Version freigegeben wurde.",
-    visibilityPrivateDesc: "Nur du kannst diese App deployen.",
+    visibilityPrivateDesc: "Nur Sie können diese App deployen.",
     tabOverview: "Übersicht",
     tabStore: "App Store",
     storeVisibilityTitle: "Sichtbarkeit im App Store",
@@ -725,7 +725,7 @@ export default {
       credentialLabel: "OpenStack-Projekt",
       credentialPlaceholder: "Credential wählen …",
       credentialHint: "Die VMs werden im Projekt dieser Credential angelegt. Alle mit einer eigenen Credential für dieses Projekt können das Deployment mitbedienen.",
-      credentialRequired: "Bitte wähle das OpenStack-Projekt, in dem die VMs angelegt werden.",
+      credentialRequired: "Bitte wählen Sie das OpenStack-Projekt, in dem die VMs angelegt werden.",
     },
     groups: {
       title: 'Legen Sie die Anzahl der Gruppen fest',
@@ -814,8 +814,8 @@ export default {
       saveError: 'Fehler beim Speichern.',
       scopeTitleTeam: 'Pro Team ein eigener Wert',
       scopeTitleUser: 'Pro User ein eigener Wert',
-      scopeDescTeam: 'Du gibst unten <strong>eine Eingabe pro Team</strong> ein. Beim Deploy bekommt jedes Team genau seinen eigenen Wert.',
-      scopeDescUser: 'Du gibst unten <strong>eine Eingabe pro Mitglied</strong> ein. Beim Deploy bekommt jedes Mitglied genau seinen eigenen Wert.',
+      scopeDescTeam: 'Sie geben unten <strong>eine Eingabe pro Team</strong> ein. Beim Deploy bekommt jedes Team genau seinen eigenen Wert.',
+      scopeDescUser: 'Sie geben unten <strong>eine Eingabe pro Mitglied</strong> ein. Beim Deploy bekommt jedes Mitglied genau seinen eigenen Wert.',
       noTeamsConfigured: 'Noch keine Teams konfiguriert — bitte den vorigen Schritt zuerst durchlaufen.',
       noMembers: 'Keine Mitglieder',
       missingRequiredTitle: 'Es fehlen noch Pflichteingaben:',
@@ -876,8 +876,8 @@ export default {
         team_names_collide: "Zwei Teamnamen ergeben denselben technischen Namen; bitte einen umbenennen.",
         no_workloads: "Es gibt nichts zu starten: Teams hinzufügen (bei Apps je Person auch Mitglieder).",
         too_many_workloads: "Zu viele Workloads ({workloads}); höchstens {limit} je Deployment.",
-        workload_budget_exceeded: "Dein Kontingent reicht nicht: {inUse} von {budget} Workloads belegt, {requested} angefragt.",
-        openstack_credentials_missing: "Für Windows-/VM-Apps brauchst du eine OpenStack-Credential.",
+        workload_budget_exceeded: "Ihr Kontingent reicht nicht: {inUse} von {budget} Workloads belegt, {requested} angefragt.",
+        openstack_credentials_missing: "Für Windows-/VM-Apps benötigen Sie eine OpenStack-Credential.",
         openstack_credential_not_found: "Die gewählte OpenStack-Credential gibt es nicht mehr.",
         openstack_credentials_unverified: "Die gewählte Credential ist noch nicht von Keystone bestätigt; prüfe sie einmal in den Einstellungen.",
         auth_url_not_allowed: "Die Keystone-Adresse dieser Credential ist nicht erlaubt.",
@@ -935,7 +935,7 @@ export default {
 
   UserView: {
     title: 'Profil',
-    subtitle: 'Deine Benutzerinformationen',
+    subtitle: 'Ihre Benutzerinformationen',
     loading: 'Lade Benutzerdaten...',
     fields: {
       firstName: 'Vorname',
@@ -956,7 +956,7 @@ export default {
   banners: {
     credentialsMissing: {
       title: 'OpenStack-Credentials fehlen',
-      message: "Nur für Windows-/VM-Apps nötig: ohne Credential kannst du solche Apps nicht deployen.",
+      message: "Nur für Windows-/VM-Apps nötig: ohne Credential können Sie solche Apps nicht deployen.",
       cta: 'Jetzt einrichten',
     },
     credentialsInvalid: {
@@ -972,16 +972,16 @@ export default {
 
   SettingsOpenStackView: {
     title: 'OpenStack-Credentials',
-    intro: 'Hinterlege deine eigenen OpenStack-Zugangsdaten. Sie werden verschlüsselt gespeichert und nur zur Laufzeit deiner Deployments entschlüsselt.',
+    intro: 'Hinterlegen Sie Ihre eigenen OpenStack-Zugangsdaten. Sie werden verschlüsselt gespeichert und nur zur Laufzeit Ihrer Deployments entschlüsselt.',
     lockBanner: {
       title: 'Credentials sind aktuell gesperrt',
-      message: 'Du hast {count} aktive(s) Deployment(s). Lösche sie zuerst, um deine OpenStack-Credentials zu ändern.',
+      message: 'Sie haben {count} aktive(s) Deployment(s). Löschen Sie sie zuerst, um Ihre OpenStack-Credentials zu ändern.',
       cta: 'Zu meinen Deployments',
     },
     status: {
       loading: 'Lade Status…',
       noneTitle: 'Noch keine Credentials hinterlegt',
-      noneHint: 'Lade eine {file} hoch oder fülle das Formular aus.',
+      noneHint: 'Laden Sie eine {file} hoch oder füllen Sie das Formular aus.',
       valid: 'Credentials gültig',
       invalid: 'Validierung fehlgeschlagen',
       lastChecked: 'Zuletzt geprüft: {time}',
@@ -996,7 +996,7 @@ export default {
       headline: 'clouds.yaml hierher ziehen',
       orPrefix: 'Oder',
       pickFile: 'Datei auswählen',
-      suffix: '— die Felder werden automatisch ausgefüllt; speichern musst du selbst.',
+      suffix: '— die Felder werden automatisch ausgefüllt; speichern müssen Sie selbst.',
     },
     tabs: {
       app: 'Application Credential',
@@ -1022,7 +1022,7 @@ export default {
     cloudsYamlImported: 'Daten aus clouds.yaml übernommen — bitte prüfen und speichern.',
     dropNoFile: 'Keine Datei erkannt. Bitte erneut versuchen.',
     errors: {
-      missingFields: 'Bitte fülle alle Pflichtfelder aus.',
+      missingFields: 'Bitte füllen Sie alle Pflichtfelder aus.',
       lockedActiveDeployments: 'Credentials gesperrt — {count} aktive(s) Deployment(s).',
       validationFailedSaved: 'Gespeichert, aber Validierung fehlgeschlagen: {error}',
       validationFailed: 'Validierung fehlgeschlagen: {error}',
@@ -1158,7 +1158,7 @@ export default {
     enterManuallyShort: 'Manuell',
     enterManuallyInstead: 'Stattdessen {mode} manuell eingeben',
     noHits: 'Keine Treffer für „{query}".',
-    emptyProject: 'Keine {type}s in deinem Project.',
+    emptyProject: 'Keine {type}s in Ihrem Project.',
     hints: {
       storesUuid: 'Speichert UUID',
       storesName: 'Speichert Name',
@@ -1233,8 +1233,8 @@ export default {
     },
   },
   errors: {
-    deployment_project_unknown: "Das OpenStack-Projekt dieses Deployments ist noch unbekannt. Prüfe deine OpenStack-Credential einmal unter Einstellungen → OpenStack.",
-    openstack_credentials_missing_for_project: "Für das Projekt dieses Deployments hast du keine eigene, bestätigte OpenStack-Credential.",
+    deployment_project_unknown: "Das OpenStack-Projekt dieses Deployments ist noch unbekannt. Prüfen Sie Ihre OpenStack-Credential einmal unter Einstellungen → OpenStack.",
+    openstack_credentials_missing_for_project: "Für das Projekt dieses Deployments haben Sie keine eigene, bestätigte OpenStack-Credential.",
     openstack_credentials_unverified: "Diese OpenStack-Credential ist noch nicht von Keystone bestätigt; prüfe sie einmal in den Einstellungen.",
     auth_url_not_allowed: "Die Keystone-Adresse dieser Credential ist nicht erlaubt.",
     workload_not_found: "Diesen Workload gibt es nicht (mehr).",
@@ -1244,9 +1244,9 @@ export default {
     non_redeployable_resource_type: "Nur Compute-Instanzen können einzeln neu aufgebaut werden.",
     resource_not_in_state: "Diese Ressource ist nicht mehr im aktuellen State.",
     invalid_resource_address: "Ungültige Ressourcenadresse.",
-    deployment_operate_forbidden: "Du darfst dieses Deployment nicht bedienen.",
+    deployment_operate_forbidden: "Sie dürfen dieses Deployment nicht bedienen.",
     app_deactivated: "Ein Admin hat diese App deaktiviert; sie kann nicht gestartet werden.",
-    deployment_owner_view_forbidden: "Dafür fehlen dir die Rechte.",
+    deployment_owner_view_forbidden: "Dafür fehlen Ihnen die Rechte.",
     openstack_list_failed: "OpenStack hat die Anfrage nicht beantwortet.",
   },
 };
