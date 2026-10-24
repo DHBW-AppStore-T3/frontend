@@ -37,6 +37,11 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-24 (Dashboard-Begrüßung, frontend#51):** Hero-Überschrift lautet „Hallo {Vorname}" (`DashboardView.greeting`),
+  Fallback großgeschriebener Benutzername, ohne Nutzer „Hallo" (`greetingAnonymous`). Logik in
+  `src/utils/user-display.ts` (`greetingNameOf`). Tageszeit-Eyebrow und `DashboardView.timeGreetings.*` sind entfernt;
+  damit war `.page-eyebrow` unbenutzt und die CSS-Regel in `workspace.css` ist gelöscht (Folge aus #50).
+  `.dashboard-name` bricht lange Namen per `overflow-wrap: anywhere`. Layout bei 375 px nicht im Browser geprüft.
 - **2026-10-24 (Eyebrow entfernt, frontend#50):** Prop `eyebrow` und das `<p className="page-eyebrow">` sind vollständig aus
   `PageHeader` entfernt, die sieben Aufrufe (Profil, Freigaben, Deployments, Apps, Kurse, OpenStack-Credentials, Hilfe)
   angepasst, ungenutzter Schlüssel `UserView.settings.title` in de/en gelöscht. Die CSS-Regel `.page-eyebrow` in
