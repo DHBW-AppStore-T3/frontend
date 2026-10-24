@@ -8,7 +8,7 @@ const REPO = 'https://github.com/DHBW-AppStore-T3'
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-info hover:underline">
       {children}
     </a>
   )
@@ -29,8 +29,6 @@ export default function HelpView() {
       .includes(q)
   }
   const show = (keys: string[]) => ({ display: matches(keys) ? undefined : 'none' })
-
-  const intro = <p className="text-textMuted mb-6">{t('HelpView.intro')}</p>
 
   const summary = (icon: React.ReactNode, title: string, description: string) => (
     <summary>
@@ -67,10 +65,9 @@ export default function HelpView() {
             t('workspace.help.documentationDescription'),
           )}
           <div className="help-body">
-            {intro}
             <article className="help-article">
-              <div className="flex items-center gap-3 mb-4 text-primary">
-                <FileText size={20} />
+              <div className="flex items-center gap-3 mb-4 text-textHeading">
+                <FileText size={20} className="text-info" />
                 <h2 className="text-lg font-semibold">{t('HelpView.docs.title')}</h2>
               </div>
               <p className="text-textMuted leading-7 mb-4">{t('HelpView.docs.description')}</p>
@@ -93,8 +90,8 @@ export default function HelpView() {
               </ul>
             </article>
             <article className="help-article">
-              <div className="flex items-center gap-3 mb-4 text-primary">
-                <BookOpen size={20} />
+              <div className="flex items-center gap-3 mb-4 text-textHeading">
+                <BookOpen size={20} className="text-info" />
                 <h2 className="text-lg font-semibold">{t('HelpView.resources.title')}</h2>
               </div>
               <p className="text-textMuted leading-7 mb-4">{t('HelpView.resources.description')}</p>
@@ -120,43 +117,32 @@ export default function HelpView() {
           className="help-section"
           style={show([
             'workspace.help.faq',
-            'HelpView.intro',
             'HelpView.troubleshooting',
             'HelpView.quickHelp',
           ])}
         >
           {summary(<HelpCircle size={26} />, t('workspace.help.faq'), t('workspace.help.faqDescription'))}
           <div className="help-body">
-            {intro}
             <article className="help-article">
-              <div className="flex items-center gap-3 mb-4 text-primary">
-                <BookOpen size={20} />
+              <div className="flex items-center gap-3 mb-4 text-textHeading">
+                <BookOpen size={20} className="text-info" />
                 <h2 className="text-lg font-semibold">{t('HelpView.quickHelp.title')}</h2>
               </div>
-              <p className="text-sm font-semibold text-slate-700 mb-3">{t('HelpView.quickHelp.processTitle')}</p>
               <ol className="list-decimal list-inside space-y-3 text-textMuted">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <li key={n}>{t(`HelpView.quickHelp.step${n}`)}</li>
                 ))}
               </ol>
-              <div className="mt-6 space-y-4 text-textMuted">
-                {(['Dashboard', 'Apps', 'Courses', 'Deployments'] as const).map((page) => (
-                  <div key={page}>
-                    <h3 className="font-semibold text-base">{t(`HelpView.quickHelp.page${page}Title`)}</h3>
-                    <p className="text-textMuted">{t(`HelpView.quickHelp.page${page}`)}</p>
-                  </div>
-                ))}
-              </div>
             </article>
             <article className="help-article">
-              <div className="flex items-center gap-3 mb-4 text-primary">
-                <Layers size={20} />
+              <div className="flex items-center gap-3 mb-4 text-textHeading">
+                <Layers size={20} className="text-info" />
                 <h2 className="text-lg font-semibold">{t('HelpView.troubleshooting.title')}</h2>
               </div>
-              <p className="text-textMuted leading-7 mb-4">{t('HelpView.troubleshooting.description')}</p>
               <ul className="list-disc list-inside space-y-2 text-textMuted">
                 <li>{t('HelpView.troubleshooting.item1')}</li>
                 <li>{t('HelpView.troubleshooting.item2')}</li>
+                <li>{t('HelpView.troubleshooting.item3')}</li>
               </ul>
             </article>
           </div>

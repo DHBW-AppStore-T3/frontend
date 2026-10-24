@@ -23,7 +23,7 @@ for (const [lng, msgs] of Object.entries(locales)) {
     it('renders main texts', () => {
       const text = container.textContent
       expect(text).toContain(msgs.HelpView.title)
-      expect(text).toContain(msgs.HelpView.intro)
+      expect(text).toContain(msgs.HelpView.subtitle)
       expect(text).toContain(msgs.HelpView.quickHelp.step1)
       expect(text).toContain(msgs.HelpView.resources.frontendRepo)
     })
@@ -52,15 +52,28 @@ for (const [lng, msgs] of Object.entries(locales)) {
       }
     })
 
-    it('renders troubleshooting texts', () => {
+    it('renders three troubleshooting items', () => {
       const text = container.textContent
       for (const s of [
-        msgs.HelpView.troubleshooting.description,
         msgs.HelpView.troubleshooting.item1,
         msgs.HelpView.troubleshooting.item2,
+        msgs.HelpView.troubleshooting.item3,
       ]) {
         expect(text).toContain(s)
       }
+    })
+
+    it('does not render the removed filler texts', () => {
+      const help = msgs.HelpView as Record<string, unknown>
+      const quickHelp = msgs.HelpView.quickHelp as Record<string, unknown>
+      expect(help.intro).toBeUndefined()
+      expect(help.loggedInUsers).toBeUndefined()
+      expect(quickHelp.pagesTitle).toBeUndefined()
+      expect(container.textContent).not.toContain('HelpView.')
+    })
+
+    it('uses no red text', () => {
+      expect(container.querySelector('.text-primary')).toBeNull()
     })
 
     it('has the page title as the single h1', () => {
