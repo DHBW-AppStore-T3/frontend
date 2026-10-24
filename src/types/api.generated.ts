@@ -2673,6 +2673,18 @@ export interface components {
             secret: string;
         };
         /**
+         * PodSetupProgress
+         * @description What an app reports about its first-start setup (an ``appstore-progress`` log line).
+         */
+        PodSetupProgress: {
+            /** Percent */
+            percent: number;
+            /** Step */
+            step?: string | null;
+            /** Etaseconds */
+            etaSeconds?: number | null;
+        };
+        /**
          * PodWorkloadSchema
          * @description One workload of a pod deployment, read live from the cluster (.github#4).
          */
@@ -2699,6 +2711,7 @@ export interface components {
             url?: string | null;
             /** Lastevent */
             lastEvent?: string | null;
+            setup?: components["schemas"]["PodSetupProgress"] | null;
         };
         /**
          * QuotaItem
@@ -2939,10 +2952,7 @@ export interface components {
         };
         /** UserResponse */
         UserResponse: {
-            /**
-             * Email
-             * Format: email
-             */
+            /** Email */
             email: string;
             /** Username */
             username: string;
@@ -2992,10 +3002,7 @@ export interface components {
         };
         /** UserWithCourse */
         UserWithCourse: {
-            /**
-             * Email
-             * Format: email
-             */
+            /** Email */
             email: string;
             /** Username */
             username: string;
