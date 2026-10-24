@@ -425,7 +425,7 @@ export default {
   },
   AppsView: {
     title: "Anwendungen",
-    subtitle: "Durchstöbere verfügbare Anwendungen für Lehre, Forschung und Verwaltung.",
+    subtitle: "Durchstöbern Sie verfügbare Anwendungen für Lehre, Forschung und Verwaltung.",
     addApp: "App hinzufügen",
     loading: "Lade Daten...",
     noAppsTitle: "Keine Apps vorhanden",
@@ -580,7 +580,7 @@ export default {
     },
     editModal: {
       title: "App bearbeiten",
-      description: "Aktualisiere Name, Beschreibung und Logo. Das Repository ist nach der Erstellung nicht mehr änderbar.",
+      description: "Aktualisieren Sie Name, Beschreibung und Logo. Das Repository ist nach der Erstellung nicht mehr änderbar.",
       nameLabel: "Name",
       descLabel: "Beschreibung",
       imageLabel: "Logo",
@@ -879,7 +879,7 @@ export default {
         workload_budget_exceeded: "Ihr Kontingent reicht nicht: {inUse} von {budget} Workloads belegt, {requested} angefragt.",
         openstack_credentials_missing: "Für Windows-/VM-Apps benötigen Sie eine OpenStack-Credential.",
         openstack_credential_not_found: "Die gewählte OpenStack-Credential gibt es nicht mehr.",
-        openstack_credentials_unverified: "Die gewählte Credential ist noch nicht von Keystone bestätigt; prüfe sie einmal in den Einstellungen.",
+        openstack_credentials_unverified: "Die gewählte Credential ist noch nicht von Keystone bestätigt; prüfen Sie sie einmal in den Einstellungen.",
         auth_url_not_allowed: "Die Keystone-Adresse dieser Credential ist nicht erlaubt.",
       },
       yes: 'Ja',
@@ -1235,7 +1235,7 @@ export default {
   errors: {
     deployment_project_unknown: "Das OpenStack-Projekt dieses Deployments ist noch unbekannt. Prüfen Sie Ihre OpenStack-Credential einmal unter Einstellungen → OpenStack.",
     openstack_credentials_missing_for_project: "Für das Projekt dieses Deployments haben Sie keine eigene, bestätigte OpenStack-Credential.",
-    openstack_credentials_unverified: "Diese OpenStack-Credential ist noch nicht von Keystone bestätigt; prüfe sie einmal in den Einstellungen.",
+    openstack_credentials_unverified: "Diese OpenStack-Credential ist noch nicht von Keystone bestätigt; prüfen Sie sie einmal in den Einstellungen.",
     auth_url_not_allowed: "Die Keystone-Adresse dieser Credential ist nicht erlaubt.",
     workload_not_found: "Diesen Workload gibt es nicht (mehr).",
     invalid_workload: "Ungültiger Workload-Name.",
