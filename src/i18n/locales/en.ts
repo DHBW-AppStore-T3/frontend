@@ -224,11 +224,8 @@ export default {
   DashboardView: {
     title: "Welcome back to {brand}!",
     subtitle: "Welcome back to your deployment environment.",
-    timeGreetings: {
-      morning: "Good morning",
-      afternoon: "Good afternoon",
-      evening: "Good evening",
-    },
+    greeting: "Hello {name}",
+    greetingAnonymous: "Hello",
     deploymentNew: "New Deployment",
     deployments: "Deployments",
     deploymentsRunning: "Running Deployments",

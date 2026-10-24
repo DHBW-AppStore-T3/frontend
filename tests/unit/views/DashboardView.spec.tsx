@@ -37,6 +37,7 @@ vi.mock('@/composables/useQuotas', () => ({
 import DashboardView from '@/views/DashboardView'
 import { useAuthStore } from '@/stores/auth.store'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
+import i18n from '@/i18n'
 import { renderWithProviders } from '../../helpers/render'
 
 const fetchCredentials = vi.fn()
@@ -216,27 +217,34 @@ describe('DashboardView', () => {
     })
   })
 
-  it('greets the user by a capitalised username', () => {
-    setUser({ username: 'maximilian' })
-    renderView()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Maximilian')
-  })
+  describe('greeting (real German copy)', () => {
+    const renderDe = async () => {
+      await i18n.changeLanguage('de')
+      return renderWithProviders(<DashboardView />, { realI18n: true })
+    }
 
-  it('renders the greeting without a name when no user is loaded yet', () => {
-    setUser(null)
-    renderView()
-    expect(screen.getByText('DashboardView.timeGreetings.afternoon')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1 })).toBeEmptyDOMElement()
-  })
+    it('greets the user by first name', async () => {
+      setUser({ username: 'dozent.demo', firstName: 'Dozentin' })
+      await renderDe()
+      expect(screen.getByRole('heading', { level: 1, name: 'Hallo Dozentin' })).toBeInTheDocument()
+    })
 
-  it.each([
-    [9, 'DashboardView.timeGreetings.morning'],
-    [14, 'DashboardView.timeGreetings.afternoon'],
-    [20, 'DashboardView.timeGreetings.evening'],
-  ])('greets according to the hour (%i:00)', (hour, expected) => {
-    vi.setSystemTime(new Date(2026, 5, 7, hour, 0, 0))
-    renderView()
-    expect(screen.getByText(expected)).toBeInTheDocument()
+    it('falls back to the capitalised username without a first name', async () => {
+      setUser({ username: 'dozent.demo', firstName: '  ' })
+      await renderDe()
+      expect(screen.getByRole('heading', { level: 1, name: 'Hallo Dozent.demo' })).toBeInTheDocument()
+    })
+
+    it('greets without a name when no user is loaded yet', async () => {
+      setUser(null)
+      await renderDe()
+      expect(screen.getByRole('heading', { level: 1, name: 'Hallo' })).toBeInTheDocument()
+    })
+
+    it('renders no eyebrow in the hero banner', async () => {
+      const { container } = await renderDe()
+      expect(container.querySelector('.page-eyebrow')).toBeNull()
+    })
   })
 
   it('shows the KPI numbers and links', () => {
