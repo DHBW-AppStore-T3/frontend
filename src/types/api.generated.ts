@@ -2278,10 +2278,7 @@ export interface components {
              * Format: uuid
              */
             userId: string;
-            /**
-             * Email
-             * Format: email
-             */
+            /** Email */
             email: string;
             /** Username */
             username: string;
