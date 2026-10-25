@@ -16,6 +16,8 @@ export interface AppDetail {
   created_at?: string
   user?: { username?: string }
   versions?: unknown[]
+  /** The version teachers deploy, set by an admin; null/absent means none set. */
+  deploy_version?: string | null
 }
 
 type VersionRecord = Record<string, unknown>
@@ -30,6 +32,12 @@ function tagOf(entry: unknown): string {
 
 export function versionOptionsOf(app: AppDetail | null): string[] {
   return (app?.versions ?? []).map(tagOf).filter(Boolean)
+}
+
+/** Version users deploy: the admin's choice if it is still listed, else the first version. */
+export function deployVersionOf(app: AppDetail | null, versionOptions: string[]): string {
+  const chosen = app?.deploy_version
+  return chosen && versionOptions.includes(chosen) ? chosen : (versionOptions[0] ?? '')
 }
 
 /** Details object of the selected version; plain-string versions become ``{ version }``. */

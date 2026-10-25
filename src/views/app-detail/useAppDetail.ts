@@ -13,11 +13,11 @@ const HTTP_UNPROCESSABLE = 422
 
 /**
  * Data and mutations of the app detail page: the app, its version approvals
- * (owner/admin only), and the owner actions (submit/withdraw versions, toggle
+ * (only when ``loadsApprovals`` says the view needs them), and the owner actions (submit/withdraw versions, toggle
  * privacy, edit, delete). Toasts and navigation are handled here so the view
  * stays declarative.
  */
-export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) => boolean) {
+export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => boolean) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
@@ -31,6 +31,7 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
   const [markerErrors, setMarkerErrors] = useState<AppVariableMarkerError[]>([])
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSettingDeployVersion, setIsSettingDeployVersion] = useState(false)
 
   const fetchApprovals = useCallback(async () => {
     try {
@@ -52,7 +53,7 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
         if (cancelled) return
         const loaded = response.data as unknown as AppDetail
         setApp(loaded)
-        if (canManageVersions(loaded)) await fetchApprovals()
+        if (loadsApprovals(loaded)) await fetchApprovals()
       } catch {
         if (cancelled) return
         toast.error(t('AppsDetailView.toasts.loadError'))
@@ -122,6 +123,22 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
     }
   }
 
+  /** Admin only: fix the version teachers deploy. Resolves ``true`` when it was saved. */
+  const setDeployVersion = async (versionTag: string): Promise<boolean> => {
+    setIsSettingDeployVersion(true)
+    try {
+      const res = await appApi.admin.setDeployVersion(appId, versionTag)
+      setApp((prev) => (prev ? { ...prev, deploy_version: res.data.deploy_version } : prev))
+      toast.success(t('AppsDetailView.toasts.deployVersionSet', { version: versionTag }))
+      return true
+    } catch {
+      toast.error(t('AppsDetailView.toasts.deployVersionError'))
+      return false
+    } finally {
+      setIsSettingDeployVersion(false)
+    }
+  }
+
   /** Resolves ``true`` when the edit dialog may close (saved or nothing to save). */
   const saveEdit = async (form: EditFormValues, image: EditImage): Promise<boolean> => {
     if (!app) return false
@@ -182,6 +199,8 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
     clearMarkerErrors: () => setMarkerErrors([]),
     isSavingEdit,
     isDeleting,
+    isSettingDeployVersion,
+    setDeployVersion,
     submitVersion,
     withdrawVersion,
     togglePrivacy,
