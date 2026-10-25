@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { App, DeploymentRuntime } from '@/types'
+import type { DeploymentRuntime } from '@/types'
 
 export interface VersionShape {
   runtime?: DeploymentRuntime | null
@@ -10,16 +10,12 @@ export interface VersionShape {
 export interface GroupConstraints {
   forcedGroupMode: 'eachUser' | null
   groupModeReason: string | null
-  /** Heading of the notice; names the licence only where the licence is the reason. */
+  /** Heading of the notice. */
   groupModeTitle: string | null
 }
 
 const PER_PERSON_REASON = 'deployment.assignment.perPersonConstraintText'
 const PER_PERSON_TITLE = 'deployment.assignment.perPersonConstraintTitle'
-
-function forcesOneTeamPerPerson(version?: VersionShape | null): boolean {
-  return version?.scope === 'user'
-}
 
 /**
  * Group-mode constraints of the version being deployed.
@@ -27,8 +23,8 @@ function forcesOneTeamPerPerson(version?: VersionShape | null): boolean {
  * `scope: user` forces one deployment per person (one team per person).
  * The scope comes from the appstore.yaml via the API.
  */
-export function groupConstraints(app: App | null, version?: VersionShape | null): GroupConstraints {
-  if (!forcesOneTeamPerPerson(version)) return { forcedGroupMode: null, groupModeReason: null, groupModeTitle: null }
+export function groupConstraints(version?: VersionShape | null): GroupConstraints {
+  if (version?.scope !== 'user') return { forcedGroupMode: null, groupModeReason: null, groupModeTitle: null }
   return {
     forcedGroupMode: 'eachUser',
     groupModeReason: PER_PERSON_REASON,
@@ -36,8 +32,8 @@ export function groupConstraints(app: App | null, version?: VersionShape | null)
   }
 }
 
-export function useDeploymentConstraints(app: App | null, version?: VersionShape | null): GroupConstraints {
+export function useDeploymentConstraints(_app: unknown, version?: VersionShape | null): GroupConstraints {
   const runtime = version?.runtime
   const scope = version?.scope
-  return useMemo(() => groupConstraints(app, { runtime, scope }), [app, runtime, scope])
+  return useMemo(() => groupConstraints({ runtime, scope }), [runtime, scope])
 }
