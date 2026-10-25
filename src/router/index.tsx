@@ -4,6 +4,7 @@ import AuthLayout from '@/layouts/AuthLayout'
 import AppLayout from '@/layouts/AppLayout'
 import UserLayout from '@/layouts/UserLayout'
 import Toast from '@/components/ui/Toast'
+import RouteError from '@/components/RouteError'
 import { paths } from './paths'
 import {
   resolveRouteGuard,
@@ -42,6 +43,17 @@ function guarded(
   }
 }
 
+/**
+ * Children of a layout route behind a pathless wrapper that carries the
+ * `errorElement`. An `errorElement` on the layout route itself would replace the
+ * layout (sidebar, header) along with the failed page; on the wrapper, the error
+ * page takes the place of the page only. The wrapper adds no URL segment, and
+ * the router clears its error on the next navigation.
+ */
+const contained = (children: RouteObject[]): RouteObject[] => [
+  { errorElement: <RouteError />, children },
+]
+
 const auth: RouteMeta = { requiresAuth: true }
 const wizardFields: WizardField[] = ['appId', 'name', 'studentIds']
 
@@ -50,6 +62,8 @@ export const appRoutes: RouteObject[] = [
     // Root: global overlays that live outside every layout (the old App.vue).
     // Guards run in loaders; render nothing while the first one is pending.
     HydrateFallback: () => null,
+    // Last resort: a failing layout or root. Page errors are caught lower down.
+    errorElement: <RouteError fullPage />,
     element: (
       <>
         <Outlet />
@@ -60,16 +74,16 @@ export const appRoutes: RouteObject[] = [
       // AUTH LAYOUT
       {
         element: <AuthLayout />,
-        children: [
+        children: contained([
           guarded({ path: 'login', lazy: lazyView(() => import('@/views/LoginView')) }, { requiresGuest: true }),
           guarded({ path: 'callback', lazy: lazyView(() => import('@/views/CallbackView')) }, {}),
-        ],
+        ]),
       },
 
       // APP LAYOUT
       {
         element: <AppLayout />,
-        children: [
+        children: contained([
           guarded({ index: true, lazy: lazyView(() => import('@/views/DashboardView')) }, auth),
           guarded({ path: 'dashboard', lazy: lazyView(() => import('@/views/DashboardView')) }, auth),
           guarded({ path: 'courses', lazy: lazyView(() => import('@/views/CoursesView')) }, staffOnly),
@@ -117,15 +131,15 @@ export const appRoutes: RouteObject[] = [
             { requiresAuth: true, requiresRole: ['admin'] },
           ),
           guarded({ path: 'forbidden', lazy: lazyView(() => import('@/views/ForbiddenView')) }, auth),
-        ],
+        ]),
       },
 
       // USER LAYOUT
       {
         element: <UserLayout />,
-        children: [
+        children: contained([
           guarded({ path: 'user', lazy: lazyView(() => import('@/views/UserView')) }, auth),
-        ],
+        ]),
       },
 
       { path: '*', Component: () => null, loader: () => redirect(paths.home) },
