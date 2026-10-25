@@ -318,6 +318,10 @@ export default {
     noStatus: "kein Status",
   },
   DeploymentDetailView: {
+    statusFailedHint: "Die Lernumgebung kann derzeit nicht genutzt werden. Bitte wenden Sie sich an Ihre Dozentin oder Ihren Dozenten.",
+    statusPollingDegraded: "Verbindung unterbrochen – der angezeigte Status ist möglicherweise nicht aktuell. Es wird weiter versucht.",
+    statusPollingForbidden: "Sie haben keinen Zugriff mehr auf diese Lernumgebung. Die automatische Aktualisierung wurde beendet.",
+    statusGoneToast: "Diese Bereitstellung existiert nicht mehr.",
     deploymentCreated: "Erstellt am",
     deploymentCreatedBy: "Erstellt von",
     deploymentDelete: "Löschen",
