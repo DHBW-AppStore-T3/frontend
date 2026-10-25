@@ -123,6 +123,16 @@ describe('formatSubmitError', () => {
     expect(formatSubmitError(err({ reason: 'file_b64_invalid', variable: 'v', slot: 's' }), t)).toContain('"filename":"v/s"')
   })
 
+  it('names the reason when the server rejects the content of a file', () => {
+    const rejected = (code: string, message = 'english text') =>
+      formatSubmitError(err({ reason: 'file_content_rejected', code, message, filename: 'a.zip' }), t)
+    expect(rejected('zip_path_traversal')).toBe(
+      'deployment.summary.errors.fileContentRejected {"filename":"a.zip","reason":"deployment.summary.errors.fileContent.zip_path_traversal"}',
+    )
+    // a code the frontend does not know yet falls back to the server's message
+    expect(rejected('something_new', 'Something new happened')).toContain('"reason":"Something new happened"')
+  })
+
   it.each(['version_not_approved', 'role_required', 'app_deactivated'])('maps the code %s', (code) => {
     expect(formatSubmitError(err({ code }), t)).toBe(`deployment.summary.errors.${code}`)
   })
