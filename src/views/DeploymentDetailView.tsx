@@ -37,9 +37,9 @@ const HEADER_ICON_COLOR: Record<string, string> = {
 
 const COMMIT_SHORT_LENGTH = 8
 
-function pauseResumeMessageKey(action: 'pause' | 'resume' | null, isPods: boolean): string {
-  const base = action === 'pause' ? 'confirmPauseMessage' : 'confirmResumeMessage'
-  return `DeploymentDetailView.${base}${isPods ? 'Pods' : ''}`
+function pauseResumeMessageKey(action: 'pause' | 'resume' | null): string {
+  const base = action === 'pause' ? 'confirmPauseMessagePods' : 'confirmResumeMessagePods'
+  return `DeploymentDetailView.${base}`
 }
 
 export default function DeploymentDetailView() {
@@ -190,7 +190,7 @@ export default function DeploymentDetailView() {
                     {t('DeploymentDetailView.runtime')}
                   </div>
                   <div className="text-sm font-medium text-gray-900" data-testid="deployment-runtime">
-                    {d.isPods ? t('runtime.kubernetes') : t('runtime.openstackVm')}
+                    {t('runtime.kubernetes')}
                   </div>
                 </div>
                 <div>
@@ -452,7 +452,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={d.isPods ? 'DeploymentDetailView.confirmStopMessagePods' : 'DeploymentDetailView.confirmStopMessage'}
+              i18nKey='DeploymentDetailView.confirmStopMessagePods'
               slot="name"
               value={deployment.name}
             />
@@ -477,7 +477,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={d.isPods ? 'DeploymentDetailView.confirmDeleteMessagePods' : 'DeploymentDetailView.confirmDeleteMessage'}
+              i18nKey='DeploymentDetailView.confirmDeleteMessagePods'
               slot="name"
               value={deployment.name}
             />
@@ -538,7 +538,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={pauseResumeMessageKey(d.pauseResumeAction, d.isPods)}
+              i18nKey={pauseResumeMessageKey(d.pauseResumeAction)}
               slot="name"
               value={deployment.name}
             />

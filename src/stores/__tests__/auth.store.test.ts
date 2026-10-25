@@ -21,19 +21,6 @@ vi.mock('@/services/keycloak.service', () => ({
   keycloak: keycloakMock,
 }))
 
-vi.mock('@/composables/useOpenStackResourceCache', () => ({
-  invalidateAll: vi.fn(),
-}))
-
-vi.mock('@/stores/openstack-credentials.store', () => ({
-  useOpenStackCredentialsStore: {
-    getState: () => ({
-      fetch: vi.fn(() => Promise.resolve()),
-      reset: vi.fn(),
-    }),
-  },
-}))
-
 vi.mock('@/services/auth.service', () => ({
   AuthService: {
     fetchMe: vi.fn(),

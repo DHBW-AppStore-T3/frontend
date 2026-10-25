@@ -114,7 +114,7 @@ export default function DeploymentsListView() {
                       className="px-1.5 py-0.5 rounded border border-borderSubtle text-[10px] uppercase tracking-wide"
                       data-testid="runtime-badge"
                     >
-                      {deployment.runtime === 'kubernetes' ? t('runtime.kubernetesShort') : t('runtime.openstackVmShort')}
+                      {t('runtime.kubernetesShort')}
                     </span>
                   </span>
                   <span className="inline-flex items-center gap-1">

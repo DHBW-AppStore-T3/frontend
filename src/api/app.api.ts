@@ -44,9 +44,8 @@ export const appApi = {
   },
 
   /**
-   * How ``version`` runs: ``kubernetes`` (pods, no OpenStack credential) or
-   * ``openstack-vm`` (the Windows desktop), and its group mode (``scope``).
-   * 422 with field paths for an invalid appstore.yaml.
+   * How ``version`` runs: runtime and group mode (``scope``).
+   * 422 with field paths for an invalid or missing appstore.yaml.
    */
   getRuntime: (appId: string, version: string) => {
     return api.get<AppRuntime>(`/apps/${appId}/runtime`, {

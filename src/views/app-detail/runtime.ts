@@ -22,5 +22,4 @@ export function runtimeErrorKey(err: unknown): 'AppsDetailView.runtime.invalidSp
     : 'AppsDetailView.runtime.loadError'
 }
 
-export const runtimeLabelKey = (runtime: AppRuntime['runtime']) =>
-  runtime === 'kubernetes' ? 'runtime.kubernetes' : 'runtime.openstackVm'
+export const runtimeLabelKey = (_runtime: AppRuntime['runtime']) => 'runtime.kubernetes'

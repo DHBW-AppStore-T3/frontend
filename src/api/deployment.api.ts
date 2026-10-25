@@ -53,26 +53,11 @@ export const deploymentApi = {
   },
 
   /**
-   * Pause a running deployment.
-   *
-   * Halts the OpenStack compute instances of the deployment without
-   * tearing them down — volumes and networks are preserved so resume
-   * restores the same instances byte-for-byte.
-   *
-   * Owner-only. Allowed only when status is ``success``. Returns 202
-   * with ``{task_id, status: "pausing"}``; the frontend should attach
-   * to the SSE stream just like for delete/destroy.
-   */
-  /**
    * Cancel an in-flight deployment and clean up after it.
    *
    * Owner-only, and the only action allowed while status is ``pending``
-   * or ``running``. The backend revokes the worker task and then runs a
-   * destroy that additionally reaps the Packer build instance - which
-   * lives outside Terraform state and would otherwise keep running.
-   *
-   * Returns 202 with ``{task_id, status: "destroying"}``, so the caller
-   * attaches to the SSE stream exactly as it does for destroy.
+   * or ``running``. Returns 202 with ``{task_id, status: "destroying"}``,
+   * so the caller attaches to the SSE stream exactly as it does for destroy.
    */
   cancel: (deploymentId: string) => {
     return api.post<{ task_id: string; status: 'destroying' }>(

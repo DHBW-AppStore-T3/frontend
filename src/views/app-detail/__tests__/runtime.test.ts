@@ -39,8 +39,7 @@ describe('runtimeErrorKey', () => {
 })
 
 describe('runtimeLabelKey', () => {
-  it('maps both runtimes', () => {
+  it('always returns kubernetes label', () => {
     expect(runtimeLabelKey('kubernetes')).toBe('runtime.kubernetes')
-    expect(runtimeLabelKey('openstack-vm')).toBe('runtime.openstackVm')
   })
 })

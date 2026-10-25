@@ -15,7 +15,7 @@ export default function ReviewScope({ approval }: { approval: AppVersionApproval
     <dl className="mt-1.5 space-y-0.5 text-[11px] text-textMuted" data-testid="review-scope">
       <div className="flex gap-1">
         <dt className="font-medium">{t('AdminAppsView.runtimeLabel')}</dt>
-        <dd>{approval.runtime === 'kubernetes' ? t('runtime.kubernetes') : t('runtime.openstackVm')}</dd>
+        <dd>{t('runtime.kubernetes')}</dd>
       </div>
       {approval.commit_sha ? (
         <div className="flex gap-1">
