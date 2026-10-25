@@ -569,7 +569,7 @@ describe('DeploymentStore', () => {
     })
 
     describe('credential (project) of the deployment', () => {
-      async function submitWith(runtime: 'kubernetes' | 'openstack-vm' | null, credentialId: string | null) {
+      async function submitWith(runtime: 'kubernetes' | 'kubevirt-vm' | 'openstack-vm' | null, credentialId: string | null) {
         const { deploymentApi } = await import('@/api/deployment.api')
         vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
         const store = liveStore(useDeploymentStore)
@@ -587,6 +587,10 @@ describe('DeploymentStore', () => {
 
       it('a pod app sends none, even if one was left in the draft', async () => {
         expect(await submitWith('kubernetes', 'c-1')).not.toHaveProperty('credentialId')
+      })
+
+      it('a KubeVirt VM runs in the cluster and sends no credential either', async () => {
+        expect(await submitWith('kubevirt-vm', 'c-1')).not.toHaveProperty('credentialId')
       })
 
       it('a VM app without a chosen credential sends none', async () => {

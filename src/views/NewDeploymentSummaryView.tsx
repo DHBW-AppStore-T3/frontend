@@ -19,6 +19,7 @@ import {
 import { useSummaryVariables } from './new-deployment/useSummaryVariables'
 import { networkDeviations } from '@/utils/network'
 import { useSubmitDeployment } from './new-deployment/useSubmitDeployment'
+import { isClusterRuntime, runtimeLabelKey } from '@/utils/runtime'
 
 function VariableCard(props: {
   title: string
@@ -82,14 +83,14 @@ export default function NewDeploymentSummaryView() {
   const { submit, isSubmitting } = useSubmitDeployment()
 
   // Pods run in the cluster; VM apps in the project of the chosen credential.
-  const isPods = draft.runtime === 'kubernetes'
+  const isCluster = isClusterRuntime(draft.runtime)
   const credential = useOpenStackCredentialsStore(selectCredentialById(draft.credentialId))
   const credentialProject = credential ? credential.project_name || credential.project_id || '' : ''
   useEffect(() => {
-    if (!isPods && !useOpenStackCredentialsStore.getState().credentials) {
+    if (!isCluster && !useOpenStackCredentialsStore.getState().credentials) {
       void useOpenStackCredentialsStore.getState().fetch()
     }
-  }, [isPods])
+  }, [isCluster])
 
   const selectedApp = apps.find((a) => a.appId === draft.appId)
   const nameOf = (id: string) => {
@@ -110,7 +111,7 @@ export default function NewDeploymentSummaryView() {
   const fileSummaries = useMemo(() => buildFileSummaries(defs, draft.fileUploads), [defs, draft.fileUploads])
   const fileCount = fileSummaries.reduce((sum, v) => sum + v.chips.length, 0)
   // Expert settings are only mentioned when they differ from the app's default.
-  const networkChanges = isPods ? networkDeviations(draft) : []
+  const networkChanges = isCluster ? networkDeviations(draft) : []
   const busy = isSubmitting || isStoreLoading
 
   return (
@@ -178,10 +179,10 @@ export default function NewDeploymentSummaryView() {
                   {t('deployment.summary.runtimeLabel')}
                 </p>
                 <p className="text-lg font-bold text-textHeading">
-                  {isPods ? t('runtime.kubernetes') : t('runtime.openstackVm')}
+                  {t(runtimeLabelKey(draft.runtime))}
                 </p>
               </div>
-              {isPods ? null : (
+              {isCluster ? null : (
                 <div className="bg-white rounded-lg p-4 border border-emerald-100">
                   <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">
                     {t('deployment.summary.projectLabel')}
@@ -293,8 +294,8 @@ export default function NewDeploymentSummaryView() {
               </button>
             </div>
 
-            <div className={`grid grid-cols-1 gap-4 ${isPods ? '' : 'lg:grid-cols-2'}`}>
-              {isPods ? null : (
+            <div className={`grid grid-cols-1 gap-4 ${isCluster ? '' : 'lg:grid-cols-2'}`}>
+              {isCluster ? null : (
                 <VariableCard
                   tone="blue"
                   title={t('deployment.summary.packerVars')}
@@ -305,8 +306,8 @@ export default function NewDeploymentSummaryView() {
               )}
               <VariableCard
                 tone="purple"
-                title={isPods ? t('deployment.summary.appSettings') : t('deployment.summary.terraformVars')}
-                empty={isPods ? t('deployment.summary.noAppSettings') : t('deployment.summary.noTerraformVars')}
+                title={isCluster ? t('deployment.summary.appSettings') : t('deployment.summary.terraformVars')}
+                empty={isCluster ? t('deployment.summary.noAppSettings') : t('deployment.summary.noTerraformVars')}
                 entries={terraformEntries}
                 icon={<Layers size={18} className="text-purple-700" />}
               />

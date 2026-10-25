@@ -37,7 +37,7 @@ export type DeploymentStatus =
   | 'redeploying' | 'redeploy_failed'
 
 /** How a deployment runs: Linux apps as pods in the cluster, Windows as OpenStack VMs. */
-export type DeploymentRuntime = 'kubernetes' | 'openstack-vm'
+export type DeploymentRuntime = 'kubernetes' | 'kubevirt-vm' | 'openstack-vm'
 
 /** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
 export type DeploymentAction = 'destroy' | 'delete' | 'pause' | 'resume' | 'cancel' | 'redeploy'

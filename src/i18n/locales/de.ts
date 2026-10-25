@@ -1213,6 +1213,8 @@ export default {
     kubernetes: "Pods im Cluster",
     openstackVm: "VM in OpenStack",
     kubernetesShort: "Pods",
+    kubevirtVm: "VM im Cluster",
+    kubevirtVmShort: "VM",
     openstackVmShort: "VM",
   },
   pods: {

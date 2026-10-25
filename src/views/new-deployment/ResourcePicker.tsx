@@ -15,11 +15,15 @@ interface Props {
   choices: ResourceChoice[]
   value: Record<string, { cpu: string; memory: string }>
   onChange: (next: Record<string, { cpu: string; memory: string }>) => void
+  /** A VM is sized in whole vCPUs and whole GiB, a container in halves. */
+  vm?: boolean
 }
 
 /** vCPU and RAM of the containers an app lets people size; the app's own values are the defaults. */
-export default function ResourcePicker({ choices, value, onChange }: Props) {
+export default function ResourcePicker({ choices, value, onChange, vm = false }: Props) {
   const { t } = useTranslation()
+  const cpuStep = vm ? 1000 : CPU_STEP_MILLICORES
+  const memoryStep = vm ? 1024 : MEMORY_STEP_MIB
 
   const set = (container: string, key: 'cpu' | 'memory', v: string) =>
     onChange({ ...value, [container]: { ...value[container]!, [key]: v } })
@@ -64,14 +68,14 @@ export default function ResourcePicker({ choices, value, onChange }: Props) {
                   className="w-full accent-emerald-600"
                   min={cpuMin}
                   max={cpuMax}
-                  step={CPU_STEP_MILLICORES}
+                  step={cpuStep}
                   list={`cpu-${c.container}-ticks`}
                   value={cpuToMillicores(chosen.cpu)}
                   aria-label={t('deployment.resources.cpu')}
                   onChange={(e) => set(c.container, 'cpu', formatCpu(Number(e.target.value)))}
                 />
                 <datalist id={`cpu-${c.container}-ticks`}>
-                  {steps(cpuMin, cpuMax, CPU_STEP_MILLICORES).map((v) => (
+                  {steps(cpuMin, cpuMax, cpuStep).map((v) => (
                     <option key={v} value={v} />
                   ))}
                 </datalist>
@@ -90,7 +94,7 @@ export default function ResourcePicker({ choices, value, onChange }: Props) {
                   className="w-full accent-emerald-600"
                   min={memMin}
                   max={memMax}
-                  step={MEMORY_STEP_MIB}
+                  step={memoryStep}
                   value={memoryToMib(chosen.memory)}
                   aria-label={t('deployment.resources.memory')}
                   onChange={(e) => set(c.container, 'memory', formatMemory(Number(e.target.value)))}
