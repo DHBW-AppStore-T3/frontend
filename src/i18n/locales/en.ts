@@ -715,6 +715,11 @@ export default {
       credentialPlaceholder: "Choose a credential …",
       credentialHint: "The VMs are created in the project of this credential. Everyone with their own credential for this project can operate the deployment too.",
       credentialRequired: "Please choose the OpenStack project the VMs are created in.",
+      quotaWarning: {
+        title: "High resource utilisation in OpenStack project",
+        usage: "{percentage}% used ({used}/{limit} {unit})",
+        hint: "You can still proceed, but resource shortages may occur.",
+      },
     },
     groups: {
       title: 'Set the number of groups',

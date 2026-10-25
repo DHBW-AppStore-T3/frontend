@@ -10,6 +10,8 @@ import { paths } from '@/router/paths'
 import { useStudentDirectory } from './new-deployment/useStudentDirectory'
 import { useDeploymentRuntime } from './new-deployment/useDeploymentRuntime'
 import CredentialPicker from './new-deployment/CredentialPicker'
+import QuotaWarningBanner from './new-deployment/QuotaWarningBanner'
+import { useDeploymentQuotaWarnings } from './new-deployment/quotaWarnings'
 import {
   deriveCourseIds,
   displayNameOf,
@@ -41,6 +43,7 @@ export default function NewDeploymentConfigView() {
   const directory = useStudentDirectory()
   const runtime = useDeploymentRuntime()
   const { credentialsMissing } = runtime
+  const quotaWarnings = useDeploymentQuotaWarnings(runtime.needsCredential ? runtime.credentialId : null)
   const [activeTab, setActiveTab] = useState<Tab>('courses')
   const updateDraft = useDeploymentStore.getState().updateDraft
 
@@ -130,11 +133,14 @@ export default function NewDeploymentConfigView() {
         ) : (
           <>
             {runtime.needsCredential ? (
-              <CredentialPicker
-                credentials={runtime.usableCredentials}
-                value={runtime.credentialId}
-                onChange={(credentialId) => updateDraft({ credentialId })}
-              />
+              <>
+                <CredentialPicker
+                  credentials={runtime.usableCredentials}
+                  value={runtime.credentialId}
+                  onChange={(credentialId) => updateDraft({ credentialId })}
+                />
+                <QuotaWarningBanner warnings={quotaWarnings.warnings} />
+              </>
             ) : null}
 
             <div className="mb-8">

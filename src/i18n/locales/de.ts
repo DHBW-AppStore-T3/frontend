@@ -718,6 +718,11 @@ export default {
       credentialPlaceholder: "Credential wählen …",
       credentialHint: "Die VMs werden im Projekt dieser Credential angelegt. Alle mit einer eigenen Credential für dieses Projekt können das Deployment mitbedienen.",
       credentialRequired: "Bitte wähle das OpenStack-Projekt, in dem die VMs angelegt werden.",
+      quotaWarning: {
+        title: "Hohe Ressourcenauslastung im OpenStack-Projekt",
+        usage: "{percentage}% genutzt ({used}/{limit} {unit})",
+        hint: "Du kannst trotzdem fortfahren, aber es könnten Ressourcenengpässe auftreten.",
+      },
     },
     groups: {
       title: 'Legen Sie die Anzahl der Gruppen fest',
