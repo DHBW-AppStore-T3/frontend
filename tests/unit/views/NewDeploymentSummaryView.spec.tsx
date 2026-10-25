@@ -3,17 +3,10 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
-vi.mock('@/api/openstack-resources.api', () => ({ openstackResourcesApi: {} }))
-vi.mock('@/composables/useOpenStackResourceCache', async (orig) => {
-  const mod = await orig<typeof import('@/composables/useOpenStackResourceCache')>()
-  return { ...mod, ensureLoaded: vi.fn(() => Promise.resolve()), setCredential: vi.fn() }
-})
-
 import NewDeploymentSummaryView from '@/views/NewDeploymentSummaryView'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
 import { useToastStore } from '@/stores/toast.store'
-import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { renderWithProviders } from '../../helpers/render'
 
 function Where() {
@@ -33,7 +26,7 @@ const renderView = () =>
   )
 
 const definitions = [
-  { name: 'region', source: 'packer', default: 'us-east' },
+  { name: 'region', source: 'terraform', default: 'us-east' },
   { name: 'instance_type', source: 'terraform', default: 't2.small' },
   { name: 'ssh_key', source: 'terraform', osType: 'file', osScope: 'user' },
 ]
@@ -66,12 +59,11 @@ beforeEach(() => {
   vi.clearAllMocks()
   useToastStore.setState({ toasts: [] })
   useAppStore.setState({ apps: [{ appId: 'app-1', name: 'Test App', image: 'test.png' } as any] })
-  useOpenStackCredentialsStore.setState({ credentials: [], fetch: vi.fn() } as any)
   seed()
 })
 
 describe('NewDeploymentSummaryView', () => {
-  it('zeigt die Basiskonfiguration, Teams, und getrennte Packer-/Terraform-/Datei-Variablen', async () => {
+  it('zeigt die Basiskonfiguration, Teams, App-Einstellungen und Datei-Variablen', async () => {
     renderView()
 
     expect(await screen.findByText('My Deployment')).toBeInTheDocument()
@@ -79,7 +71,7 @@ describe('NewDeploymentSummaryView', () => {
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
     expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0)
     expect(screen.getByText('Team Alpha')).toBeInTheDocument()
-    // packer / terraform rows with the draft values
+    // rows with the draft values
     expect(screen.getByText('eu-central-1')).toBeInTheDocument()
     expect(screen.getByText('t2.micro')).toBeInTheDocument()
     // file summary: name + size, scope
@@ -144,7 +136,7 @@ describe('NewDeploymentSummaryView', () => {
   it.each([
     [{ code: 'version_not_approved' }, 'deployment.summary.errors.version_not_approved'],
     [{ reason: 'workload_budget_exceeded', in_use: 8, requested: 4, budget: 10 }, 'deployment.summary.errors.workload_budget_exceeded'],
-    [{ reason: 'openstack_credentials_unverified' }, 'deployment.summary.errors.openstack_credentials_unverified'],
+    [{ reason: 'appstore_yaml_missing' }, 'deployment.summary.errors.appstore_yaml_missing'],
   ])('nennt den Grund einer Ablehnung durch die API (%j)', async (detail, key) => {
     useDeploymentStore.setState({ submitDraft: vi.fn().mockRejectedValue({ response: { data: { detail } } }) } as any)
     renderView()
@@ -156,29 +148,16 @@ describe('NewDeploymentSummaryView', () => {
   })
 
   describe('Laufzeit', () => {
-    it('eine Pod-App nennt die Laufzeit und zeigt weder Packer noch ein Projekt', async () => {
+    it('nennt die Laufzeit und zeigt die App-Einstellungen', async () => {
       seed({ runtime: 'kubernetes' })
       renderView()
 
       const runtime = await screen.findByTestId('summary-runtime')
       expect(runtime).toHaveTextContent('runtime.kubernetes')
-      expect(runtime).not.toHaveTextContent('deployment.summary.projectLabel')
       expect(screen.queryByText('deployment.summary.packerVars')).not.toBeInTheDocument()
       expect(screen.getByText('deployment.summary.appSettings')).toBeInTheDocument()
     })
 
-    it('eine VM-App nennt das OpenStack-Projekt des gewählten Credentials', async () => {
-      useOpenStackCredentialsStore.setState({
-        credentials: [{ credentialId: 'c-1', project_name: 'Projekt Eins', project_verified: true }],
-      } as any)
-      seed({ runtime: 'openstack-vm', credentialId: 'c-1' })
-      renderView()
-
-      const runtime = await screen.findByTestId('summary-runtime')
-      expect(runtime).toHaveTextContent('runtime.openstackVm')
-      expect(runtime).toHaveTextContent('Projekt Eins')
-      expect(screen.getByText('deployment.summary.packerVars')).toBeInTheDocument()
-    })
   })
 
   it('verhindert einen Doppel-Submit', async () => {
@@ -241,13 +220,6 @@ describe('NewDeploymentSummaryView', () => {
 
     it('zeigt nichts, wenn alles dem Default entspricht', async () => {
       pods({ internet: false, podNetwork: false })
-      renderView()
-      await screen.findByText('My Deployment')
-      expect(screen.queryByTestId('summary-network')).toBeNull()
-    })
-
-    it('zeigt nichts bei einer VM-App', async () => {
-      pods({ internet: true, podNetwork: true }, { runtime: 'openstack-vm' })
       renderView()
       await screen.findByText('My Deployment')
       expect(screen.queryByTestId('summary-network')).toBeNull()

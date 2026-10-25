@@ -1,12 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDate } from '@/utils/format'
 import { safeHttpUrl } from '@/utils/safe-url'
 import RuntimeStatus, { type RuntimeStatusProps } from './RuntimeStatus'
-import { paths } from '@/router/paths'
 import { deployVersionOf, type AppDetail, type VersionInfo } from './versionInfo'
 
 export interface OverviewTabProps {
@@ -19,8 +17,6 @@ export interface OverviewTabProps {
   canDeploy: boolean
   /** How the selected version runs, shown above the deploy button. */
   runtimeStatus: RuntimeStatusProps
-  /** The version is a VM app and the caller has no usable OpenStack credential. */
-  credentialsMissing: boolean
   /** The caller may press "Deploy" now. */
   deployEnabled: boolean
   /** Scroll to (and focus) the deployment options once, e.g. when arriving from "Deploy". */
@@ -49,7 +45,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default function OverviewTab(props: OverviewTabProps) {
-  const { app, versionOptions, selectedVersion, versionInfo, hasVersionInfo, credentialsMissing } = props
+  const { app, versionOptions, selectedVersion, versionInfo, hasVersionInfo } = props
   const { t, i18n } = useTranslation()
   const deployRef = useRef<HTMLDivElement>(null)
 
@@ -172,27 +168,15 @@ export default function OverviewTab(props: OverviewTabProps) {
           onClick={props.showVersionSelect ? props.onSetDeployVersion : props.onDeploy}
           disabled={props.showVersionSelect ? props.setDeployVersionDisabledReason !== null : !props.deployEnabled}
           title={
-            props.showVersionSelect
-              ? props.setDeployVersionDisabledReason === 'not_approved'
-                ? t('AppsDetailView.setDeployVersionNotApproved')
-                : ''
-              : credentialsMissing
-                ? t('AppsDetailView.missingCredsTitle')
-                : ''
+            props.showVersionSelect && props.setDeployVersionDisabledReason === 'not_approved'
+              ? t('AppsDetailView.setDeployVersionNotApproved')
+              : ''
           }
           className="w-full bg-gradient-to-r from-primaryAction to-primaryActionHover text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
           <Layers size={18} />
           {props.showVersionSelect ? t('AppsDetailView.setDeployVersionButton') : t('AppsDetailView.deployButton')}
         </button>
-        {!props.showVersionSelect && credentialsMissing ? (
-          <p className="mt-2 text-sm text-amber-700">
-            <Link to={paths.userOpenStack} className="underline font-medium">
-              {t('AppsDetailView.missingCredsLink')}
-            </Link>{' '}
-            {t('AppsDetailView.missingCredsText')}
-          </p>
-        ) : null}
       </div>
       ) : null}
     </div>

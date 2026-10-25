@@ -4,16 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
 vi.mock('@/api/app.api', () => ({ appApi: { getVariables: vi.fn() } }))
-vi.mock('@/components/OpenStackResourcePicker', () => ({
-  default: (props: any) => <div data-testid={`picker-${props.osType}`} data-value={String(props.value ?? '')} />,
-}))
-vi.mock('@/composables/useOpenStackResourceCache', async (orig) => {
-  const mod = await orig<typeof import('@/composables/useOpenStackResourceCache')>()
-  return { ...mod, ensureLoaded: vi.fn(() => Promise.resolve()), setCredential: vi.fn() }
-})
 
 import { appApi } from '@/api/app.api'
-import { ensureLoaded, setCredential } from '@/composables/useOpenStackResourceCache'
 import NewDeploymentVariableView from '@/views/NewDeploymentVariableView'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -59,7 +51,7 @@ beforeEach(() => {
   store.studentCache.set('u1', { username: 'ann' } as any)
   store.studentCache.set('u2', { username: 'bob' } as any)
   mockDefinitions([
-    variable({ name: 'region', source: 'packer', default: 'eu' }),
+    variable({ name: 'region', default: 'eu' }),
     variable({ name: 'cpu', type: 'number', default: 2 }),
   ])
 })
@@ -71,7 +63,7 @@ describe('NewDeploymentVariableView', () => {
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/apps'))
   })
 
-  it('lädt Variablen und gruppiert sie in Packer- und Terraform-Bereich', async () => {
+  it('lädt Variablen und zeigt sie als App-Einstellungen', async () => {
     renderView()
 
     expect(await screen.findByText('region')).toBeInTheDocument()
@@ -141,7 +133,6 @@ describe('NewDeploymentVariableView', () => {
       mockDefinitions([
         variable({ name: 'normal', default: 'n' }),
         variable({ name: 'tweak', description: 'only for pros @expert', default: 't' }),
-        variable({ name: 'pk', source: 'packer', description: '@expert', default: 'p' }),
       ])
     })
 
@@ -150,15 +141,14 @@ describe('NewDeploymentVariableView', () => {
       await screen.findByText('normal')
 
       expect(screen.queryByText('tweak')).not.toBeInTheDocument()
-      expect(screen.queryByText('pk')).not.toBeInTheDocument()
-      expect(screen.getAllByText('deployment.variables.expertSettings')).toHaveLength(2)
+      expect(screen.getAllByText('deployment.variables.expertSettings')).toHaveLength(1)
     })
 
     it('zeigt sie nach dem Aufklappen und entfernt @expert aus dem Tooltip', async () => {
       renderView()
       await screen.findByText('normal')
 
-      await userEvent.click(screen.getAllByText('deployment.variables.expertSettings')[1]!)
+      await userEvent.click(screen.getAllByText('deployment.variables.expertSettings')[0]!)
       expect(await screen.findByText('tweak')).toBeInTheDocument()
 
       await userEvent.click(screen.getByTitle('deployment.variables.showInfo'))
@@ -224,64 +214,23 @@ describe('NewDeploymentVariableView', () => {
     })
   })
 
-  describe('Marker-Fehler', () => {
-    it('zeigt sie an der Variable und als Toast', async () => {
-      mockDefinitions([
-        variable({ name: 'vm', markerError: { variable: 'vm', message: 'unknown marker', location: 'main.tf:3' } }),
-      ])
-      renderView()
-
-      expect(await screen.findByText('unknown marker')).toBeInTheDocument()
-      expect(screen.getByText('main.tf:3')).toBeInTheDocument()
-      await waitFor(() =>
-        expect(useToastStore.getState().toasts.some((t) => t.message === 'deployment.variables.markerErrorToast')).toBe(true),
-      )
-    })
-  })
-
-  it('übergibt OpenStack-Variablen an den Picker', async () => {
-    mockDefinitions([variable({ name: 'flavor', osType: 'flavor', osMode: 'id' })])
-    renderView()
-    expect(await screen.findByTestId('picker-flavor')).toBeInTheDocument()
-  })
-
   describe('Laufzeit der Version', () => {
-    it('eine VM-App liest die OpenStack-Ressourcen aus dem Projekt des gewählten Credentials', async () => {
-      useDeploymentStore.getState().updateDraft({ runtime: 'openstack-vm', credentialId: 'c-1' })
-      mockDefinitions([variable({ name: 'flavor', osType: 'flavor', osMode: 'id' })])
-      renderView()
-
-      await screen.findByTestId('picker-flavor')
-      expect(setCredential).toHaveBeenCalledWith('c-1')
-      expect(ensureLoaded).toHaveBeenCalledWith('flavor')
-    })
-
-    it('eine Pod-App hat kein Packer, keine Terraform-Überschrift und kein Projekt', async () => {
-      useDeploymentStore.getState().updateDraft({ runtime: 'kubernetes', credentialId: 'c-1' })
+    it('zeigt die App-Einstellungen, weder Packer noch Terraform', async () => {
+      useDeploymentStore.getState().updateDraft({ runtime: 'kubernetes' })
       mockDefinitions([variable({ name: 'greeting', default: 'hi' })])
       renderView()
 
       expect(await screen.findByText('deployment.summary.appSettings')).toBeInTheDocument()
       expect(screen.queryByText('deployment.summary.packerVars')).not.toBeInTheDocument()
       expect(screen.queryByText('deployment.summary.terraformVars')).not.toBeInTheDocument()
-      expect(setCredential).toHaveBeenCalledWith(null)
     })
 
-    it('Enum-Variablen einer Pod-App sind eine Auswahl, kein OpenStack-Picker, und werden nicht vorgeladen', async () => {
+    it('Enum-Variablen sind eine Auswahl', async () => {
       useDeploymentStore.getState().updateDraft({ runtime: 'kubernetes' })
       mockDefinitions([variable({ name: 'size', osType: 'enum', values: ['s', 'm'], default: 's' })])
       renderView()
 
       expect(await screen.findByTestId('enum-input')).toBeInTheDocument()
-      expect(screen.queryByTestId('picker-enum')).not.toBeInTheDocument()
-      expect(ensureLoaded).not.toHaveBeenCalled()
-    })
-
-    it('zeigt ohne Pod-Laufzeit weiterhin Packer und Terraform', async () => {
-      renderView()
-
-      expect(await screen.findByText('deployment.summary.packerVars')).toBeInTheDocument()
-      expect(screen.getByText('deployment.summary.terraformVars')).toBeInTheDocument()
     })
   })
 })

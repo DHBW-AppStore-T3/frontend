@@ -77,103 +77,51 @@ function derivePhases(sources: DeploymentPhaseSources) {
     // the deploy/destroy presets render meaningful labels under each dot when the
     // totals match a known shape; an unknown count falls back to numbered labels.
     //
-    // Default to a conservative 11-dot view before the first event arrives so the
+    // Default to a conservative 5-dot view before the first event arrives so the
     // layout doesn't jump when the worker reports its real phase count.
 
 
-    const PHASE_LABELS_DEPLOY_FULL = [
+    const PHASE_LABELS_DEPLOY = [
         'STARTING',
-        'OPENSTACK_SETUP',
-        'GIT_CLONE',
-        'CREDS_MATERIALISE',
-        'PACKER_INIT',
-        'PACKER_VALIDATE',
-        'PACKER_BUILD',
-        'TERRAFORM_INIT',
-        'TERRAFORM_PLAN',
-        'TERRAFORM_APPLY',
-        'OUTPUTS_AND_CLEANUP',
-    ] as const
-
-    const PHASE_LABELS_DEPLOY_NO_PACKER = [
-        'STARTING',
-        'OPENSTACK_SETUP',
-        'GIT_CLONE',
-        'CREDS_MATERIALISE',
-        'TERRAFORM_INIT',
-        'TERRAFORM_PLAN',
-        'TERRAFORM_APPLY',
-        'OUTPUTS_AND_CLEANUP',
+        'DEPLOYING',
+        'RUNNING',
+        'CLEANUP',
+        'DONE',
     ] as const
 
     const PHASE_LABELS_DESTROY = [
         'STARTING',
-        'OPENSTACK_SETUP',
-        'GIT_CLONE',
-        'CREDS_MATERIALISE',
-        'TERRAFORM_INIT',
-        'TERRAFORM_DESTROY',
+        'STOPPING',
         'CLEANUP',
+        'DONE',
     ] as const
 
-    // Pause/Resume share the destroy preamble (clone + clouds + tf init to allow a
-    // state-pull) but their hot phase is a CLI-driven server stop/start, not a
-    // terraform destroy. Same length as ``PHASE_LABELS_DESTROY`` (7), so tables are
-    // picked by task type first and only fall back to length-matching when the type
-    // is unknown (e.g. live-stream attached before tasks were loaded).
+    // Pause/Resume share a common short shape.
     const PHASE_LABELS_PAUSE = [
         'STARTING',
-        'OPENSTACK_SETUP',
-        'GIT_CLONE',
-        'CREDS_MATERIALISE',
-        'TERRAFORM_INIT',
         'SERVER_STOP',
         'CLEANUP',
     ] as const
 
     const PHASE_LABELS_RESUME = [
         'STARTING',
-        'OPENSTACK_SETUP',
-        'GIT_CLONE',
-        'CREDS_MATERIALISE',
-        'TERRAFORM_INIT',
         'SERVER_START',
-        'CLEANUP',
-    ] as const
-
-    // Per-VM redeploy reuses the destroy preamble (clone, clouds.yaml,
-    // init) and then runs ``terraform apply -replace=… -target=…`` for
-    // the single targeted resource. Phase shape mirrors
-    // ``worker/app/tasks.py:_PHASES_REDEPLOY``.
-    const PHASE_LABELS_REDEPLOY = [
-        'STARTING',
-        'OPENSTACK_SETUP',
-        'GIT_CLONE',
-        'CREDS_MATERIALISE',
-        'TERRAFORM_INIT',
-        'TERRAFORM_APPLY',
         'CLEANUP',
     ] as const
 
     // Stepper labels: the worker sends the full phase sequence as ``phase_names``
     // with every progress event — the authoritative source, since multi-image
     // deploys have a dynamic sequence whose template keys the frontend can't guess.
-    // Before the first progress event, we fall back to the static tables below,
-    // which cover the fixed shapes (single-image deploy / destroy / pause / resume
-    // / redeploy); multi-image slots show generic numbers until ``phase_names`` lands.
+    // Before the first progress event, we fall back to the static tables below.
 
     const phaseStepCount: number =
         streamTotalPhases > 0 ? streamTotalPhases : DEFAULT_PHASE_COUNT
 
     // Return the label for a given 0-based index. Order of precedence:
     //   1. ``streamPhaseNames`` — authoritative, ships from the worker on
-    //      every progress event for every real task (deploy / destroy /
-    //      pause / resume / redeploy). Contains the exact phase names
-    //      including ``:<template_key>`` suffixes for multi-image builds.
+    //      every progress event for every real task.
     //   2. Static table picked by ``activeTask.type`` — used in the brief
-    //      window between page-load and the first progress event, and
-    //      always for legacy Single-Image-Deploy where the worker's
-    //      sequence is byte-identical to ``PHASE_LABELS_DEPLOY_FULL``.
+    //      window between page-load and the first progress event.
     //   3. Numeric slot index — empty-slot guard so the stepper height
     //      doesn't collapse during the loading flicker.
     const phaseStepLabel = (idx: number): string => {
@@ -193,28 +141,13 @@ function derivePhases(sources: DeploymentPhaseSources) {
             table = PHASE_LABELS_RESUME
         } else if (activeType === 'destroy') {
             table = PHASE_LABELS_DESTROY
-        } else if (activeType === 'redeploy') {
-            table = PHASE_LABELS_REDEPLOY
         } else if (activeType === 'deploy') {
-            // Without the worker's ``phase_names`` we can't tell legacy
-            // (11) apart from multi-image (14, 17, ...). The total is
-            // already known from the stream though, so pick the matching
-            // table when it fits exactly — otherwise leave ``table = null``
-            // and let the loop fall through to numeric slot indices.
-            // Once the first progress event arrives, ``phase_names`` takes
-            // over and the predicted slots are replaced with real labels.
-            if (streamTotalPhases === PHASE_LABELS_DEPLOY_NO_PACKER.length) {
-                table = PHASE_LABELS_DEPLOY_NO_PACKER
-            } else if (streamTotalPhases === PHASE_LABELS_DEPLOY_FULL.length) {
-                table = PHASE_LABELS_DEPLOY_FULL
-            }
+            table = PHASE_LABELS_DEPLOY
         }
         // Length-based last resort (no active task type known yet).
         if (!table) {
-            const total = streamTotalPhases
-            if (total === PHASE_LABELS_DEPLOY_FULL.length) table = PHASE_LABELS_DEPLOY_FULL
-            else if (total === PHASE_LABELS_DEPLOY_NO_PACKER.length) table = PHASE_LABELS_DEPLOY_NO_PACKER
-            else if (total === PHASE_LABELS_DESTROY.length) table = PHASE_LABELS_DESTROY
+            if (streamTotalPhases === PHASE_LABELS_DESTROY.length) table = PHASE_LABELS_DESTROY
+            else if (streamTotalPhases === PHASE_LABELS_DEPLOY.length) table = PHASE_LABELS_DEPLOY
         }
         if (table && idx >= 0 && idx < table.length) {
             return phaseLabel(table[idx])

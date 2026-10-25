@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Info } from 'lucide-react'
+import { Info } from 'lucide-react'
 import VariableInput from '@/components/VariableInput'
 import FileDropZone from '@/components/FileDropZone'
 import ScopeBadge from '@/components/ui/ScopeBadge'
@@ -31,12 +31,10 @@ export interface VariableCardProps {
   isTooltipOpen: boolean
   /** Expert variables render compactly: the plain input only. */
   expert?: boolean
-  filterNetworkId: string | null
   onToggleTooltip: () => void
   onChange: (value: any) => void
   onScopedChange: (slot: string, value: any) => void
   onFileChange: (varName: string, slot: string, file: DeploymentFile | null) => void
-  onCredentialsMissing?: (missing: boolean) => void
 }
 
 const COLORS = {
@@ -68,7 +66,7 @@ const TEAM_TITLE = 'text-xs font-semibold text-textMuted uppercase tracking-wide
 
 /** One variable of the wizard: label, hints, scope info and the right input(s). */
 export default function VariableCard(props: VariableCardProps) {
-  const { variable, accent, formKey, teams, expert, filterNetworkId } = props
+  const { variable, accent, formKey, teams, expert } = props
   const { t } = useTranslation()
   const c = COLORS[accent]
   const scope = effectiveScope(variable)
@@ -80,10 +78,8 @@ export default function VariableCard(props: VariableCardProps) {
       variable={variable}
       value={value}
       onChange={onChange}
-      filterNetworkId={variable.osType === 'subnet' ? filterNetworkId : null}
       accent={accent}
       inputId={id}
-      onCredentialsMissing={props.onCredentialsMissing}
     />
   )
 
@@ -189,19 +185,6 @@ export default function VariableCard(props: VariableCardProps) {
           </button>
         ) : null}
       </div>
-
-      {!expert && variable.markerError ? (
-        <div className="mb-3 bg-amber-50 p-3 rounded-lg border border-amber-300 text-xs text-amber-800">
-          <p className="font-semibold mb-1 flex items-center gap-1.5">
-            <AlertTriangle size={14} className="shrink-0" />
-            {t('deployment.variables.markerErrorTitle')}
-          </p>
-          <p>{variable.markerError.message}</p>
-          {variable.markerError.location ? (
-            <p className="mt-1 font-mono text-amber-700">{variable.markerError.location}</p>
-          ) : null}
-        </div>
-      ) : null}
 
       {props.isTooltipOpen ? (
         <div className={`mb-3 p-3 rounded-lg border text-sm text-textMuted ${c.tooltip}`}>

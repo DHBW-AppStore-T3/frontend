@@ -36,7 +36,7 @@ export type DeploymentStatus =
   // the rest of the deployment keeps running.
   | 'redeploying' | 'redeploy_failed'
 
-/** How a deployment runs: Linux apps as pods in the cluster, Windows as OpenStack VMs. */
+/** How a deployment runs: pods in the cluster, KubeVirt VMs in the cluster; ``openstack-vm`` only on legacy rows. */
 export type DeploymentRuntime = 'kubernetes' | 'kubevirt-vm' | 'openstack-vm'
 
 /** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
@@ -111,8 +111,7 @@ export interface App {
 
 /**
  * ``GET /apps/{id}/runtime?version=``: how one version runs. ``scope`` is
- * ``team`` (one workload or VM per team) or ``user`` (one per person); a VM
- * app without an ``appstore.yaml`` has none. ``egress``/``access`` only for pods.
+ * ``team`` (one workload per team) or ``user`` (one per person).
  */
 export interface AppRuntime {
   runtime: DeploymentRuntime
@@ -223,8 +222,6 @@ export interface Deployment {
   releaseTag: string
   // The commit every job of the deployment runs.
   commit_sha?: string | null
-  // VM deployments: the OpenStack project they live in.
-  os_project_id?: string | null
   runtime?: DeploymentRuntime
   created_at: string
 }
@@ -306,26 +303,20 @@ export interface DeploymentCreate {
   commitInfo?: string | null
   userInputVar?: Record<string, any> | null
   releaseTag: string
-  // VM apps: which of the caller's OpenStack credentials (and so which
-  // project) to deploy with. Pod apps need none.
-  credentialId?: string | null
   teams?: Array<{ name: string; userIds: string[] }>
-  // Files-map keyed by ``@openstack:file:<scope>``-marked variable
-  // name. Inner key:
+  // Files-map keyed by the name of a ``file`` variable. Inner key:
   //   * scope = all  → exactly one inner key (conventionally "all")
   //   * scope = team → one entry per team name
   //   * scope = user → one entry per ``Team-User`` composite key
   // The wizard owns the keys; the backend persists the map verbatim
-  // into ``userInputVar.terraform`` so the worker can pass it through
-  // to terraform as a typed map.
+  // into ``userInputVar.terraform``.
   files?: Record<string, Record<string, DeploymentFile>>
 }
 
 /**
  * One uploaded file as it travels from wizard → POST /deployments
- * → backend persistence → terraform variable. ``content_b64`` is the
- * raw base64 payload (no ``data:...,`` wrapper); the rest is the
- * metadata the user-data template needs to land the file on disk.
+ * → backend persistence → the workload's files. ``content_b64`` is the
+ * raw base64 payload (no ``data:...,`` wrapper).
  */
 export interface DeploymentFile {
   name: string
@@ -343,108 +334,8 @@ export interface DeploymentUpdate {
 }
 
 // ----------------------------------------------------------------
-// DEPLOYMENT INFRASTRUCTURE / RESOURCE TYPES
+// POD WORKLOAD TYPES
 // ----------------------------------------------------------------
-//
-// Mirrors ``app/services/deployment_status.py`` and the schemas in
-// ``app/schemas.py``. The list endpoint ships Stage-1 fields
-// (lifecycle, hardware, addresses); the detail endpoint also fills
-// the Stage-2 fields (ports, security_groups, volumes, metadata).
-
-/** ``in_sync`` = TF-cached attrs match live OpenStack;
- *  ``stale``   = live fetch failed/timed out, fall back to cache;
- *  ``missing`` = live fetch confirmed the resource is gone. */
-export type ResourceDrift = 'in_sync' | 'stale' | 'missing'
-
-/** Coarse category the Infrastructure tab groups by. */
-export type DeploymentResourceCategory =
-  | 'instance'
-  | 'network'
-  | 'subnet'
-  | 'security_group'
-  | 'floating_ip'
-  | 'port'
-
-export interface LifecycleStates {
-  /** OpenStack server ``status``, e.g. ``ACTIVE``/``BUILD``/``ERROR``. */
-  status: string | null
-  /** Transient action, e.g. ``spawning``/``networking``/``deleting``. */
-  task_state: string | null
-  vm_state: string | null
-  /** Nova power-state already translated to label
-   *  (``RUNNING``/``SHUTDOWN``/``CRASHED``/...). */
-  power_state: string | null
-  /** Filled when ``status === 'ERROR'`` — the underlying Nova fault
-   *  message. UI shows it as a red banner under the VM card. */
-  fault_message: string | null
-}
-
-export interface HardwareSpec {
-  flavor_name: string | null
-  ram_mb: number | null
-  vcpus: number | null
-  disk_gb: number | null
-  image_id: string | null
-  /** Stage-1 leaves this null (no extra API hop); Stage-2 resolves it. */
-  image_name: string | null
-  availability_zone: string | null
-  /** ISO-8601 timestamp; frontend computes uptime against ``Date.now()``. */
-  launched_at: string | null
-}
-
-export interface NetworkAddress {
-  network: string
-  fixed_ip: string | null
-  floating_ip: string | null
-  mac: string | null
-}
-
-export interface NetworkPort {
-  port_id: string
-  network_id: string | null
-  status: string | null
-  mac: string | null
-  fixed_ip: string | null
-  security_group_ids: string[]
-}
-
-export interface SecurityGroupSummary {
-  id: string
-  name: string
-  description: string | null
-  ingress_rules: number
-  egress_rules: number
-}
-
-export interface VolumeAttachment {
-  volume_id: string
-  device: string | null
-  size_gb: number | null
-  bootable: boolean | null
-  status: string | null
-  name: string | null
-}
-
-export interface DeploymentResource {
-  /** Terraform state address — round-trippable to the redeploy endpoint. */
-  address: string
-  /** Raw HCL resource type, e.g. ``openstack_compute_instance_v2``. */
-  type: string
-  category: DeploymentResourceCategory
-  team: string | null
-  provider_id: string
-  display_name: string
-  drift: ResourceDrift
-  // Stage-1 (instance-only)
-  lifecycle: LifecycleStates | null
-  hardware: HardwareSpec | null
-  addresses: NetworkAddress[]
-  // Stage-2 (instance-only, only populated on the detail endpoint)
-  ports?: NetworkPort[] | null
-  security_groups?: SecurityGroupSummary[] | null
-  volumes?: VolumeAttachment[] | null
-  metadata?: Record<string, string> | null
-}
 
 /** One workload (team or person) of a pod deployment, read live from the cluster. */
 export interface PodWorkload {
@@ -470,12 +361,9 @@ export interface PodSetupProgress {
 }
 
 export interface DeploymentResourceListResponse {
-  resources: DeploymentResource[]
-  /** ``true`` when the backend overlaid live OpenStack data (or, for pods,
-   *  could ask the cluster); ``false`` when ``refresh=false`` was requested. */
+  /** ``true`` when the backend could ask the cluster. */
   live: boolean
   runtime?: DeploymentRuntime
-  /** Pod deployments: their workloads instead of ``resources``. */
   workloads?: PodWorkload[]
 }
 
@@ -607,10 +495,8 @@ export interface DeploymentDraft {
   variableDefinitions?: AppVariable[] // API definitions for the variables
   // How the chosen version runs (``GET /apps/{id}/runtime``); null until known.
   runtime?: DeploymentRuntime | null
-  // ``user``: one workload/VM per person, the group step puts everyone in a team of their own.
+  // ``user``: one workload per person, the group step puts everyone in a team of their own.
   scope?: 'team' | 'user' | null
-  // VM apps: the OpenStack credential (project) to deploy with.
-  credentialId?: string | null
   // Pods: containers whose cpu/memory the app lets people choose; undefined until asked.
   resourceChoices?: ResourceChoice[]
   // The cpu/memory chosen per container; sent as ``userInputVar.resources``.
@@ -618,7 +504,7 @@ export interface DeploymentDraft {
   // Pods: network settings the app lets people choose (from ``/runtime``) and the choice made.
   networkChoices?: NetworkChoices
   network?: NetworkSelection
-  // Wizard-side state for ``@openstack:file:<scope>``-marked variables.
+  // Wizard-side state for ``file`` variables.
   // Outer key: variable name. Inner key: scope routing token (``"all"``,
   // team name, or ``Team-User`` composite). Flushed verbatim into
   // ``DeploymentCreate.files`` on submit.
@@ -644,16 +530,11 @@ export interface AppVariable {
   default?: string | number | boolean | unknown[] | Record<string, unknown> | null
   required?: boolean
   source?: 'terraform' | 'packer' | 'unknown'
-  // Value-help metadata, set by the backend when the variable carries an
-  // ``@openstack:<type>[:<mode>][:<multi>]`` marker. Null or undefined for
-  // free-text inputs. ``enum`` (pod apps): one of ``values``.
+  // ``file`` (a file upload) or ``enum`` (one of ``values``); null or
+  // undefined for free-text inputs.
   osType?: AppVariableOsType | null
   values?: string[]
-  // 'id' (UUID) or 'name'; defaults to 'name' for most resource kinds.
-  osMode?: 'id' | 'name'
-  // Multi-select, from the marker or derived from the HCL list/set type.
-  osMulti?: boolean
-  // Scope for ``@openstack:file:<scope>``. Set only when ``osType === 'file'``;
+  // Scope of a file variable. Set only when ``osType === 'file'``;
   // controls whether the wizard renders one FileDropZone, one per team, or one per user.
   osScope?: 'all' | 'team' | 'user'
   // Per-variable scope for all variables. 'all' = one shared value, 'team' = one
@@ -662,66 +543,14 @@ export interface AppVariable {
   // Allowed file extensions for file variables; used as the FileDropZone
   // ``accept`` attribute. The backend rejects other extensions with 422.
   fileExtensions?: string[]
-  // Marker error set by the backend when a variable's ``@openstack`` marker is
-  // malformed. The frontend shows it as an inline banner and falls back to free text.
-  markerError?: AppVariableMarkerError
-  // Multi-image apps: key of the Packer template this variable belongs to
-  // (for ``source === 'packer'``). Single-template apps use the sentinel
-  // ``"default"``; Terraform variables leave this null/undefined.
+  // Unused: the API no longer sends it (the Packer layout is gone). The wizard's
+  // multi-image code (variableForm.ts, draft-variables.ts) still reads it until
+  // it is removed in a follow-up.
   template_key?: string | null
 }
 
-export interface AppVariableMarkerError {
-  variable: string
-  message: string
-  // ``terraform/variables.tf:42``-style hint pointing app authors to the marker location.
-  location?: string
-  // Stable error codes (e.g. ``MARKER_WHITESPACE``, ``MARKER_UNKNOWN_OS_TYPE``)
-  // set alongside the ``message`` so the frontend can i18n without string matching.
-  code?: string
-}
-
-// ----------------------------------------------------------------
-// OPENSTACK DISPLAY-CACHE TYPES
-// ----------------------------------------------------------------
-/**
- * Return shape of ``useOpenStackResourceCache.getDisplayName``.
- *
- * ``known = true`` means the value was found in the cache and ``name`` is the
- * human-readable label; ``known = false`` means the caller should render the raw value.
- * ``modeMismatch = true`` means the value was found in the other mode (e.g. a UUID
- * stored while the default is a name), which callers can surface as a subtle hint.
- */
-export interface OpenStackDisplayName {
-  name: string
-  known: boolean
-  modeMismatch?: boolean
-}
-
-// List of supported OpenStack resource types. Must stay consistent with:
-//  - backend/app/routers/apps.py (``_OS_TYPES``)
-//  - backend/app/routers/openstack_resources.py (list endpoints)
-//  - frontend/src/api/openstack-resources.api.ts (``OsResourceType``)
-//  - frontend/src/components/OpenStackResourcePicker.tsx (render)
-export type AppVariableOsType =
-  | 'network'
-  | 'subnet'
-  | 'flavor'
-  | 'image'
-  | 'keypair'
-  | 'security_group'
-  | 'floating_ip_pool'
-  | 'volume'
-  | 'router'
-  | 'availability_zone'
-  // ``file`` is a pseudo-resource: rendered as a FileDropZone widget that
-  // produces a base64 payload shipped to the backend in ``DeploymentCreate.files``.
-  // ``osScope`` tells the wizard whether to render one zone, one per team, or one per user.
-  | 'file'
-  // ``enum`` (pod apps, appstore.yaml): a choice among ``values``, no OpenStack lookup.
-  | 'enum'
-
-/** Whether the variable is filled from the user's OpenStack project (resource picker). */
-export function isOsResourceVar(v: Pick<AppVariable, 'osType'>): boolean {
-  return Boolean(v.osType) && v.osType !== 'file' && v.osType !== 'enum'
-}
+// ``file``: rendered as a FileDropZone widget that produces a base64 payload
+// shipped to the backend in ``DeploymentCreate.files``; ``osScope`` tells the
+// wizard whether to render one zone, one per team, or one per user.
+// ``enum`` (appstore.yaml): a choice among ``values``.
+export type AppVariableOsType = 'file' | 'enum'

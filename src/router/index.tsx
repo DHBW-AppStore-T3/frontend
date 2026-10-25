@@ -125,8 +125,6 @@ export const appRoutes: RouteObject[] = [
         element: <UserLayout />,
         children: [
           guarded({ path: 'user', lazy: lazyView(() => import('@/views/UserView')) }, auth),
-          // OpenStack credentials only matter for deploying VM apps (staff).
-          guarded({ path: 'user/openstack', lazy: lazyView(() => import('@/views/SettingsOpenStackView')) }, staffOnly),
         ],
       },
 

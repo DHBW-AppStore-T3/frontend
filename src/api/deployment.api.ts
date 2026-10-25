@@ -5,7 +5,6 @@ import type {
   DeploymentCreate,
   DeploymentQueryParams,
   DeploymentResourceListResponse,
-  DeploymentResource,
   MyAccessResponse,
 } from '@/types'
 
@@ -54,26 +53,11 @@ export const deploymentApi = {
   },
 
   /**
-   * Pause a running deployment.
-   *
-   * Halts the OpenStack compute instances of the deployment without
-   * tearing them down — volumes and networks are preserved so resume
-   * restores the same instances byte-for-byte.
-   *
-   * Owner-only. Allowed only when status is ``success``. Returns 202
-   * with ``{task_id, status: "pausing"}``; the frontend should attach
-   * to the SSE stream just like for delete/destroy.
-   */
-  /**
    * Cancel an in-flight deployment and clean up after it.
    *
    * Owner-only, and the only action allowed while status is ``pending``
-   * or ``running``. The backend revokes the worker task and then runs a
-   * destroy that additionally reaps the Packer build instance - which
-   * lives outside Terraform state and would otherwise keep running.
-   *
-   * Returns 202 with ``{task_id, status: "destroying"}``, so the caller
-   * attaches to the SSE stream exactly as it does for destroy.
+   * or ``running``. Returns 202 with ``{task_id, status: "destroying"}``,
+   * so the caller attaches to the SSE stream exactly as it does for destroy.
    */
   cancel: (deploymentId: string) => {
     return api.post<{ task_id: string; status: 'destroying' }>(
@@ -118,59 +102,11 @@ export const deploymentApi = {
   },
 
   /**
-   * List the deployment's infrastructure resources (Stage-1 view).
-   *
-   * Parses the most-recent task's cached Terraform state and (by
-   * default) overlays a live OpenStack fetch per compute instance so
-   * the UI sees the ECHTEN power state, fault message, IPs, etc.
-   *
-   * Pass ``refresh=false`` to skip the live fetch — useful during
-   * tight polling loops (the cached state still reflects what
-   * terraform last wrote, just not the post-apply lifecycle).
-   *
-   * Owner-only. 412 when the user has no OpenStack credentials,
-   * 502 when OpenStack itself is unreachable.
+   * The workloads of a pod deployment, read live from its namespace.
+   * Owner view only.
    */
-  listResources: (deploymentId: string, options?: { refresh?: boolean }) => {
-    return api.get<DeploymentResourceListResponse>(
-      `/deployments/${deploymentId}/resources`,
-      { params: { refresh: options?.refresh ?? true } },
-    )
-  },
-
-  /**
-   * Stage-2 detail for a single compute instance, by Terraform state
-   * address. The address is the same string ``terraform state list``
-   * prints — for the typical ``for_each = toset(teams)`` shape that
-   * means ``openstack_compute_instance_v2.team_ide["Team-A"]``.
-   *
-   * Loaded lazily by the drawer in ``InfrastructureVmCard`` when the
-   * user clicks "Details". Adds ports, security-group summaries,
-   * volume attachments, the resolved image name, and the full
-   * metadata map on top of the stage-1 fields.
-   */
-  getResourceDetail: (deploymentId: string, address: string) => {
-    return api.get<DeploymentResource>(
-      `/deployments/${deploymentId}/resources/${encodeURIComponent(address)}`,
-    )
-  },
-
-  /**
-   * Replace a single compute instance via
-   * ``terraform apply -replace=<addr> -target=<addr>``. Spawns a
-   * dedicated ``REDEPLOY`` Celery task — the SSE stream picks it
-   * up just like deploy/destroy/pause/resume.
-   *
-   * Backend enforces that the address is a known compute-instance
-   * in the cached state; anything else is 422 (non_redeployable_
-   * resource_type) so the UI can surface a clear "you can only
-   * redeploy VMs" message. Returns 202 with ``{task_id, status:
-   * 'redeploying'}``.
-   */
-  redeployResource: (deploymentId: string, address: string) => {
-    return api.post<{ task_id: string; status: 'redeploying' }>(
-      `/deployments/${deploymentId}/resources/${encodeURIComponent(address)}/redeploy`,
-    )
+  listResources: (deploymentId: string) => {
+    return api.get<DeploymentResourceListResponse>(`/deployments/${deploymentId}/resources`)
   },
 
   /**

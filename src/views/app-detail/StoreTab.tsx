@@ -178,7 +178,7 @@ export default function StoreTab(props: StoreTabProps) {
                         <td className="py-2.5 pr-4 text-xs text-textMuted">
                           {approval ? (
                             <>
-                              {t(runtimeLabelKey(approval.runtime ?? 'openstack-vm'))}
+                              {t(runtimeLabelKey(approval.runtime ?? 'kubernetes'))}
                               {approval.commit_sha ? (
                                 <span className="block font-mono text-textFaint" title={approval.commit_sha}>
                                   {approval.commit_sha.slice(0, COMMIT_SHORT_LENGTH)}

@@ -4,27 +4,20 @@ import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/stores/app.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
-import { ensureLoaded, setCredential } from '@/composables/useOpenStackResourceCache'
-import type { OsResourceType } from '@/api/openstack-resources.api'
 import { paths } from '@/router/paths'
-import { isOsResourceVar, type AppVariable } from '@/types'
+import type { AppVariable } from '@/types'
 import {
   buildDraftValues,
   buildWizardTeams,
   dedupeVariables,
   dropStaleSlots,
   findMissingRequired,
-  formKeyOf,
-  groupPackerByTemplate,
   hasBlockingExpert,
   initialFromFetch,
-  isMultiImageLayout,
-  markerErrorLines,
   restoreFromDraft,
   type FormValues,
 } from './variableForm'
 import { versionLabelOf } from './summary'
-import { isClusterRuntime } from '@/utils/runtime'
 
 function parseSavedInput(raw: unknown, onInvalid: () => void): Record<string, any> {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, any>
@@ -58,7 +51,6 @@ export function useVariableForm() {
   const [isLoading, setIsLoading] = useState(
     () => !(useDeploymentStore.getState().draft.variableDefinitions?.length),
   )
-  const [packerExpertOpen, setPackerExpertOpen] = useState(false)
   const [terraformExpertOpen, setTerraformExpertOpen] = useState(false)
 
   // ------------------------------------------------------------- derived
@@ -66,12 +58,9 @@ export function useVariableForm() {
     () => buildWizardTeams(draft.groupNames, draft.assignments as string[][], studentCache),
     [draft.groupNames, draft.assignments, studentCache],
   )
-  const packerByTemplate = useMemo(() => groupPackerByTemplate(variables), [variables])
-  const templateKeys = useMemo(() => Object.keys(packerByTemplate).sort(), [packerByTemplate])
-  const isMultiImage = isMultiImageLayout(templateKeys)
-  // Pod apps declare their settings in appstore.yaml: no Packer, no Terraform,
-  // no OpenStack resources.
-  const isCluster = isClusterRuntime(draft.runtime)
+  // The app declares its settings in appstore.yaml; the multi-image (Packer)
+  // layout is gone, so a variable's form key is its name.
+  const isMultiImage = false
   const terraformVariables = useMemo(() => variables.filter((v) => v.source === 'terraform'), [variables])
   // ---------------------------------------------------------- initial load
   useEffect(() => {
@@ -82,32 +71,24 @@ export function useVariableForm() {
       return
     }
 
-    // OpenStack resource lists come from the project of the credential the
-    // deployment will be created with (VM apps); pods have none.
-    setCredential(isClusterRuntime(store.draft.runtime) ? null : (store.draft.credentialId ?? null))
-
     let cancelled = false
     const currentTeams = () => {
       const d = useDeploymentStore.getState()
       return buildWizardTeams(d.draft.groupNames, d.draft.assignments as string[][], d.studentCache)
     }
     const openBlockingExperts = (defs: AppVariable[]) => {
-      if (hasBlockingExpert(defs)) {
-        setPackerExpertOpen(true)
-        setTerraformExpertOpen(true)
-      }
+      if (hasBlockingExpert(defs)) setTerraformExpertOpen(true)
     }
 
     void (async () => {
       const cached = store.draft.variableDefinitions
       if (cached && cached.length > 0) {
-        const multi = isMultiImageLayout(Object.keys(groupPackerByTemplate(cached)))
-        setFormValues(restoreFromDraft(cached, (store.draft.variables || {}) as Record<string, any>, multi, currentTeams()))
+        setFormValues(restoreFromDraft(cached, (store.draft.variables || {}) as Record<string, any>, false, currentTeams()))
         openBlockingExperts(cached)
         return
       }
 
-      let defs: AppVariable[] = []
+      let defs: AppVariable[]
       try {
         const raw = await useAppStore.getState().fetchAppVariables(appId, versionLabelOf(store.draft.releaseTag))
         if (cancelled) return
@@ -115,29 +96,16 @@ export function useVariableForm() {
         useDeploymentStore.getState().updateDraft({ variableDefinitions: defs })
         setVariables(defs)
 
-        // Prime the display cache so pickers/summary show names right away.
-        // Only real OpenStack resources are cached (not files, not enums).
-        const types = new Set<string>()
-        defs.forEach((v) => v.osType && isOsResourceVar(v) && types.add(v.osType))
-        await Promise.allSettled([...types].map((type) => ensureLoaded(type as OsResourceType)))
-        if (cancelled) return
-
         const saved = parseSavedInput(useDeploymentStore.getState().draft.userInputVar, () =>
           toast.error(t('deployment.summary.invalidJson')),
         )
-        const multi = isMultiImageLayout(Object.keys(groupPackerByTemplate(defs)))
-        setFormValues(initialFromFetch(defs, saved, multi, currentTeams()))
+        setFormValues(initialFromFetch(defs, saved, false, currentTeams()))
         openBlockingExperts(defs)
       } catch (error) {
         console.error(error)
         if (!cancelled) toast.error(t('deployment.summary.fetchVarsError'))
       } finally {
         if (!cancelled) setIsLoading(false)
-      }
-
-      const lines = markerErrorLines(defs)
-      if (!cancelled && lines.length > 0) {
-        toast.error(t('deployment.variables.markerErrorToast', { count: lines.length, lines: lines.join('\n') }))
       }
     })()
 
@@ -197,14 +165,6 @@ export function useVariableForm() {
     return bag && typeof bag === 'object' && !Array.isArray(bag) ? (bag[slot] ?? '') : ''
   }
 
-  /** Id-mode value of the first network picker, used to filter subnet pickers. */
-  const networkIdForSubnets = (): string | null => {
-    const networkVar = variables.find((v) => v.osType === 'network' && v.osMode === 'id')
-    if (!networkVar) return null
-    const val = formValues[formKeyOf(networkVar, isMultiImage)]
-    return typeof val === 'string' && val.trim() ? val : null
-  }
-
   const setFileSlot = (varName: string, slot: string, file: import('@/types').DeploymentFile | null) => {
     const uploads = useDeploymentStore.getState().draft.fileUploads ?? {}
     const bag = { ...(uploads[varName] ?? {}) }
@@ -234,16 +194,11 @@ export function useVariableForm() {
     isLoading,
     variables,
     teams,
-    templateKeys,
-    packerByTemplate,
     terraformVariables,
     isMultiImage,
-    isCluster,
     formValues,
     missingRequired,
     canSubmit: missingRequired.length === 0,
-    packerExpertOpen,
-    setPackerExpertOpen,
     terraformExpertOpen,
     setTerraformExpertOpen,
     setValue,
@@ -251,7 +206,6 @@ export function useVariableForm() {
     getScopedValue,
     getFileSlot,
     setFileSlot,
-    networkIdForSubnets,
     next,
     back: () => navigate(paths.deploymentTeams),
   }

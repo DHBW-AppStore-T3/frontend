@@ -7,16 +7,12 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useRole } from '@/composables/useRole'
 import { paths } from '@/router/paths'
 import { greetingNameOf } from '@/utils/user-display'
-import CredentialBanners from './dashboard/CredentialBanners'
-import QuotaTile from './dashboard/QuotaTile'
-import { useQuotaCredential } from './dashboard/useQuotaCredential'
 import './DashboardView.css'
 
 export default function DashboardView() {
   const { t } = useTranslation()
   const { stats, fetchStats } = useDashboard()
   const { isStaff } = useRole()
-  const quotas = useQuotaCredential(isStaff)
   const name = greetingNameOf(useAuthStore((s) => s.user))
 
   useEffect(() => {
@@ -34,8 +30,6 @@ export default function DashboardView() {
 
   return (
     <div className="dashboard-page">
-      {isStaff ? <CredentialBanners /> : null}
-
       {/* Hero banner */}
       <div className="hero-banner">
         <div className="hero-content">
@@ -85,19 +79,6 @@ export default function DashboardView() {
           </Link>
         ) : null}
       </div>
-
-      {isStaff ? (
-        <QuotaTile
-          rows={quotas.formattedQuotas}
-          loading={quotas.loading}
-          hasCachedQuotas={quotas.hasCachedQuotas}
-          usable={quotas.usable}
-          selectedCredentialId={quotas.credentialId}
-          credentialsResolved={quotas.isResolved}
-          getColorClass={quotas.getColorClass}
-          onSelectCredential={quotas.selectCredential}
-        />
-      ) : null}
     </div>
   )
 }

@@ -2,17 +2,10 @@
  * Pure presentation logic of the wizard's summary step: turning draft values
  * and variable definitions into display rows, and backend errors into messages.
  */
-import { isOsResourceVar, type AppVariable, type DeploymentFile } from '@/types'
+import type { AppVariable, DeploymentFile } from '@/types'
 import { formatBytes } from '@/utils/format'
-import { isMultiImagePackerLayout, packerValueFor } from '@/utils/draft-variables'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
-type OsType = NonNullable<AppVariable['osType']>
-type DisplayLookup = (
-  osType: any,
-  mode: 'id' | 'name',
-  value: string,
-) => { name: string; known?: boolean } | null
 
 export interface SummaryEntry {
   label: string
@@ -23,7 +16,6 @@ export interface SummaryEntry {
 
 export interface SummaryContext {
   t: Translate
-  getDisplayName: DisplayLookup
 }
 
 const BYTES_PER_MB = 1024 * 1024
@@ -38,72 +30,18 @@ export function formatValue(val: unknown, t: Translate): string {
   return String(val)
 }
 
-/**
- * Display string for an OpenStack-marker value: names from the display cache
- * (single or comma-separated for multi), falling back to the raw value.
- */
-export function renderOsValue(
-  osType: OsType,
-  mode: 'id' | 'name',
-  val: unknown,
-  isMulti: boolean,
-  getDisplayName: DisplayLookup,
-): string {
-  if (val === null || val === undefined || val === '') return EMPTY
-
-  let parts: string[]
-  if (Array.isArray(val)) parts = val.map((v) => String(v).trim()).filter(Boolean)
-  else if (typeof val === 'string') {
-    parts = isMulti
-      ? val.split(',').map((s) => s.trim()).filter(Boolean)
-      : [val.trim()].filter(Boolean)
-  } else parts = [String(val)]
-
-  if (parts.length === 0) return EMPTY
-  return parts.map((p) => getDisplayName(osType, mode, p)?.name ?? p).join(', ')
-}
-
-/**
- * The row for one variable. Marker variables show the cached display name
- * (the raw value as tooltip in id-mode); scoped variables render one
- * ``slot: value`` segment per recipient.
- */
+/** The row for one variable; scoped variables render one ``slot: value`` segment per recipient. */
 export function toSummaryEntry(def: AppVariable, val: unknown, ctx: SummaryContext): SummaryEntry {
-  const { t, getDisplayName } = ctx
-  const display = (raw: unknown) =>
-    def.osType && isOsResourceVar(def)
-      ? renderOsValue(def.osType, def.osMode || 'name', raw, !!def.osMulti, getDisplayName)
-      : formatValue(raw, t)
+  const { t } = ctx
 
   if ((def.varScope === 'team' || def.varScope === 'user') && def.osType !== 'file') {
     if (!val || typeof val !== 'object' || Array.isArray(val)) return { label: def.name, value: EMPTY }
     const entries = Object.entries(val as Record<string, unknown>)
     if (entries.length === 0) return { label: def.name, value: EMPTY }
-    return { label: def.name, value: entries.map(([slot, raw]) => `${slot}: ${display(raw)}`).join(' · ') }
+    return { label: def.name, value: entries.map(([slot, raw]) => `${slot}: ${formatValue(raw, t)}`).join(' · ') }
   }
 
-  if (def.osType && isOsResourceVar(def)) {
-    const shown = display(val)
-    const rawString = formatValue(val, t)
-    return { label: def.name, value: shown, raw: shown !== rawString ? rawString : undefined }
-  }
   return { label: def.name, value: formatValue(val, t) }
-}
-
-export function buildPackerEntries(
-  defs: AppVariable[],
-  variables: Record<string, any> | null | undefined,
-  ctx: SummaryContext,
-): SummaryEntry[] {
-  const multi = isMultiImagePackerLayout(variables)
-  return defs
-    .filter((d) => d.source === 'packer')
-    .map((def) => {
-      const value = packerValueFor(def, variables)
-      const entry = toSummaryEntry(def, value === undefined ? def.default : value, ctx)
-      // In multi-image mode name the image the value belongs to.
-      return multi ? { ...entry, label: `[${def.template_key ?? 'default'}] ${entry.label}` } : entry
-    })
 }
 
 export function buildTerraformEntries(
@@ -158,7 +96,7 @@ const CODE_MESSAGES: Record<string, string> = {
 }
 
 // Errors the API names with `detail.reason` that need no more than a text
-// (team, workload, credential, app spec and version problems).
+// (team, workload, app spec and version problems).
 const REASONS_WITH_MESSAGE = new Set([
   'invalid_teams',
   'unknown_team_member',
@@ -166,11 +104,9 @@ const REASONS_WITH_MESSAGE = new Set([
   'team_names_collide',
   'no_workloads',
   'too_many_workloads',
-  'openstack_credentials_missing',
-  'openstack_credential_not_found',
-  'openstack_credentials_unverified',
-  'auth_url_not_allowed',
   'invalid_app_spec',
+  'appstore_yaml_missing',
+  'runtime_not_supported',
   'version_moved',
   'version_required',
   'git_unreachable',

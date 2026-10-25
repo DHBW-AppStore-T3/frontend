@@ -4,7 +4,6 @@
  * (``varScope = team|user``) — this component knows nothing about scopes.
  *
  *  * picks the right widget for the variable's HCL type
- *  * delegates OpenStack-typed variables to ``OpenStackResourcePicker``
  *  * binds to a single ``value``/``onChange`` pair
  *
  * File-typed variables are NOT handled here — the wizard renders
@@ -15,30 +14,21 @@
  * sections (Packer = blue, Terraform = purple) stay visually distinct.
  */
 import { useTranslation } from 'react-i18next'
-import { isOsResourceVar, type AppVariable } from '@/types'
-import type { OsResourceType } from '@/api/openstack-resources.api'
-import OpenStackResourcePicker from '@/components/OpenStackResourcePicker'
+import type { AppVariable } from '@/types'
 import { isBool, isList, isNumber } from '@/utils/variable-types'
 
 export interface VariableInputProps {
   variable: AppVariable
   value: any
   onChange: (value: any) => void
-  /** Id-mode value of the network a subnet picker should be restricted to. */
-  filterNetworkId?: string | null
   accent?: 'blue' | 'purple'
   /** DOM id of the input; scope-iterated variables pass a suffixed id per slot. */
   inputId?: string
   /** E.g. while a previous wizard step is incomplete. */
   disabled?: boolean
-  /** Forwarded from the OpenStack picker (shared banner in the parent). */
-  onCredentialsMissing?: (missing: boolean) => void
 }
 
-// The picker wins over type-based inputs, including list(...) variables, since
-// it handles multi itself. ``file`` is rendered by the parent, ``enum``
-// (pod apps) is a select over the declared values.
-const hasOsPicker = isOsResourceVar
+// ``file`` is rendered by the parent, ``enum`` is a select over the declared values.
 const isEnum = (v: AppVariable): boolean => v.osType === 'enum'
 
 // Explicit class maps — Tailwind's JIT can't read class names assembled from
@@ -63,33 +53,16 @@ export default function VariableInput({
   variable,
   value,
   onChange,
-  filterNetworkId,
   accent = 'blue',
   inputId,
   disabled,
-  onCredentialsMissing,
 }: VariableInputProps) {
   const { t } = useTranslation()
   const colors = ACCENT[accent]
   const id = inputId || variable.name
   const type = variable.type
 
-  if (hasOsPicker(variable)) {
-    return (
-      <OpenStackResourcePicker
-        osType={variable.osType as OsResourceType}
-        osMode={variable.osMode || 'name'}
-        multi={variable.osMulti || false}
-        filterNetworkId={variable.osType === 'subnet' ? (filterNetworkId ?? null) : null}
-        allowFreeText
-        value={value}
-        onChange={onChange}
-        onCredentialsMissing={onCredentialsMissing}
-      />
-    )
-  }
-
-  // Pod apps: one of the values the appstore.yaml declares.
+  // One of the values the appstore.yaml declares.
   if (isEnum(variable)) {
     return (
       <select

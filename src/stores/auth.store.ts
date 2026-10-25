@@ -1,8 +1,6 @@
 import { create } from 'zustand'
 import { AuthService } from '@/services/auth.service'
 import { keycloak } from '@/services/keycloak.service'
-import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
-import { invalidateAll as invalidateOpenStackCache } from '@/composables/useOpenStackResourceCache'
 import type { User, UserRole } from '@/types'
 
 // In-flight promises to dedupe concurrent calls. The router guard,
@@ -124,7 +122,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       fetchMePromise = (async () => {
         try {
           set({ user: await AuthService.fetchMe() })
-          useOpenStackCredentialsStore.getState().fetch().catch(() => {})
         } catch (error) {
           console.error('Failed to fetch user:', error)
           set({ user: null })
@@ -141,10 +138,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       set({ user: null, error: null })
       initializePromise = null
       fetchMePromise = null
-      useOpenStackCredentialsStore.getState().reset()
-      // Clear the OpenStack resource display cache — the next user has their own
-      // credentials and a different project, so old resource lists must not persist.
-      invalidateOpenStackCache()
 
       try {
         await keycloak.logout()
