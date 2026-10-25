@@ -177,6 +177,30 @@ const REASONS_WITH_MESSAGE = new Set([
   'git_host_not_allowed',
 ])
 
+/** Codes of ``file_content_rejected`` (backend ``app/services/upload_validation.py``) that have a translation. */
+const FILE_CONTENT_CODES = new Set([
+  'zip_invalid',
+  'zip_empty',
+  'zip_too_many_entries',
+  'zip_bad_name',
+  'zip_absolute_path',
+  'zip_path_traversal',
+  'zip_duplicate_entry',
+  'zip_encrypted',
+  'zip_compression',
+  'zip_special_file',
+  'zip_entry_too_large',
+  'zip_overlapping_entries',
+  'zip_bomb',
+  'zip_corrupt',
+  'zip_size_mismatch',
+  'svg_invalid',
+  'svg_active_content',
+  'executable_not_allowed',
+  'archive_not_inspectable',
+  'content_type_mismatch',
+])
+
 export function formatSubmitError(err: any, t: Translate): string {
   const detail = err?.response?.data?.detail
   const fallback =
@@ -209,6 +233,14 @@ export function formatSubmitError(err: any, t: Translate): string {
       return t('deployment.summary.errors.fileB64Invalid', { filename })
     case 'file_size_mismatch':
       return t('deployment.summary.errors.fileSizeMismatch', { filename })
+    case 'file_content_rejected': {
+      // The server names the problem by a stable code; unknown codes show its English message.
+      const code = typeof detail.code === 'string' ? detail.code : ''
+      const reason = FILE_CONTENT_CODES.has(code)
+        ? t(`deployment.summary.errors.fileContent.${code}`)
+        : String(detail.message ?? '')
+      return t('deployment.summary.errors.fileContentRejected', { filename, reason })
+    }
     case 'workload_budget_exceeded':
       return t('deployment.summary.errors.workload_budget_exceeded', {
         inUse: detail.in_use ?? 0,
