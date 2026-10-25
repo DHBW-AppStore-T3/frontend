@@ -39,6 +39,42 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-25 (Statuspolling für Mitglieder, frontend#71):** Studierende (`permissions.member && !owner_view`) sehen den
+  Status einer laufenden Bereitstellung (`pending`/`running`) in `/deployments/:id` ohne Neuladen. Der SSE-Stream bleibt
+  Besitzer/Dozenten vorbehalten (rohe Worker-Logs), deshalb pollt `useDeploymentStatusPolling` `GET /deployments/{id}`
+  alle 10 s. **Entscheidungen:** direkter `deploymentApi.getById(id, { signal })` statt `fetchDeploymentById`, weil
+  `runRequest` `isLoading`/`error` setzt und 403/404/Netzfehler nicht unterscheidbar macht; Store-Write nur bei
+  inhaltlicher Änderung (`JSON.stringify`) und nur für die eigene `deploymentId`; verkettete `setTimeout` statt
+  `setInterval` (keine überlappenden Requests); Netzfehler/5xx/401 -> `degraded` mit Backoff `min(10 s * 2^n, 20 s)`,
+  403 -> `forbidden` (Stopp), 404 -> `onGone` (Toast + Liste); `document.hidden` pausiert und bricht den Request ab,
+  Rückkehr fragt sofort. Beim Ende des Pollings lädt `useDeploymentDetail` `/my-access` nach (Zugangsdaten gibt es nur
+  dort). `DeploymentStatusNotice` zeigt Hinweise für `failed` (auch beim ersten Öffnen), Verbindungsproblem und
+  fehlenden Zugriff. **Bewusst nicht gepollt:** `pausing`/`resuming`/`destroying` (`isLiveStatus` ist zentral).
+  **Stolperstein:** `npm ci` im OneDrive-Ordner scheitert mit `EPERM` an `esbuild.exe`; in einem Worktree außerhalb von
+  OneDrive arbeiten.
+
+- **2026-10-25 (Überschrift zentriert, Nachtrag zu frontend#56):** Im Kopf von `/apps/:id` steht die Metazeile (Badge, Git-Link)
+  nur noch in der Admin-Ansicht im DOM, und der Abstand `mb-2` unter dem Titel gilt nur dort. `.app-detail-heading` und die
+  innere Zeile richten mit `align-items: center` aus, damit der Titel ohne Metazeile neben dem Logo mittig sitzt. Nicht im
+  Browser geprüft (Test prüft nur die Struktur).
+- **2026-10-25 (Git-Link nur für Admins, Nachtrag zu frontend#56):** Der GitHub-Link im Kopf von `/apps/:id` steht jetzt
+  zusammen mit dem Badge „Versionen verfügbar" in `<RoleGate adminView>`: Dozenten, Studierende und Admins ohne
+  Admin-Ansicht sehen ihn nicht. Der Link in der Karte „Versionsinformationen" (`html_url` des Tags) bleibt unverändert.
+- **2026-10-25 (Version festlegen, frontend#56):** Auf `/apps/:id` sehen nur Admins mit Admin-Ansicht das Badge „Versionen
+  verfügbar", den Tab „App Store" und die Versionsauswahl. Alle anderen deployen `deployVersionOf(app, versionOptions)`
+  (`app.deploy_version`, wenn noch gelistet, sonst die erste Version). In der Admin-Ansicht heißt der Button „Version
+  festlegen" (`appApi.admin.setDeployVersion` → `PUT /admin/apps/{id}/deploy-version`, Backend #43/#44), deaktiviert bei
+  laufendem Speichern, bereits festgelegter oder nicht freigegebener Version; er startet kein Deployment. `useAppDetail`
+  lädt Freigaben nur noch für die Admin-Ansicht (Parameter `loadsApprovals`). Folge laut Issue: Besitzer ohne Admin-Rolle
+  können Versionen nicht mehr selbst einreichen (Tab weg). Der alte Test „Besitzer kann deaktivierte App nicht öffentlich
+  machen" im View-Test entfiel, weil der Store-Tab nur noch für Admins erreichbar ist. Offen: `openapi.json`/
+  `api.generated.ts` nicht neu generiert (siehe #55).
+- **2026-10-25 (Filter „Empfohlen", frontend#55):** `AppsView` hat den Tab „Empfohlen" als ersten (nur wenn eine App
+  `recommended` ist); `selectedFilter` ist `CatalogFilter | null`, `activeFilter` fällt auf „Empfohlen" bzw. „Alle" zurück,
+  eine Nutzerauswahl bleibt. Admins schalten pro App in `/admin/settings` (neue Karte `RecommendedAppsCard`, Schalter bis zur
+  Antwort deaktiviert, Fehler-Toast) über `appApi.admin.setRecommended` → `PUT /admin/apps/{id}/recommended` (Backend #42).
+  `Toggle` hat die neue Prop `disabled`. Offen: `src/types/openapi.json` und `api.generated.ts` sind nicht neu generiert
+  (im Backend liegt keine `openapi.json` im Repo), der Contract-Test prüft den neuen Endpunkt daher noch nicht.
 - **2026-10-24 (Hilfe-Seite gekürzt, frontend#54):** `HelpView` ohne Einleitung, „Für wen ist diese Seite?", `quickTip`,
   Seitenübersicht (`quickHelp.page*`, `processTitle`, `pagesTitle`) und `troubleshooting.description`; die Schlüssel sind
   aus `de.ts`/`en.ts` gelöscht. Checkliste hat jetzt drei Punkte (neu: OpenStack-Credentials), Schrittfolge „So starten Sie

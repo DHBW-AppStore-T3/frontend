@@ -13,6 +13,7 @@ export default {
     "favorite": "Mark {name} as a favorite",
     "categories": {
       "label": "App categories",
+      "recommended": "Recommended",
       "all": "All",
       "maschinenbau": "Mechanical Engineering",
       "informatik": "Computer Science",
@@ -309,6 +310,10 @@ export default {
     noStatus: "no status",
   },
   DeploymentDetailView: {
+    statusFailedHint: "This learning environment cannot be used at the moment. Please contact your lecturer.",
+    statusPollingDegraded: "Connection lost – the status shown may be outdated. Retrying.",
+    statusPollingForbidden: "You no longer have access to this learning environment. Automatic updates have stopped.",
+    statusGoneToast: "This deployment no longer exists.",
     deploymentCreatedAt: "Created at",
     deploymentCreated: "Created on",
     deploymentCreatedBy: "Created by",
@@ -397,6 +402,7 @@ export default {
     noAppsDesc: "No apps have been created in the database yet.",
     noPrivateApps: "No private apps available.",
     noPublicApps: "No public apps available.",
+    noRecommendedApps: "No apps are recommended right now.",
     noAppsInDepartment: "No apps are currently assigned to {department}.",
     noDescription: "No description available.",
     detailsDeploy: "Details & Deployment",
@@ -489,9 +495,15 @@ export default {
     versionDescTitle: "Version Description",
     startDeploymentTitle: "Start Deployment",
     selectVersionLabel: "Select Version",
+    setDeployVersionButton: "Set version",
+    setDeployVersionNotApproved: "Only approved versions can be set.",
+    deployVersionCurrent: "Currently set: {version}",
+    deployVersionNone: "No version set yet. {version} is used until then.",
     deployButton: "Deploy Now",
     toasts: {
       loadError: "Failed to load app details.",
+      deployVersionSet: "Version {version} has been set.",
+      deployVersionError: "The version could not be set.",
       selectVersionFirst: "Please select a version first.",
       preparingConfig: "Preparing configuration for {name}.",
       submitSuccess: "Version submitted successfully.",
@@ -590,6 +602,13 @@ export default {
       title: "Admin view",
       description:
         "Shows additional management functions, for example version management on apps. With the admin view off, you see the interface as a teacher does.",
+    },
+    recommended: {
+      title: "Recommended apps",
+      description: "Recommended apps appear in the app catalog under the \"Recommended\" filter.",
+      toggleLabel: "Recommend {name}",
+      empty: "There are no apps yet.",
+      error: "The recommendation could not be saved.",
     },
   },
 
@@ -952,6 +971,9 @@ export default {
   runtime: {
     kubernetes: "Pods in the cluster",
     kubernetesShort: "Pods",
+    kubevirtVm: "VM in the cluster",
+    kubevirtVmShort: "VM",
+    openstackVmShort: "VM",
   },
   pods: {
     started: "App started successfully",

@@ -5,7 +5,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDate } from '@/utils/format'
 import { safeHttpUrl } from '@/utils/safe-url'
 import RuntimeStatus, { type RuntimeStatusProps } from './RuntimeStatus'
-import type { AppDetail, VersionInfo } from './versionInfo'
+import { deployVersionOf, type AppDetail, type VersionInfo } from './versionInfo'
 
 export interface OverviewTabProps {
   app: AppDetail
@@ -23,6 +23,13 @@ export interface OverviewTabProps {
   scrollToDeployOptions: boolean
   onSelectVersion: (version: string) => void
   onDeploy: () => void
+  /** Admin view: show the version select and "Set version" instead of "Deploy". */
+  showVersionSelect: boolean
+  /** The version an admin fixed for teachers, if any. */
+  deployVersion: string | null
+  /** Why "Set version" is disabled right now. */
+  setDeployVersionDisabledReason: 'busy' | 'same' | 'not_approved' | null
+  onSetDeployVersion: () => void
 }
 
 const CARD = 'bg-surfaceMuted rounded-lg p-4 border border-borderSubtle'
@@ -129,6 +136,7 @@ export default function OverviewTab(props: OverviewTabProps) {
       <div id="deployment-options" ref={deployRef} className="detail-surface deployment-options">
         <h2 className="text-lg font-semibold text-textHeading mb-6">{t('AppsDetailView.startDeploymentTitle')}</h2>
 
+        {props.showVersionSelect ? (
         <div className="mb-6">
           <label className="block text-sm font-medium text-textMuted mb-2">
             {t('AppsDetailView.selectVersionLabel')}
@@ -145,18 +153,29 @@ export default function OverviewTab(props: OverviewTabProps) {
               </option>
             ))}
           </select>
+          <p className="mt-2 text-sm text-textMuted">
+            {props.deployVersion
+              ? t('AppsDetailView.deployVersionCurrent', { version: props.deployVersion })
+              : t('AppsDetailView.deployVersionNone', { version: deployVersionOf(app, versionOptions) })}
+          </p>
         </div>
+        ) : null}
 
         <RuntimeStatus {...props.runtimeStatus} />
 
         <button
           type="button"
-          onClick={props.onDeploy}
-          disabled={!props.deployEnabled}
+          onClick={props.showVersionSelect ? props.onSetDeployVersion : props.onDeploy}
+          disabled={props.showVersionSelect ? props.setDeployVersionDisabledReason !== null : !props.deployEnabled}
+          title={
+            props.showVersionSelect && props.setDeployVersionDisabledReason === 'not_approved'
+              ? t('AppsDetailView.setDeployVersionNotApproved')
+              : ''
+          }
           className="w-full bg-gradient-to-r from-primaryAction to-primaryActionHover text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
           <Layers size={18} />
-          {t('AppsDetailView.deployButton')}
+          {props.showVersionSelect ? t('AppsDetailView.setDeployVersionButton') : t('AppsDetailView.deployButton')}
         </button>
       </div>
       ) : null}

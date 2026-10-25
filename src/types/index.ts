@@ -36,7 +36,8 @@ export type DeploymentStatus =
   // the rest of the deployment keeps running.
   | 'redeploying' | 'redeploy_failed'
 
-export type DeploymentRuntime = 'kubernetes'
+/** How a deployment runs: pods in the cluster, KubeVirt VMs in the cluster; ``openstack-vm`` only on legacy rows. */
+export type DeploymentRuntime = 'kubernetes' | 'kubevirt-vm' | 'openstack-vm'
 
 /** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
 export type DeploymentAction = 'destroy' | 'delete' | 'pause' | 'resume' | 'cancel' | 'redeploy'
@@ -102,6 +103,10 @@ export interface App {
   image?: string | null
   // An admin deactivated the app; only an admin can make it public again.
   hidden_by_admin?: boolean
+  // An admin recommends the app; the catalog opens on the "recommended" filter.
+  recommended?: boolean
+  // Version tag teachers deploy; set by an admin, null/absent means none set.
+  deploy_version?: string | null
 }
 
 /**

@@ -20,7 +20,17 @@ describe('deploymentApi', () => {
 
     deploymentApi.getById('d-1')
 
-    expect(api.get).toHaveBeenCalledWith('/deployments/d-1')
+    expect(api.get).toHaveBeenCalledWith('/deployments/d-1', undefined)
+  })
+
+  it('getById() passes the abort signal through to the request', async () => {
+    const api = (await import('@/api/axios')).default
+    const { deploymentApi } = await import('@/api/deployment.api')
+    const { signal } = new AbortController()
+
+    deploymentApi.getById('d-1', { signal })
+
+    expect(api.get).toHaveBeenCalledWith('/deployments/d-1', { signal })
   })
 
   it('create() posts the payload to /deployments/', async () => {

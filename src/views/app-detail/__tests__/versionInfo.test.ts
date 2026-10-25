@@ -6,6 +6,7 @@ import {
   hasVersionInfo,
   bannerStatusOf,
   indexApprovalsByVersion,
+  deployVersionOf,
 } from '../versionInfo'
 
 const versions = ['1.0', { version: '1.1', name: 'Release', commit_sha: 'abc', html_url: 'https://x' }, { releaseTag: '2.0' }, { foo: 1 }]
@@ -67,5 +68,20 @@ describe('indexApprovalsByVersion', () => {
       { version_tag: '1', status: 'approved' },
     ] as any)
     expect(map['1']!.status).toBe('approved')
+  })
+})
+
+describe('deployVersionOf', () => {
+  const options = ['2.0', '1.0']
+  it('returns the admin choice when it is still listed', () => {
+    expect(deployVersionOf({ deploy_version: '1.0' } as any, options)).toBe('1.0')
+  })
+  it('falls back to the first version when the choice is not listed', () => {
+    expect(deployVersionOf({ deploy_version: '9.9' } as any, options)).toBe('2.0')
+  })
+  it('falls back to the first version when none is set', () => {
+    expect(deployVersionOf({ deploy_version: null } as any, options)).toBe('2.0')
+    expect(deployVersionOf(null, options)).toBe('2.0')
+    expect(deployVersionOf(null, [])).toBe('')
   })
 })

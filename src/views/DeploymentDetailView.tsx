@@ -26,8 +26,10 @@ import { useDeploymentDetail } from './deployment-detail/useDeploymentDetail'
 import { useClipboard } from './deployment-detail/useClipboard'
 import { cleanVariableValue, getStatusStyles } from './deployment-detail/helpers'
 import ActiveTaskCard from './deployment-detail/ActiveTaskCard'
+import DeploymentStatusNotice from './deployment-detail/DeploymentStatusNotice'
 import TeamsCard from './deployment-detail/TeamsCard'
 import TaskHistoryCard from './deployment-detail/TaskHistoryCard'
+import { runtimeLabelKey } from '@/utils/runtime'
 
 const HEADER_ICON_COLOR: Record<string, string> = {
   success: 'text-green-600',
@@ -93,6 +95,7 @@ export default function DeploymentDetailView() {
                   className={HEADER_ICON_COLOR[deployment.status ?? ''] ?? 'text-yellow-600'}
                 />
                 <span
+                  aria-live="polite"
                   className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold border capitalize ${status.badgeClass}`}
                 >
                   {t(status.label)}
@@ -156,6 +159,12 @@ export default function DeploymentDetailView() {
             </div>
           </div>
 
+          <DeploymentStatusNotice
+            status={deployment.status}
+            pollingState={d.statusPollingState}
+            isMemberView={d.permissions.member && !d.isOwnerView}
+          />
+
           {/* Main info grid with 3 cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Deployment info card */}
@@ -190,7 +199,7 @@ export default function DeploymentDetailView() {
                     {t('DeploymentDetailView.runtime')}
                   </div>
                   <div className="text-sm font-medium text-gray-900" data-testid="deployment-runtime">
-                    {t('runtime.kubernetes')}
+                    {t(runtimeLabelKey(d.deployment?.runtime))}
                   </div>
                 </div>
                 <div>
@@ -410,7 +419,7 @@ export default function DeploymentDetailView() {
 
           {/* Pods: their workloads, live from the cluster. Owner view only; the
               backend gates the endpoint the same way. */}
-          {d.isOwnerView && d.isPods ? (
+          {d.isOwnerView && d.isCluster ? (
             <PodWorkloadsPanel
               workloads={d.workloads}
               loading={d.resourcesLoading}

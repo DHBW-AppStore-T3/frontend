@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import PageHeader from '@/components/ui/PageHeader'
 import Card from '@/components/ui/Card'
+import RecommendedAppsCard from '@/views/admin-settings/RecommendedAppsCard'
 import Toggle from '@/views/add-app/Toggle'
 import { useRole } from '@/composables/useRole'
 import { useAuthStore } from '@/stores/auth.store'
@@ -29,6 +30,7 @@ export default function AdminSettingsView() {
           />
         </div>
       </Card>
+      <RecommendedAppsCard />
     </div>
   )
 }

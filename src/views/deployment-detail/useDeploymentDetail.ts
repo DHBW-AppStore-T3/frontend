@@ -35,6 +35,8 @@ import {
   isLiveStatus,
 } from './helpers'
 import { permissionsOf, lifecycleGates } from './access'
+import { useDeploymentStatusPolling, shouldPollDeploymentStatus } from './useDeploymentStatusPolling'
+import { isClusterRuntime } from '@/utils/runtime'
 
 export function useDeploymentDetail(deploymentId: string) {
   const { t, i18n } = useTranslation()
@@ -57,7 +59,7 @@ export function useDeploymentDetail(deploymentId: string) {
   const isOwnerView = permissions.owner_view
   const gates = lifecycleGates(deployment)
   // Pods (Linux apps) or OpenStack VMs (the Windows desktop).
-  const isPods = deployment?.runtime === 'kubernetes'
+  const isCluster = isClusterRuntime(deployment?.runtime)
 
   // Imperative (non-render) read, so async flows decide on fresh data.
   const isOwnerViewNow = () =>
@@ -220,6 +222,27 @@ export function useDeploymentDetail(deploymentId: string) {
     }, 10_000)
     return () => clearInterval(id)
   }, [workloadsChanging, deploymentId])
+
+  // ---------------------------------------------------------- status polling
+  // Students never get the stream (raw worker logs, owner-only), so their
+  // status badge is kept fresh by polling the detail while the deployment is live.
+  const pollingEnabled = shouldPollDeploymentStatus(deployment)
+  const { pollingState: statusPollingState } = useDeploymentStatusPolling({
+    deploymentId,
+    enabled: pollingEnabled,
+    onGone: () => {
+      toasts.info(t('DeploymentDetailView.statusGoneToast'))
+      navigate(paths.deployments)
+    },
+  })
+
+  // Credentials only come from `/my-access`: once the deployment settled, fetch them.
+  const wasPolling = useRef(false)
+  useEffect(() => {
+    const was = wasPolling.current
+    wasPolling.current = pollingEnabled
+    if (was && !pollingEnabled) void loadMyAccess()
+  }, [pollingEnabled, loadMyAccess])
 
   // Latest values for the async stream-ended handler (avoids stale closures).
   const latest = useRef({ activeTask })
@@ -499,7 +522,7 @@ export function useDeploymentDetail(deploymentId: string) {
 
     // access and runtime
     permissions,
-    isPods,
+    isCluster,
 
     // derived deployment data
     groups,
@@ -508,6 +531,9 @@ export function useDeploymentDetail(deploymentId: string) {
     deselectGroup: () => setSelectedGroup(null),
     deploymentVariables,
     enrichedTeams,
+
+    // status polling (members)
+    statusPollingState,
 
     // stream
     streamProgress,

@@ -16,6 +16,7 @@ import {
 import { useSummaryVariables } from './new-deployment/useSummaryVariables'
 import { networkDeviations } from '@/utils/network'
 import { useSubmitDeployment } from './new-deployment/useSubmitDeployment'
+import { runtimeLabelKey } from '@/utils/runtime'
 
 function VariableCard(props: {
   title: string
@@ -162,7 +163,7 @@ export default function NewDeploymentSummaryView() {
                 <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">
                   {t('deployment.summary.runtimeLabel')}
                 </p>
-                <p className="text-lg font-bold text-textHeading">{t('runtime.kubernetes')}</p>
+                <p className="text-lg font-bold text-textHeading">{t(runtimeLabelKey(draft.runtime))}</p>
               </div>
             </div>
             {networkChanges.length > 0 ? (

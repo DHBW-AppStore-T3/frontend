@@ -13,6 +13,7 @@ export default {
     "favorite": "{name} als Favorit markieren",
     "categories": {
       "label": "App-Kategorien",
+      "recommended": "Empfohlen",
       "all": "Alle",
       "maschinenbau": "Maschinenbau",
       "informatik": "Informatik",
@@ -309,6 +310,10 @@ export default {
     noStatus: "kein Status",
   },
   DeploymentDetailView: {
+    statusFailedHint: "Die Lernumgebung kann derzeit nicht genutzt werden. Bitte wenden Sie sich an Ihre Dozentin oder Ihren Dozenten.",
+    statusPollingDegraded: "Verbindung unterbrochen – der angezeigte Status ist möglicherweise nicht aktuell. Es wird weiter versucht.",
+    statusPollingForbidden: "Sie haben keinen Zugriff mehr auf diese Lernumgebung. Die automatische Aktualisierung wurde beendet.",
+    statusGoneToast: "Diese Bereitstellung existiert nicht mehr.",
     deploymentCreated: "Erstellt am",
     deploymentCreatedBy: "Erstellt von",
     deploymentDelete: "Löschen",
@@ -397,6 +402,7 @@ export default {
     noAppsDesc: "Es wurden noch keine Apps in der Datenbank angelegt.",
     noPrivateApps: "Keine privaten Apps vorhanden.",
     noPublicApps: "Keine öffentlichen Apps vorhanden.",
+    noRecommendedApps: "Aktuell sind keine Apps empfohlen.",
     noAppsInDepartment: "Für {department} sind derzeit keine Apps zugeordnet.",
     noDescription: "Keine Beschreibung verfügbar.",
     detailsDeploy: "Details & Deployment",
@@ -491,9 +497,15 @@ export default {
     versionDescTitle: "Versionsbeschreibung",
     startDeploymentTitle: "Deployment starten",
     selectVersionLabel: "Version auswählen",
+    setDeployVersionButton: "Version festlegen",
+    setDeployVersionNotApproved: "Nur freigegebene Versionen können festgelegt werden.",
+    deployVersionCurrent: "Aktuell festgelegt: {version}",
+    deployVersionNone: "Noch keine Version festgelegt. Bis dahin wird {version} verwendet.",
     deployButton: "Jetzt Deployen",
     toasts: {
       loadError: "App-Details konnten nicht geladen werden.",
+      deployVersionSet: "Version {version} wurde festgelegt.",
+      deployVersionError: "Die Version konnte nicht festgelegt werden.",
       selectVersionFirst: "Bitte wählen Sie zuerst eine Version aus.",
       preparingConfig: "Konfiguration für {name} wird vorbereitet.",
       submitSuccess: "Version erfolgreich eingereicht.",
@@ -593,6 +605,13 @@ export default {
       title: "Admin-Ansicht",
       description:
         "Zeigt zusätzliche Verwaltungsfunktionen, zum Beispiel die Versionsverwaltung bei Apps. Ist die Admin-Ansicht aus, sehen Sie die Oberfläche wie ein Dozent.",
+    },
+    recommended: {
+      title: "Empfohlene Apps",
+      description: "Empfohlene Apps erscheinen im App-Katalog unter dem Filter „Empfohlen“.",
+      toggleLabel: "{name} empfehlen",
+      empty: "Es gibt noch keine Apps.",
+      error: "Die Empfehlung konnte nicht gespeichert werden.",
     },
   },
 
@@ -954,6 +973,9 @@ export default {
   runtime: {
     kubernetes: "Pods im Cluster",
     kubernetesShort: "Pods",
+    kubevirtVm: "VM im Cluster",
+    kubevirtVmShort: "VM",
+    openstackVmShort: "VM",
   },
   pods: {
     started: "App erfolgreich gestartet",

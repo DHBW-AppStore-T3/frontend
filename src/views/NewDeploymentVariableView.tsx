@@ -77,6 +77,7 @@ export default function NewDeploymentVariableView() {
         <ResourcePicker
           choices={choices}
           value={chosen}
+          vm={draft.runtime === 'kubevirt-vm'}
           onChange={(resources) => useDeploymentStore.getState().updateDraft({ resources })}
         />
       ) : null}
