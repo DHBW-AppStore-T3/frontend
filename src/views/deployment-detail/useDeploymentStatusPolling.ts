@@ -10,7 +10,8 @@
  *
  * Rounds are chained `setTimeout`s, never `setInterval`, so requests cannot
  * overlap. A hidden tab pauses the loop (and aborts the request in flight);
- * coming back asks immediately.
+ * coming back asks immediately. A 403 or 404 ends the loop for good: switching
+ * tabs afterwards neither asks again nor replaces the "forbidden" hint.
  */
 import { useEffect, useRef, useState } from 'react'
 import { deploymentApi } from '@/api/deployment.api'
@@ -60,6 +61,8 @@ export function useDeploymentStatusPolling({
     if (!enabled) return
 
     let stopped = false
+    // 403/404 are final: no timer, and no tab switch may wake the loop again.
+    let halted = false
     let timer: ReturnType<typeof setTimeout> | null = null
     let controller: AbortController | null = null
     let failures = 0
@@ -101,8 +104,10 @@ export function useDeploymentStatusPolling({
         controller = null
         const status = httpStatusOf(err)
         if (status === 404) {
+          halted = true
           onGoneRef.current()
         } else if (status === 403) {
+          halted = true
           report('forbidden')
         } else {
           // Network error, 5xx, an expired token: keep the last status, say so, back off.
@@ -114,7 +119,7 @@ export function useDeploymentStatusPolling({
     }
 
     const onVisibilityChange = () => {
-      if (stopped) return
+      if (stopped || halted) return
       if (document.hidden) {
         clearTimer()
         controller?.abort()

@@ -150,6 +150,30 @@ describe('useDeploymentStatusPolling', () => {
     expect(useDeploymentStore.getState().currentDeployment).toBe(before)
   })
 
+  it('stays stopped after 403 when the tab is hidden and shown again', async () => {
+    getById.mockImplementation(() => httpError(403))
+    const { result } = mount()
+    await tick(STATUS_POLL_INTERVAL_MS)
+    expect(result.current.pollingState).toBe('forbidden')
+    setHidden(true)
+    expect(result.current.pollingState).toBe('forbidden')
+    setHidden(false)
+    await tick(60_000)
+    expect(getById).toHaveBeenCalledTimes(1)
+    expect(result.current.pollingState).toBe('forbidden')
+  })
+
+  it('does not call onGone again after 404 when the tab is hidden and shown again', async () => {
+    getById.mockImplementation(() => httpError(404))
+    const { onGone } = mount()
+    await tick(STATUS_POLL_INTERVAL_MS)
+    setHidden(true)
+    setHidden(false)
+    await tick(60_000)
+    expect(getById).toHaveBeenCalledTimes(1)
+    expect(onGone).toHaveBeenCalledTimes(1)
+  })
+
   it('calls onGone exactly once on 404 and stops', async () => {
     getById.mockImplementation(() => httpError(404))
     const { onGone } = mount()
