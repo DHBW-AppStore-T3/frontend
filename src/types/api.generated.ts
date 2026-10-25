@@ -376,6 +376,10 @@ export interface paths {
          *     The owner and admins see every tag. Everyone else sees the approved
          *     versions whose tag still points to the approved commit; a moved tag
          *     disappears until it is submitted and approved again.
+         *
+         *     ``deploy_version`` is only reported while that version can still be
+         *     deployed (its tag exists and points to the approved commit). If the
+         *     repository cannot be read, the stored value is reported as it is.
          */
         get: operations["get_app_apps__app_id__get"];
         /**
@@ -626,6 +630,63 @@ export interface paths {
          *     .github#7 R).
          */
         put: operations["deactivate_app_admin_apps__app_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/apps/{app_id}/recommended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set App Recommended
+         * @description Mark an app as recommended or not. Admin only.
+         *
+         *     The flag only highlights the app in the catalog; it does not change who
+         *     may see or deploy it.
+         */
+        put: operations["set_app_recommended_admin_apps__app_id__recommended_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/apps/{app_id}/deploy-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Deploy Version
+         * @description Set the version teachers deploy, or clear it with ``version_tag: null``.
+         *
+         *     Only a version that is approved for the commit its tag points to now
+         *     can be set:
+         *
+         *     - 404: the app does not exist, or the version has no approval entry.
+         *     - 409 ``version_not_approved``: the entry exists but is pending,
+         *       rejected or from before versions were pinned to commits.
+         *     - 409 ``version_moved``: the tag points to another commit than the
+         *       approved one; it has to be submitted and reviewed again.
+         *     - 502: the repository cannot be read.
+         *
+         *     The setting is cleared again when the version's approval ends (revoked,
+         *     or replaced by a new submission). ``POST /deployments/`` is not bound to
+         *     it and still checks the approval of the version it is given.
+         */
+        put: operations["set_deploy_version_admin_apps__app_id__deploy_version_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1682,6 +1743,16 @@ export interface components {
              */
             submit_all_versions: boolean;
         };
+        /** AppDeployVersionUpdate */
+        AppDeployVersionUpdate: {
+            /** Version Tag */
+            version_tag: string | null;
+        };
+        /** AppRecommendedUpdate */
+        AppRecommendedUpdate: {
+            /** Recommended */
+            recommended: boolean;
+        };
         /** AppResponse */
         AppResponse: {
             /** Name */
@@ -1712,6 +1783,13 @@ export interface components {
              * @default false
              */
             hidden_by_admin: boolean;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended: boolean;
+            /** Deploy Version */
+            deploy_version?: string | null;
             /** Image */
             image?: string | null;
         };
@@ -1931,6 +2009,13 @@ export interface components {
              * @default false
              */
             hidden_by_admin: boolean;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended: boolean;
+            /** Deploy Version */
+            deploy_version?: string | null;
             /** Image */
             image?: string | null;
             user: components["schemas"]["UserResponse"];
@@ -3167,7 +3252,9 @@ export interface operations {
     get_me_users_me_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3182,6 +3269,15 @@ export interface operations {
                     "application/json": components["schemas"]["UserWithCourse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_users_users__get: {
@@ -3192,7 +3288,9 @@ export interface operations {
                 role?: components["schemas"]["UserRole"] | null;
                 course_id?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3224,7 +3322,9 @@ export interface operations {
                 query: string;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3253,7 +3353,9 @@ export interface operations {
     get_user_users__user_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -3284,7 +3386,9 @@ export interface operations {
     update_user_users__user_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -3319,7 +3423,9 @@ export interface operations {
     get_user_statistics_users__user_id__statistics_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -3353,7 +3459,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3382,7 +3490,9 @@ export interface operations {
     create_course_courses__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3415,7 +3525,9 @@ export interface operations {
     get_course_courses__course_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -3446,7 +3558,9 @@ export interface operations {
     update_course_courses__course_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -3481,7 +3595,9 @@ export interface operations {
     delete_course_courses__course_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -3510,7 +3626,9 @@ export interface operations {
     list_course_members_courses__course_id__users_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -3541,7 +3659,9 @@ export interface operations {
     add_course_members_courses__course_id__users_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -3576,7 +3696,9 @@ export interface operations {
     remove_course_member_courses__course_id__users__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -3606,7 +3728,9 @@ export interface operations {
     add_course_teacher_courses__course_id__teachers__user_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -3636,7 +3760,9 @@ export interface operations {
     remove_course_teacher_courses__course_id__teachers__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -3669,7 +3795,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3698,7 +3826,9 @@ export interface operations {
     create_app_apps__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3731,7 +3861,9 @@ export interface operations {
     get_app_apps__app_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3762,7 +3894,9 @@ export interface operations {
     update_app_apps__app_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3797,7 +3931,9 @@ export interface operations {
     delete_app_apps__app_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3828,7 +3964,9 @@ export interface operations {
             query: {
                 version: string;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3861,7 +3999,9 @@ export interface operations {
             query: {
                 version: string;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3892,7 +4032,9 @@ export interface operations {
     submit_version_apps__app_id__versions__version_tag__submit_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3928,7 +4070,9 @@ export interface operations {
     withdraw_version_apps__app_id__versions__version_tag__submit_delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3958,7 +4102,9 @@ export interface operations {
     list_version_approvals_apps__app_id__versions_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3989,7 +4135,9 @@ export interface operations {
     list_pending_versions_admin_apps_versions_pending_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4004,12 +4152,23 @@ export interface operations {
                     "application/json": components["schemas"]["AppVersionApprovalWithApp"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     approve_version_admin_apps__app_id__versions__version_tag__approve_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -4041,7 +4200,9 @@ export interface operations {
     reject_version_admin_apps__app_id__versions__version_tag__reject_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -4077,7 +4238,9 @@ export interface operations {
     revoke_version_admin_apps__app_id__versions__version_tag__revoke_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -4113,13 +4276,89 @@ export interface operations {
     deactivate_app_admin_apps__app_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_app_recommended_admin_apps__app_id__recommended_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppRecommendedUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_deploy_version_admin_apps__app_id__deploy_version_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppDeployVersionUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4149,7 +4388,9 @@ export interface operations {
                 app_id?: string | null;
                 status_filter?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4178,7 +4419,9 @@ export interface operations {
     create_deployment_deployments__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4213,7 +4456,9 @@ export interface operations {
             query?: {
                 include_logs?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4244,7 +4489,9 @@ export interface operations {
     delete_deployment_deployments__deployment_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4277,7 +4524,9 @@ export interface operations {
             query?: {
                 refresh?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4308,7 +4557,9 @@ export interface operations {
     get_deployment_resource_detail_deployments__deployment_id__resources__address__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 address: string;
@@ -4340,7 +4591,9 @@ export interface operations {
     redeploy_deployment_resource_deployments__deployment_id__resources__address__redeploy_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 address: string;
@@ -4372,7 +4625,9 @@ export interface operations {
     restart_workload_deployments__deployment_id__workloads__workload__restart_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 workload: string;
@@ -4404,7 +4659,9 @@ export interface operations {
     reset_workload_deployments__deployment_id__workloads__workload__reset_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 workload: string;
@@ -4436,7 +4693,9 @@ export interface operations {
     cancel_deployment_deployments__deployment_id__cancel_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4467,7 +4726,9 @@ export interface operations {
     pause_deployment_deployments__deployment_id__pause_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4498,7 +4759,9 @@ export interface operations {
     resume_deployment_deployments__deployment_id__resume_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4529,7 +4792,9 @@ export interface operations {
     download_deployment_file_deployments__deployment_id__files__var_name___slot_key__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 var_name: string;
@@ -4560,7 +4825,9 @@ export interface operations {
     get_my_access_deployments__deployment_id__my_access_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4591,7 +4858,9 @@ export interface operations {
     stream_deployment_events_deployments__deployment_id__stream_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4622,7 +4891,9 @@ export interface operations {
     get_deployment_tasks_tasks_deployment__deployment_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -4653,7 +4924,9 @@ export interface operations {
     get_task_tasks__task_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 task_id: string;
             };
@@ -4688,7 +4961,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4717,7 +4992,9 @@ export interface operations {
     create_team_teams__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4750,7 +5027,9 @@ export interface operations {
     get_team_teams__team_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -4781,7 +5060,9 @@ export interface operations {
     update_team_teams__team_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -4816,7 +5097,9 @@ export interface operations {
     delete_team_teams__team_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -4845,7 +5128,9 @@ export interface operations {
     add_user_to_team_teams__team_id__users__user_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
                 user_id: string;
@@ -4875,7 +5160,9 @@ export interface operations {
     remove_user_from_team_teams__team_id__users__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
                 user_id: string;
@@ -4905,7 +5192,9 @@ export interface operations {
     get_dashboard_stats_dashboard_stats_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4918,6 +5207,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5038,7 +5336,9 @@ export interface operations {
     list_my_credentials_me_openstack_credentials_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -5053,12 +5353,23 @@ export interface operations {
                     "application/json": components["schemas"]["OpenStackCredentialResponse"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     save_my_credential_me_openstack_credentials_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -5098,7 +5409,9 @@ export interface operations {
     save_my_credential_from_yaml_me_openstack_credentials_from_yaml_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -5138,7 +5451,9 @@ export interface operations {
     test_my_credential_me_openstack_credentials__credential_id__test_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5169,7 +5484,9 @@ export interface operations {
     delete_my_credential_me_openstack_credentials__credential_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5198,7 +5515,9 @@ export interface operations {
     get_project_quota_me_openstack_credentials__credential_id__quota_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5232,7 +5551,9 @@ export interface operations {
                 /** @description Only invalidate this kind: a marker kind such as network or security_group */
                 kind?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5261,7 +5582,9 @@ export interface operations {
     list_networks_me_openstack_credentials__credential_id__resources_networks_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5295,7 +5618,9 @@ export interface operations {
                 /** @description Only subnets of this network */
                 network_id?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5326,7 +5651,9 @@ export interface operations {
     list_flavors_me_openstack_credentials__credential_id__resources_flavors_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5360,7 +5687,9 @@ export interface operations {
                 /** @description Image status to list (default: active); 'all' for every status */
                 status?: string;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5391,7 +5720,9 @@ export interface operations {
     list_keypairs_me_openstack_credentials__credential_id__resources_keypairs_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5422,7 +5753,9 @@ export interface operations {
     list_security_groups_me_openstack_credentials__credential_id__resources_security_groups_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5453,7 +5786,9 @@ export interface operations {
     list_floating_ip_pools_me_openstack_credentials__credential_id__resources_floating_ip_pools_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5484,7 +5819,9 @@ export interface operations {
     list_volumes_me_openstack_credentials__credential_id__resources_volumes_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5515,7 +5852,9 @@ export interface operations {
     list_routers_me_openstack_credentials__credential_id__resources_routers_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };
@@ -5549,7 +5888,9 @@ export interface operations {
                 /** @description OpenStack service: compute (Nova), network (Neutron) or volume (Cinder) */
                 service?: string;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 credential_id: string;
             };

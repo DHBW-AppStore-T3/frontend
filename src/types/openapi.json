@@ -34,6 +34,29 @@
         "summary": "Get Me",
         "description": "Get current authenticated user with course information",
         "operationId": "get_me_users_me_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -44,13 +67,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/users/": {
@@ -119,6 +147,22 @@
               ],
               "title": "Course Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -178,8 +222,26 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
               "default": 10,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -228,6 +290,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -274,6 +352,22 @@
               "type": "string",
               "format": "uuid",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -334,6 +428,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -393,6 +503,22 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -432,6 +558,24 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -491,6 +635,22 @@
               "format": "uuid",
               "title": "Course Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -537,6 +697,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Course Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -595,6 +771,22 @@
               "format": "uuid",
               "title": "Course Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -636,6 +828,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Course Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -687,6 +895,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Course Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -761,6 +985,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -813,6 +1053,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -862,6 +1118,22 @@
               "type": "string",
               "format": "uuid",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -915,6 +1187,22 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -954,6 +1242,24 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -996,7 +1302,7 @@
           "Apps"
         ],
         "summary": "Get App",
-        "description": "Get app by ID with available versions.\n\nSoft-deleted apps are still readable here so existing deployments\nthat still reference them can render their app name, git link,\netc. They just don't show up in the apps list / deploy wizard\n(those use the default-filtered ``get_apps``).\n\nThe owner and admins see every tag. Everyone else sees the approved\nversions whose tag still points to the approved commit; a moved tag\ndisappears until it is submitted and approved again.",
+        "description": "Get app by ID with available versions.\n\nSoft-deleted apps are still readable here so existing deployments\nthat still reference them can render their app name, git link,\netc. They just don't show up in the apps list / deploy wizard\n(those use the default-filtered ``get_apps``).\n\nThe owner and admins see every tag. Everyone else sees the approved\nversions whose tag still points to the approved commit; a moved tag\ndisappears until it is submitted and approved again.\n\n``deploy_version`` is only reported while that version can still be\ndeployed (its tag exists and points to the approved commit). If the\nrepository cannot be read, the stored value is reported as it is.",
         "operationId": "get_app_apps__app_id__get",
         "security": [
           {
@@ -1012,6 +1318,22 @@
               "type": "string",
               "format": "uuid",
               "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1059,6 +1381,22 @@
               "type": "string",
               "format": "uuid",
               "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1117,6 +1455,22 @@
               "format": "uuid",
               "title": "App Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1167,6 +1521,22 @@
             "schema": {
               "type": "string",
               "title": "Version"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1230,6 +1600,22 @@
               "type": "string",
               "title": "Version"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1287,6 +1673,22 @@
             "schema": {
               "type": "string",
               "title": "Version Tag"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1354,6 +1756,22 @@
               "type": "string",
               "title": "Version Tag"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1396,6 +1814,22 @@
               "format": "uuid",
               "title": "App Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1435,27 +1869,55 @@
         "summary": "List Pending Versions",
         "description": "Return all version submissions awaiting admin review, oldest first.",
         "operationId": "list_pending_versions_admin_apps_versions_pending_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/AppVersionApprovalWithApp"
                   },
-                  "type": "array",
                   "title": "Response List Pending Versions Admin Apps Versions Pending Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/admin/apps/{app_id}/versions/{version_tag}/approve": {
@@ -1490,6 +1952,22 @@
             "schema": {
               "type": "string",
               "title": "Version Tag"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1549,6 +2027,22 @@
             "schema": {
               "type": "string",
               "title": "Version Tag"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1619,6 +2113,22 @@
               "type": "string",
               "title": "Version Tag"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -1679,8 +2189,176 @@
               "format": "uuid",
               "title": "App Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/apps/{app_id}/recommended": {
+      "put": {
+        "tags": [
+          "Admin",
+          "Admin"
+        ],
+        "summary": "Set App Recommended",
+        "description": "Mark an app as recommended or not. Admin only.\n\nThe flag only highlights the app in the catalog; it does not change who\nmay see or deploy it.",
+        "operationId": "set_app_recommended_admin_apps__app_id__recommended_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppRecommendedUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/apps/{app_id}/deploy-version": {
+      "put": {
+        "tags": [
+          "Admin",
+          "Admin"
+        ],
+        "summary": "Set Deploy Version",
+        "description": "Set the version teachers deploy, or clear it with ``version_tag: null``.\n\nOnly a version that is approved for the commit its tag points to now\ncan be set:\n\n- 404: the app does not exist, or the version has no approval entry.\n- 409 ``version_not_approved``: the entry exists but is pending,\n  rejected or from before versions were pinned to commits.\n- 409 ``version_moved``: the tag points to another commit than the\n  approved one; it has to be submitted and reviewed again.\n- 502: the repository cannot be read.\n\nThe setting is cleared again when the version's approval ends (revoked,\nor replaced by a new submission). ``POST /deployments/`` is not bound to\nit and still checks the approval of the version it is given.",
+        "operationId": "set_deploy_version_admin_apps__app_id__deploy_version_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppDeployVersionUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1771,6 +2449,22 @@
               ],
               "title": "Status Filter"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1810,6 +2504,24 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -1879,6 +2591,22 @@
               "default": false,
               "title": "Include Logs"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1925,6 +2653,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1982,6 +2726,22 @@
               "type": "boolean",
               "default": true,
               "title": "Refresh"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2041,6 +2801,22 @@
               "type": "string",
               "title": "Address"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2099,6 +2875,22 @@
               "type": "string",
               "title": "Address"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2154,6 +2946,22 @@
             "schema": {
               "type": "string",
               "title": "Workload"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2211,6 +3019,22 @@
               "type": "string",
               "title": "Workload"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2257,6 +3081,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2305,6 +3145,22 @@
               "format": "uuid",
               "title": "Deployment Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2351,6 +3207,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2417,6 +3289,22 @@
               "type": "string",
               "title": "Slot Key"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2458,6 +3346,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2508,6 +3412,22 @@
               "format": "uuid",
               "title": "Deployment Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2554,6 +3474,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2607,6 +3543,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Task Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2677,6 +3629,22 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2716,6 +3684,24 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -2775,6 +3761,22 @@
               "format": "uuid",
               "title": "Team Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2821,6 +3823,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Team Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2879,6 +3897,22 @@
               "format": "uuid",
               "title": "Team Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2931,6 +3965,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2981,6 +4031,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -3008,6 +4074,29 @@
         "summary": "Get Dashboard Stats",
         "description": "Aggregate counts for the dashboard KPI strip.\n\nCheap DB-only aggregates — intentionally separated from the OpenStack\nquota call (`GET /quotas/overview`) so the dashboard renders fast even\nwhen the OpenStack API is slow or unavailable.\n\nDeployments counter MUST mirror the visibility rules of\n``GET /deployments`` so the KPI matches what the user actually sees\non the Deployments page:\n\n  * Teacher/Admin: deployments they own.\n  * Student:       deployments they own OR are a team member of OR\n                   have a direct ``UserToDeployment`` mapping for.\n\nApps counter MUST mirror the role-branched visibility of\n``GET /apps`` (see ``routers/apps.py``):\n\n  * Admin: every non-deleted app — exactly what\n    ``crud_apps.get_apps`` returns when called without\n    ``user_id``. Admin keeps the plattform-wide view.\n  * Teacher/Student: own apps (regardless of ``is_private`` /\n    approval state) OR public apps (``is_private = False``)\n    with at least one APPROVED version — mirrors\n    ``crud_apps.get_visible_apps``. Teacher gets the student-style\n    filter.\n\nSoft-deleted rows (``deleted_at IS NOT NULL``) are excluded on both\ncounters — same as the list endpoints.",
         "operationId": "get_dashboard_stats_dashboard_stats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3018,13 +4107,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/lti13/login": {
@@ -3155,27 +4249,55 @@
         "summary": "List My Credentials",
         "description": "List the caller's OpenStack credentials, one per project, without secrets.\n\nEach entry reports the result of the last Keystone check and the number of\nthe caller's live deployments that need it.",
         "operationId": "list_my_credentials_me_openstack_credentials_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/OpenStackCredentialResponse"
                   },
-                  "type": "array",
                   "title": "Response List My Credentials Me Openstack Credentials Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       },
       "post": {
         "tags": [
@@ -3184,15 +4306,38 @@
         "summary": "Save My Credential",
         "description": "Check against Keystone, then store (201) or replace the one for the same project (200).\n\n422 ``openstack_credentials_invalid`` with a ``cause`` when Keystone\ndoes not accept it (``auth_url_not_allowed`` for a Keystone URL outside\nthe allowlist); nothing is stored then.",
         "operationId": "save_my_credential_me_openstack_credentials_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/OpenStackCredentialUpsert"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -3218,12 +4363,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/me/openstack-credentials/from-yaml": {
@@ -3234,15 +4374,38 @@
         "summary": "Save My Credential From Yaml",
         "description": "Same as the plain POST, from a pasted `clouds.yaml`.\n\n``cloud_name`` picks the entry when the file holds several clouds. Parse\nerrors answer 422; otherwise status codes as for the plain POST.",
         "operationId": "save_my_credential_from_yaml_me_openstack_credentials_from_yaml_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/OpenStackCredentialFromYaml"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -3268,12 +4431,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/me/openstack-credentials/{credential_id}/test": {
@@ -3298,6 +4456,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Credential Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -3348,6 +4522,22 @@
               "format": "uuid",
               "title": "Credential Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -3389,6 +4579,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Credential Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -3457,6 +4663,22 @@
               "title": "Kind"
             },
             "description": "Only invalidate this kind: a marker kind such as network or security_group"
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -3498,6 +4720,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Credential Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -3570,6 +4808,22 @@
               "title": "Network Id"
             },
             "description": "Only subnets of this network"
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -3622,6 +4876,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Credential Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -3688,6 +4958,22 @@
               "title": "Status"
             },
             "description": "Image status to list (default: active); 'all' for every status"
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -3740,6 +5026,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Credential Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -3794,6 +5096,22 @@
               "format": "uuid",
               "title": "Credential Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -3846,6 +5164,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Credential Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -3900,6 +5234,22 @@
               "format": "uuid",
               "title": "Credential Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -3952,6 +5302,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Credential Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -4018,6 +5384,22 @@
               "title": "Service"
             },
             "description": "OpenStack service: compute (Nova), network (Neutron) or volume (Cinder)"
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -4123,6 +5505,40 @@
         ],
         "title": "AppCreate"
       },
+      "AppDeployVersionUpdate": {
+        "properties": {
+          "version_tag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Tag"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version_tag"
+        ],
+        "title": "AppDeployVersionUpdate"
+      },
+      "AppRecommendedUpdate": {
+        "properties": {
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommended"
+        ],
+        "title": "AppRecommendedUpdate"
+      },
       "AppResponse": {
         "properties": {
           "name": {
@@ -4174,6 +5590,22 @@
             "type": "boolean",
             "title": "Hidden By Admin",
             "default": false
+          },
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended",
+            "default": false
+          },
+          "deploy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deploy Version"
           },
           "image": {
             "anyOf": [
@@ -4818,6 +6250,22 @@
             "type": "boolean",
             "title": "Hidden By Admin",
             "default": false
+          },
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended",
+            "default": false
+          },
+          "deploy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deploy Version"
           },
           "image": {
             "anyOf": [
@@ -5638,7 +7086,6 @@
           },
           "email": {
             "type": "string",
-            "format": "email",
             "title": "Email"
           },
           "username": {
@@ -6239,6 +7686,7 @@
         "properties": {
           "clouds_yaml": {
             "type": "string",
+            "maxLength": 65536,
             "minLength": 1,
             "title": "Clouds Yaml",
             "description": "raw clouds.yaml file contents"

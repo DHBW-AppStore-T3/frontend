@@ -31,7 +31,8 @@ import ActiveTaskCard from './deployment-detail/ActiveTaskCard'
 import DeploymentStatusNotice from './deployment-detail/DeploymentStatusNotice'
 import TeamsCard from './deployment-detail/TeamsCard'
 import TaskHistoryCard from './deployment-detail/TaskHistoryCard'
-import { runtimeLabelKey } from '@/utils/runtime'
+import type { DeploymentRuntime } from '@/types'
+import { canRestartWorkloads, confirmMessageSuffix, runtimeLabelKey } from '@/utils/runtime'
 
 const HEADER_ICON_COLOR: Record<string, string> = {
   success: 'text-green-600',
@@ -41,9 +42,12 @@ const HEADER_ICON_COLOR: Record<string, string> = {
 
 const COMMIT_SHORT_LENGTH = 8
 
-function pauseResumeMessageKey(action: 'pause' | 'resume' | null, isCluster: boolean): string {
-  const base = action === 'pause' ? 'confirmPauseMessage' : 'confirmResumeMessage'
-  return `DeploymentDetailView.${base}${isCluster ? 'Pods' : ''}`
+function confirmMessageKey(base: string, runtime: DeploymentRuntime | null | undefined): string {
+  return `DeploymentDetailView.${base}${confirmMessageSuffix(runtime)}`
+}
+
+function pauseResumeMessageKey(action: 'pause' | 'resume' | null, runtime: DeploymentRuntime | null | undefined): string {
+  return confirmMessageKey(action === 'pause' ? 'confirmPauseMessage' : 'confirmResumeMessage', runtime)
 }
 
 export default function DeploymentDetailView() {
@@ -427,7 +431,7 @@ export default function DeploymentDetailView() {
               loading={d.resourcesLoading}
               error={d.resourcesError}
               live={d.workloadsLive}
-              canAct={d.canRedeploy}
+              canAct={d.canRedeploy && canRestartWorkloads(deployment.runtime)}
               busy={d.workloadBusy}
               onRefresh={() => void d.loadResources()}
               onRestart={d.restartWorkload}
@@ -488,7 +492,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={d.isCluster ? 'DeploymentDetailView.confirmStopMessagePods' : 'DeploymentDetailView.confirmStopMessage'}
+              i18nKey={confirmMessageKey('confirmStopMessage', deployment.runtime)}
               slot="name"
               value={deployment.name}
             />
@@ -513,7 +517,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={d.isCluster ? 'DeploymentDetailView.confirmDeleteMessagePods' : 'DeploymentDetailView.confirmDeleteMessage'}
+              i18nKey={confirmMessageKey('confirmDeleteMessage', deployment.runtime)}
               slot="name"
               value={deployment.name}
             />
@@ -602,7 +606,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={pauseResumeMessageKey(d.pauseResumeAction, d.isCluster)}
+              i18nKey={pauseResumeMessageKey(d.pauseResumeAction, deployment.runtime)}
               slot="name"
               value={deployment.name}
             />

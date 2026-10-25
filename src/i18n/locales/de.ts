@@ -247,7 +247,7 @@ export default {
     quotaUsed: "{percentage}% ausgelastet",
     quotaLoadError: "Quota-Daten konnten nicht geladen werden",
     noCredentialsTitle: "Keine OpenStack-Credential",
-    noCredentialsHint: "Nur für Windows-/VM-Apps nötig; Apps, die als Pods laufen, brauchen keine.",
+    noCredentialsHint: "Nur für VM-Apps in OpenStack nötig; Apps, die im Cluster laufen (Pods oder VM), brauchen keine.",
     setUpNow: "Jetzt einrichten",
     quotaProject: "OpenStack-Projekt",
   },
@@ -396,6 +396,10 @@ export default {
     confirmPauseMessagePods: "Das Deployment {name} pausieren? Alle Pods werden gestoppt, die Daten bleiben erhalten; Sie können es später fortsetzen.",
     confirmResumeMessagePods: "Das Deployment {name} fortsetzen? Alle Pods werden wieder gestartet.",
     confirmStopMessagePods: "Stoppt {name} und entfernt alles bisher Erzeugte (den Namespace mit allen Pods).",
+    confirmDeleteMessageVm: "Das Deployment {name} löschen? Sein Namespace mit der VM und allen Daten wird zuerst entfernt (Live-Fortschritt im Anschluss).",
+    confirmPauseMessageVm: "Das Deployment {name} pausieren? Die VM wird heruntergefahren, die Daten bleiben erhalten; Sie können es später fortsetzen.",
+    confirmResumeMessageVm: "Das Deployment {name} fortsetzen? Die VM wird wieder gestartet.",
+    confirmStopMessageVm: "Stoppt {name} und entfernt alles bisher Erzeugte (den Namespace mit der VM).",
     confirmRedeployTitle: "VM neu erstellen?",
     confirmRedeployMessage: "Diese VM wird zerstört und identisch neu erstellt. Andere VMs in diesem Deployment bleiben unangetastet.",
     copied: "Kopiert!",
@@ -908,7 +912,7 @@ export default {
         no_workloads: "Es gibt nichts zu starten: Teams hinzufügen (bei Apps je Person auch Mitglieder).",
         too_many_workloads: "Zu viele Workloads ({workloads}); höchstens {limit} je Deployment.",
         workload_budget_exceeded: "Ihr Kontingent reicht nicht: {inUse} von {budget} Workloads belegt, {requested} angefragt.",
-        openstack_credentials_missing: "Für Windows-/VM-Apps benötigen Sie eine OpenStack-Credential.",
+        openstack_credentials_missing: "Für VM-Apps in OpenStack benötigen Sie eine OpenStack-Credential.",
         openstack_credential_not_found: "Die gewählte OpenStack-Credential gibt es nicht mehr.",
         openstack_credentials_unverified: "Die gewählte Credential ist noch nicht von Keystone bestätigt; prüfen Sie sie einmal in den Einstellungen.",
         auth_url_not_allowed: "Die Keystone-Adresse dieser Credential ist nicht erlaubt.",
@@ -987,7 +991,7 @@ export default {
   banners: {
     credentialsMissing: {
       title: 'OpenStack-Credentials fehlen',
-      message: "Nur für Windows-/VM-Apps nötig: ohne Credential können Sie solche Apps nicht deployen.",
+      message: "Nur für VM-Apps in OpenStack nötig: ohne Credential können Sie solche Apps nicht deployen.",
       cta: 'Jetzt einrichten',
     },
     credentialsInvalid: {
@@ -1072,7 +1076,7 @@ export default {
       region: 'RegionOne',
     },
     addTitle: "Credential hinzufügen oder ersetzen",
-    vmOnlyHint: "Nur Windows-/VM-Apps brauchen eine OpenStack-Credential; Apps, die als Pods laufen, kommen ohne aus. Je OpenStack-Projekt gibt es eine Credential: eine neue für dasselbe Projekt ersetzt die alte.",
+    vmOnlyHint: "Nur VM-Apps in OpenStack brauchen eine OpenStack-Credential; Apps, die im Cluster laufen (Pods oder VM), kommen ohne aus. Je OpenStack-Projekt gibt es eine Credential: eine neue für dasselbe Projekt ersetzt die alte.",
   },
 
   vm: {
@@ -1272,8 +1276,8 @@ export default {
     auth_url_not_allowed: "Die Keystone-Adresse dieser Credential ist nicht erlaubt.",
     workload_not_found: "Diesen Workload gibt es nicht (mehr).",
     invalid_workload: "Ungültiger Workload-Name.",
-    pod_deployment: "Pod-Deployments haben Workloads statt VMs.",
-    vm_deployment: "VM-Deployments werden je Ressource neu aufgebaut.",
+    pod_deployment: "Cluster-Deployments (Pods oder VM im Cluster) haben Workloads statt OpenStack-Ressourcen.",
+    vm_deployment: "OpenStack-VM-Deployments werden je Ressource neu aufgebaut.",
     non_redeployable_resource_type: "Nur Compute-Instanzen können einzeln neu aufgebaut werden.",
     resource_not_in_state: "Diese Ressource ist nicht mehr im aktuellen State.",
     invalid_resource_address: "Ungültige Ressourcenadresse.",

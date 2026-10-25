@@ -247,7 +247,7 @@ export default {
     quotaUsed: "{percentage}% used",
     quotaLoadError: "Could not load quota data",
     noCredentialsTitle: "No OpenStack credential",
-    noCredentialsHint: "Only needed for Windows/VM apps; apps that run as pods need none.",
+    noCredentialsHint: "Only needed for VM apps in OpenStack; apps that run in the cluster (pods or VM) need none.",
     setUpNow: "Set up now",
     quotaProject: "OpenStack project",
   },
@@ -396,6 +396,10 @@ export default {
     confirmPauseMessagePods: "Pause the deployment {name}? All pods are stopped, their data stays; you can resume it later.",
     confirmResumeMessagePods: "Resume the deployment {name}? All pods are started again.",
     confirmStopMessagePods: "Stops {name} and removes everything created so far (the namespace with all pods).",
+    confirmDeleteMessageVm: "Delete the deployment {name}? Its namespace with the VM and all data is removed first (live progress follows).",
+    confirmPauseMessageVm: "Pause the deployment {name}? The VM is shut down, its data stays; you can resume it later.",
+    confirmResumeMessageVm: "Resume the deployment {name}? The VM is started again.",
+    confirmStopMessageVm: "Stops {name} and removes everything created so far (the namespace with the VM).",
     confirmRedeployTitle: "Recreate this VM?",
     confirmRedeployMessage: "This VM is destroyed and recreated identically. The other VMs of this deployment are not touched.",
     copied: "Copied!",
@@ -905,7 +909,7 @@ export default {
         no_workloads: "Nothing to start: add teams (and, for per-person apps, members).",
         too_many_workloads: "Too many workloads ({workloads}); at most {limit} per deployment.",
         workload_budget_exceeded: "Your budget is not enough: {inUse} of {budget} workloads in use, {requested} requested.",
-        openstack_credentials_missing: "Windows/VM apps need an OpenStack credential.",
+        openstack_credentials_missing: "VM apps in OpenStack need an OpenStack credential.",
         openstack_credential_not_found: "The chosen OpenStack credential does not exist any more.",
         openstack_credentials_unverified: "The chosen credential is not confirmed by Keystone yet; check it once in the settings.",
         auth_url_not_allowed: "The Keystone address of this credential is not allowed.",
@@ -985,7 +989,7 @@ export default {
   banners: {
     credentialsMissing: {
       title: 'OpenStack credentials missing',
-      message: "Only needed for Windows/VM apps: without a credential you cannot deploy such apps.",
+      message: "Only needed for VM apps in OpenStack: without a credential you cannot deploy such apps.",
       cta: 'Set up now',
     },
     credentialsInvalid: {
@@ -1070,7 +1074,7 @@ export default {
       region: 'RegionOne',
     },
     addTitle: "Add or replace a credential",
-    vmOnlyHint: "Only Windows/VM apps need an OpenStack credential; apps that run as pods need none. There is one credential per OpenStack project: a new one for the same project replaces the old one.",
+    vmOnlyHint: "Only VM apps in OpenStack need an OpenStack credential; apps that run in the cluster (pods or VM) need none. There is one credential per OpenStack project: a new one for the same project replaces the old one.",
   },
 
   vm: {
@@ -1270,8 +1274,8 @@ export default {
     auth_url_not_allowed: "The Keystone address of this credential is not allowed.",
     workload_not_found: "This workload does not exist (any more).",
     invalid_workload: "Invalid workload name.",
-    pod_deployment: "Pod deployments have workloads instead of VMs.",
-    vm_deployment: "VM deployments are redeployed per resource.",
+    pod_deployment: "Cluster deployments (pods or a VM in the cluster) have workloads instead of OpenStack resources.",
+    vm_deployment: "OpenStack VM deployments are redeployed per resource.",
     non_redeployable_resource_type: "Only compute instances can be redeployed one by one.",
     resource_not_in_state: "This resource is not in the current state any more.",
     invalid_resource_address: "Invalid resource address.",
