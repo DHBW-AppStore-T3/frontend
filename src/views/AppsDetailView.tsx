@@ -197,17 +197,17 @@ export default function AppsDetailView() {
                       <span className="flex items-center gap-1 bg-surfaceMuted px-2 py-1 rounded">
                         <GitBranch size={14} /> {app.versions?.length || 0} {t('AppsDetailView.versionsAvailable')}
                       </span>
+                      {app.git_link ? (
+                        <a
+                          href={safeHttpUrl(app.git_link)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-info hover:underline cursor-pointer truncate max-w-xs block"
+                        >
+                          {app.git_link}
+                        </a>
+                      ) : null}
                     </RoleGate>
-                    {app.git_link ? (
-                      <a
-                        href={safeHttpUrl(app.git_link)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-info hover:underline cursor-pointer truncate max-w-xs block"
-                      >
-                        {app.git_link}
-                      </a>
-                    ) : null}
                   </div>
                 </div>
                 {canManageVersions ? (
