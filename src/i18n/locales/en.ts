@@ -318,6 +318,10 @@ export default {
     noStatus: "no status",
   },
   DeploymentDetailView: {
+    statusFailedHint: "This learning environment cannot be used at the moment. Please contact your lecturer.",
+    statusPollingDegraded: "Connection lost – the status shown may be outdated. Retrying.",
+    statusPollingForbidden: "You no longer have access to this learning environment. Automatic updates have stopped.",
+    statusGoneToast: "This deployment no longer exists.",
     deploymentCreatedAt: "Created at",
     deploymentCreated: "Created on",
     deploymentCreatedBy: "Created by",

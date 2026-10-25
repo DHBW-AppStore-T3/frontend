@@ -35,6 +35,7 @@ import {
   isLiveStatus,
 } from './helpers'
 import { permissionsOf, lifecycleGates } from './access'
+import { useDeploymentStatusPolling, shouldPollDeploymentStatus } from './useDeploymentStatusPolling'
 import { isClusterRuntime } from '@/utils/runtime'
 
 export function useDeploymentDetail(deploymentId: string) {
@@ -249,6 +250,27 @@ export function useDeploymentDetail(deploymentId: string) {
     }, 10_000)
     return () => clearInterval(id)
   }, [workloadsChanging, deploymentId])
+
+  // ---------------------------------------------------------- status polling
+  // Students never get the stream (raw worker logs, owner-only), so their
+  // status badge is kept fresh by polling the detail while the deployment is live.
+  const pollingEnabled = shouldPollDeploymentStatus(deployment)
+  const { pollingState: statusPollingState } = useDeploymentStatusPolling({
+    deploymentId,
+    enabled: pollingEnabled,
+    onGone: () => {
+      toasts.info(t('DeploymentDetailView.statusGoneToast'))
+      navigate(paths.deployments)
+    },
+  })
+
+  // Credentials only come from `/my-access`: once the deployment settled, fetch them.
+  const wasPolling = useRef(false)
+  useEffect(() => {
+    const was = wasPolling.current
+    wasPolling.current = pollingEnabled
+    if (was && !pollingEnabled) void loadMyAccess()
+  }, [pollingEnabled, loadMyAccess])
 
   // Latest values for the async stream-ended handler (avoids stale closures).
   const latest = useRef({ activeTask })
@@ -581,6 +603,9 @@ export function useDeploymentDetail(deploymentId: string) {
     deselectGroup: () => setSelectedGroup(null),
     deploymentVariables,
     enrichedTeams,
+
+    // status polling (members)
+    statusPollingState,
 
     // stream
     streamProgress,

@@ -28,6 +28,7 @@ import { useDeploymentDetail } from './deployment-detail/useDeploymentDetail'
 import { useClipboard } from './deployment-detail/useClipboard'
 import { cleanVariableValue, getStatusStyles } from './deployment-detail/helpers'
 import ActiveTaskCard from './deployment-detail/ActiveTaskCard'
+import DeploymentStatusNotice from './deployment-detail/DeploymentStatusNotice'
 import TeamsCard from './deployment-detail/TeamsCard'
 import TaskHistoryCard from './deployment-detail/TaskHistoryCard'
 import { runtimeLabelKey } from '@/utils/runtime'
@@ -96,6 +97,7 @@ export default function DeploymentDetailView() {
                   className={HEADER_ICON_COLOR[deployment.status ?? ''] ?? 'text-yellow-600'}
                 />
                 <span
+                  aria-live="polite"
                   className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold border capitalize ${status.badgeClass}`}
                 >
                   {t(status.label)}
@@ -158,6 +160,12 @@ export default function DeploymentDetailView() {
               ) : null}
             </div>
           </div>
+
+          <DeploymentStatusNotice
+            status={deployment.status}
+            pollingState={d.statusPollingState}
+            isMemberView={d.permissions.member && !d.isOwnerView}
+          />
 
           {/* Main info grid with 3 cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

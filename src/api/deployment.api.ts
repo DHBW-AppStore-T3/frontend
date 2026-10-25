@@ -23,8 +23,8 @@ export const deploymentApi = {
   /**
    * Get deployment by ID with relations
    */
-  getById: (deploymentId: string) => {
-    return api.get<DeploymentWithRelations>(`/deployments/${deploymentId}`)
+  getById: (deploymentId: string, config?: { signal?: AbortSignal }) => {
+    return api.get<DeploymentWithRelations>(`/deployments/${deploymentId}`, config)
   },
 
   /**
