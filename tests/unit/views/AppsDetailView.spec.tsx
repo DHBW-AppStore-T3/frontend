@@ -148,6 +148,21 @@ describe('AppsDetailView', () => {
     expect(screen.getByRole('link', { name: 'https://github.com/x/y' })).toBeInTheDocument()
   })
 
+  it('Dozent: Überschrift steht allein, ohne leere Metazeile und Abstand darunter', async () => {
+    renderView()
+    const h1 = await screen.findByRole('heading', { name: 'Test App' })
+    expect(h1.parentElement!.children).toHaveLength(1)
+    expect(h1.className).not.toContain('mb-2')
+  })
+
+  it('Admin-Ansicht: Überschrift hat die Metazeile mit Abstand darunter', async () => {
+    setAdminView()
+    renderView()
+    const h1 = await screen.findByRole('heading', { name: 'Test App' })
+    expect(h1.parentElement!.children).toHaveLength(2)
+    expect(h1.className).toContain('mb-2')
+  })
+
   it('Admin ohne Admin-Ansicht sieht den Git-Link nicht', async () => {
     setUser('admin-1', 'admin')
     renderView()
