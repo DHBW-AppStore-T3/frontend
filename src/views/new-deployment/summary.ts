@@ -175,6 +175,7 @@ const REASONS_WITH_MESSAGE = new Set([
   'version_required',
   'git_unreachable',
   'git_host_not_allowed',
+  'upload_scan_unavailable',
 ])
 
 /** Codes of ``file_content_rejected`` (backend ``app/services/upload_validation.py``) that have a translation. */
@@ -199,6 +200,14 @@ const FILE_CONTENT_CODES = new Set([
   'executable_not_allowed',
   'archive_not_inspectable',
   'content_type_mismatch',
+  'pdf_encrypted',
+  'pdf_active_content',
+  'pdf_unscannable',
+  'pdf_invalid',
+  'image_invalid',
+  'image_too_large',
+  'image_trailing_data',
+  'malware_detected',
 ])
 
 export function formatSubmitError(err: any, t: Translate): string {
