@@ -5,7 +5,6 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, GitBranch, Layers, Pencil, ShoppingBag, Trash2 } from 'lucide-react'
 import AppLogo from '@/components/ui/AppLogo'
-import RoleGate from '@/components/RoleGate'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
 import { useDeploymentStore } from '@/stores/deployment.store'
@@ -189,11 +188,11 @@ export default function AppsDetailView() {
               <AppLogo name={app.name} image={app.image} />
             </span>
             <div className="flex-grow">
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-center">
                 <div>
-                  <h1 className="text-3xl font-bold text-textHeading mb-2">{app.name}</h1>
-                  <div className="flex items-center gap-3 text-sm text-textMuted">
-                    <RoleGate adminView>
+                  <h1 className={`text-3xl font-bold text-textHeading${isAdminView ? ' mb-2' : ''}`}>{app.name}</h1>
+                  {isAdminView ? (
+                    <div className="flex items-center gap-3 text-sm text-textMuted">
                       <span className="flex items-center gap-1 bg-surfaceMuted px-2 py-1 rounded">
                         <GitBranch size={14} /> {app.versions?.length || 0} {t('AppsDetailView.versionsAvailable')}
                       </span>
@@ -207,8 +206,8 @@ export default function AppsDetailView() {
                           {app.git_link}
                         </a>
                       ) : null}
-                    </RoleGate>
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
                 {canManageVersions ? (
                   <div className="flex items-center gap-2">
