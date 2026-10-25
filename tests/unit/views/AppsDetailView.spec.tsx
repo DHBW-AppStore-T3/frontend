@@ -135,6 +135,26 @@ describe('AppsDetailView', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
+  it('Dozent sieht den Git-Link nicht, Admin mit Admin-Ansicht schon', async () => {
+    renderView()
+    await screen.findByRole('heading', { name: 'Test App' })
+    expect(screen.queryByRole('link', { name: 'https://github.com/x/y' })).not.toBeInTheDocument()
+  })
+
+  it('Admin mit Admin-Ansicht sieht den Git-Link', async () => {
+    setAdminView()
+    renderView()
+    await screen.findByRole('heading', { name: 'Test App' })
+    expect(screen.getByRole('link', { name: 'https://github.com/x/y' })).toBeInTheDocument()
+  })
+
+  it('Admin ohne Admin-Ansicht sieht den Git-Link nicht', async () => {
+    setUser('admin-1', 'admin')
+    renderView()
+    await screen.findByRole('heading', { name: 'Test App' })
+    expect(screen.queryByRole('link', { name: 'https://github.com/x/y' })).not.toBeInTheDocument()
+  })
+
   describe('welche Version deployt wird', () => {
     const deployNow = async () => {
       await waitFor(() => expect(appApi.getRuntime).toHaveBeenCalled())
