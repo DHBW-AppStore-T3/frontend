@@ -24,5 +24,4 @@ export const paths = {
   adminApps: '/admin/apps',
   adminSettings: '/admin/settings',
   user: '/user',
-  userOpenStack: '/user/openstack',
 } as const

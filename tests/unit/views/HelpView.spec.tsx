@@ -52,13 +52,9 @@ for (const [lng, msgs] of Object.entries(locales)) {
       }
     })
 
-    it('renders three troubleshooting items', () => {
+    it('renders the troubleshooting items', () => {
       const text = container.textContent
-      for (const s of [
-        msgs.HelpView.troubleshooting.item1,
-        msgs.HelpView.troubleshooting.item2,
-        msgs.HelpView.troubleshooting.item3,
-      ]) {
+      for (const s of [msgs.HelpView.troubleshooting.item1, msgs.HelpView.troubleshooting.item2]) {
         expect(text).toContain(s)
       }
     })

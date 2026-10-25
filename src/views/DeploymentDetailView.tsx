@@ -16,9 +16,7 @@ import {
 } from 'lucide-react'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
-import DeploymentInfrastructurePanel from '@/components/DeploymentInfrastructurePanel'
 import PodWorkloadsPanel from '@/components/PodWorkloadsPanel'
-import InfrastructureVmDrawer from '@/components/InfrastructureVmDrawer'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDateTime } from '@/utils/format'
 import { safeHttpUrl } from '@/utils/safe-url'
@@ -399,8 +397,8 @@ export default function DeploymentDetailView() {
             />
           ) : null}
 
-          {/* Teams & Members — above Infrastructure so the human-readable view
-              (who has access to what) precedes the technical resource listing. */}
+          {/* Teams & Members — above the workloads so the human-readable view
+              (who has access to what) precedes the technical listing. */}
           {deployment.teams && deployment.teams.length > 0 ? (
             <TeamsCard
               teamCount={deployment.teams.length}
@@ -424,20 +422,6 @@ export default function DeploymentDetailView() {
               onRestart={d.restartWorkload}
               onReset={d.askResetWorkload}
             />
-          ) : d.isOwnerView ? (
-            <DeploymentInfrastructurePanel
-              vmResources={d.vmResources}
-              networkResources={d.networkResources}
-              securityResources={d.securityResources}
-              resourcesLoading={d.resourcesLoading}
-              resourcesError={d.resourcesError}
-              redeployInFlight={d.redeployInFlight}
-              openDrawerAddress={d.openDrawerAddress}
-              canRedeploy={d.canRedeploy}
-              onRefresh={() => void d.loadResources()}
-              onOpenVm={d.openVmDrawer}
-              onRedeployVm={d.redeployVm}
-            />
           ) : null}
 
           {/* Tasks / Logs — history of finished tasks. */}
@@ -457,17 +441,6 @@ export default function DeploymentDetailView() {
           />
         </div>
 
-        {/* VM detail sidebar — sticky right column, rendered only when a VM is
-            open. Below ``xl`` it falls into the page flow as a normal card. */}
-        {d.openDrawerAddress ? (
-          <aside className="w-full xl:w-[420px] xl:shrink-0 xl:sticky xl:top-0 xl:self-start xl:max-h-[calc(100vh-3.5rem)] xl:flex xl:flex-col">
-            <InfrastructureVmDrawer
-              deploymentId={id}
-              address={d.openDrawerAddress}
-              onClose={d.closeVmDrawer}
-            />
-          </aside>
-        ) : null}
       </div>
 
       {/* Stop confirmation. Worth a confirm: cancelling throws away an
@@ -521,34 +494,6 @@ export default function DeploymentDetailView() {
               onClick={() => void d.confirmDelete()}
             >
               {t('DeploymentDetailView.confirmButton')}
-            </BaseButton>
-          </div>
-        }
-      />
-
-      {/* Redeploy confirmation — surfaces the VM address so the user can
-          sanity-check which instance they're about to recreate. */}
-      <Modal
-        show={d.showRedeployModal}
-        onClose={() => d.setShowRedeployModal(false)}
-        title={t('DeploymentDetailView.confirmRedeployTitle')}
-        body={
-          <div className="space-y-3">
-            <p className="text-gray-700">{t('DeploymentDetailView.confirmRedeployMessage')}</p>
-            {d.redeployTargetAddress ? (
-              <p className="text-xs font-mono text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 break-all">
-                {d.redeployTargetAddress}
-              </p>
-            ) : null}
-          </div>
-        }
-        footer={
-          <div className="flex justify-end gap-3">
-            <BaseButton variant="text" onClick={() => d.setShowRedeployModal(false)}>
-              {t('DeploymentDetailView.cancelButton')}
-            </BaseButton>
-            <BaseButton variant="destructive" onClick={() => void d.confirmRedeploy()}>
-              Redeploy
             </BaseButton>
           </div>
         }

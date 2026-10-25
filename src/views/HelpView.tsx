@@ -142,7 +142,6 @@ export default function HelpView() {
               <ul className="list-disc list-inside space-y-2 text-textMuted">
                 <li>{t('HelpView.troubleshooting.item1')}</li>
                 <li>{t('HelpView.troubleshooting.item2')}</li>
-                <li>{t('HelpView.troubleshooting.item3')}</li>
               </ul>
             </article>
           </div>

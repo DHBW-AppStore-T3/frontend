@@ -3,7 +3,6 @@ import { deploymentApi } from '@/api/deployment.api'
 import { useAppStore } from './app.store'
 import { useAuthStore } from './auth.store'
 import { runRequest } from './_request'
-import { isMultiImagePackerLayout as isMultiImagePackerLayoutOf } from '@/utils/draft-variables'
 import { networkPayload } from '@/utils/network'
 
 import type {
@@ -35,15 +34,13 @@ const defaultDraft: DeploymentDraft = {
   groupNames: [],
   variableDefinitions: [] as AppVariable[], // stores the API definitions for the variables
   // ``fileUploads`` is the wizard-side staging area for files. Each
-  // ``@openstack:file:<scope>``-marked variable contributes one entry
+  // ``file`` variable contributes one entry
   // here, with inner-keys driven by the scope. ``submitDraft`` ships
   // the whole map under ``DeploymentCreate.files``.
   fileUploads: {},
-  // How the version runs and, for VM apps, the credential (project) to
-  // deploy with; set by the app detail page and the first wizard step.
+  // How the version runs; set by the app detail page and the first wizard step.
   runtime: null,
   scope: null,
-  credentialId: null,
 }
 
 type DeploymentListParams = { userId?: string; appId?: string; status?: DeploymentStatus }
@@ -263,24 +260,12 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
         userIds: team.userIds.map(id => typeof id === 'string' ? id : String(id))
       }))
 
-      // userInputVar: { packer: {...}, terraform: {...} }
-      const userInputVarObj: any = { packer: {}, terraform: {} }
+      // userInputVar: { terraform: {...} } (the key is historical: the app's own variables)
+      const userInputVarObj: any = { terraform: {} }
       if (draft.variables && typeof draft.variables === 'object') {
-        // Multi-image Packer apps nest their values per template key.
         const draftVars = draft.variables as Record<string, any>
-        const packerContainer = draftVars.packer
-        const isMultiImagePackerLayout = isMultiImagePackerLayoutOf(draftVars)
+        const resolveValue = (def: AppVariable): any => draftVars[def.name]
 
-        const resolveValue = (def: AppVariable): any => {
-          if (def.source === 'packer' && isMultiImagePackerLayout) {
-            const tkey = def.template_key ?? 'default'
-            const fromNested = packerContainer?.[tkey]?.[def.name]
-            if (fromNested !== undefined) return fromNested
-          }
-          return draftVars[def.name]
-        }
-
-        // variableDefinitions carries whether each var is packer/terraform.
         if (Array.isArray(draft.variableDefinitions)) {
           for (const def of draft.variableDefinitions) {
             // File-typed variables travel through ``files`` instead of
@@ -309,19 +294,7 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
             ) {
               continue
             }
-            if (def.source === 'packer') {
-              // Multi-image: nest under the template key so the worker
-              // finds it at ``user_vars["packer"][template_key][name]``
-              // (siehe worker/app/tasks.py). Single-image/legacy stays
-              // flat at ``user_vars["packer"][name]``.
-              if (isMultiImagePackerLayout) {
-                const tkey = def.template_key ?? 'default'
-                ;(userInputVarObj.packer[tkey] ??= {})[def.name] = val
-              } else {
-                userInputVarObj.packer[def.name] = val
-              }
-            }
-            else if (def.source === 'terraform') userInputVarObj.terraform[def.name] = val
+            userInputVarObj.terraform[def.name] = val
           }
         } else {
           // Fallback: alles in terraform
@@ -362,11 +335,6 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
         releaseTag: finalVersion,
         userInputVar: userInputVarObj,
         teams
-      }
-      // VM apps run in the project of the chosen credential; pods need none
-      // (the API ignores one sent for a pod app).
-      if (draft.runtime !== 'kubernetes' && draft.credentialId) {
-        payload.credentialId = draft.credentialId
       }
       if (Object.keys(fileUploads).length > 0) {
         payload.files = fileUploads

@@ -20,7 +20,6 @@ import {
   findMissingRequired,
   dropStaleSlots,
   hasBlockingExpert,
-  markerErrorLines,
   type WizardTeam,
 } from '../variableForm'
 
@@ -249,19 +248,10 @@ describe('dropStaleSlots', () => {
   })
 })
 
-describe('expert / marker helpers', () => {
+describe('expert helpers', () => {
   it('blocks (opens the expert accordion) for required expert vars without default', () => {
     expect(hasBlockingExpert([v({ description: '@expert', required: true })])).toBe(true)
     expect(hasBlockingExpert([v({ description: '@expert', required: true, default: 'x' })])).toBe(false)
     expect(hasBlockingExpert([v({ required: true })])).toBe(false)
-  })
-
-  it('formats marker errors as bullet lines', () => {
-    const lines = markerErrorLines([
-      v({ markerError: { variable: 'vm', location: 'main.tf:3', message: 'bad' } }),
-      v({ markerError: { variable: 'x', message: 'worse' } }),
-      v(),
-    ])
-    expect(lines).toEqual(['• vm (main.tf:3): bad', '• x: worse'])
   })
 })

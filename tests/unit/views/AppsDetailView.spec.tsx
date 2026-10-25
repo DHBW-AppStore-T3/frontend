@@ -25,7 +25,6 @@ import { appApi } from '@/api/app.api'
 import AppsDetailView from '@/views/AppsDetailView'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
-import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { useToastStore } from '@/stores/toast.store'
 import { keyEchoI18n } from '../../helpers/render'
 
@@ -70,11 +69,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   useToastStore.setState({ toasts: [] })
   useDeploymentStore.getState().resetDraft()
-  useOpenStackCredentialsStore.getState().reset()
   setUser('owner')
   vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp() } as any)
   vi.mocked(appApi.listVersionApprovals).mockResolvedValue({ data: [] } as any)
-  // Pods by default: no OpenStack credential needed.
   vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'kubernetes', scope: 'team' } } as any)
 })
 
@@ -129,7 +126,7 @@ describe('AppsDetailView', () => {
     const draft = useDeploymentStore.getState().draft
     expect(draft.appId).toBe('app-123')
     expect(draft.releaseTag).toBe('v2.0')
-    // How the version runs travels with the draft (credential and group step).
+    // How the version runs travels with the draft (group step and options).
     expect(draft.runtime).toBe('kubernetes')
     expect(draft.scope).toBe('team')
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
@@ -153,30 +150,9 @@ describe('AppsDetailView', () => {
       expect(appApi.getRuntime).toHaveBeenCalledWith('app-123', 'v1.0')
     })
 
-    it('eine Pod-Version braucht kein OpenStack-Credential', async () => {
-      useOpenStackCredentialsStore.setState({ credentials: [] })
+    it('eine Pod-Version kann deployt werden', async () => {
       renderView()
       await screen.findByRole('heading', { name: 'Test App' })
-
-      await waitFor(() => expect(deployButton()).toBeEnabled())
-    })
-
-    it('eine VM-Version braucht ein nutzbares Credential und verweist auf die Einstellungen', async () => {
-      vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'openstack-vm', scope: 'user' } } as any)
-      useOpenStackCredentialsStore.setState({ credentials: [] })
-      renderView()
-
-      await waitFor(() => expect(screen.getByTestId('version-runtime')).toHaveTextContent('runtime.openstackVm'))
-      expect(deployButton()).toBeDisabled()
-      expect(screen.getByRole('link', { name: 'AppsDetailView.missingCredsLink' })).toHaveAttribute('href', '/user/openstack')
-    })
-
-    it('eine VM-Version mit nutzbarem Credential kann deployt werden', async () => {
-      vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'openstack-vm', scope: 'user' } } as any)
-      useOpenStackCredentialsStore.setState({
-        credentials: [{ credentialId: 'c-1', project_verified: true, last_validation_error: null } as any],
-      })
-      renderView()
 
       await waitFor(() => expect(deployButton()).toBeEnabled())
     })
@@ -287,11 +263,11 @@ describe('AppsDetailView', () => {
       expect(toasts()).toContainEqual(['success', 'AppsDetailView.toasts.submitSuccess'])
     })
 
-    it('zeigt Marker-Fehler (422) im Dialog', async () => {
+    it('zeigt die Fehler der appstore.yaml (422) im Dialog', async () => {
       vi.mocked(appApi.submitVersion).mockRejectedValue({
         response: {
           status: 422,
-          data: { detail: { marker_errors: [{ variable: 'vm_count', code: 'bad', message: 'invalid marker' }] } },
+          data: { detail: { reason: 'invalid_app_spec', errors: [{ loc: 'workload.containers[0].image', msg: 'not allowed' }] } },
         },
       })
       await openStore()
@@ -299,8 +275,7 @@ describe('AppsDetailView', () => {
       await userEvent.click(screen.getAllByRole('button', { name: /AppsDetailView\.submitButton/ })[0]!)
       await userEvent.click(screen.getByRole('button', { name: 'AppsDetailView.submitModal.submit' }))
 
-      expect(await screen.findByText('invalid marker')).toBeInTheDocument()
-      expect(screen.getByText('vm_count')).toBeInTheDocument()
+      expect(await screen.findByText('workload.containers[0].image: not allowed')).toBeInTheDocument()
     })
 
     it('meldet Duplikate (409) als Warnung', async () => {

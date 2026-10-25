@@ -19,7 +19,7 @@ import { useDeploymentStream } from '@/composables/useDeploymentStream'
 import { useDeploymentPhases, DEFAULT_PHASE_COUNT } from '@/composables/useDeploymentPhases'
 import { extractErrorMessage, errorReason, localizedError } from '@/utils/http-error'
 import { paths } from '@/router/paths'
-import type { Task, DeploymentResource, PodWorkload } from '@/types'
+import type { Task, PodWorkload } from '@/types'
 import {
   type UserAccountMap,
   type TeamVmMap,
@@ -132,39 +132,31 @@ export function useDeploymentDetail(deploymentId: string) {
     isLiveStatus(deployment?.latest_task?.status)
 
   // --------------------------------------------------------- infrastructure
-  const [resources, setResources] = useState<DeploymentResource[]>([])
   const [resourcesLoading, setResourcesLoading] = useState(false)
   const [resourcesError, setResourcesError] = useState<string | null>(null)
   // Pod deployments: their workloads, read live from the cluster.
   const [workloads, setWorkloads] = useState<PodWorkload[]>([])
   const [workloadsLive, setWorkloadsLive] = useState(true)
   const [workloadBusy, setWorkloadBusy] = useState<Set<string>>(new Set())
-  // Addresses waiting on a redeploy task (disables the card button).
-  const [redeployInFlight, setRedeployInFlight] = useState<Set<string>>(new Set())
-  // Address of the VM whose inline detail panel is open; null = closed.
-  const [openDrawerAddress, setOpenDrawerAddress] = useState<string | null>(null)
 
   const loadResources = useCallback(
-    async (refresh = true) => {
+    async () => {
       if (!isOwnerViewNow()) return
       setResourcesLoading(true)
       setResourcesError(null)
       try {
-        const response = await deploymentApi.listResources(deploymentId, { refresh })
-        setResources(response.data.resources)
+        const response = await deploymentApi.listResources(deploymentId)
         setWorkloads(response.data.workloads ?? [])
         setWorkloadsLive(response.data.live)
       } catch (err: any) {
         const status = err?.response?.status
         const reason = errorReason(err)
         if (reason && te(`errors.${reason}`)) setResourcesError(localizedError(err, t, te))
-        else if (status === 412 || status === 403) setResourcesError(t('vm.resourcesErrors.missingCredentials'))
-        else if (status === 502) setResourcesError(t('vm.resourcesErrors.unreachable'))
         else if (status === 404) {
-          // Soft-deleted upstream (e.g. right after a destroy): resources are
-          // gone; the stream watcher handles the ``gone`` path.
-          setResources([])
-        } else setResourcesError(err?.message || t('vm.resourcesErrors.generic'))
+          // Soft-deleted upstream (e.g. right after a destroy): the workloads
+          // are gone; the stream watcher handles the ``gone`` path.
+          setWorkloads([])
+        } else setResourcesError(err?.message || t('pods.loadFailed'))
       } finally {
         setResourcesLoading(false)
       }
@@ -173,29 +165,9 @@ export function useDeploymentDetail(deploymentId: string) {
     [deploymentId, t],
   )
 
-  const vmResources = useMemo(() => resources.filter((r) => r.category === 'instance'), [resources])
-  const networkResources = useMemo(
-    () =>
-      resources.filter(
-        (r) => r.category === 'network' || r.category === 'subnet' || r.category === 'floating_ip',
-      ),
-    [resources],
-  )
-  const securityResources = useMemo(
-    () => resources.filter((r) => r.category === 'security_group'),
-    [resources],
-  )
-
-  // Accordion semantics — only one VM detail is visible at a time.
-  const openVmDrawer = (address: string) =>
-    setOpenDrawerAddress((cur) => (cur === address ? null : address))
-  const closeVmDrawer = () => setOpenDrawerAddress(null)
-
   // ------------------------------------------------------------ modal state
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showRedeployModal, setShowRedeployModal] = useState(false)
-  const [redeployTargetAddress, setRedeployTargetAddress] = useState<string | null>(null)
   const [showPauseResumeModal, setShowPauseResumeModal] = useState(false)
   const [cancelBusy, setCancelBusy] = useState(false)
   const [pauseResumeBusy, setPauseResumeBusy] = useState(false)
@@ -237,7 +209,7 @@ export function useDeploymentDetail(deploymentId: string) {
     if (!workloadsChanging) return
     const id = setInterval(() => {
       void deploymentApi
-        .listResources(deploymentId, { refresh: true })
+        .listResources(deploymentId)
         .then((response) => {
           setWorkloads(response.data.workloads ?? [])
           setWorkloadsLive(response.data.live)
@@ -267,9 +239,7 @@ export function useDeploymentDetail(deploymentId: string) {
       // Refresh the task list once on completion so final logs/outputs land.
       void loadTasks()
       void loadMyAccess()
-      // A finished redeploy produced a new TF state: clear the in-flight set
-      // and reload the resource list.
-      setRedeployInFlight(new Set())
+      // A finished restart or reset changed the workloads: reload them.
       void loadResources()
     }
   }, [isStreamRelevant, startStream, stopStream, loadTasks, loadMyAccess, loadResources])
@@ -358,7 +328,7 @@ export function useDeploymentDetail(deploymentId: string) {
 
       await loadMyAccess()
 
-      // Separate roundtrip (OpenStack live-fetch ~1s): don't block the page.
+      // Separate roundtrip (asks the cluster): don't block the page.
       void loadResources()
     })()
 
@@ -428,36 +398,6 @@ export function useDeploymentDetail(deploymentId: string) {
     }
   }
 
-  // Redeploy is a two-step UX: the card asks for confirmation (Modal), the
-  // actual API call lives in ``executeRedeploy``.
-  const redeployVm = (address: string) => {
-    if (redeployInFlight.has(address)) return
-    setRedeployTargetAddress(address)
-    setShowRedeployModal(true)
-  }
-
-  const executeRedeploy = async (address: string) => {
-    setRedeployInFlight((s) => new Set(s).add(address))
-    try {
-      await deploymentApi.redeployResource(deploymentId, address)
-      toasts.success(t('DeploymentDetailView.redeployStarted', { address }))
-      // Refresh tasks right away so the new REDEPLOY row becomes the active
-      // task → the SSE stream attaches and live progress renders.
-      await loadTasks()
-    } catch (err: any) {
-      setRedeployInFlight((s) => {
-        const next = new Set(s)
-        next.delete(address)
-        return next
-      })
-      if (err?.response?.status === 409 && !errorReason(err)) {
-        toasts.error(t('DeploymentDetailView.lifecycleBusy'))
-      } else {
-        toasts.error(localizedError(err, t, te, t('DeploymentDetailView.redeployFailed')))
-      }
-    }
-  }
-
   // Pod workloads: restart (a new pod, its data stays) or reset (its volume is
   // deleted, so it asks first, in its own modal).
   const [showResetModal, setShowResetModal] = useState(false)
@@ -497,18 +437,6 @@ export function useDeploymentDetail(deploymentId: string) {
     setShowResetModal(false)
     setResetTargetWorkload(null)
     if (workload) await workloadAction(workload, true)
-  }
-
-  // Close the modal first (immediate feedback), then dispatch the call.
-  const confirmRedeploy = async () => {
-    const address = redeployTargetAddress
-    setShowRedeployModal(false)
-    if (!address) return
-    try {
-      await executeRedeploy(address)
-    } finally {
-      setRedeployTargetAddress(null)
-    }
   }
 
   // Same wiring as delete: 202 → reload deployment + tasks and let the
@@ -590,7 +518,7 @@ export function useDeploymentDetail(deploymentId: string) {
     streamTotalLogCount: stream.totalLogCount,
     ...phases,
 
-    // infrastructure (VM apps) and workloads (pods)
+    // workloads
     workloads,
     workloadsLive,
     workloadBusy,
@@ -600,17 +528,9 @@ export function useDeploymentDetail(deploymentId: string) {
     restartWorkload: (workload: string) => void workloadAction(workload, false),
     askResetWorkload,
     confirmResetWorkload,
-    vmResources,
-    networkResources,
-    securityResources,
     resourcesLoading,
     resourcesError,
-    redeployInFlight,
-    openDrawerAddress,
     loadResources,
-    openVmDrawer,
-    closeVmDrawer,
-    redeployVm,
 
     // lifecycle
     canCancel: gates.canCancel,
@@ -625,14 +545,10 @@ export function useDeploymentDetail(deploymentId: string) {
     setShowCancelModal,
     showDeleteModal,
     setShowDeleteModal,
-    showRedeployModal,
-    setShowRedeployModal,
-    redeployTargetAddress,
     showPauseResumeModal,
     setShowPauseResumeModal,
     confirmCancel,
     confirmDelete,
-    confirmRedeploy,
     confirmPauseResume,
 
   }

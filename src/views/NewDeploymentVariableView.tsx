@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ArrowRight, Box, ChevronDown, ChevronUp, Layers } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Layers } from 'lucide-react'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar'
 import type { AppVariable } from '@/types'
 import { isExpert, formKeyOf } from './new-deployment/variableForm'
@@ -60,7 +60,6 @@ export default function NewDeploymentVariableView() {
         getScopedValue={(slot) => form.getScopedValue(key, slot)}
         getFileSlot={form.getFileSlot}
         isTooltipOpen={activeTooltip === key}
-        filterNetworkId={form.networkIdForSubnets()}
         onToggleTooltip={() => setActiveTooltip((cur) => (cur === key ? null : key))}
         onChange={(v) => form.setValue(key, v)}
         onScopedChange={(slot, v) => form.setScopedValue(key, slot, v)}
@@ -69,62 +68,12 @@ export default function NewDeploymentVariableView() {
     )
   }
 
-  const packerCount = form.templateKeys.reduce((n, k) => n + form.packerByTemplate[k]!.length, 0)
   const terraformNormal = form.terraformVariables.filter((v) => !isExpert(v))
   const terraformExpert = form.terraformVariables.filter(isExpert)
 
-  const packerPanel = (f: Form) => (
-    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-info/30 overflow-hidden">
-      <div className="bg-blue-600 text-white px-6 py-4 flex items-center gap-3">
-        <Box size={24} />
-        <div>
-          <h2 className="text-xl font-bold">{t('deployment.summary.packerVars')}</h2>
-          <p className="text-xs text-blue-100 mt-0.5">{t('deployment.variables.packerDesc')}</p>
-        </div>
-      </div>
-
-      <div className="p-6 space-y-6 max-h-[600px] overflow-y-auto">
-        {packerCount === 0 ? (
-          <div className="text-center py-8 text-info italic">{t('deployment.summary.noPackerVars')}</div>
-        ) : null}
-
-        {f.templateKeys.map((tkey) => {
-          const vars = f.packerByTemplate[tkey]!
-          const normal = vars.filter((v) => !isExpert(v))
-          const expert = vars.filter(isExpert)
-          return (
-            <div key={tkey} className="space-y-6">
-              {f.templateKeys.length > 1 ? (
-                <div className="-mx-6 px-6 py-2 bg-infoTint/70 border-y border-info/30 text-sm font-semibold text-blue-900">
-                  Image: <code className="font-mono">{tkey}</code>
-                </div>
-              ) : null}
-
-              {normal.map((v) => card(v, 'blue'))}
-
-              {expert.length > 0 ? (
-                <div className="mt-2 border-t border-blue-200 pt-3">
-                  <ExpertToggle
-                    count={expert.length}
-                    open={f.packerExpertOpen}
-                    accent="blue"
-                    onToggle={() => f.setPackerExpertOpen(!f.packerExpertOpen)}
-                  />
-                  {f.packerExpertOpen ? (
-                    <div className="mt-3 space-y-4">{expert.map((v) => card(v, 'blue', true))}</div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-
   const renderBody = (f: Form) => (
-    <div className={`grid grid-cols-1 gap-6 ${f.isPods ? '' : 'lg:grid-cols-2'}`}>
-      {f.isPods && choices.length > 0 ? (
+    <div className="grid grid-cols-1 gap-6">
+      {choices.length > 0 ? (
         <ResourcePicker
           choices={choices}
           value={chosen}
@@ -132,35 +81,28 @@ export default function NewDeploymentVariableView() {
         />
       ) : null}
 
-      {f.isPods && hasNetwork ? (
+      {hasNetwork ? (
         <NetworkSettings
           draft={draft}
           onChange={(network) => useDeploymentStore.getState().updateDraft({ network })}
         />
       ) : null}
 
-      {/* Packer only exists for VM apps; pods declare their settings in appstore.yaml. */}
-      {f.isPods ? null : packerPanel(f)}
-
-      {/* Terraform (VM apps) or the app's own settings (pods) */}
-      {f.isPods && f.terraformVariables.length === 0 && (choices.length > 0 || hasNetwork) ? null : (
+      {/* The app's own settings, declared in its appstore.yaml */}
+      {f.terraformVariables.length === 0 && (choices.length > 0 || hasNetwork) ? null : (
       <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border-2 border-purple-200 overflow-hidden">
         <div className="bg-purple-600 text-white px-6 py-4 flex items-center gap-3">
           <Layers size={24} />
           <div>
-            <h2 className="text-xl font-bold">
-              {f.isPods ? t('deployment.summary.appSettings') : t('deployment.summary.terraformVars')}
-            </h2>
-            <p className="text-xs text-purple-100 mt-0.5">
-              {f.isPods ? t('deployment.variables.appSettingsDesc') : t('deployment.variables.terraformDesc')}
-            </p>
+            <h2 className="text-xl font-bold">{t('deployment.summary.appSettings')}</h2>
+            <p className="text-xs text-purple-100 mt-0.5">{t('deployment.variables.appSettingsDesc')}</p>
           </div>
         </div>
 
         <div className="p-6 space-y-6 max-h-[600px] overflow-y-auto">
           {f.terraformVariables.length === 0 ? (
             <div className="text-center py-8 text-purple-600 italic">
-              {f.isPods ? t('deployment.summary.noAppSettings') : t('deployment.summary.noTerraformVars')}
+              {t('deployment.summary.noAppSettings')}
             </div>
           ) : null}
 
