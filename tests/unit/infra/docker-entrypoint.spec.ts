@@ -113,6 +113,12 @@ describe.skipIf(!hasEnvsubst)('docker-entrypoint.sh', () => {
     expect(gateway).toContain('location ^~ /api/internal/ { return 404; }')
   })
 
+  it('caps the request body at 16m: 10 MiB of files as base64 plus the rest of the request', () => {
+    run({ API_UPSTREAM: 'appstore-api:8000' })
+
+    expect(read('api-gateway.conf')).toContain('client_max_body_size 16m;')
+  })
+
   it('leaves the gateway file empty without API_UPSTREAM', () => {
     run({})
 
