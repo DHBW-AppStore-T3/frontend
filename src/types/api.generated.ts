@@ -448,12 +448,9 @@ export interface paths {
         };
         /**
          * Get App Runtime
-         * @description Whether ``version`` runs as pods (``kubernetes``) or VMs (``openstack-vm``).
-         *
-         *     The wizard skips the OpenStack steps for pods and takes the group mode
-         *     from ``scope`` (a VM app without an appstore.yaml has none). Same
+         * @description How ``version`` runs and its group mode (``scope``). Same
          *     visibility and errors as the variables; 422 (with field paths in
-         *     ``errors``) for an invalid appstore.yaml.
+         *     ``errors``) for a missing or invalid appstore.yaml.
          */
         get: operations["get_app_runtime_apps__app_id__runtime_get"];
         put?: never;

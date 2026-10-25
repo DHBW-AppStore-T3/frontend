@@ -36,8 +36,7 @@ export type DeploymentStatus =
   // the rest of the deployment keeps running.
   | 'redeploying' | 'redeploy_failed'
 
-/** How a deployment runs: as pods in the cluster. A row of the removed OpenStack VM path says ``openstack-vm``. */
-export type DeploymentRuntime = 'kubernetes' | 'openstack-vm'
+export type DeploymentRuntime = 'kubernetes'
 
 /** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
 export type DeploymentAction = 'destroy' | 'delete' | 'pause' | 'resume' | 'cancel' | 'redeploy'

@@ -1204,7 +1204,7 @@
           "Apps"
         ],
         "summary": "Get App Runtime",
-        "description": "Whether ``version`` runs as pods (``kubernetes``) or VMs (``openstack-vm``).\n\nThe wizard skips the OpenStack steps for pods and takes the group mode\nfrom ``scope`` (a VM app without an appstore.yaml has none). Same\nvisibility and errors as the variables; 422 (with field paths in\n``errors``) for an invalid appstore.yaml.",
+        "description": "How ``version`` runs and its group mode (``scope``). Same visibility and errors as the variables; 422 (with field paths in\n``errors``) for a missing or invalid appstore.yaml.",
         "operationId": "get_app_runtime_apps__app_id__runtime_get",
         "security": [
           {
