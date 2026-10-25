@@ -923,7 +923,13 @@ export default {
   },
 
   router: {
-    forbidden: 'Zugriff verweigert — diese Seite ist nur für: {roles}'
+    forbidden: 'Zugriff verweigert — diese Seite ist nur für: {roles}',
+    error: {
+      title: 'Etwas ist schiefgelaufen',
+      description: 'Die Seite konnte nicht angezeigt werden. Laden Sie die Seite neu oder kehren Sie zum Dashboard zurück. Besteht das Problem weiter, wenden Sie sich an Ihre/n Administrator/in.',
+      reload: 'Seite neu laden',
+      backToDashboard: 'Zum Dashboard'
+    }
   },
 
   ForbiddenView: {

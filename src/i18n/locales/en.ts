@@ -921,7 +921,13 @@ export default {
   },
 
   router: {
-    forbidden: 'Access denied — this page requires: {roles}'
+    forbidden: 'Access denied — this page requires: {roles}',
+    error: {
+      title: 'Something went wrong',
+      description: 'The page could not be displayed. Reload the page or return to the dashboard. If the problem persists, please contact your administrator.',
+      reload: 'Reload page',
+      backToDashboard: 'Go to dashboard'
+    }
   },
 
   ForbiddenView: {
