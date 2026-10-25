@@ -103,6 +103,8 @@ export interface App {
   image?: string | null
   // An admin deactivated the app; only an admin can make it public again.
   hidden_by_admin?: boolean
+  // An admin recommends the app; the catalog opens on the "recommended" filter.
+  recommended?: boolean
 }
 
 /**
