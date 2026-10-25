@@ -24,6 +24,7 @@ import {
   type FormValues,
 } from './variableForm'
 import { versionLabelOf } from './summary'
+import { isClusterRuntime } from '@/utils/runtime'
 
 function parseSavedInput(raw: unknown, onInvalid: () => void): Record<string, any> {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, any>
@@ -70,7 +71,7 @@ export function useVariableForm() {
   const isMultiImage = isMultiImageLayout(templateKeys)
   // Pod apps declare their settings in appstore.yaml: no Packer, no Terraform,
   // no OpenStack resources.
-  const isPods = draft.runtime === 'kubernetes'
+  const isCluster = isClusterRuntime(draft.runtime)
   const terraformVariables = useMemo(() => variables.filter((v) => v.source === 'terraform'), [variables])
   // ---------------------------------------------------------- initial load
   useEffect(() => {
@@ -83,7 +84,7 @@ export function useVariableForm() {
 
     // OpenStack resource lists come from the project of the credential the
     // deployment will be created with (VM apps); pods have none.
-    setCredential(store.draft.runtime === 'kubernetes' ? null : (store.draft.credentialId ?? null))
+    setCredential(isClusterRuntime(store.draft.runtime) ? null : (store.draft.credentialId ?? null))
 
     let cancelled = false
     const currentTeams = () => {
@@ -237,7 +238,7 @@ export function useVariableForm() {
     packerByTemplate,
     terraformVariables,
     isMultiImage,
-    isPods,
+    isCluster,
     formValues,
     missingRequired,
     canSubmit: missingRequired.length === 0,

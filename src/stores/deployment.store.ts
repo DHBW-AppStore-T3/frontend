@@ -5,6 +5,7 @@ import { useAuthStore } from './auth.store'
 import { runRequest } from './_request'
 import { isMultiImagePackerLayout as isMultiImagePackerLayoutOf } from '@/utils/draft-variables'
 import { networkPayload } from '@/utils/network'
+import { isClusterRuntime } from '@/utils/runtime'
 
 import type {
   App,
@@ -365,7 +366,7 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
       }
       // VM apps run in the project of the chosen credential; pods need none
       // (the API ignores one sent for a pod app).
-      if (draft.runtime !== 'kubernetes' && draft.credentialId) {
+      if (!isClusterRuntime(draft.runtime) && draft.credentialId) {
         payload.credentialId = draft.credentialId
       }
       if (Object.keys(fileUploads).length > 0) {

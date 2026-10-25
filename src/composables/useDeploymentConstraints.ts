@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { App, DeploymentRuntime } from '@/types'
+import { isClusterRuntime } from '@/utils/runtime'
 
 export interface VersionShape {
   runtime?: DeploymentRuntime | null
@@ -24,7 +25,7 @@ const isWindowsByName = (app: App | null) => app?.name.toLowerCase().includes('w
 function forcesOneTeamPerPerson(app: App | null, version?: VersionShape | null): boolean {
   if (version?.scope === 'user') return true
   if (version?.scope === 'team') return false
-  if (version?.runtime === 'kubernetes') return false
+  if (isClusterRuntime(version?.runtime)) return false
   return isWindowsByName(app)
 }
 

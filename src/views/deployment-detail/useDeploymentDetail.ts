@@ -35,6 +35,7 @@ import {
   isLiveStatus,
 } from './helpers'
 import { permissionsOf, lifecycleGates } from './access'
+import { isClusterRuntime } from '@/utils/runtime'
 
 export function useDeploymentDetail(deploymentId: string) {
   const { t, i18n } = useTranslation()
@@ -57,7 +58,7 @@ export function useDeploymentDetail(deploymentId: string) {
   const isOwnerView = permissions.owner_view
   const gates = lifecycleGates(deployment)
   // Pods (Linux apps) or OpenStack VMs (the Windows desktop).
-  const isPods = deployment?.runtime === 'kubernetes'
+  const isCluster = isClusterRuntime(deployment?.runtime)
 
   // Imperative (non-render) read, so async flows decide on fresh data.
   const isOwnerViewNow = () =>
@@ -571,7 +572,7 @@ export function useDeploymentDetail(deploymentId: string) {
 
     // access and runtime
     permissions,
-    isPods,
+    isCluster,
 
     // derived deployment data
     groups,
