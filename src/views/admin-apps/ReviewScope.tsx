@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { AppVersionApproval } from '@/types'
+import { runtimeLabelKey } from '@/utils/runtime'
 
 const COMMIT_LENGTH = 12
 const DIGEST_LENGTH = 19
@@ -15,7 +16,7 @@ export default function ReviewScope({ approval }: { approval: AppVersionApproval
     <dl className="mt-1.5 space-y-0.5 text-[11px] text-textMuted" data-testid="review-scope">
       <div className="flex gap-1">
         <dt className="font-medium">{t('AdminAppsView.runtimeLabel')}</dt>
-        <dd>{t('runtime.kubernetes')}</dd>
+        <dd>{t(runtimeLabelKey(approval.runtime))}</dd>
       </div>
       {approval.commit_sha ? (
         <div className="flex gap-1">

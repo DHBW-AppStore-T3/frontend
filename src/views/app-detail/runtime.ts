@@ -22,4 +22,4 @@ export function runtimeErrorKey(err: unknown): 'AppsDetailView.runtime.invalidSp
     : 'AppsDetailView.runtime.loadError'
 }
 
-export const runtimeLabelKey = (_runtime: AppRuntime['runtime']) => 'runtime.kubernetes'
+export { runtimeLabelKey } from '@/utils/runtime'
