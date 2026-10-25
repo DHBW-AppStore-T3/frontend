@@ -93,6 +93,10 @@ export const appApi = {
       )
     },
 
+    setRecommended: (appId: string, recommended: boolean) => {
+      return api.put<App>(`/admin/apps/${appId}/recommended`, { recommended })
+    },
+
     revokeVersion: (appId: string, versionTag: string, rejectionReason: string) => {
       return api.post<AppVersionApproval>(
         `/admin/apps/${appId}/versions/${encodeURIComponent(versionTag)}/revoke`,

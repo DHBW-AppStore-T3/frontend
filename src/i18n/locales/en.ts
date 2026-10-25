@@ -13,6 +13,7 @@ export default {
     "favorite": "Mark {name} as a favorite",
     "categories": {
       "label": "App categories",
+      "recommended": "Recommended",
       "all": "All",
       "maschinenbau": "Mechanical Engineering",
       "informatik": "Computer Science",
@@ -412,6 +413,7 @@ export default {
     noAppsDesc: "No apps have been created in the database yet.",
     noPrivateApps: "No private apps available.",
     noPublicApps: "No public apps available.",
+    noRecommendedApps: "No apps are recommended right now.",
     noAppsInDepartment: "No apps are currently assigned to {department}.",
     noDescription: "No description available.",
     detailsDeploy: "Details & Deployment",
@@ -607,6 +609,13 @@ export default {
       title: "Admin view",
       description:
         "Shows additional management functions, for example version management on apps. With the admin view off, you see the interface as a teacher does.",
+    },
+    recommended: {
+      title: "Recommended apps",
+      description: "Recommended apps appear in the app catalog under the \"Recommended\" filter.",
+      toggleLabel: "Recommend {name}",
+      empty: "There are no apps yet.",
+      error: "The recommendation could not be saved.",
     },
   },
 

@@ -13,6 +13,7 @@ export default {
     "favorite": "{name} als Favorit markieren",
     "categories": {
       "label": "App-Kategorien",
+      "recommended": "Empfohlen",
       "all": "Alle",
       "maschinenbau": "Maschinenbau",
       "informatik": "Informatik",
@@ -412,6 +413,7 @@ export default {
     noAppsDesc: "Es wurden noch keine Apps in der Datenbank angelegt.",
     noPrivateApps: "Keine privaten Apps vorhanden.",
     noPublicApps: "Keine öffentlichen Apps vorhanden.",
+    noRecommendedApps: "Aktuell sind keine Apps empfohlen.",
     noAppsInDepartment: "Für {department} sind derzeit keine Apps zugeordnet.",
     noDescription: "Keine Beschreibung verfügbar.",
     detailsDeploy: "Details & Deployment",
@@ -610,6 +612,13 @@ export default {
       title: "Admin-Ansicht",
       description:
         "Zeigt zusätzliche Verwaltungsfunktionen, zum Beispiel die Versionsverwaltung bei Apps. Ist die Admin-Ansicht aus, sehen Sie die Oberfläche wie ein Dozent.",
+    },
+    recommended: {
+      title: "Empfohlene Apps",
+      description: "Empfohlene Apps erscheinen im App-Katalog unter dem Filter „Empfohlen“.",
+      toggleLabel: "{name} empfehlen",
+      empty: "Es gibt noch keine Apps.",
+      error: "Die Empfehlung konnte nicht gespeichert werden.",
     },
   },
 
