@@ -105,6 +105,8 @@ export interface App {
   hidden_by_admin?: boolean
   // An admin recommends the app; the catalog opens on the "recommended" filter.
   recommended?: boolean
+  // Version tag teachers deploy; set by an admin, null/absent means none set.
+  deploy_version?: string | null
 }
 
 /**

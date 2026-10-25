@@ -18,12 +18,14 @@ vi.mock('@/api/app.api', () => ({
     update: vi.fn(),
     delete: vi.fn(),
     getRuntime: vi.fn(),
+    admin: { setDeployVersion: vi.fn() },
   },
 }))
 
 import { appApi } from '@/api/app.api'
 import AppsDetailView from '@/views/AppsDetailView'
 import { useAuthStore } from '@/stores/auth.store'
+import { useAdminViewStore } from '@/stores/admin-view.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -64,11 +66,17 @@ function renderView(entries = ['/apps/app-123']) {
 const toasts = () => useToastStore.getState().toasts.map((t) => [t.type, t.message])
 // Teachers and admins deploy; students do not.
 const setUser = (userId: string, role = 'teacher') => useAuthStore.setState({ user: { userId, role } as any })
+// Admin with the admin view switched on (version management is visible).
+const setAdminView = (userId = 'admin-1') => {
+  setUser(userId, 'admin')
+  useAdminViewStore.setState({ enabledByAccount: { [userId]: true } })
+}
 const tab = (key: string) => screen.getByRole('button', { name: new RegExp(`AppsDetailView\\.${key}`) })
 
 beforeEach(() => {
   vi.clearAllMocks()
   useToastStore.setState({ toasts: [] })
+  useAdminViewStore.setState({ enabledByAccount: {} })
   useDeploymentStore.getState().resetDraft()
   useOpenStackCredentialsStore.getState().reset()
   setUser('owner')
@@ -97,6 +105,7 @@ describe('AppsDetailView', () => {
   })
 
   it('wählt automatisch die erste Version aus', async () => {
+    setAdminView()
     renderView()
     await screen.findByRole('heading', { name: 'Test App' })
 
@@ -117,22 +126,144 @@ describe('AppsDetailView', () => {
   })
 
   // --- deployment ---
-  it('speichert die Auswahl im Deployment-Store und navigiert zur Config', async () => {
+  it('Dozent sieht weder Badge noch Tab noch Versionsauswahl', async () => {
     renderView()
     await screen.findByRole('heading', { name: 'Test App' })
 
-    await userEvent.selectOptions(screen.getByRole('combobox'), 'v2.0')
-    await waitFor(() => expect(appApi.getRuntime).toHaveBeenCalledWith('app-123', 'v2.0'))
-    await waitFor(() => expect(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ })).toBeEnabled())
-    await userEvent.click(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ }))
+    expect(screen.queryByText(/AppsDetailView\.versionsAvailable/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /AppsDetailView\.tabStore/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
 
-    const draft = useDeploymentStore.getState().draft
-    expect(draft.appId).toBe('app-123')
-    expect(draft.releaseTag).toBe('v2.0')
-    // How the version runs travels with the draft (credential and group step).
-    expect(draft.runtime).toBe('kubernetes')
-    expect(draft.scope).toBe('team')
-    expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
+  describe('welche Version deployt wird', () => {
+    const deployNow = async () => {
+      await waitFor(() => expect(appApi.getRuntime).toHaveBeenCalled())
+      await waitFor(() => expect(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ })).toBeEnabled())
+      await userEvent.click(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ }))
+    }
+
+    it('Dozent deployt die festgelegte Version', async () => {
+      vi.mocked(appApi.getById).mockResolvedValue({
+        data: baseApp({ deploy_version: 'v2.0', versions: ['v1.0', 'v2.0'] }),
+      } as any)
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+      await deployNow()
+
+      const draft = useDeploymentStore.getState().draft
+      expect(draft.appId).toBe('app-123')
+      expect(draft.releaseTag).toBe('v2.0')
+      // How the version runs travels with the draft (credential and group step).
+      expect(draft.runtime).toBe('kubernetes')
+      expect(draft.scope).toBe('team')
+      expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
+    })
+
+    it('ohne festgelegte Version wird die erste Version deployt', async () => {
+      vi.mocked(appApi.getById).mockResolvedValue({
+        data: baseApp({ deploy_version: null, versions: ['v2.0', 'v1.0'] }),
+      } as any)
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+      await deployNow()
+
+      expect(useDeploymentStore.getState().draft.releaseTag).toBe('v2.0')
+    })
+
+    it('eine festgelegte Version, die nicht mehr in der Liste steht, fällt auf die erste zurück', async () => {
+      vi.mocked(appApi.getById).mockResolvedValue({
+        data: baseApp({ deploy_version: 'v9.9', versions: ['v2.0', 'v1.0'] }),
+      } as any)
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+      await deployNow()
+
+      expect(useDeploymentStore.getState().draft.releaseTag).toBe('v2.0')
+    })
+
+    it('Admin ohne Admin-Ansicht sieht die Dozenten-Ansicht', async () => {
+      setUser('admin-1', 'admin')
+      vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp({ deploy_version: 'v2.0' }) } as any)
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+      expect(screen.queryByText(/AppsDetailView\.versionsAvailable/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /AppsDetailView\.deployButton/ })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /AppsDetailView\.setDeployVersionButton/ })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Version festlegen (Admin-Ansicht)', () => {
+    const approval = (version_tag: string, status = 'approved') => ({
+      approvalId: `a-${version_tag}`,
+      appId: 'app-123',
+      version_tag,
+      status,
+      created_at: '2026-01-01T00:00:00Z',
+    })
+    const setButton = () => screen.getByRole('button', { name: /AppsDetailView\.setDeployVersionButton/ })
+    const openAsAdmin = async (over: Record<string, unknown> = {}, approvals = [approval('v1.0'), approval('v2.0')]) => {
+      setAdminView()
+      vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp(over) } as any)
+      vi.mocked(appApi.listVersionApprovals).mockResolvedValue({ data: approvals } as any)
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+      await waitFor(() => expect(appApi.listVersionApprovals).toHaveBeenCalled())
+    }
+
+    it('zeigt Badge, Tab und Versionsauswahl und statt Deploy den Button Version festlegen', async () => {
+      await openAsAdmin()
+
+      expect(screen.getByText(/AppsDetailView\.versionsAvailable/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /AppsDetailView\.tabStore/ })).toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toBeInTheDocument()
+      expect(setButton()).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /AppsDetailView\.deployButton/ })).not.toBeInTheDocument()
+    })
+
+    it('ruft setDeployVersion auf, zeigt den Toast und die neue Version, startet kein Deployment', async () => {
+      vi.mocked(appApi.admin.setDeployVersion).mockResolvedValue({ data: baseApp({ deploy_version: 'v2.0' }) } as any)
+      await openAsAdmin()
+
+      await userEvent.selectOptions(screen.getByRole('combobox'), 'v2.0')
+      await userEvent.click(setButton())
+
+      await waitFor(() => expect(appApi.admin.setDeployVersion).toHaveBeenCalledWith('app-123', 'v2.0'))
+      expect(toasts()).toContainEqual(['success', 'AppsDetailView.toasts.deployVersionSet'])
+      expect(await screen.findByText('AppsDetailView.deployVersionCurrent')).toBeInTheDocument()
+      expect(useDeploymentStore.getState().draft.releaseTag).not.toBe('v2.0')
+      expect(screen.getByTestId('where')).toHaveTextContent('/apps/app-123')
+    })
+
+    it('zeigt den Hinweis, wenn noch keine Version festgelegt ist', async () => {
+      await openAsAdmin({ deploy_version: null })
+      expect(screen.getByText('AppsDetailView.deployVersionNone')).toBeInTheDocument()
+    })
+
+    it('ist deaktiviert bei nicht freigegebener Version, mit Hinweis', async () => {
+      await openAsAdmin({}, [approval('v1.0'), approval('v2.0', 'pending')])
+
+      await userEvent.selectOptions(screen.getByRole('combobox'), 'v2.0')
+
+      expect(setButton()).toBeDisabled()
+      expect(setButton()).toHaveAttribute('title', 'AppsDetailView.setDeployVersionNotApproved')
+    })
+
+    it('ist deaktiviert bei bereits festgelegter Version', async () => {
+      await openAsAdmin({ deploy_version: 'v1.0' })
+      expect(setButton()).toBeDisabled()
+    })
+
+    it('zeigt bei einem Fehler den Toast und ändert die Hinweiszeile nicht', async () => {
+      vi.mocked(appApi.admin.setDeployVersion).mockRejectedValue(new Error('boom'))
+      await openAsAdmin({ deploy_version: null })
+
+      await userEvent.click(setButton())
+
+      await waitFor(() => expect(toasts()).toContainEqual(['error', 'AppsDetailView.toasts.deployVersionError']))
+      expect(screen.getByText('AppsDetailView.deployVersionNone')).toBeInTheDocument()
+    })
   })
 
   it('deaktiviert den Deploy-Button ohne Versionen', async () => {
@@ -264,6 +395,7 @@ describe('AppsDetailView', () => {
 
   // --- store tab ---
   describe('store tab', () => {
+    beforeEach(() => setAdminView())
     const openStore = async () => {
       renderView()
       await screen.findByRole('heading', { name: 'Test App' })
@@ -351,7 +483,7 @@ describe('AppsDetailView', () => {
 
     it('zeigt den Stand des Servers: macht ein Admin die App öffentlich, fällt die Sperre', async () => {
       vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp({ is_private: true, hidden_by_admin: true }) } as any)
-      setUser('someone-else', 'admin')
+      setAdminView('someone-else')
       vi.mocked(appApi.update).mockResolvedValue({ data: { is_private: false, hidden_by_admin: false } } as any)
       renderView()
       await screen.findByRole('heading', { name: 'Test App' })
@@ -362,14 +494,6 @@ describe('AppsDetailView', () => {
 
       await waitFor(() => expect(toasts()).toContainEqual(['success', 'AppsDetailView.toasts.setPublic']))
       expect(screen.queryByTestId('hidden-by-admin')).not.toBeInTheDocument()
-    })
-
-    it('von einem Admin deaktivierte Apps kann der Besitzer nicht wieder öffentlich machen', async () => {
-      vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp({ is_private: true, hidden_by_admin: true }) } as any)
-      await openStore()
-
-      expect(screen.getByTestId('hidden-by-admin')).toBeInTheDocument()
-      expect(screen.getByRole('switch')).toBeDisabled()
     })
 
     it('zeigt Laufzeit und Commit jeder eingereichten Version', async () => {

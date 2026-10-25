@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, GitBranch, Layers, Pencil, ShoppingBag, Trash2 } from 'lucide-react'
 import AppLogo from '@/components/ui/AppLogo'
+import RoleGate from '@/components/RoleGate'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
 import { useDeploymentStore } from '@/stores/deployment.store'
@@ -24,6 +25,7 @@ import { useVersionRuntime } from './app-detail/useVersionRuntime'
 import { canStartDeployment, needsCredential } from './app-detail/runtime'
 import {
   bannerStatusOf,
+  deployVersionOf,
   hasVersionInfo as hasInfo,
   indexApprovalsByVersion,
   toVersionInfo,
@@ -72,7 +74,7 @@ export default function AppsDetailView() {
   const navigate = useNavigate()
   const { hash } = useLocation()
   const toast = useToast()
-  const { isAdmin, isStaff } = useRole()
+  const { isAdmin, isStaff, isAdminView } = useRole()
   const userId = useAuthStore(selectUserId)
   const credentialsResolved = useOpenStackCredentialsStore(selectIsResolved)
   const hasUsableCredential = useOpenStackCredentialsStore(selectHasUsableCredential)
@@ -82,7 +84,8 @@ export default function AppsDetailView() {
   const isOwnerOf = (app: AppDetail) => String(app.userId) === String(userId)
   const canManage = (app: AppDetail) => isAdmin || isOwnerOf(app)
 
-  const detail = useAppDetail(id, canManage)
+  // Approvals only matter to the admin view (store tab, "set version").
+  const detail = useAppDetail(id, () => isAdminView)
   const { app } = detail
 
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -92,8 +95,9 @@ export default function AppsDetailView() {
   const [submitTarget, setSubmitTarget] = useState<string | null>(null)
 
   const versionOptions = useMemo(() => versionOptionsOf(app), [app])
-  // Default to the first version once the list is known.
-  const effectiveVersion = selectedVersion || versionOptions[0] || ''
+  // Only the admin view picks a version; everyone else deploys the admin's choice
+  // (or the first version while none is set).
+  const effectiveVersion = selectedVersion || deployVersionOf(app, versionOptions)
   const versionDetails = versionDetailsOf(app, effectiveVersion)
   const approvalByVersion = useMemo(() => indexApprovalsByVersion(detail.approvals), [detail.approvals])
 
@@ -148,7 +152,15 @@ export default function AppsDetailView() {
     if (submitTarget && (await detail.submitVersion(submitTarget, notes))) setSubmitTarget(null)
   }
 
-  const showStore = activeTab === 'store' && canManageVersions
+  const setDeployVersionDisabledReason: 'busy' | 'same' | 'not_approved' | null = detail.isSettingDeployVersion
+    ? 'busy'
+    : effectiveVersion && effectiveVersion === app?.deploy_version
+      ? 'same'
+      : approvalByVersion[effectiveVersion]?.status !== 'approved'
+        ? 'not_approved'
+        : null
+
+  const showStore = activeTab === 'store' && isAdminView
 
   return (
     <div className="app-page app-detail-page">
@@ -181,9 +193,11 @@ export default function AppsDetailView() {
                 <div>
                   <h1 className="text-3xl font-bold text-textHeading mb-2">{app.name}</h1>
                   <div className="flex items-center gap-3 text-sm text-textMuted">
-                    <span className="flex items-center gap-1 bg-surfaceMuted px-2 py-1 rounded">
-                      <GitBranch size={14} /> {app.versions?.length || 0} {t('AppsDetailView.versionsAvailable')}
-                    </span>
+                    <RoleGate adminView>
+                      <span className="flex items-center gap-1 bg-surfaceMuted px-2 py-1 rounded">
+                        <GitBranch size={14} /> {app.versions?.length || 0} {t('AppsDetailView.versionsAvailable')}
+                      </span>
+                    </RoleGate>
                     {app.git_link ? (
                       <a
                         href={safeHttpUrl(app.git_link)}
@@ -228,7 +242,7 @@ export default function AppsDetailView() {
               icon={<Layers size={16} />}
               label={t('AppsDetailView.tabOverview')}
             />
-            {canManageVersions ? (
+            {isAdminView ? (
               <TabButton
                 active={showStore}
                 onClick={() => setActiveTab('store')}
@@ -275,6 +289,10 @@ export default function AppsDetailView() {
               scrollToDeployOptions={hash === DEPLOYMENT_OPTIONS_HASH}
               onSelectVersion={setSelectedVersion}
               onDeploy={startDeployment}
+              showVersionSelect={isAdminView}
+              deployVersion={app.deploy_version ?? null}
+              setDeployVersionDisabledReason={setDeployVersionDisabledReason}
+              onSetDeployVersion={() => void detail.setDeployVersion(effectiveVersion)}
             />
           )}
         </div>

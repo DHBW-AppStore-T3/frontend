@@ -97,6 +97,10 @@ export const appApi = {
       return api.put<App>(`/admin/apps/${appId}/recommended`, { recommended })
     },
 
+    setDeployVersion: (appId: string, versionTag: string) => {
+      return api.put<App>(`/admin/apps/${appId}/deploy-version`, { version_tag: versionTag })
+    },
+
     revokeVersion: (appId: string, versionTag: string, rejectionReason: string) => {
       return api.post<AppVersionApproval>(
         `/admin/apps/${appId}/versions/${encodeURIComponent(versionTag)}/revoke`,
