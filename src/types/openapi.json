@@ -34,6 +34,29 @@
         "summary": "Get Me",
         "description": "Get current authenticated user with course information",
         "operationId": "get_me_users_me_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -44,13 +67,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/users/": {
@@ -119,6 +147,22 @@
               ],
               "title": "Course Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -178,8 +222,26 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
               "default": 10,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -228,6 +290,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -274,6 +352,22 @@
               "type": "string",
               "format": "uuid",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -334,6 +428,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -393,6 +503,22 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -432,6 +558,24 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -491,6 +635,22 @@
               "format": "uuid",
               "title": "Course Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -537,6 +697,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Course Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -595,6 +771,22 @@
               "format": "uuid",
               "title": "Course Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -636,6 +828,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Course Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -687,6 +895,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Course Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -761,6 +985,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -813,6 +1053,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -862,6 +1118,22 @@
               "type": "string",
               "format": "uuid",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -915,6 +1187,22 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -954,6 +1242,24 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -996,7 +1302,7 @@
           "Apps"
         ],
         "summary": "Get App",
-        "description": "Get app by ID with available versions.\n\nSoft-deleted apps are still readable here so existing deployments\nthat still reference them can render their app name, git link,\netc. They just don't show up in the apps list / deploy wizard\n(those use the default-filtered ``get_apps``).\n\nThe owner and admins see every tag. Everyone else sees the approved\nversions whose tag still points to the approved commit; a moved tag\ndisappears until it is submitted and approved again.",
+        "description": "Get app by ID with available versions.\n\nSoft-deleted apps are still readable here so existing deployments\nthat still reference them can render their app name, git link,\netc. They just don't show up in the apps list / deploy wizard\n(those use the default-filtered ``get_apps``).\n\nThe owner and admins see every tag. Everyone else sees the approved\nversions whose tag still points to the approved commit; a moved tag\ndisappears until it is submitted and approved again.\n\n``deploy_version`` is only reported while that version can still be\ndeployed (its tag exists and points to the approved commit). If the\nrepository cannot be read, the stored value is reported as it is.",
         "operationId": "get_app_apps__app_id__get",
         "security": [
           {
@@ -1012,6 +1318,22 @@
               "type": "string",
               "format": "uuid",
               "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1059,6 +1381,22 @@
               "type": "string",
               "format": "uuid",
               "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1117,6 +1455,22 @@
               "format": "uuid",
               "title": "App Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1142,7 +1496,7 @@
           "Apps"
         ],
         "summary": "Get App Variables",
-        "description": "Get dynamic app variables from app's Git repository\nParses variables.tf file and returns all configurable variables\n\nReturns:\n- name: Variable name\n- type: Variable type (string, number, bool, list, map, etc.)\n- description: Variable description\n- default: Default value (if any)\n- required: Whether variable is required\n\nReads the commit ``version`` points to now; 404 for an unknown tag,\n502 when the repository cannot be read.",
+        "description": "Get the variables of an app version from the appstore.yaml in its Git repository\n\nReturns:\n- name: Variable name\n- type: Variable type (string, number, bool, list, map, etc.)\n- description: Variable description\n- default: Default value (if any)\n- required: Whether variable is required\n\nReads the commit ``version`` points to now; 404 for an unknown tag,\n502 when the repository cannot be read.",
         "operationId": "get_app_variables_apps__app_id__variables_get",
         "security": [
           {
@@ -1167,6 +1521,22 @@
             "schema": {
               "type": "string",
               "title": "Version"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1204,7 +1574,7 @@
           "Apps"
         ],
         "summary": "Get App Runtime",
-        "description": "How ``version`` runs and its group mode (``scope``). Same visibility and errors as the variables; 422 (with field paths in\n``errors``) for a missing or invalid appstore.yaml.",
+        "description": "How ``version`` runs, for the deploy wizard: its scope, egress, access, resources, network.\n\nSame visibility and errors as the variables; 422 (with field paths in\n``errors``) for a missing or invalid appstore.yaml.",
         "operationId": "get_app_runtime_apps__app_id__runtime_get",
         "security": [
           {
@@ -1229,6 +1599,22 @@
             "schema": {
               "type": "string",
               "title": "Version"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1262,7 +1648,7 @@
           "Apps"
         ],
         "summary": "Submit Version",
-        "description": "Submit a version tag for admin review, at the commit it points to now.\n\nOwner OR admin only. A REJECTED version, or one whose tag has moved\nsince its review, can be resubmitted; a PENDING or APPROVED one at the\nsame commit cannot (409). 422 for invalid ``@openstack`` markers, 404\nfor an unknown tag, 502 when the repository cannot be read.",
+        "description": "Submit a version tag for admin review, at the commit it points to now.\n\nOwner OR admin only. A REJECTED version, or one whose tag has moved\nsince its review, can be resubmitted; a PENDING or APPROVED one at the\nsame commit cannot (409). 422 for a missing or invalid appstore.yaml, 404\nfor an unknown tag, 502 when the repository cannot be read.",
         "operationId": "submit_version_apps__app_id__versions__version_tag__submit_post",
         "security": [
           {
@@ -1287,6 +1673,22 @@
             "schema": {
               "type": "string",
               "title": "Version Tag"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1354,6 +1756,22 @@
               "type": "string",
               "title": "Version Tag"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1396,6 +1814,22 @@
               "format": "uuid",
               "title": "App Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1435,27 +1869,55 @@
         "summary": "List Pending Versions",
         "description": "Return all version submissions awaiting admin review, oldest first.",
         "operationId": "list_pending_versions_admin_apps_versions_pending_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/AppVersionApprovalWithApp"
                   },
-                  "type": "array",
                   "title": "Response List Pending Versions Admin Apps Versions Pending Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/admin/apps/{app_id}/versions/{version_tag}/approve": {
@@ -1465,7 +1927,7 @@
           "Admin"
         ],
         "summary": "Approve Version",
-        "description": "Approve a submitted version at its submitted commit — makes exactly\nthat commit deployable by all users (.github#7 G).\n\n- 404: the app or the version submission does not exist.\n- 409 ``version_moved``: the tag no longer points to the submitted\n  commit; the admin would approve code that was not submitted.\n- 409: the version is already approved, or was submitted before\n  versions were pinned to commits.\n- 422: invalid ``@openstack`` markers in the submitted commit's\n  Terraform/Packer variable files (``marker_errors`` lists them).\n- 502: the repository cannot be read; nothing is approved unchecked.",
+        "description": "Approve a submitted version at its submitted commit — makes exactly\nthat commit deployable by all users (.github#7 G).\n\n- 404: the app or the version submission does not exist.\n- 409 ``version_moved``: the tag no longer points to the submitted\n  commit; the admin would approve code that was not submitted.\n- 409: the version is already approved, or was submitted before\n  versions were pinned to commits.\n- 422: the submitted commit has no valid appstore.yaml.\n- 502: the repository cannot be read; nothing is approved unchecked.",
         "operationId": "approve_version_admin_apps__app_id__versions__version_tag__approve_post",
         "security": [
           {
@@ -1490,6 +1952,22 @@
             "schema": {
               "type": "string",
               "title": "Version Tag"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1549,6 +2027,22 @@
             "schema": {
               "type": "string",
               "title": "Version Tag"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1619,6 +2113,22 @@
               "type": "string",
               "title": "Version Tag"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -1679,8 +2189,176 @@
               "format": "uuid",
               "title": "App Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/apps/{app_id}/recommended": {
+      "put": {
+        "tags": [
+          "Admin",
+          "Admin"
+        ],
+        "summary": "Set App Recommended",
+        "description": "Mark an app as recommended or not. Admin only.\n\nThe flag only highlights the app in the catalog; it does not change who\nmay see or deploy it.",
+        "operationId": "set_app_recommended_admin_apps__app_id__recommended_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppRecommendedUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/apps/{app_id}/deploy-version": {
+      "put": {
+        "tags": [
+          "Admin",
+          "Admin"
+        ],
+        "summary": "Set Deploy Version",
+        "description": "Set the version teachers deploy, or clear it with ``version_tag: null``.\n\nOnly a version that is approved for the commit its tag points to now\ncan be set:\n\n- 404: the app does not exist, or the version has no approval entry.\n- 409 ``version_not_approved``: the entry exists but is pending,\n  rejected or from before versions were pinned to commits.\n- 409 ``version_moved``: the tag points to another commit than the\n  approved one; it has to be submitted and reviewed again.\n- 502: the repository cannot be read.\n\nThe setting is cleared again when the version's approval ends (revoked,\nor replaced by a new submission). ``POST /deployments/`` is not bound to\nit and still checks the approval of the version it is given.",
+        "operationId": "set_deploy_version_admin_apps__app_id__deploy_version_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "App Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppDeployVersionUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1711,7 +2389,7 @@
           "Deployments"
         ],
         "summary": "List Deployments",
-        "description": "List deployments visible to the caller.\n\nVisibility rules:\n  * **Staff** (teachers and admins): deployments they created —\n    their own owned set. Cross-user listing is intentional UX: a\n    teacher opens an individual deployment via direct link or via\n    a student's profile page, not from this index.\n  * **Students** (and any non-staff role): deployments they own\n    OR are a member of — either via a team mapping or a direct\n    ``UserToDeployment`` row.\n  * Either way also every VM deployment in an OpenStack project the\n    caller holds a verified credential for (project peers).\n\nA ``?scope=course`` branch used to sit here, listing every\ndeployment whose owner was in a course the caller teaches. It had\nno caller in the frontend and no test, it silently ignored\n``status_filter``, and its admin arm was a comment block ending in\n``pass``. Removed rather than repaired: if the\nteacher-inspects-a-student feature comes back it wants its own\nendpoint with a working filter and tests, not this.",
+        "description": "List deployments visible to the caller.\n\nVisibility rules:\n  * **Staff** (teachers and admins): deployments they created —\n    their own owned set. Cross-user listing is intentional UX: a\n    teacher opens an individual deployment via direct link or via\n    a student's profile page, not from this index.\n  * **Students** (and any non-staff role): deployments they own\n    OR are a member of — either via a team mapping or a direct\n    ``UserToDeployment`` row.\n\nA ``?scope=course`` branch used to sit here, listing every\ndeployment whose owner was in a course the caller teaches. It had\nno caller in the frontend and no test, it silently ignored\n``status_filter``, and its admin arm was a comment block ending in\n``pass``. Removed rather than repaired: if the\nteacher-inspects-a-student feature comes back it wants its own\nendpoint with a working filter and tests, not this.",
         "operationId": "list_deployments_deployments__get",
         "security": [
           {
@@ -1771,6 +2449,22 @@
               ],
               "title": "Status Filter"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -1805,11 +2499,29 @@
           "Deployments"
         ],
         "summary": "Create Deployment",
-        "description": "Create a new deployment\n\nAtomicity: a per-user advisory lock serializes credential mutation\nwith deployment dispatch. The deployment row, teams, user mappings,\nand the initial PENDING task row are all inserted in a single\ntransaction, so the user can never end up with a deployment row\nthat has no matching task. The queue dispatch happens AFTER commit;\nif it fails, the task row is flipped to FAILED so the deployment\nsurfaces an honest error instead of hanging in PENDING forever.",
+        "description": "Create a new deployment\n\nAtomicity: a per-user advisory lock serializes concurrent creates of one\nuser (the workload budget). The deployment row, teams, user mappings,\nand the initial PENDING task row are all inserted in a single\ntransaction, so the user can never end up with a deployment row\nthat has no matching task. The queue dispatch happens AFTER commit;\nif it fails, the task row is flipped to FAILED so the deployment\nsurfaces an honest error instead of hanging in PENDING forever.",
         "operationId": "create_deployment_deployments__post",
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -1852,7 +2564,7 @@
           "Deployments"
         ],
         "summary": "Get Deployment",
-        "description": "Get deployment by ID with full details including:\n- User and App relations\n- Teams with members\n- Latest task status\n- Terraform outputs\n- Optionally: full logs (use include_logs=true)",
+        "description": "Get deployment by ID with full details including:\n- User and App relations\n- Teams with members\n- Latest task status\n- Task outputs (the \"terraform_outputs\" of the result contract)\n- Optionally: full logs (use include_logs=true)",
         "operationId": "get_deployment_deployments__deployment_id__get",
         "security": [
           {
@@ -1878,6 +2590,22 @@
               "type": "boolean",
               "default": false,
               "title": "Include Logs"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1909,7 +2637,7 @@
           "Deployments"
         ],
         "summary": "Delete Deployment",
-        "description": "Unified delete — destroys OpenStack resources first if needed.\n\nRestricted to the owner-view (creator, teacher, admin). Members\ncan read-access the deployment but never tear it down.",
+        "description": "Unified delete — destroys the namespace of a pod deployment first.\n\nRestricted to the owner-view (creator, teacher, admin). Members\ncan read-access the deployment but never tear it down.",
         "operationId": "delete_deployment_deployments__deployment_id__delete",
         "security": [
           {
@@ -1925,6 +2653,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -1956,7 +2700,7 @@
           "Deployments"
         ],
         "summary": "List Deployment Resources",
-        "description": "Stage-1 resource listing for the Infrastructure tab.\n\nOwner-only. ``refresh=false`` skips the live OpenStack join — use\nthat when polling rapidly to avoid hammering Keystone, or when\nOpenStack is known unavailable and the cached state is good enough.",
+        "description": "The workloads of a pod deployment, read live from its namespace.\n\nInspect-only view: owner, admin, or a course-teacher of the\ndeployment-owner's course. Course-teachers explicitly do NOT have\noperate rights; this endpoint is read-only.",
         "operationId": "list_deployment_resources_deployments__deployment_id__resources_get",
         "security": [
           {
@@ -1972,6 +2716,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2031,6 +2791,22 @@
               "type": "string",
               "title": "Workload"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2087,6 +2863,22 @@
               "type": "string",
               "title": "Workload"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2134,6 +2926,22 @@
               "format": "uuid",
               "title": "Deployment Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2164,7 +2972,7 @@
           "Deployments"
         ],
         "summary": "Pause Deployment",
-        "description": "Pause a running deployment by stopping its compute instances.\n\nOwner-only — same gate as Destroy, because pausing a teammate's\ndeployment is in practice a denial-of-service against the team.\n\nReturns ``202 + {task_id, status: \"pausing\"}`` on dispatch. The\nfrontend reads ``status`` to switch to the live SSE view; the\ndeployment's effective status is recomputed from the new task\nrow by ``crud_deployments.get_deployment_status``.",
+        "description": "Pause a running deployment by scaling its workloads to zero.\n\nOwner-only — same gate as Destroy, because pausing a teammate's\ndeployment is in practice a denial-of-service against the team.\n\nReturns ``202 + {task_id, status: \"pausing\"}`` on dispatch. The\nfrontend reads ``status`` to switch to the live SSE view; the\ndeployment's effective status is recomputed from the new task\nrow by ``crud_deployments.get_deployment_status``.",
         "operationId": "pause_deployment_deployments__deployment_id__pause_post",
         "security": [
           {
@@ -2180,6 +2988,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2211,7 +3035,7 @@
           "Deployments"
         ],
         "summary": "Resume Deployment",
-        "description": "Resume a paused deployment by starting its compute instances.",
+        "description": "Resume a paused deployment by starting its workloads again.",
         "operationId": "resume_deployment_deployments__deployment_id__resume_post",
         "security": [
           {
@@ -2227,6 +3051,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2258,7 +3098,7 @@
           "Deployments"
         ],
         "summary": "Download Deployment File",
-        "description": "Stream the raw bytes of one wizard-uploaded file back to the owner.\n\nPath components mirror how the upload was indexed:\n  * ``var_name`` — the ``@openstack:file:*`` variable name\n  * ``slot_key`` — the inner-map key (``\"all\"`` for scope=all,\n    team name for scope=team, ``Team-User`` composite for scope=user)\n\nReturns 404 if any layer of the lookup misses; the frontend can\ntherefore probe a slot's existence via this endpoint without\nneeding a separate metadata response.",
+        "description": "Stream the raw bytes of one wizard-uploaded file back to the owner.\n\nPath components mirror how the upload was indexed:\n  * ``var_name`` — the name of the file variable (``type: file`` in appstore.yaml)\n  * ``slot_key`` — the inner-map key (``\"all\"`` for scope=all,\n    team name for scope=team, ``Team-User`` composite for scope=user)\n\nReturns 404 if any layer of the lookup misses; the frontend can\ntherefore probe a slot's existence via this endpoint without\nneeding a separate metadata response.",
         "operationId": "download_deployment_file_deployments__deployment_id__files__var_name___slot_key__get",
         "security": [
           {
@@ -2292,6 +3132,22 @@
             "schema": {
               "type": "string",
               "title": "Slot Key"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2334,6 +3190,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2384,6 +3256,22 @@
               "format": "uuid",
               "title": "Deployment Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2430,6 +3318,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2483,6 +3387,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Task Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2553,6 +3473,22 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2592,6 +3528,24 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "requestBody": {
@@ -2651,6 +3605,22 @@
               "format": "uuid",
               "title": "Team Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2697,6 +3667,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Team Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
             }
           }
         ],
@@ -2755,6 +3741,22 @@
               "format": "uuid",
               "title": "Team Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2807,6 +3809,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2857,6 +3875,22 @@
               "format": "uuid",
               "title": "User Id"
             }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
           }
         ],
         "responses": {
@@ -2882,8 +3916,31 @@
           "Dashboard"
         ],
         "summary": "Get Dashboard Stats",
-        "description": "Aggregate counts for the dashboard KPI strip.\n\nCheap DB-only aggregates — intentionally separated from the OpenStack\nquota call (`GET /quotas/overview`) so the dashboard renders fast even\nwhen the OpenStack API is slow or unavailable.\n\nDeployments counter MUST mirror the visibility rules of\n``GET /deployments`` so the KPI matches what the user actually sees\non the Deployments page:\n\n  * Teacher/Admin: deployments they own.\n  * Student:       deployments they own OR are a team member of OR\n                   have a direct ``UserToDeployment`` mapping for.\n\nApps counter MUST mirror the role-branched visibility of\n``GET /apps`` (see ``routers/apps.py``):\n\n  * Admin: every non-deleted app — exactly what\n    ``crud_apps.get_apps`` returns when called without\n    ``user_id``. Admin keeps the plattform-wide view.\n  * Teacher/Student: own apps (regardless of ``is_private`` /\n    approval state) OR public apps (``is_private = False``)\n    with at least one APPROVED version — mirrors\n    ``crud_apps.get_visible_apps``. Teacher gets the student-style\n    filter.\n\nSoft-deleted rows (``deleted_at IS NOT NULL``) are excluded on both\ncounters — same as the list endpoints.",
+        "description": "Aggregate counts for the dashboard KPI strip.\n\nCheap DB-only aggregates.\n\nDeployments counter MUST mirror the visibility rules of\n``GET /deployments`` so the KPI matches what the user actually sees\non the Deployments page:\n\n  * Teacher/Admin: deployments they own.\n  * Student:       deployments they own OR are a team member of OR\n                   have a direct ``UserToDeployment`` mapping for.\n\nApps counter MUST mirror the role-branched visibility of\n``GET /apps`` (see ``routers/apps.py``):\n\n  * Admin: every non-deleted app — exactly what\n    ``crud_apps.get_apps`` returns when called without\n    ``user_id``. Admin keeps the plattform-wide view.\n  * Teacher/Student: own apps (regardless of ``is_private`` /\n    approval state) OR public apps (``is_private = False``)\n    with at least one APPROVED version — mirrors\n    ``crud_apps.get_visible_apps``. Teacher gets the student-style\n    filter.\n\nSoft-deleted rows (``deleted_at IS NOT NULL``) are excluded on both\ncounters — same as the list endpoints.",
         "operationId": "get_dashboard_stats_dashboard_stats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2894,13 +3951,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/lti13/login": {
@@ -3098,6 +4160,40 @@
         ],
         "title": "AppCreate"
       },
+      "AppDeployVersionUpdate": {
+        "properties": {
+          "version_tag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Tag"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version_tag"
+        ],
+        "title": "AppDeployVersionUpdate"
+      },
+      "AppRecommendedUpdate": {
+        "properties": {
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommended"
+        ],
+        "title": "AppRecommendedUpdate"
+      },
       "AppResponse": {
         "properties": {
           "name": {
@@ -3149,6 +4245,22 @@
             "type": "boolean",
             "title": "Hidden By Admin",
             "default": false
+          },
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended",
+            "default": false
+          },
+          "deploy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deploy Version"
           },
           "image": {
             "anyOf": [
@@ -3399,7 +4511,7 @@
           "source"
         ],
         "title": "AppVariableResponse",
-        "description": "Shape of one entry in ``GET /apps/{id}/variables``.\n\nKeys match what ``_parse_one_variable`` writes to the dict exactly —\nthe frontend reads ``osType``/``osMode``/``osMulti``/``osScope``/\n``varScope``/``fileExtensions`` in camelCase and the rest in\nsnake/lowercase. Keys are kept verbatim (no auto-aliasing)."
+        "description": "Shape of one entry in ``GET /apps/{id}/variables``.\n\nKeys match what ``app_spec.spec_variables`` writes to the dict exactly —\nthe frontend reads ``osType``/``osMode``/``osMulti``/``osScope``/\n``varScope``/``fileExtensions`` in camelCase and the rest in\nsnake/lowercase. Keys are kept verbatim (no auto-aliasing)."
       },
       "AppVersionApprovalDecision": {
         "properties": {
@@ -3772,6 +4884,22 @@
             "type": "boolean",
             "title": "Hidden By Admin",
             "default": false
+          },
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended",
+            "default": false
+          },
+          "deploy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deploy Version"
           },
           "image": {
             "anyOf": [
@@ -4182,7 +5310,7 @@
           "size"
         ],
         "title": "DeploymentFileUpload",
-        "description": "Single file uploaded by the teacher in the deploy wizard.\n\nPersisted verbatim into ``userInputVar.terraform`` keyed by the\nvariable name (and recipient key for team/user scope) so the worker\npasses it to terraform and cloud-init decodes it into ``write_files``.\n\n``content_b64`` MUST be standard (RFC 4648) base64. The value sent\nto Terraform stays base64 for cloud-init's ``encoding: b64``."
+        "description": "Single file uploaded by the teacher in the deploy wizard.\n\nPersisted verbatim into ``userInputVar.terraform`` keyed by the\nvariable name (and recipient key for team/user scope); the pod\ndeployer puts it into the workload's files.\n\n``content_b64`` MUST be standard (RFC 4648) base64."
       },
       "DeploymentOutputs": {
         "properties": {
@@ -4201,7 +5329,7 @@
         },
         "type": "object",
         "title": "DeploymentOutputs",
-        "description": "Parsed Terraform outputs - structure depends on app"
+        "description": "Outputs of the deploy job - structure depends on app"
       },
       "DeploymentPermissions": {
         "properties": {
@@ -4354,7 +5482,6 @@
           },
           "email": {
             "type": "string",
-            "format": "email",
             "title": "Email"
           },
           "username": {
@@ -4448,7 +5575,7 @@
         },
         "type": "object",
         "title": "MyAccessResponse",
-        "description": "A single team member's own access credentials.\n\nReturned by ``GET /deployments/{id}/my-access`` so a member (student)\ncan see their OWN credentials without the owner-view that gates the\nfull outputs. Only the caller's own account is ever present.\n\nBoth maps mirror the raw terraform ``user_accounts`` / ``team_vms``\noutput shape (one key each: the member's account and their team's VM)\nso the frontend's existing account-matching pipeline consumes this\nunchanged. Empty maps mean \"no credentials yet\" (no successful deploy,\nor the app issued no per-user account) — a valid 200, not an error."
+        "description": "A single team member's own access credentials.\n\nReturned by ``GET /deployments/{id}/my-access`` so a member (student)\ncan see their OWN credentials without the owner-view that gates the\nfull outputs. Only the caller's own account is ever present.\n\nBoth maps use the ``user_accounts`` / ``team_vms`` output shape (one key\neach: the member's account and their team's workload)\nso the frontend's existing account-matching pipeline consumes this\nunchanged. Empty maps mean \"no credentials yet\" (no successful deploy,\nor the app issued no per-user account) — a valid 200, not an error."
       },
       "PodSetupProgress": {
         "properties": {
@@ -4567,7 +5694,7 @@
           "phase"
         ],
         "title": "PodWorkloadSchema",
-        "description": "One workload of a pod deployment, read live from the cluster (.github#4)."
+        "description": "One workload of a pod or kubevirt-vm deployment, read live from the cluster (.github#4).\n\nThe name is historic (pods came first); the schema serves both runtimes."
       },
       "TaskResponse": {
         "properties": {

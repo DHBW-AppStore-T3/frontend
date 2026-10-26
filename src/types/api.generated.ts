@@ -376,6 +376,10 @@ export interface paths {
          *     The owner and admins see every tag. Everyone else sees the approved
          *     versions whose tag still points to the approved commit; a moved tag
          *     disappears until it is submitted and approved again.
+         *
+         *     ``deploy_version`` is only reported while that version can still be
+         *     deployed (its tag exists and points to the approved commit). If the
+         *     repository cannot be read, the stored value is reported as it is.
          */
         get: operations["get_app_apps__app_id__get"];
         /**
@@ -417,8 +421,7 @@ export interface paths {
         };
         /**
          * Get App Variables
-         * @description Get dynamic app variables from app's Git repository
-         *     Parses variables.tf file and returns all configurable variables
+         * @description Get the variables of an app version from the appstore.yaml in its Git repository
          *
          *     Returns:
          *     - name: Variable name
@@ -448,8 +451,9 @@ export interface paths {
         };
         /**
          * Get App Runtime
-         * @description How ``version`` runs and its group mode (``scope``). Same
-         *     visibility and errors as the variables; 422 (with field paths in
+         * @description How ``version`` runs, for the deploy wizard: its scope, egress, access, resources, network.
+         *
+         *     Same visibility and errors as the variables; 422 (with field paths in
          *     ``errors``) for a missing or invalid appstore.yaml.
          */
         get: operations["get_app_runtime_apps__app_id__runtime_get"];
@@ -476,7 +480,7 @@ export interface paths {
          *
          *     Owner OR admin only. A REJECTED version, or one whose tag has moved
          *     since its review, can be resubmitted; a PENDING or APPROVED one at the
-         *     same commit cannot (409). 422 for invalid ``@openstack`` markers, 404
+         *     same commit cannot (409). 422 for a missing or invalid appstore.yaml, 404
          *     for an unknown tag, 502 when the repository cannot be read.
          */
         post: operations["submit_version_apps__app_id__versions__version_tag__submit_post"];
@@ -554,8 +558,7 @@ export interface paths {
          *       commit; the admin would approve code that was not submitted.
          *     - 409: the version is already approved, or was submitted before
          *       versions were pinned to commits.
-         *     - 422: invalid ``@openstack`` markers in the submitted commit's
-         *       Terraform/Packer variable files (``marker_errors`` lists them).
+         *     - 422: the submitted commit has no valid appstore.yaml.
          *     - 502: the repository cannot be read; nothing is approved unchecked.
          */
         post: operations["approve_version_admin_apps__app_id__versions__version_tag__approve_post"];
@@ -630,6 +633,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/apps/{app_id}/recommended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set App Recommended
+         * @description Mark an app as recommended or not. Admin only.
+         *
+         *     The flag only highlights the app in the catalog; it does not change who
+         *     may see or deploy it.
+         */
+        put: operations["set_app_recommended_admin_apps__app_id__recommended_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/apps/{app_id}/deploy-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Deploy Version
+         * @description Set the version teachers deploy, or clear it with ``version_tag: null``.
+         *
+         *     Only a version that is approved for the commit its tag points to now
+         *     can be set:
+         *
+         *     - 404: the app does not exist, or the version has no approval entry.
+         *     - 409 ``version_not_approved``: the entry exists but is pending,
+         *       rejected or from before versions were pinned to commits.
+         *     - 409 ``version_moved``: the tag points to another commit than the
+         *       approved one; it has to be submitted and reviewed again.
+         *     - 502: the repository cannot be read.
+         *
+         *     The setting is cleared again when the version's approval ends (revoked,
+         *     or replaced by a new submission). ``POST /deployments/`` is not bound to
+         *     it and still checks the approval of the version it is given.
+         */
+        put: operations["set_deploy_version_admin_apps__app_id__deploy_version_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deployments/": {
         parameters: {
             query?: never;
@@ -649,8 +709,6 @@ export interface paths {
          *       * **Students** (and any non-staff role): deployments they own
          *         OR are a member of — either via a team mapping or a direct
          *         ``UserToDeployment`` row.
-         *       * Either way also every VM deployment in an OpenStack project the
-         *         caller holds a verified credential for (project peers).
          *
          *     A ``?scope=course`` branch used to sit here, listing every
          *     deployment whose owner was in a course the caller teaches. It had
@@ -666,8 +724,8 @@ export interface paths {
          * Create Deployment
          * @description Create a new deployment
          *
-         *     Atomicity: a per-user advisory lock serializes credential mutation
-         *     with deployment dispatch. The deployment row, teams, user mappings,
+         *     Atomicity: a per-user advisory lock serializes concurrent creates of one
+         *     user (the workload budget). The deployment row, teams, user mappings,
          *     and the initial PENDING task row are all inserted in a single
          *     transaction, so the user can never end up with a deployment row
          *     that has no matching task. The queue dispatch happens AFTER commit;
@@ -694,7 +752,7 @@ export interface paths {
          *     - User and App relations
          *     - Teams with members
          *     - Latest task status
-         *     - Terraform outputs
+         *     - Task outputs (the "terraform_outputs" of the result contract)
          *     - Optionally: full logs (use include_logs=true)
          */
         get: operations["get_deployment_deployments__deployment_id__get"];
@@ -702,7 +760,7 @@ export interface paths {
         post?: never;
         /**
          * Delete Deployment
-         * @description Unified delete — destroys OpenStack resources first if needed.
+         * @description Unified delete — destroys the namespace of a pod deployment first.
          *
          *     Restricted to the owner-view (creator, teacher, admin). Members
          *     can read-access the deployment but never tear it down.
@@ -722,11 +780,11 @@ export interface paths {
         };
         /**
          * List Deployment Resources
-         * @description Stage-1 resource listing for the Infrastructure tab.
+         * @description The workloads of a pod deployment, read live from its namespace.
          *
-         *     Owner-only. ``refresh=false`` skips the live OpenStack join — use
-         *     that when polling rapidly to avoid hammering Keystone, or when
-         *     OpenStack is known unavailable and the cached state is good enough.
+         *     Inspect-only view: owner, admin, or a course-teacher of the
+         *     deployment-owner's course. Course-teachers explicitly do NOT have
+         *     operate rights; this endpoint is read-only.
          */
         get: operations["list_deployment_resources_deployments__deployment_id__resources_get"];
         put?: never;
@@ -812,7 +870,7 @@ export interface paths {
         put?: never;
         /**
          * Pause Deployment
-         * @description Pause a running deployment by stopping its compute instances.
+         * @description Pause a running deployment by scaling its workloads to zero.
          *
          *     Owner-only — same gate as Destroy, because pausing a teammate's
          *     deployment is in practice a denial-of-service against the team.
@@ -840,7 +898,7 @@ export interface paths {
         put?: never;
         /**
          * Resume Deployment
-         * @description Resume a paused deployment by starting its compute instances.
+         * @description Resume a paused deployment by starting its workloads again.
          */
         post: operations["resume_deployment_deployments__deployment_id__resume_post"];
         delete?: never;
@@ -861,7 +919,7 @@ export interface paths {
          * @description Stream the raw bytes of one wizard-uploaded file back to the owner.
          *
          *     Path components mirror how the upload was indexed:
-         *       * ``var_name`` — the ``@openstack:file:*`` variable name
+         *       * ``var_name`` — the name of the file variable (``type: file`` in appstore.yaml)
          *       * ``slot_key`` — the inner-map key (``"all"`` for scope=all,
          *         team name for scope=team, ``Team-User`` composite for scope=user)
          *
@@ -1064,9 +1122,7 @@ export interface paths {
          * Get Dashboard Stats
          * @description Aggregate counts for the dashboard KPI strip.
          *
-         *     Cheap DB-only aggregates — intentionally separated from the OpenStack
-         *     quota call (`GET /quotas/overview`) so the dashboard renders fast even
-         *     when the OpenStack API is slow or unavailable.
+         *     Cheap DB-only aggregates.
          *
          *     Deployments counter MUST mirror the visibility rules of
          *     ``GET /deployments`` so the KPI matches what the user actually sees
@@ -1239,6 +1295,16 @@ export interface components {
              */
             submit_all_versions: boolean;
         };
+        /** AppDeployVersionUpdate */
+        AppDeployVersionUpdate: {
+            /** Version Tag */
+            version_tag: string | null;
+        };
+        /** AppRecommendedUpdate */
+        AppRecommendedUpdate: {
+            /** Recommended */
+            recommended: boolean;
+        };
         /** AppResponse */
         AppResponse: {
             /** Name */
@@ -1269,6 +1335,13 @@ export interface components {
              * @default false
              */
             hidden_by_admin: boolean;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended: boolean;
+            /** Deploy Version */
+            deploy_version?: string | null;
             /** Image */
             image?: string | null;
         };
@@ -1320,7 +1393,7 @@ export interface components {
          * AppVariableResponse
          * @description Shape of one entry in ``GET /apps/{id}/variables``.
          *
-         *     Keys match what ``_parse_one_variable`` writes to the dict exactly —
+         *     Keys match what ``app_spec.spec_variables`` writes to the dict exactly —
          *     the frontend reads ``osType``/``osMode``/``osMulti``/``osScope``/
          *     ``varScope``/``fileExtensions`` in camelCase and the rest in
          *     snake/lowercase. Keys are kept verbatim (no auto-aliasing).
@@ -1485,6 +1558,13 @@ export interface components {
              * @default false
              */
             hidden_by_admin: boolean;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended: boolean;
+            /** Deploy Version */
+            deploy_version?: string | null;
             /** Image */
             image?: string | null;
             user: components["schemas"]["UserResponse"];
@@ -1656,11 +1736,10 @@ export interface components {
          * @description Single file uploaded by the teacher in the deploy wizard.
          *
          *     Persisted verbatim into ``userInputVar.terraform`` keyed by the
-         *     variable name (and recipient key for team/user scope) so the worker
-         *     passes it to terraform and cloud-init decodes it into ``write_files``.
+         *     variable name (and recipient key for team/user scope); the pod
+         *     deployer puts it into the workload's files.
          *
-         *     ``content_b64`` MUST be standard (RFC 4648) base64. The value sent
-         *     to Terraform stays base64 for cloud-init's ``encoding: b64``.
+         *     ``content_b64`` MUST be standard (RFC 4648) base64.
          */
         DeploymentFileUpload: {
             /** Name */
@@ -1674,7 +1753,7 @@ export interface components {
         };
         /**
          * DeploymentOutputs
-         * @description Parsed Terraform outputs - structure depends on app
+         * @description Outputs of the deploy job - structure depends on app
          */
         DeploymentOutputs: {
             /** Raw */
@@ -1771,10 +1850,7 @@ export interface components {
              * Format: uuid
              */
             userId: string;
-            /**
-             * Email
-             * Format: email
-             */
+            /** Email */
             email: string;
             /** Username */
             username: string;
@@ -1812,8 +1888,8 @@ export interface components {
          *     can see their OWN credentials without the owner-view that gates the
          *     full outputs. Only the caller's own account is ever present.
          *
-         *     Both maps mirror the raw terraform ``user_accounts`` / ``team_vms``
-         *     output shape (one key each: the member's account and their team's VM)
+         *     Both maps use the ``user_accounts`` / ``team_vms`` output shape (one key
+         *     each: the member's account and their team's workload)
          *     so the frontend's existing account-matching pipeline consumes this
          *     unchanged. Empty maps mean "no credentials yet" (no successful deploy,
          *     or the app issued no per-user account) — a valid 200, not an error.
@@ -1852,7 +1928,9 @@ export interface components {
         };
         /**
          * PodWorkloadSchema
-         * @description One workload of a pod deployment, read live from the cluster (.github#4).
+         * @description One workload of a pod or kubevirt-vm deployment, read live from the cluster (.github#4).
+         *
+         *     The name is historic (pods came first); the schema serves both runtimes.
          */
         PodWorkloadSchema: {
             /** Workload */
@@ -2140,7 +2218,9 @@ export interface operations {
     get_me_users_me_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2155,6 +2235,15 @@ export interface operations {
                     "application/json": components["schemas"]["UserWithCourse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_users_users__get: {
@@ -2165,7 +2254,9 @@ export interface operations {
                 role?: components["schemas"]["UserRole"] | null;
                 course_id?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2197,7 +2288,9 @@ export interface operations {
                 query: string;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2226,7 +2319,9 @@ export interface operations {
     get_user_users__user_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -2257,7 +2352,9 @@ export interface operations {
     update_user_users__user_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -2292,7 +2389,9 @@ export interface operations {
     get_user_statistics_users__user_id__statistics_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -2326,7 +2425,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2355,7 +2456,9 @@ export interface operations {
     create_course_courses__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2388,7 +2491,9 @@ export interface operations {
     get_course_courses__course_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2419,7 +2524,9 @@ export interface operations {
     update_course_courses__course_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2454,7 +2561,9 @@ export interface operations {
     delete_course_courses__course_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2483,7 +2592,9 @@ export interface operations {
     list_course_members_courses__course_id__users_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2514,7 +2625,9 @@ export interface operations {
     add_course_members_courses__course_id__users_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2549,7 +2662,9 @@ export interface operations {
     remove_course_member_courses__course_id__users__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -2579,7 +2694,9 @@ export interface operations {
     add_course_teacher_courses__course_id__teachers__user_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -2609,7 +2726,9 @@ export interface operations {
     remove_course_teacher_courses__course_id__teachers__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -2642,7 +2761,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2671,7 +2792,9 @@ export interface operations {
     create_app_apps__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2704,7 +2827,9 @@ export interface operations {
     get_app_apps__app_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -2735,7 +2860,9 @@ export interface operations {
     update_app_apps__app_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -2770,7 +2897,9 @@ export interface operations {
     delete_app_apps__app_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -2801,7 +2930,9 @@ export interface operations {
             query: {
                 version: string;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -2834,7 +2965,9 @@ export interface operations {
             query: {
                 version: string;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -2865,7 +2998,9 @@ export interface operations {
     submit_version_apps__app_id__versions__version_tag__submit_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -2901,7 +3036,9 @@ export interface operations {
     withdraw_version_apps__app_id__versions__version_tag__submit_delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -2931,7 +3068,9 @@ export interface operations {
     list_version_approvals_apps__app_id__versions_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -2962,7 +3101,9 @@ export interface operations {
     list_pending_versions_admin_apps_versions_pending_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2977,12 +3118,23 @@ export interface operations {
                     "application/json": components["schemas"]["AppVersionApprovalWithApp"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     approve_version_admin_apps__app_id__versions__version_tag__approve_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3014,7 +3166,9 @@ export interface operations {
     reject_version_admin_apps__app_id__versions__version_tag__reject_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3050,7 +3204,9 @@ export interface operations {
     revoke_version_admin_apps__app_id__versions__version_tag__revoke_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3086,13 +3242,89 @@ export interface operations {
     deactivate_app_admin_apps__app_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_app_recommended_admin_apps__app_id__recommended_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppRecommendedUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_deploy_version_admin_apps__app_id__deploy_version_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppDeployVersionUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3122,7 +3354,9 @@ export interface operations {
                 app_id?: string | null;
                 status_filter?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3151,7 +3385,9 @@ export interface operations {
     create_deployment_deployments__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3186,7 +3422,9 @@ export interface operations {
             query?: {
                 include_logs?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3217,7 +3455,9 @@ export interface operations {
     delete_deployment_deployments__deployment_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3248,7 +3488,9 @@ export interface operations {
     list_deployment_resources_deployments__deployment_id__resources_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3279,7 +3521,9 @@ export interface operations {
     restart_workload_deployments__deployment_id__workloads__workload__restart_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 workload: string;
@@ -3311,7 +3555,9 @@ export interface operations {
     reset_workload_deployments__deployment_id__workloads__workload__reset_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 workload: string;
@@ -3343,7 +3589,9 @@ export interface operations {
     cancel_deployment_deployments__deployment_id__cancel_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3374,7 +3622,9 @@ export interface operations {
     pause_deployment_deployments__deployment_id__pause_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3405,7 +3655,9 @@ export interface operations {
     resume_deployment_deployments__deployment_id__resume_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3436,7 +3688,9 @@ export interface operations {
     download_deployment_file_deployments__deployment_id__files__var_name___slot_key__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 var_name: string;
@@ -3467,7 +3721,9 @@ export interface operations {
     get_my_access_deployments__deployment_id__my_access_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3498,7 +3754,9 @@ export interface operations {
     stream_deployment_events_deployments__deployment_id__stream_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3529,7 +3787,9 @@ export interface operations {
     get_deployment_tasks_tasks_deployment__deployment_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3560,7 +3820,9 @@ export interface operations {
     get_task_tasks__task_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 task_id: string;
             };
@@ -3595,7 +3857,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3624,7 +3888,9 @@ export interface operations {
     create_team_teams__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3657,7 +3923,9 @@ export interface operations {
     get_team_teams__team_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -3688,7 +3956,9 @@ export interface operations {
     update_team_teams__team_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -3723,7 +3993,9 @@ export interface operations {
     delete_team_teams__team_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -3752,7 +4024,9 @@ export interface operations {
     add_user_to_team_teams__team_id__users__user_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
                 user_id: string;
@@ -3782,7 +4056,9 @@ export interface operations {
     remove_user_from_team_teams__team_id__users__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
                 user_id: string;
@@ -3812,7 +4088,9 @@ export interface operations {
     get_dashboard_stats_dashboard_stats_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3825,6 +4103,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
