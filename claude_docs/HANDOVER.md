@@ -55,10 +55,15 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
      Suche mit leerer Query. Nach 300 ms rief er `toaster.clear()` auf und leerte damit den **globalen** Toast-Store, also auch
      Hinweise, die nichts mit der Suche zu tun haben (die Validierung "Weiter", ebenso ein Ladefehler der Kurse). Im Test lag der
      Klick manchmal knapp vor diesem Timer (gemessen: Toast `0->1`, 1 bis 13 ms später `1->0`). Reproduziert: 2 von 20, 1 von 30,
-     2 von 40 Einzelläufen. **Fix in `src/views/new-deployment/useStudentDirectory.ts`:** Die Suche läuft erst, wenn schon einmal
-     etwas getippt wurde (`searched`-Ref); die Absicht "leere Query oder 1 Zeichen räumt einen alten Such-Hinweis weg" bleibt.
-     **Neue Tests:** deterministisch mit Fake-Timern (vorher rot: fremder Hinweis überlebt die 300 ms nicht; nachher grün) und
-     ein Absicherungstest, dass ein alter Hinweis nach abgeschlossener Suche weiter weggeräumt wird.
+     2 von 40 Einzelläufen. **Fix in `src/views/new-deployment/useStudentDirectory.ts`:** `toaster.clear()` ist ganz raus. Die
+     Suche merkt sich die ID ihres **eigenen** Fehler-Toasts (`searchErrorId`) und entfernt nur diesen (`removeToast`), wenn
+     die nächste Suche gelingt, die Query leer oder zu kurz ist oder erneut ein Fehler kommt. Fremde Toasts (Ladefehler,
+     Validierung) bleiben, auch während und nach der Suche. Debounce, Ergebnisse und gültige Suchanfragen sind unverändert.
+     Ein erster Zwischenstand sperrte nur den Timer der leeren Start-Query; das ließ `clear()` bei aktiver Suche weiter wirken
+     und wurde im Review korrigiert. **Neue Tests:** deterministisch mit Fake-Timern (Start-Timer räumt nichts weg), fremde
+     Warnung und fremder Fehler bleiben nach abgeschlossener Suche, und nur der Suchfehler verschwindet bei der nächsten
+     erfolgreichen Suche. Der zuerst geschriebene Test "räumt einen alten Hinweis weg" legte das globale Löschen fest und ist
+     ersetzt.
   2. **`error-boundary` ("logs the error once"):** `RouteError` loggt in einem `useEffect`; `findByRole('alert')` löst beim Einfügen
      des Knotens auf, der Effekt konnte danach laufen. Gemessen mit Zeitstempeln: im Fehlerfall nur `alert-found`, der
      `[RouteError]`-Log kam erst nach dem Testkörper (stand dann im echten stderr, weil `afterEach` den Spy schon zurückgesetzt

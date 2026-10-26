@@ -179,16 +179,41 @@ describe('NewDeploymentConfigView', () => {
     expect(draft().studentIds).toEqual([])
   })
 
-  it('räumt einen alten Hinweis weg, sobald eine Suche abgeschlossen ist', async () => {
-    renderView()
-    await screen.findByText('Web Dev')
-    await userEvent.click(screen.getByRole('button', { name: /deployment\.config\.studentsLabel/ }))
-    await userEvent.type(screen.getByTestId('student-search'), 'Ja')
-    useToastStore.getState().warning('alter Hinweis')
-    expect(warnings()).toContain('alter Hinweis')
+  describe('Hinweise während der Suche', () => {
+    const messages = () => useToastStore.getState().toasts.map((t) => t.message)
+    const openSearch = async () => {
+      renderView()
+      await screen.findByText('Web Dev')
+      await userEvent.click(screen.getByRole('button', { name: /deployment\.config\.studentsLabel/ }))
+    }
 
-    await waitFor(() => expect(userApi.search).toHaveBeenCalledWith('Ja', 50))
-    await waitFor(() => expect(warnings()).not.toContain('alter Hinweis'))
+    it('lässt fremde Warnungen und Fehler stehen, auch nach einer abgeschlossenen Suche', async () => {
+      await openSearch()
+      await userEvent.type(screen.getByTestId('student-search'), 'Ja')
+      useToastStore.getState().warning('fremde Warnung')
+      useToastStore.getState().error('fremder Fehler')
+
+      await waitFor(() => expect(userApi.search).toHaveBeenCalledWith('Ja', 50))
+      // The result list is set right after the search finished.
+      await screen.findByTestId('student-u2')
+
+      expect(messages()).toContain('fremde Warnung')
+      expect(messages()).toContain('fremder Fehler')
+    })
+
+    it('entfernt nur den Fehlerhinweis der Suche, sobald eine spätere Suche gelingt', async () => {
+      vi.mocked(userApi.search).mockRejectedValueOnce(new Error('Suche kaputt'))
+      await openSearch()
+      await userEvent.type(screen.getByTestId('student-search'), 'Ja')
+      await waitFor(() => expect(messages()).toContain('Suche kaputt'))
+      useToastStore.getState().warning('fremde Warnung')
+
+      await userEvent.type(screen.getByTestId('student-search'), 'ne')
+      await waitFor(() => expect(userApi.search).toHaveBeenCalledWith('Jane', 50))
+      await waitFor(() => expect(messages()).not.toContain('Suche kaputt'))
+
+      expect(messages()).toContain('fremde Warnung')
+    })
   })
 
   it('geht über „Zurück" zur App-Detailseite', async () => {
