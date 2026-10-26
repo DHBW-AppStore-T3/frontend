@@ -368,14 +368,14 @@ describe('DeploymentDetailView', () => {
 
   it('startet den Stream wenn ein Task läuft und zeigt den Fortschritt', async () => {
     mocks.listTasks.mockResolvedValue({
-      data: [baseTask({ status: 'running', current_phase: 'DEPLOYING', progress_pct: 60 })],
+      data: [baseTask({ status: 'running', current_phase: 'K8S_POLICIES', progress_pct: 60 })],
     })
     renderView()
 
     await waitFor(() => expect(mocks.startStream).toHaveBeenCalledTimes(1))
     // Seeded from the DB task before the first SSE event.
     // Headline + the matching stepper dot label.
-    expect((await screen.findAllByText('Deploying')).length).toBeGreaterThanOrEqual(2)
+    expect((await screen.findAllByText('K8s Policies')).length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('60')).toBeInTheDocument()
   })
 

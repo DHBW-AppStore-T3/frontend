@@ -14,8 +14,7 @@
  *   arrived (the snapshot frame seeds it from the DB).
  * * ``currentPhase`` — name of the active phase (e.g.
  *   ``TERRAFORM_APPLY``), or null pre-snapshot.
- * * ``totalPhases`` — last seen total (8 or 11 depending on whether
- *   the deployment includes a Packer build).
+ * * ``totalPhases`` — last seen total (the worker's phase count for the task).
  * * ``liveLogs`` — bounded array of the most recent log entries
  *   (default 100). Auto-scroll consumers should render the tail.
  * * ``connectionState`` — high-level state machine surface for the
@@ -46,13 +45,9 @@ export interface ProgressEvent {
   total_phases: number
   progress_pct: number
   message?: string
-  // Full ordered phase-name sequence for the active task. Multi-image
-  // deploys produce a dynamic sequence (N×3 Packer phases for N
-  // templates) whose template keys cannot be guessed from
-  // observation order — the worker ships the authoritative list with
-  // every event. Single-image / non-deploy tasks omit this and the
-  // UI falls back to the static phase tables it bundles for the
-  // legacy shape.
+  // Full ordered phase-name sequence for the active task. The worker
+  // ships the authoritative list with every event; the UI only falls
+  // back to its static phase tables before the first event.
   phase_names?: string[]
 }
 
@@ -177,8 +172,7 @@ function createStreamController(initialDeploymentId: string | null) {
       })
       // The worker sends the full phase sequence with every progress event once
       // the task has a ``_PhaseTracker`` (all real deploy/destroy/pause/resume/
-      // redeploy paths). This is the authoritative source for the stepper,
-      // especially for multi-image deploys where template keys aren't guessable.
+      // redeploy paths). This is the authoritative source for the stepper.
       if (Array.isArray(ev.phase_names) && ev.phase_names.length > 0) {
         set({ phaseNames: ev.phase_names })
       }

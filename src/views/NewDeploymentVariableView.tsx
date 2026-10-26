@@ -47,7 +47,7 @@ export default function NewDeploymentVariableView() {
   const hasNetwork = visibleNetworkKeys(draft).length > 0
 
   const card = (variable: AppVariable, accent: Accent, expert = false) => {
-    const key = formKeyOf(variable, form.isMultiImage)
+    const key = formKeyOf(variable)
     return (
       <VariableCard
         key={`${key}${expert ? '.expert' : ''}`}
