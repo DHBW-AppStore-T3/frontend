@@ -36,13 +36,36 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 3. **Security-Audit:** `js-yaml` und `nanoid` wurden über PR #3 gepatcht; `npm audit` regelmäßig prüfen.
 4. **Netzwerk-Guard:** Jeder ungemockte `fetch`/XHR lässt den Test fehlschlagen. Neue Views brauchen ihre API-Module als Mock
    (oder `allowRealNetwork()` mit Begründung). `NETWORK_GUARD=warn` listet alle Verursacher.
-5. **Windows:** `docker-entrypoint.spec.ts` (10 Tests) ist unter Windows rot (frontend#79), lokal Linux/WSL oder CI nutzen.
+5. **Windows:** `docker-entrypoint.spec.ts` braucht `sh` und `envsubst` (Git for Windows im `PATH`). Die Tests laufen auf Windows und
+   Linux (frontend#79); ohne die Werkzeuge werden sie lokal sichtbar übersprungen, in der CI schlagen sie fehl. Der Pfad des
+   Scratch-Verzeichnisses wird als gequoteter POSIX-Pfad in das Skript eingesetzt (`shQuote`), nie als Windows-Pfad.
 6. **Flackernde Tests (offen):** `NewDeploymentConfigView.spec` flackert (vorbestehend, ca. 15 %); Läufe mit
    `--maxWorkers=1 --no-file-parallelism` für reproduzierbare Messungen.
 
 ---
 
 ## 4. Letzte Übergaben (Historie)
+
+- **2026-10-26 (docker-entrypoint-Tests plattformfest, frontend#79, Teil von Epic #77):** Nur Tests und Doku, `docker-entrypoint.sh`
+  unverändert. **Ursache (per Experiment belegt, nicht wie im Issue vermutet fehlendes `sh`/`envsubst`):** Der Test ersetzt
+  `/tmp/runtime` und `/usr/share/nginx/html` im Skripttext durch den Scratch-Pfad. Beide Stellen stehen im Skript
+  unquotiert (`RUNTIME_DIR=/tmp/runtime`, `< /usr/share/nginx/html/env-config.js`). Ein Windows-Pfad mit Backslashes verliert dort
+  die Backslashes (`C:Users...`), ein Leerzeichen würde ihn teilen. Folge: `ENOENT runtime/*.conf` und, weil `mkdir -p` im
+  Arbeitsverzeichnis des Laufs lief, leere Müllverzeichnisse `C:Users...runtime/` im Repo-Root (git sieht leere Verzeichnisse nicht).
+  **Fix in `tests/unit/infra/docker-entrypoint.spec.ts`:** `shQuote()` setzt den Pfad mit Forward-Slashes in einfachen
+  Anführungszeichen ein (`'` wird zu `'\''`); `spawnSync` läuft mit `cwd` im Scratch-Verzeichnis, das Verzeichnis heißt bewusst
+  mit Leerzeichen (`entrypoint spaces-...`). Kein `skipIf` nach Plattform. `runOk()` prüft bei Erfolgsfällen Exit 0, leeres
+  stderr, genau die fünf erzeugten Dateien (`api-gateway.conf`, `env-config.js`, `listen.conf`, `security-headers.conf`,
+  `silent-refresh-headers.conf`) und dass sonst nichts im Scratch-Verzeichnis liegt; die Inhalts-Assertions blieben unverändert.
+  Die zwei Ablehnungs-Tests (`FRAME_ANCESTORS`, `API_UPSTREAM`) prüfen jetzt auch die Fehlermeldung, vorher genügte Exit 1, der
+  auch von einem Folgefehler kam. Neuer Test `has sh and envsubst in CI` schlägt fehl, wenn `CI` gesetzt ist und eines fehlt;
+  lokal ohne die Werkzeuge bleibt es ein sichtbarer Skip (Werkzeug-, nicht Plattform-Skip). **Verifikation (Windows, 1 Worker):**
+  Datei 10/10 Läufe grün (18 Tests, 0 skipped), Gesamtsuite 125/125 Dateien, 1274/1274 Tests, `tsc`, Lint (0 Errors), Build
+  grün. Mutationsprüfung: Backslash-Pfad oder ungequotetes Einsetzen machen 17 von 18 Tests rot. Nach den Läufen keine Reste
+  im Repo und in `%TEMP%`. **Lehren:**
+  1. Beim Einsetzen von Pfaden in Shell-Text immer quoten und Forward-Slashes nutzen; Pfade mit Leerzeichen gehören in den Test.
+  2. Ein reiner Exit-Code-Test kann an einem Folgefehler "bestehen": die Fehlermeldung mitprüfen.
+  3. Müllverzeichnisse nach Windows-Läufen mit `ls | grep '^C:'` suchen; sie sind für git unsichtbar.
 
 - **2026-10-26 (Testinstabilität und Netzwerk-Guard, frontend#78, Teil von Epic #77, PR #100):** Nur Tests, kein `src`.
   **Netzwerk-Guard** (`tests/helpers/network-guard.ts`, eingehängt in `tests/setup.ts`): ein Test, der ein ungemocktes
@@ -64,8 +87,8 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
      Studierenden") scheitert auch auf der Basis `916c93f` ohne diese Änderung (3 von 20 Einzelläufen); in der
      Gesamtsuite zeigte sich einmalig auch `error-boundary.spec` ("logs the error once", Spy sieht den Log-Aufruf zu
      früh). Der Guard meldet dabei keine Verstöße. Eigenes Issue nötig.
-  3. Unter Windows bleiben die 10 `docker-entrypoint.spec`-Tests rot (frontend#79, im Issue steht noch 9); das ist
-     erwartet und kein Befund.
+  3. Unter Windows waren die 10 `docker-entrypoint.spec`-Tests rot (frontend#79, im Issue stand 9); behoben, siehe
+     Eintrag 2026-10-26 (docker-entrypoint).
   4. Im Worktree `frontend/` fehlt `vitest` in `node_modules`; Tests dort starten nicht.
 
 - **2026-10-26 (Architektur-Ist-Stand, C4, beide Oberflächen):** Neu: `docs/architecture/architecture.md` (statische und
