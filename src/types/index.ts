@@ -36,8 +36,8 @@ export type DeploymentStatus =
   // the rest of the deployment keeps running.
   | 'redeploying' | 'redeploy_failed'
 
-/** How a deployment runs: pods in the cluster, KubeVirt VMs in the cluster; ``openstack-vm`` only on legacy rows. */
-export type DeploymentRuntime = 'kubernetes' | 'kubevirt-vm' | 'openstack-vm'
+/** How a deployment runs: pods in the cluster, or KubeVirt VMs in the cluster. */
+export type DeploymentRuntime = 'kubernetes' | 'kubevirt-vm'
 
 /** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
 export type DeploymentAction = 'destroy' | 'delete' | 'pause' | 'resume' | 'cancel' | 'redeploy'
