@@ -35,7 +35,10 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 2. **Coverage Gate:** Der Job `🧪 Test` in `ci.yml` verlangt auf **jedem** Branch und PR mindestens 85,0 % Zeilen (`MIN_COVERAGE`,
    Metrik `total.lines.pct`). Die Linux-CI misst ca. 91,3 %. Wert immer mindestens 2 Punkte unter dem CI-Ist-Wert halten und
    `CLAUDE.md` mit anpassen.
-3. **Security-Audit:** `js-yaml` und `nanoid` wurden über PR #3 gepatcht; `npm audit` regelmäßig prüfen.
+3. **Security-Audit:** `npm audit --omit=dev` ist 0 und blockiert in der CI. `npm audit` (mit Dev) meldet 7 bewusst akzeptierte Dev-Tooling-Funde
+   (vitest, tinypool, @vitest/mocker, happy-dom, coverage-istanbul, postcss-selector-parser, typography); Begründung je Fund in
+   `claude_docs/decisions/2026-dev-dependency-audit.md`. Behebung für die Vitest-/happy-dom-Funde nur über #83 (vitest und
+   coverage-istanbul ≥ 4.1.12, happy-dom ≥ 21.0.4).
 4. **Netzwerk-Guard:** Jeder ungemockte `fetch`/XHR lässt den Test fehlschlagen. Neue Views brauchen ihre API-Module als Mock
    (oder `allowRealNetwork()` mit Begründung). `NETWORK_GUARD=warn` listet alle Verursacher.
 5. **Windows:** `docker-entrypoint.spec.ts` braucht `sh` und `envsubst` (Git for Windows im `PATH`). Die Tests laufen auf Windows und
@@ -50,6 +53,18 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 ---
 
 ## 4. Letzte Übergaben (Historie)
+
+- **2026-10-26 (Dev-Abhängigkeiten und Security-Audit, frontend#82, Teil von Epic #77):** `npm audit` von 10 auf 7 Funde (alle Dev-Tooling),
+  `npm audit --omit=dev` weiter 0. **Geändert:** `vite` 7.3.6 → 7.3.7 (5 Funde zu Vite/launch-editor), `undici` 7.30.0 → 7.30.1 (nur Lockfile, innerhalb
+  `jsdom`s `^7.25.0`, 3 Funde), `@vitest/coverage-v8` entfernt (ungenutzt, 6 Pakete weniger). **Abweichung vom Issue:** `jsdom` bleibt. Das Issue nahm an,
+  es werde nirgends gebraucht; fünf Test-Dateien setzen `// @vitest-environment jsdom`, weil DOMPurify (XSS-Schutz fürs Markdown) ein spec-konformes DOM
+  braucht, happy-dom behält Handler. Testanzahl und Coverage unverändert (126 Dateien, 1283 Tests, 91,33 % Zeilen). Entscheidungseintrag mit allen verbleibenden
+  Advisories, belegten Fakten und gekennzeichneten Annahmen: `claude_docs/decisions/2026-dev-dependency-audit.md`. **Lehren:**
+  1. **`npm install`/`uninstall`/`update` unter Windows löscht die `libc`-Felder** (glibc/musl) der nativen Linux-Pakete aus `package-lock.json` (14 Einträge). Das
+     ändert das Linux-/Docker-`npm ci`. Nach jedem npm-Befehl den Lockfile-Diff prüfen und die Felder zurückholen; hier mit einem kleinen Skript, das nur
+     `libc` aus `HEAD` zurückträgt (Zeilenenden bleiben CRLF). Ziel: Diff zeigt nur die beabsichtigten Pakete.
+  2. Annahmen im Issue gegen den Stand prüfen: "12 Funde" waren 10, "jsdom ungenutzt" war falsch. Fix-Versionen aus Registry und Advisory lesen, nicht aus dem Gedächtnis.
+  3. Für #83 reichen laut Advisories und Registry `vitest` und `coverage-istanbul` 4.1.12 und `happy-dom` 21.0.4 (kein 5.x nötig); `vitest` 4.1.12 hat kein `tinypool` mehr.
 
 - **2026-10-26 (Coverage-Gate auf 85 %, frontend#80, Teil von Epic #77):** `MIN_COVERAGE` in `.github/workflows/ci.yml` von 40,0 auf
   85,0 angehoben. **Gemessen auf der Linux-CI:** 91,33 % Zeilen im Push-Lauf auf `dev` (`40408558912`), 91,33 % und 91,19 % in zwei
