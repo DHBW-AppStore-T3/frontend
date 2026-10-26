@@ -1,7 +1,7 @@
 # Frontend-Architektur des AppStore – Ist-Stand
 
 > **Stand:** 2026-10-26 · beschrieben ist der Stand von `dev`, der auf **Staging** ausgerollt ist:
-> **Frontend** `dev` @ `0005672` · **self-service-ui** `dev` @ `54130c3`. Prod läuft auf älteren Ständen (Abschnitt 1.1). Der erste Stand dieser Doku (`916c93f` und `1e67bd1`) steht in der Git-Historie.
+> **Frontend** `dev` @ `0005672` · **self-service-ui** `dev` @ `54130c3`. Prod läuft auf älteren Ständen (Abschnitt 1.1).
 > **Quellen:** Code beider Repos, Importanalyse, `nginx.conf`, `Caddyfile`, Docker- und CI-Dateien, das Kubernetes-README, die Workflows, Skripte und das Helm-Chart im deployment-Repo, `claude_docs/` beider Repos, die Image-Pins in `k8s/images/`. Dazu die laufenden Workloads und Pods beider Namespaces sowie der Argo-CD-Stand (appstore-MCP, geprüft am 2026-10-26 um 14:14 UTC).
 > **Modell:** [`workspace.dsl`](workspace.dsl) (Structurizr DSL, C4). Die Diagramme sind aus diesem Modell erzeugt, über den Structurizr MCP Server (v2026.04.20, lokal; Tools `validate`, `parse`, `inspect`, `export-mermaid`).
 
@@ -27,7 +27,7 @@
 | **Außerhalb** | Innenleben von Backend-API und Worker. Sie stehen als graue Container im Modell, weil beide Oberflächen ihren Vertrag nutzen. |
 | **Nur der Ist-Stand** | Beschrieben ist, was im Code von `dev` steht und auf Staging läuft. Geplantes, Idealtypisches und Entwürfe aus Issues kommen nicht vor. Wo Doku und Code auseinanderlaufen, gilt der Code, und die Abweichung steht in Abschnitt 4. |
 | **Methode** | Statisch: Verzeichnis- und Importanalyse (nur Nicht-Test-Code), Konfigurationsdateien, Helm-Chart. Dynamisch: Code-Lektüre der beteiligten Module. Die **deklarierten** Image-Pins wurden aus dem deployment-Repo gelesen und mit den **laufenden** Digests beider Namespaces verglichen (appstore-MCP: `deployments`, `pods`, `staging_verdict`, `argocd_apps`). **Das Verhalten selbst wurde nicht zur Laufzeit beobachtet.** Wo eine Aussage nur aus dem Code abgeleitet ist, steht „abgeleitet“. |
-| **Basis des Frontends** | Beschrieben ist `team/dev` @ `0005672`, exportiert per `git archive`. Der Branch `doku/architektur-lea` zweigt von `916c93f` ab, der Quelltext in diesem Branch weicht deshalb in wenigen Dateien vom beschriebenen Stand ab (u. a. #93, #95, #96). Aus diesem Grund zitiert das Dokument keine Zeilennummern. |
+| **Basis des Frontends** | Beschrieben ist `team/dev` @ `0005672`, exportiert per `git archive`; auf diesem Stand setzt auch der PR auf. Das Dokument zitiert keine Zeilennummern, weil sie mit jedem `dev`-Commit driften. |
 | **Modellprüfung** | `validate`: OK. `inspect`: 42 Hinweise, davon 38 „Beziehung ohne Technologie“ (bewusst: prozessinterne Aufrufe zwischen Komponenten haben keine eigene Technologie, sonst trägt jede Kante dasselbe Label), 2 für fehlende `!docs`/`!adrs` (der zustandslose MCP-Server sieht das Dateisystem nicht) und 2 zu Keycloak und Moodle („nicht in einer Sicht“). Letztere sind ein Artefakt: Ich blende ihre Instanzen im Deployment-View bewusst aus, damit er lesbar bleibt; beide Systeme stehen in mehreren anderen Sichten. |
 
 ### 1.1 Stand je Umgebung

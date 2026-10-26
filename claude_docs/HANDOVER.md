@@ -43,11 +43,10 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   dynamische Architektur von **Frontend und self-service-ui** mit Kontext-, Container-, Komponenten-, Deployment- und zehn
   Dynamic-Diagrammen) und `docs/architecture/workspace.dsl` (Structurizr-Modell, über den Structurizr MCP Server validiert
   und nach Mermaid exportiert). Beschrieben ist `dev` (= Staging) zum Zeitpunkt der Analyse: Frontend `0005672`,
-  self-service-ui `54130c3` (erster Stand: `916c93f` und `1e67bd1`, siehe Git-Historie). **Spätere `dev`-Commits sind nicht
+  self-service-ui `54130c3`. **Spätere `dev`-Commits sind nicht
   erfasst.** Prod liegt 47 bzw. 13 Commits hinter dem beschriebenen Stand (Tabelle 1.1 im Dokument). Am 2026-10-26 14:14 UTC
   wurden die laufenden Digests in `appstore-staging` und `appstore-prod` gegen die Pins geprüft: alle gleich, Argo überall
-  `Synced`/`Healthy`. Dieser Branch zweigt von `916c93f` ab, das Dokument beschreibt `0005672`; es zitiert deshalb keine
-  Zeilennummern.
+  `Synced`/`Healthy`. Das Dokument zitiert keine Zeilennummern, weil sie mit jedem `dev`-Commit driften.
   Befunde B1 bis B13 stehen im Dokument, u. a. direkte API-Aufrufe aus 14 Dateien, kein Retry nach 401, kopierte Wizard- und
   Katalog-Logik in beiden Repos, Doku-Drift (Wizard-Reihenfolge, Coverage-Gate). **Nicht zur Laufzeit geprüft.** Die
   Mermaid-Blöcke sind Exporte und müssen nach jeder DSL-Änderung neu erzeugt werden; ein Skript dafür liegt nicht im Repo.
