@@ -107,16 +107,16 @@ describe('DeploymentsListView', () => {
     expect(screen.queryByText('Alive')).not.toBeInTheDocument()
   })
 
-  it('nennt je Deployment, ob es als Pods oder als VM läuft', () => {
+  it('nennt je Deployment die Laufzeit als Pods', () => {
     setState([
-      deployment({ deploymentId: '1', name: 'Pods', runtime: 'kubernetes' }),
-      deployment({ deploymentId: '2', name: 'Windows', runtime: 'openstack-vm' }),
+      deployment({ deploymentId: '1', name: 'Pods A', runtime: 'kubernetes' }),
+      deployment({ deploymentId: '2', name: 'Pods B', runtime: 'kubernetes' }),
     ])
     renderView()
 
     expect(screen.getAllByTestId('runtime-badge').map((b) => b.textContent).sort()).toEqual([
       'runtime.kubernetesShort',
-      'runtime.openstackVmShort',
+      'runtime.kubernetesShort',
     ])
   })
 

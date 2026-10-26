@@ -52,30 +52,25 @@ describe('phaseStepLabel', () => {
   it("prefers the worker's phase names over every static table", () => {
     const { phaseStepLabel } = setup({
       totalPhases: 3,
-      phaseNames: ['STARTING', 'PACKER_BUILD:database', 'CLEANUP'],
+      phaseNames: ['STARTING', 'DEPLOYING', 'CLEANUP'],
       activeTask: task({ type: 'deploy' }),
     })
 
     expect(phaseStepLabel(0)).toBe('Starting')
-    // Multi-image builds suffix the template key; it renders bracketed.
-    expect(phaseStepLabel(1)).toBe('Packer Build [database]')
+    expect(phaseStepLabel(1)).toBe('Deploying')
   })
 
-  it('picks the deploy table by length when no phase names have arrived', () => {
-    const full = setup({ totalPhases: 11, activeTask: task({ type: 'deploy' }) })
-    expect(full.phaseStepLabel(4)).toBe('Packer Init')
-
-    const noPacker = setup({ totalPhases: 8, activeTask: task({ type: 'deploy' }) })
-    expect(noPacker.phaseStepLabel(4)).toBe('Terraform Init')
+  it('picks the deploy table by task type when no phase names have arrived', () => {
+    const deploy = setup({ totalPhases: 5, activeTask: task({ type: 'deploy' }) })
+    expect(deploy.phaseStepLabel(1)).toBe('Deploying')
   })
 
-  it('distinguishes pause from destroy, which have the same length', () => {
-    // Both tables are 7 long, so this can only come from the task type.
-    const pause = setup({ totalPhases: 7, activeTask: task({ type: 'pause' }) })
-    const destroy = setup({ totalPhases: 7, activeTask: task({ type: 'destroy' }) })
+  it('distinguishes pause from destroy by task type', () => {
+    const pause = setup({ totalPhases: 3, activeTask: task({ type: 'pause' }) })
+    const destroy = setup({ totalPhases: 4, activeTask: task({ type: 'destroy' }) })
 
-    expect(pause.phaseStepLabel(5)).toBe('Server Stop')
-    expect(destroy.phaseStepLabel(5)).toBe('Terraform Destroy')
+    expect(pause.phaseStepLabel(1)).toBe('Server Stop')
+    expect(destroy.phaseStepLabel(1)).toBe('Stopping')
   })
 
   it('falls back to a 1-based slot number for an unrecognised width', () => {
@@ -86,8 +81,8 @@ describe('phaseStepLabel', () => {
     expect(phaseStepLabel(12)).toBe('13')
   })
 
-  it('still resolves a known width when the task type is not known yet', () => {
-    const { phaseStepLabel } = setup({ totalPhases: 11, activeTask: null })
+  it('still resolves the deploy table by length when no task type is known', () => {
+    const { phaseStepLabel } = setup({ totalPhases: 5, activeTask: null })
     expect(phaseStepLabel(0)).toBe('Starting')
   })
 })

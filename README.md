@@ -1,6 +1,6 @@
 # Frontend
 
-React-SPA (TypeScript) für den App Store. Studierende und Dozierende verwalten hier Apps, deployen sie auf OpenStack und sehen ihre Deployments.
+React-SPA (TypeScript) für den App Store. Studierende und Dozierende verwalten hier Apps, deployen sie als Pods im Cluster und sehen ihre Deployments.
 
 ## Setup
 
@@ -84,8 +84,8 @@ src/
 ├── composables/   # Wiederverwendbare Hooks (use*), z.B. Login, Live-Updates
 ├── services/      # Logik ohne Oberfläche (aktuell: auth.service fürs Keycloak-Login)
 ├── router/        # Definition der Seiten-Adressen + Zugriffsschutz (Login nötig ja/nein)
-├── types/         # TypeScript-Typdefinitionen (OpenStack-Credentials, Quota, ...)
-├── utils/         # Kleine Helfer (clouds-yaml-Parsing, Formatierung, Fehler-Aufbereitung)
+├── types/         # TypeScript-Typdefinitionen (Apps, Deployments, Pods, ...)
+├── utils/         # Kleine Helfer (Formatierung, Fehler-Aufbereitung)
 └── i18n/          # Mehrsprachigkeit: Setup + Übersetzungstexte (DE/EN)
 ```
 

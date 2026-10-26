@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
     progress: null as number | null,
     currentPhase: null as string | null,
     currentPhaseIndex: null as number | null,
-    totalPhases: 11,
+    totalPhases: 5,
     phaseNames: [] as string[],
     liveLogs: [] as unknown[],
     totalLogCount: 0,
@@ -119,7 +119,7 @@ const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): Deplo
     releaseTag: 'v1.2.3',
     is_private: false,
   },
-  runtime: 'openstack-vm',
+  runtime: 'kubernetes',
   permissions: OWNER,
   actions: ACTIONS_BY_STATUS[overrides.status ?? 'success'] ?? [],
   teams: [
@@ -368,14 +368,14 @@ describe('DeploymentDetailView', () => {
 
   it('startet den Stream wenn ein Task läuft und zeigt den Fortschritt', async () => {
     mocks.listTasks.mockResolvedValue({
-      data: [baseTask({ status: 'running', current_phase: 'TERRAFORM_APPLY', progress_pct: 60 })],
+      data: [baseTask({ status: 'running', current_phase: 'DEPLOYING', progress_pct: 60 })],
     })
     renderView()
 
     await waitFor(() => expect(mocks.startStream).toHaveBeenCalledTimes(1))
     // Seeded from the DB task before the first SSE event.
     // Headline + the matching stepper dot label.
-    expect((await screen.findAllByText('Terraform Apply')).length).toBeGreaterThanOrEqual(2)
+    expect((await screen.findAllByText('Deploying')).length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('60')).toBeInTheDocument()
   })
 
@@ -594,7 +594,7 @@ describe('DeploymentDetailView — Rechte aus der API', () => {
     }))
     renderView()
 
-    expect(await screen.findByTestId('deployment-runtime')).toHaveTextContent('runtime.openstackVm')
+    expect(await screen.findByTestId('deployment-runtime')).toHaveTextContent('runtime.kubernetes')
     expect(screen.getByText('abcdef01')).toBeInTheDocument()
   })
 })

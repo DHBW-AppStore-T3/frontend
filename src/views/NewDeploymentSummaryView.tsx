@@ -1,17 +1,14 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, ArrowRight, ArrowLeft, Box, Layers } from 'lucide-react'
+import { BarChart3, ArrowRight, ArrowLeft, Layers } from 'lucide-react'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
-import { useOpenStackCredentialsStore, selectCredentialById } from '@/stores/openstack-credentials.store'
-import { getDisplayName, useOpenStackCacheVersion } from '@/composables/useOpenStackResourceCache'
 import { paths } from '@/router/paths'
 import { displayNameOf } from './new-deployment/studentSelection'
 import {
   buildFileSummaries,
-  buildPackerEntries,
   buildTerraformEntries,
   versionLabelOf,
   type SummaryEntry,
@@ -19,7 +16,7 @@ import {
 import { useSummaryVariables } from './new-deployment/useSummaryVariables'
 import { networkDeviations } from '@/utils/network'
 import { useSubmitDeployment } from './new-deployment/useSubmitDeployment'
-import { isClusterRuntime, runtimeLabelKey } from '@/utils/runtime'
+import { runtimeLabelKey } from '@/utils/runtime'
 
 function VariableCard(props: {
   title: string
@@ -73,7 +70,6 @@ function VariableCard(props: {
 export default function NewDeploymentSummaryView() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  useOpenStackCacheVersion() // names re-render once the display cache is primed
 
   const draft = useDeploymentStore((s) => s.draft)
   const isStoreLoading = useDeploymentStore((s) => s.isLoading)
@@ -81,16 +77,6 @@ export default function NewDeploymentSummaryView() {
   const apps = useAppStore((s) => s.apps)
   const { defs, isLoading: isLoadingVariables } = useSummaryVariables()
   const { submit, isSubmitting } = useSubmitDeployment()
-
-  // Pods run in the cluster; VM apps in the project of the chosen credential.
-  const isCluster = isClusterRuntime(draft.runtime)
-  const credential = useOpenStackCredentialsStore(selectCredentialById(draft.credentialId))
-  const credentialProject = credential ? credential.project_name || credential.project_id || '' : ''
-  useEffect(() => {
-    if (!isCluster && !useOpenStackCredentialsStore.getState().credentials) {
-      void useOpenStackCredentialsStore.getState().fetch()
-    }
-  }, [isCluster])
 
   const selectedApp = apps.find((a) => a.appId === draft.appId)
   const nameOf = (id: string) => {
@@ -105,13 +91,12 @@ export default function NewDeploymentSummaryView() {
         ? t('deployment.groups.eachUser')
         : t('deployment.groups.custom')
 
-  const ctx = { t, getDisplayName }
-  const packerEntries = buildPackerEntries(defs, draft.variables, ctx)
+  const ctx = { t }
   const terraformEntries = buildTerraformEntries(defs, draft.variables, ctx)
   const fileSummaries = useMemo(() => buildFileSummaries(defs, draft.fileUploads), [defs, draft.fileUploads])
   const fileCount = fileSummaries.reduce((sum, v) => sum + v.chips.length, 0)
   // Expert settings are only mentioned when they differ from the app's default.
-  const networkChanges = isCluster ? networkDeviations(draft) : []
+  const networkChanges = networkDeviations(draft)
   const busy = isSubmitting || isStoreLoading
 
   return (
@@ -172,24 +157,14 @@ export default function NewDeploymentSummaryView() {
                 <p className="text-lg font-bold text-textHeading">{versionLabelOf(draft.releaseTag)}</p>
               </div>
             </div>
-            {/* How it runs: pods in the cluster, or VMs in the chosen OpenStack project */}
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="summary-runtime">
+            {/* How it runs: pods in the cluster */}
+            <div className="mt-4 grid grid-cols-1 gap-4" data-testid="summary-runtime">
               <div className="bg-white rounded-lg p-4 border border-emerald-100">
                 <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">
                   {t('deployment.summary.runtimeLabel')}
                 </p>
-                <p className="text-lg font-bold text-textHeading">
-                  {t(runtimeLabelKey(draft.runtime))}
-                </p>
+                <p className="text-lg font-bold text-textHeading">{t(runtimeLabelKey(draft.runtime))}</p>
               </div>
-              {isCluster ? null : (
-                <div className="bg-white rounded-lg p-4 border border-emerald-100">
-                  <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-semibold">
-                    {t('deployment.summary.projectLabel')}
-                  </p>
-                  <p className="text-lg font-bold text-textHeading">{credentialProject || '-'}</p>
-                </div>
-              )}
             </div>
             {networkChanges.length > 0 ? (
               <div className="mt-4 bg-white rounded-lg p-4 border border-emerald-100" data-testid="summary-network">
@@ -294,20 +269,11 @@ export default function NewDeploymentSummaryView() {
               </button>
             </div>
 
-            <div className={`grid grid-cols-1 gap-4 ${isCluster ? '' : 'lg:grid-cols-2'}`}>
-              {isCluster ? null : (
-                <VariableCard
-                  tone="blue"
-                  title={t('deployment.summary.packerVars')}
-                  empty={t('deployment.summary.noPackerVars')}
-                  entries={packerEntries}
-                  icon={<Box size={18} className="text-blue-700" />}
-                />
-              )}
+            <div className="grid grid-cols-1 gap-4">
               <VariableCard
                 tone="purple"
-                title={isCluster ? t('deployment.summary.appSettings') : t('deployment.summary.terraformVars')}
-                empty={isCluster ? t('deployment.summary.noAppSettings') : t('deployment.summary.noTerraformVars')}
+                title={t('deployment.summary.appSettings')}
+                empty={t('deployment.summary.noAppSettings')}
                 entries={terraformEntries}
                 icon={<Layers size={18} className="text-purple-700" />}
               />

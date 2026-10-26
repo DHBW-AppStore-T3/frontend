@@ -23,6 +23,8 @@ export interface PodWorkloadsPanelProps {
   live: boolean
   /** Restart/reset buttons: operate right and redeploy allowed right now. */
   canAct: boolean
+  /** Show the reset button (false for a VM: the backend answers `reset_not_supported`). */
+  canReset?: boolean
   /** Workloads with a restart or reset in flight. */
   busy: Set<string>
   onRefresh: () => void
@@ -80,10 +82,11 @@ function SetupProgress({ name, setup }: { name: string; setup: PodSetupProgress 
 function WorkloadRow({
   workload,
   canAct,
+  canReset = true,
   busy,
   onRestart,
   onReset,
-}: { workload: PodWorkload; busy: boolean } & Pick<PodWorkloadsPanelProps, 'canAct' | 'onRestart' | 'onReset'>) {
+}: { workload: PodWorkload; busy: boolean } & Pick<PodWorkloadsPanelProps, 'canAct' | 'canReset' | 'onRestart' | 'onReset'>) {
   const { t, i18n } = useTranslation()
   const name = workload.workload
   const url = safeHttpUrl(workload.url)
@@ -136,6 +139,7 @@ function WorkloadRow({
             >
               <RotateCcw size={12} /> {t('pods.restart')}
             </button>
+            {canReset ? (
             <button
               type="button"
               disabled={busy}
@@ -146,6 +150,7 @@ function WorkloadRow({
             >
               <Eraser size={12} /> {t('pods.reset')}
             </button>
+            ) : null}
           </div>
         </td>
       ) : null}
@@ -154,7 +159,7 @@ function WorkloadRow({
 }
 
 export default function PodWorkloadsPanel(props: PodWorkloadsPanelProps) {
-  const { workloads, loading, error, live, canAct, busy, onRefresh, onRestart, onReset } = props
+  const { workloads, loading, error, live, canAct, canReset, busy, onRefresh, onRestart, onReset } = props
   const { t } = useTranslation()
 
   return (
@@ -209,6 +214,7 @@ export default function PodWorkloadsPanel(props: PodWorkloadsPanelProps) {
                   key={workload.workload}
                   workload={workload}
                   canAct={canAct}
+                  canReset={canReset}
                   busy={busy.has(workload.workload)}
                   onRestart={onRestart}
                   onReset={onReset}

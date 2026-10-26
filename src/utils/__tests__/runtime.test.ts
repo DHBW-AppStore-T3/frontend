@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canRestartWorkloads, confirmMessageSuffix, isClusterRuntime, runtimeLabelKey } from '../runtime'
+import { canResetWorkloads, canRestartWorkloads, confirmMessageSuffix, isClusterRuntime, runtimeLabelKey } from '../runtime'
 
 describe('isClusterRuntime', () => {
   it('pods and KubeVirt VMs live in the cluster, OpenStack VMs do not', () => {
@@ -24,19 +24,20 @@ describe('runtimeLabelKey', () => {
 })
 
 describe('confirmMessageSuffix', () => {
-  it('names pods, a KubeVirt VM and (none) an OpenStack VM differently', () => {
+  it('names a KubeVirt VM differently from pods', () => {
     expect(confirmMessageSuffix('kubernetes')).toBe('Pods')
     expect(confirmMessageSuffix('kubevirt-vm')).toBe('Vm')
-    expect(confirmMessageSuffix('openstack-vm')).toBe('')
-    expect(confirmMessageSuffix(null)).toBe('')
   })
 })
 
-describe('canRestartWorkloads', () => {
-  it('is a pod-only operation', () => {
+describe('canRestartWorkloads / canResetWorkloads', () => {
+  it('restart works for pods and VMs, reset only for pods', () => {
     expect(canRestartWorkloads('kubernetes')).toBe(true)
-    expect(canRestartWorkloads('kubevirt-vm')).toBe(false)
+    expect(canRestartWorkloads('kubevirt-vm')).toBe(true)
     expect(canRestartWorkloads('openstack-vm')).toBe(false)
     expect(canRestartWorkloads(undefined)).toBe(false)
+    expect(canResetWorkloads('kubernetes')).toBe(true)
+    expect(canResetWorkloads('kubevirt-vm')).toBe(false)
+    expect(canResetWorkloads(undefined)).toBe(false)
   })
 })

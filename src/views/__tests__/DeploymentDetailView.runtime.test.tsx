@@ -80,11 +80,11 @@ beforeEach(async () => {
 })
 
 describe('DeploymentDetailView of a cluster deployment', () => {
-  it('lists the VM row of a kubevirt-vm deployment without restart and reset', async () => {
+  it('lists the VM row of a kubevirt-vm deployment with restart but without reset', async () => {
     state.runtime = 'kubevirt-vm'
     await openView()
     expect(await screen.findByTestId('workload-desktop-a')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Neu starten/ })).toBeNull()
+    expect(await screen.findByRole('button', { name: /Neu starten/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Zurücksetzen/ })).toBeNull()
   })
 

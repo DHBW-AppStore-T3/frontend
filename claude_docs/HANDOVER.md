@@ -5,6 +5,8 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ---
 
+> **Stand Oktober 2026 (.github#12):** Der OpenStack-VM-Pfad ist aus dem Frontend entfernt (Credentials-Einstellungen, Ressourcen-Picker, Quota-Kachel, Infrastructure-Tab). Es gibt nur noch Pod-Deployments. Abschnitte unten beschreiben teilweise noch den alten Stand.
+
 ## 1. Status & Fokus
 
 - **Stack:** React 19, Zustand, React Router 7, react-i18next, Tailwind CSS, Vite, TypeScript, Vitest + React Testing Library.
@@ -36,6 +38,17 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 ---
 
 ## 4. Letzte Übergaben (Historie)
+
+- **2026-10-25 (Error Boundaries, frontend#81, Teil von Epic #77):** Ein Render-, Lazy-Import- oder Loader-Fehler lässt die App
+  nicht mehr weiß werden. `src/components/RouteError.tsx` ist der `errorElement` (Titel + Kurztext, Schaltflächen „Seite neu
+  laden" und „Zum Dashboard", der Fehler geht nur per `console.error('[RouteError]', error)` ins Log, nie in die Seite).
+  Im Router steht er zweimal: auf der Root-Route (`fullPage`, fängt ein ausfallendes Layout) und auf einer **pathlosen
+  Wrapper-Route um die Kindrouten** jedes Layouts (Hilfsfunktion `contained()` in `src/router/index.tsx`). Ein
+  `errorElement` direkt am Layout würde Sidebar und Header mit ersetzen; am Wrapper ersetzt es nur die Seite. URLs, Guards
+  (Loader) und Navigation sind unverändert, der Fehler wird beim nächsten Routenwechsel vom Router zurückgesetzt. Texte unter
+  `router.error.*` (de/en). Tests: `tests/unit/router/error-boundary.spec.tsx` (10). **Nicht im Browser geprüft**, nur
+  per Test; Hauptbundle +3 kB. **Bekannt, nicht von dieser Änderung:** `routes.spec` ("sends role-less users from admin routes
+  to /forbidden") flackert auch auf `dev` (gemessen 2 von 12 Läufen mit und ohne die Änderung), siehe frontend#78.
 
 - **2026-10-25 (Statuspolling für Mitglieder, frontend#71):** Studierende (`permissions.member && !owner_view`) sehen den
   Status einer laufenden Bereitstellung (`pending`/`running`) in `/deployments/:id` ohne Neuladen. Der SSE-Stream bleibt

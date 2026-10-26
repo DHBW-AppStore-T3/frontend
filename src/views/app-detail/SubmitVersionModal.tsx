@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
-import type { AppVariableMarkerError } from '@/types'
 
 export interface SubmitVersionModalProps {
   /** Version being submitted; the modal is shown while this is set. */
   versionTag: string | null
   isSubmitting: boolean
-  markerErrors: AppVariableMarkerError[]
+  /** Why the version cannot be submitted (its appstore.yaml), one line each. */
+  specErrors: string[]
   onClose: () => void
   onSubmit: (notes: string) => void
 }
@@ -16,7 +16,7 @@ export interface SubmitVersionModalProps {
 export default function SubmitVersionModal({
   versionTag,
   isSubmitting,
-  markerErrors,
+  specErrors,
   onClose,
   onSubmit,
 }: SubmitVersionModalProps) {
@@ -54,18 +54,15 @@ export default function SubmitVersionModal({
             />
           </div>
 
-          {markerErrors.length > 0 ? (
+          {specErrors.length > 0 ? (
             <div className="rounded-lg border border-danger/30 bg-dangerTint p-3">
               <p className="text-xs font-semibold text-red-700 mb-2">
-                {t('AppsDetailView.submitModal.markerErrorTitle')}
+                {t('AppsDetailView.submitModal.specErrorTitle')}
               </p>
               <ul className="space-y-1.5">
-                {markerErrors.map((e) => (
-                  <li key={e.variable + e.code} className="text-xs text-danger">
-                    <span className="font-mono font-medium">{e.variable}</span>
-                    <span className="text-danger mx-1">·</span>
-                    <span>{e.message}</span>
-                    {e.location ? <span className="text-danger ml-1 text-[10px]">({e.location})</span> : null}
+                {specErrors.map((line) => (
+                  <li key={line} className="text-xs text-danger font-mono">
+                    {line}
                   </li>
                 ))}
               </ul>

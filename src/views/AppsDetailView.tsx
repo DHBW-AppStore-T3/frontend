@@ -1,6 +1,6 @@
 import { defaultSelection } from '@/utils/resources'
 import { defaultNetwork } from '@/utils/network'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, GitBranch, Layers, Pencil, ShoppingBag, Trash2 } from 'lucide-react'
@@ -8,11 +8,6 @@ import AppLogo from '@/components/ui/AppLogo'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
 import { useDeploymentStore } from '@/stores/deployment.store'
-import {
-  useOpenStackCredentialsStore,
-  selectIsResolved,
-  selectHasUsableCredential,
-} from '@/stores/openstack-credentials.store'
 import { useAuthStore, selectUserId } from '@/stores/auth.store'
 import { useRole } from '@/composables/useRole'
 import { useToast } from '@/composables/useToast'
@@ -21,7 +16,7 @@ import { safeHttpUrl } from '@/utils/safe-url'
 import BoldSlot from '@/i18n/BoldSlot'
 import { useAppDetail } from './app-detail/useAppDetail'
 import { useVersionRuntime } from './app-detail/useVersionRuntime'
-import { canStartDeployment, needsCredential } from './app-detail/runtime'
+import { canStartDeployment } from './app-detail/runtime'
 import {
   bannerStatusOf,
   deployVersionOf,
@@ -75,8 +70,6 @@ export default function AppsDetailView() {
   const toast = useToast()
   const { isAdmin, isStaff, isAdminView } = useRole()
   const userId = useAuthStore(selectUserId)
-  const credentialsResolved = useOpenStackCredentialsStore(selectIsResolved)
-  const hasUsableCredential = useOpenStackCredentialsStore(selectHasUsableCredential)
 
   // Owner or admin may edit, delete and manage versions; mirrors the backend's
   // ``can_edit_app`` so the UI never offers actions that would 403.
@@ -105,16 +98,7 @@ export default function AppsDetailView() {
     isStaff,
     version: effectiveVersion,
     runtime: versionRuntime.runtime,
-    credentialsResolved,
-    hasUsableCredential,
   }
-
-  // Only VM apps need an OpenStack credential: read them for staff once.
-  useEffect(() => {
-    if (isStaff && !useOpenStackCredentialsStore.getState().credentials) {
-      void useOpenStackCredentialsStore.getState().fetch()
-    }
-  }, [isStaff])
 
   const canManageVersions = !!app && canManage(app)
   const banner = bannerStatusOf(app, detail.approvals)
@@ -127,7 +111,7 @@ export default function AppsDetailView() {
     if (!canStartDeployment(gate)) return
     const drafts = useDeploymentStore.getState()
     drafts.resetDraft()
-    // How the version runs travels with the draft (credential and group step).
+    // How the version runs travels with the draft (group step and options).
     drafts.updateDraft({
       appId: app.appId || app.id || null,
       releaseTag: effectiveVersion,
@@ -143,7 +127,7 @@ export default function AppsDetailView() {
   }
 
   const openSubmitModal = (version: string) => {
-    detail.clearMarkerErrors()
+    detail.clearSpecErrors()
     setSubmitTarget(version)
   }
 
@@ -283,7 +267,6 @@ export default function AppsDetailView() {
                 isLoading: versionRuntime.isLoading,
                 errorKey: versionRuntime.errorKey,
               }}
-              credentialsMissing={needsCredential(gate)}
               deployEnabled={canStartDeployment(gate)}
               scrollToDeployOptions={hash === DEPLOYMENT_OPTIONS_HASH}
               onSelectVersion={setSelectedVersion}
@@ -343,7 +326,7 @@ export default function AppsDetailView() {
       <SubmitVersionModal
         versionTag={submitTarget}
         isSubmitting={detail.isSubmitting}
-        markerErrors={detail.markerErrors}
+        specErrors={detail.specErrors}
         onClose={() => setSubmitTarget(null)}
         onSubmit={(notes) => void submitVersion(notes)}
       />

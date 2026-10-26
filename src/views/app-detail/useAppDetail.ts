@@ -4,12 +4,21 @@ import { useTranslation } from 'react-i18next'
 import { appApi } from '@/api/app.api'
 import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
-import type { AppVariableMarkerError, AppVersionApproval } from '@/types'
+import type { AppVersionApproval } from '@/types'
 import type { AppDetail } from './versionInfo'
 import { buildEditPayload, type EditFormValues, type EditImage } from './editPayload'
 
 const HTTP_CONFLICT = 409
 const HTTP_UNPROCESSABLE = 422
+
+/** The lines of a 422 about the appstore.yaml: one per field problem, or the reason itself. */
+function specErrorLines(detail: any, t: (key: string) => string): string[] {
+  if (detail.reason === 'appstore_yaml_missing') return [t('AppsDetailView.submitModal.yamlMissing')]
+  if (Array.isArray(detail.errors) && detail.errors.length) {
+    return detail.errors.map((e: { loc: string; msg: string }) => `${e.loc}: ${e.msg}`)
+  }
+  return [String(detail.message ?? detail.reason)]
+}
 
 /**
  * Data and mutations of the app detail page: the app, its version approvals
@@ -28,7 +37,7 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
   const [withdrawingVersion, setWithdrawingVersion] = useState<string | null>(null)
   const [isTogglingPrivacy, setIsTogglingPrivacy] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [markerErrors, setMarkerErrors] = useState<AppVariableMarkerError[]>([])
+  const [specErrors, setSpecErrors] = useState<string[]>([])
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSettingDeployVersion, setIsSettingDeployVersion] = useState(false)
@@ -71,7 +80,7 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
 
   const submitVersion = async (versionTag: string, notes: string): Promise<boolean> => {
     setIsSubmitting(true)
-    setMarkerErrors([])
+    setSpecErrors([])
     try {
       await appApi.submitVersion(appId, versionTag, undefined, notes.trim() || undefined)
       toast.success(t('AppsDetailView.toasts.submitSuccess'))
@@ -82,8 +91,8 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
       const detail = err?.response?.data?.detail
       if (status === HTTP_CONFLICT) {
         toast.warning(t('AppsDetailView.toasts.submitDuplicate'))
-      } else if (status === HTTP_UNPROCESSABLE && detail?.marker_errors?.length) {
-        setMarkerErrors(detail.marker_errors)
+      } else if (status === HTTP_UNPROCESSABLE && detail?.reason) {
+        setSpecErrors(specErrorLines(detail, t))
       } else {
         toast.error(t('AppsDetailView.toasts.submitError'))
       }
@@ -195,8 +204,8 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
     withdrawingVersion,
     isTogglingPrivacy,
     isSubmitting,
-    markerErrors,
-    clearMarkerErrors: () => setMarkerErrors([]),
+    specErrors,
+    clearSpecErrors: () => setSpecErrors([]),
     isSavingEdit,
     isDeleting,
     isSettingDeployVersion,

@@ -114,14 +114,13 @@ describe('app routes', () => {
   })
 })
 
-describe('staff-only routes (teachers and admins register apps, deploy, manage credentials)', () => {
+describe('staff-only routes (teachers and admins register apps and deploy)', () => {
   const STAFF_ONLY = [
     '/apps/create',
     '/deployment/new/config',
     '/deployment/new/teams',
     '/deployment/new/variables',
     '/deployment/new/summary',
-    '/user/openstack',
     '/courses',
   ]
 
@@ -136,8 +135,6 @@ describe('staff-only routes (teachers and admins register apps, deploy, manage c
     ['teacher', '/apps/create'],
     ['admin', '/apps/create'],
     ['teacher', '/deployment/new/config'],
-    ['teacher', '/user/openstack'],
-    ['admin', '/user/openstack'],
   ] as const)('lets a %s open %s', async (role, url) => {
     loginAs(role)
     const router = renderAt(url)

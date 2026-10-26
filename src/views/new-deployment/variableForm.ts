@@ -363,12 +363,3 @@ export function dropStaleSlots(
 /** Expert sections open by default when a required expert variable has no default. */
 export const hasBlockingExpert = (defs: AppVariable[]): boolean =>
   defs.some((v) => isExpert(v) && v.required && (v.default === null || v.default === undefined))
-
-export function markerErrorLines(defs: AppVariable[]): string[] {
-  return defs
-    .filter((v) => v.markerError)
-    .map((v) => {
-      const loc = v.markerError?.location ? ` (${v.markerError.location})` : ''
-      return `• ${v.markerError?.variable}${loc}: ${v.markerError?.message}`
-    })
-}

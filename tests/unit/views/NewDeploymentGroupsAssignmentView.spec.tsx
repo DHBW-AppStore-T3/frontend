@@ -209,17 +209,6 @@ describe('NewDeploymentGroupsAssignmentView', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
   })
 
-  it('erzwingt für Windows-Apps "Jeder einzeln" und sperrt die anderen Modi', async () => {
-    useAppStore.setState({ apps: [{ appId: 'win', name: 'Windows Server' } as any] })
-    seed({ appId: 'win' })
-    renderView()
-
-    await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
-    expect(screen.getByRole('button', { name: 'deployment.groups.one' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'deployment.groups.custom' })).toBeDisabled()
-    expect(screen.getByText('deployment.assignment.windowsConstraintTitle')).toBeInTheDocument()
-  })
-
   describe('nach Laufzeit und Scope der Version (appstore.yaml)', () => {
     it('scope user erzwingt "Jeder einzeln", auch bei einer Pod-App ohne Windows im Namen', async () => {
       useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
@@ -229,7 +218,6 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
       expect(screen.getByText('deployment.assignment.perPersonConstraintText')).toBeInTheDocument()
       expect(screen.getByText('deployment.assignment.perPersonConstraintTitle')).toBeInTheDocument()
-      expect(screen.queryByText('deployment.assignment.windowsConstraintTitle')).not.toBeInTheDocument()
     })
 
     describe('App je Person (erzwungenes "Jeder einzeln")', () => {
@@ -290,12 +278,12 @@ describe('NewDeploymentGroupsAssignmentView', () => {
         expect(JSON.stringify(draft().assignments)).toBe(before)
       })
 
-      it('gilt auch für Windows-Apps ohne Scope', async () => {
-        useAppStore.setState({ apps: [{ appId: 'win', name: 'Windows Server' } as any] })
-        seed({ appId: 'win' })
+      it('gilt auch für Apps ohne expliziten Scope wenn scope: user gesetzt ist', async () => {
+        useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
+        seed({ appId: 'lab', runtime: 'kubernetes', scope: 'user' })
         const { container } = renderView()
 
-        await screen.findByText('deployment.assignment.windowsConstraintTitle')
+        await screen.findByText('deployment.assignment.perPersonConstraintTitle')
         expect(screen.queryByText('deployment.assignment.dragDropTitle')).not.toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'deployment.assignment.shuffle' })).toBeDisabled()
         expect(screen.getByRole('button', { name: 'deployment.assignment.reset' })).toBeDisabled()
@@ -318,14 +306,14 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       expect(container.querySelector('.lucide-grip-vertical')).not.toBeNull()
     })
 
-    it('scope team lässt die Gruppierung frei, auch bei einem "Windows"-Namen', async () => {
-      useAppStore.setState({ apps: [{ appId: 'win', name: 'Windows Lab' } as any] })
-      seed({ appId: 'win', runtime: 'openstack-vm', scope: 'team' })
+    it('scope team lässt die Gruppierung frei', async () => {
+      useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
+      seed({ appId: 'lab', runtime: 'kubernetes', scope: 'team' })
       renderView()
 
       await screen.findByText('John Doe')
       expect(screen.getByRole('button', { name: 'deployment.groups.one' })).toBeEnabled()
-      expect(screen.queryByText('deployment.assignment.windowsConstraintTitle')).not.toBeInTheDocument()
+      expect(screen.queryByText('deployment.assignment.perPersonConstraintTitle')).not.toBeInTheDocument()
     })
   })
 })

@@ -2,14 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-const picker = vi.hoisted(() => ({ props: null as any }))
-vi.mock('@/components/OpenStackResourcePicker', () => ({
-  default: (props: any) => {
-    picker.props = props
-    return <div data-testid="os-picker" />
-  },
-}))
-
 import VariableInput from '@/components/VariableInput'
 import { renderWithProviders } from '../../helpers/render'
 
@@ -77,48 +69,15 @@ describe('VariableInput', () => {
     expect(screen.getByRole('textbox')).toBeDisabled()
   })
 
-  describe('OpenStack pickers', () => {
-    it('delegates to the picker with mode, multi and free text', () => {
-      renderWithProviders(
-        <VariableInput
-          variable={variable({ osType: 'flavor', osMode: 'id', osMulti: true })}
-          value={['a']}
-          onChange={() => {}}
-        />,
-      )
-
-      expect(screen.getByTestId('os-picker')).toBeInTheDocument()
-      expect(picker.props).toMatchObject({ osType: 'flavor', osMode: 'id', multi: true, allowFreeText: true, value: ['a'] })
-    })
-
-    it('defaults to name mode and only filters subnets by network', () => {
-      renderWithProviders(
-        <VariableInput variable={variable({ osType: 'subnet' })} value="" filterNetworkId="net-1" onChange={() => {}} />,
-      )
-      expect(picker.props).toMatchObject({ osMode: 'name', filterNetworkId: 'net-1' })
-
-      renderWithProviders(
-        <VariableInput variable={variable({ osType: 'flavor' })} value="" filterNetworkId="net-1" onChange={() => {}} />,
-      )
-      expect(picker.props.filterNetworkId).toBeNull()
-    })
-
-    it('never renders a picker for file variables', () => {
-      renderWithProviders(<VariableInput variable={variable({ osType: 'file' })} value="" onChange={() => {}} />)
-      expect(screen.queryByTestId('os-picker')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('enum (pod apps: one of the values appstore.yaml declares)', () => {
+  describe('enum (one of the values appstore.yaml declares)', () => {
     const enumVar = (over: Record<string, unknown> = {}) => variable({ osType: 'enum', values: ['s', 'm', 'l'], ...over })
 
-    it('is a select over the declared values, not an OpenStack picker', () => {
+    it('is a select over the declared values', () => {
       renderWithProviders(<VariableInput variable={enumVar({ default: 'm' })} value="m" onChange={() => {}} />)
 
       const select = screen.getByTestId('enum-input') as HTMLSelectElement
       expect(Array.from(select.options).map((o) => o.text)).toEqual(['s', 'm', 'l'])
       expect(select.value).toBe('m')
-      expect(screen.queryByTestId('os-picker')).not.toBeInTheDocument()
     })
 
     it('emits the chosen value', async () => {
