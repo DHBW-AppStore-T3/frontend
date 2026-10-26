@@ -31,10 +31,10 @@ USER root
 
 # Apply outstanding base-image security patches that the upstream tag
 # hasn't picked up yet (Trivy scans the runtime image — anything
-# HIGH/CRITICAL here blocks the push).
+# HIGH/CRITICAL here blocks the push). No `|| apk upgrade` fallback: if a
+# pinned minimum can't be installed the build must fail, not ship without it.
 RUN apk upgrade --no-cache && \
-    apk add --no-cache "libcrypto3>=3.5.7-r0" "libssl3>=3.5.7-r0" "libexpat>=2.8.5-r0" "curl>=8.23.0-r0" "libcurl>=8.23.0-r0" || \
-    apk upgrade --no-cache libcrypto3 libssl3 libexpat curl libcurl
+    apk add --no-cache "libcrypto3>=3.5.7-r0" "libssl3>=3.5.7-r0" "libexpat>=2.8.5-r0" "curl>=8.23.0-r0" "libcurl>=8.23.0-r0"
 
 # Default Nginx Config entfernen
 RUN rm /etc/nginx/conf.d/default.conf
