@@ -20,14 +20,18 @@ import { expect } from 'vitest'
  */
 
 export class UnmockedNetworkError extends Error {
-  constructor(
-    readonly kind: 'fetch' | 'xhr',
-    readonly method: string,
-    readonly url: string,
-    readonly test: string,
-  ) {
+  readonly kind: 'fetch' | 'xhr'
+  readonly method: string
+  readonly url: string
+  readonly test: string
+
+  constructor(kind: 'fetch' | 'xhr', method: string, url: string, test: string) {
     super(`Unmocked ${kind} request: ${method} ${url} (test: "${test}"). Mock the API module or call allowRealNetwork().`)
     this.name = 'UnmockedNetworkError'
+    this.kind = kind
+    this.method = method
+    this.url = url
+    this.test = test
   }
 }
 
