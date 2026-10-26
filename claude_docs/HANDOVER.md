@@ -54,6 +54,23 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-27 (Windows-VM-App: Internetzugriff sichtbar, Ressourcen in den Experteneinstellungen, frontend#109):** Variablen-Schritt
+  (`NewDeploymentVariableView`) hat für `draft.runtime === 'kubevirt-vm'` ein eigenes Layout; **Pod-Apps (`kubernetes`) bleiben
+  unverändert** (`NetworkSettings` und `ResourcePicker` nicht angefasst), die Weiche steht in der View. Neue Dateien unter
+  `src/views/new-deployment/`: `VmInternetAccess` (Karte: Status „Erlaubt/Gesperrt", Schalter, Folgezeile, bei „Erlaubt"
+  bernsteinfarben), `VmExpertSettings` (Akkordeon, zugeklappt; Kopf zeigt Chip „Empfohlen/Angepasst" und das Typenschild
+  „4 vCPU | 8 GB RAM"; Inhalt ist zugeklappt `inert` + `aria-hidden`, bleibt aber im DOM, damit das Auf-/Zuklappen animiert
+  (`grid-template-rows`)), `VmResourceSliders` (natives `<input type="range">`, Ablesefeld, Kerben, Markierung „empfohlen",
+  „Auf Empfehlung zurücksetzen", Gesamtzeile nur bei `scope: user`), `NetworkSwitchRow` (Zeile „Vernetzte Desktops") und
+  `VmSettings.css` (nur Tokens). `src/utils/resources.ts`: `formatMemoryGb`, `isDefaultSelection`, `totalResources`.
+  Neue Texte unter `deployment.vm.*` (de/en, Test `vm-messages.test.ts`); die Übersicht (`NewDeploymentSummaryView`) nennt die
+  Zeile bei VMs „Vernetzte Desktops". **Der Standard kommt unverändert aus `draft.resources`** (`defaultSelection`), gesendet wird
+  weiter `userInputVar.resources`; geändert hat sich nur, wo und wie die Bedienelemente stehen. 8 GiB werden als „8 GB" angezeigt,
+  die Nutzlast bleibt `8Gi`. **Fallstricke:** (1) `rerender` aus `renderWithProviders` verliert den i18n-Provider, deshalb in den
+  Tests neu rendern; (2) die Lint-Regel `react-hooks/refs` meldet jede Prop eines Props-Objekts, das eine `*Ref` enthält, als
+  Ref-Zugriff beim Rendern: Props destrukturieren. **Offen (Team):** was für Pod-Apps gelten soll (siehe Issue, „Offene Punkte").
+  Design: `issue-drafts/14-internetzugriff-sichtbar/` (Mockup und `design-plan.md`, außerhalb dieses Repos).
+
 - **2026-10-26 (Dev-Abhängigkeiten und Security-Audit, frontend#82, Teil von Epic #77):** `npm audit` von 10 auf 7 Funde (alle Dev-Tooling),
   `npm audit --omit=dev` weiter 0. **Geändert:** `vite` 7.3.6 → 7.3.7 (5 Funde zu Vite/launch-editor), `undici` 7.30.0 → 7.30.1 (nur Lockfile, innerhalb
   `jsdom`s `^7.25.0`, 3 Funde), `@vitest/coverage-v8` entfernt (ungenutzt, 6 Pakete weniger). **Abweichung vom Issue:** `jsdom` bleibt. Das Issue nahm an,

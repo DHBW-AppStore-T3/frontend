@@ -35,6 +35,38 @@ export function defaultSelection(choices: ResourceChoice[]): Record<string, { cp
   return Object.fromEntries(choices.map((c) => [c.container, { cpu: c.cpu.default, memory: c.memory.default }]))
 }
 
+/** Memory as people say it: ``8`` for 8192 MiB, ``1.5`` for 1536 (Windows calls GiB "GB"). The payload stays in ``Gi``. */
+export function formatMemoryGb(mib: number): string {
+  const gb = mib / 1024
+  return Number.isInteger(gb) ? String(gb) : String(Math.round(gb * 10) / 10)
+}
+
+type Selection = Record<string, { cpu: string; memory: string }>
+
+/** What a container is set to: the choice made, else the recommendation of the app. */
+function chosenOf(choice: ResourceChoice, selection: Selection): { cpu: string; memory: string } {
+  return selection[choice.container] ?? { cpu: choice.cpu.default, memory: choice.memory.default }
+}
+
+/** Whether nothing differs from the recommendation (quantities are compared, not spellings). */
+export function isDefaultSelection(choices: ResourceChoice[], selection: Selection): boolean {
+  return choices.every((c) => {
+    const v = chosenOf(c, selection)
+    return cpuToMillicores(v.cpu) === cpuToMillicores(c.cpu.default) && memoryToMib(v.memory) === memoryToMib(c.memory.default)
+  })
+}
+
+/** What all containers get together. */
+export function totalResources(choices: ResourceChoice[], selection: Selection): { cpuMillicores: number; memoryMib: number } {
+  return choices.reduce(
+    (sum, c) => {
+      const v = chosenOf(c, selection)
+      return { cpuMillicores: sum.cpuMillicores + cpuToMillicores(v.cpu), memoryMib: sum.memoryMib + memoryToMib(v.memory) }
+    },
+    { cpuMillicores: 0, memoryMib: 0 },
+  )
+}
+
 /** Remaining time as a short phrase part: ``15`` minutes, or hours and minutes; ``null`` below one minute. */
 export function etaParts(seconds: number): { hours: number; minutes: number } | null {
   if (seconds < 60) return null
