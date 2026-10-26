@@ -2,7 +2,7 @@
 
 > **Stand:** 2026-10-26 · beschrieben ist der Stand von `dev`, der auf **Staging** ausgerollt ist:
 > **Frontend** `dev` @ `0005672` · **self-service-ui** `dev` @ `54130c3`. Prod läuft auf älteren Ständen (Abschnitt 1.1). Der erste Stand dieser Doku (`916c93f` und `1e67bd1`) steht in der Git-Historie.
-> **Quellen:** Code beider Repos, Importanalyse, `nginx.conf`, `Caddyfile`, Docker- und CI-Dateien, das Kubernetes-README, die Workflows und Skripte sowie das Helm-Template im deployment-Repo, `claude_docs/` beider Repos, die Image-Pins in `k8s/images/`. Beim ersten Stand zusätzlich die laufenden Pods (appstore-MCP).
+> **Quellen:** Code beider Repos, Importanalyse, `nginx.conf`, `Caddyfile`, Docker- und CI-Dateien, das Kubernetes-README, die Workflows, Skripte und das Helm-Chart im deployment-Repo, `claude_docs/` beider Repos, die Image-Pins in `k8s/images/`. Dazu die laufenden Workloads und Pods beider Namespaces sowie der Argo-CD-Stand (appstore-MCP, geprüft am 2026-10-26 um 14:14 UTC).
 > **Modell:** [`workspace.dsl`](workspace.dsl) (Structurizr DSL, C4). Die Diagramme sind aus diesem Modell erzeugt, über den Structurizr MCP Server (v2026.04.20, lokal; Tools `validate`, `parse`, `inspect`, `export-mermaid`).
 
 ## Kurzfassung
@@ -26,7 +26,7 @@
 | **Im Scope** | Die beiden Oberflächen mit ihren Web-Servern, ihre Anbindung an Keycloak, Moodle und die API sowie die Laufzeitumgebung. |
 | **Außerhalb** | Innenleben von Backend-API und Worker. Sie stehen als graue Container im Modell, weil beide Oberflächen ihren Vertrag nutzen. |
 | **Nur der Ist-Stand** | Beschrieben ist, was im Code von `dev` steht und auf Staging läuft. Geplantes, Idealtypisches und Entwürfe aus Issues kommen nicht vor. Wo Doku und Code auseinanderlaufen, gilt der Code, und die Abweichung steht in Abschnitt 4. |
-| **Methode** | Statisch: Verzeichnis- und Importanalyse (nur Nicht-Test-Code), Konfigurationsdateien, Helm-Template. Dynamisch: Code-Lektüre der beteiligten Module. Die **deklarierten** Image-Pins wurden aus dem deployment-Repo gelesen. Die **laufenden** Digests hatte ich beim ersten Stand (`916c93f`, `1e67bd1`) über den appstore-MCP geprüft; für die Aktualisierung war der MCP nicht erreichbar (Anmeldung abgelaufen). **Das Verhalten selbst wurde nicht zur Laufzeit beobachtet.** Wo eine Aussage nur aus dem Code abgeleitet ist, steht „abgeleitet“. |
+| **Methode** | Statisch: Verzeichnis- und Importanalyse (nur Nicht-Test-Code), Konfigurationsdateien, Helm-Chart. Dynamisch: Code-Lektüre der beteiligten Module. Die **deklarierten** Image-Pins wurden aus dem deployment-Repo gelesen und mit den **laufenden** Digests beider Namespaces verglichen (appstore-MCP: `deployments`, `pods`, `staging_verdict`, `argocd_apps`). **Das Verhalten selbst wurde nicht zur Laufzeit beobachtet.** Wo eine Aussage nur aus dem Code abgeleitet ist, steht „abgeleitet“. |
 | **Basis des Frontends** | Beschrieben ist `team/dev` @ `0005672`, exportiert per `git archive`. Der Branch `doku/architektur-lea` zweigt von `916c93f` ab, der Quelltext in diesem Branch weicht deshalb in wenigen Dateien vom beschriebenen Stand ab (u. a. #93, #95, #96). Aus diesem Grund zitiert das Dokument keine Zeilennummern. |
 | **Modellprüfung** | `validate`: OK. `inspect`: 42 Hinweise, davon 38 „Beziehung ohne Technologie“ (bewusst: prozessinterne Aufrufe zwischen Komponenten haben keine eigene Technologie, sonst trägt jede Kante dasselbe Label), 2 für fehlende `!docs`/`!adrs` (der zustandslose MCP-Server sieht das Dateisystem nicht) und 2 zu Keycloak und Moodle („nicht in einer Sicht“). Letztere sind ein Artefakt: Ich blende ihre Instanzen im Deployment-View bewusst aus, damit er lesbar bleibt; beide Systeme stehen in mehreren anderen Sichten. |
 
@@ -34,14 +34,14 @@
 
 | | Staging (Branch `dev`) | Prod (Branch `main`) |
 |---|---|---|
-| **Frontend** | `sha-0005672` (26.10. 11:47 UTC), identisch mit der `dev`-Spitze | `sha-c65eb2b` (23.10.), **47 Commits hinter `dev`**. Enthält noch den OpenStack-VM-Pfad (`SettingsOpenStackView` ist dort vorhanden) und keine Error Boundaries. |
-| **self-service-ui** | `sha-54130c3` (26.10. 11:46 UTC), identisch mit der `dev`-Spitze. Gegenüber `1e67bd1` kam nur CI dazu (Attestation, GitHub-App-Token). | `sha-728d910` (23.10.), **13 Commits hinter `dev`**. Dort gibt es nur Katalog, Details und Deployment-Liste, **keinen** Wizard, kein Deployment-Detail, keine Zugangsdaten, Einstellungen oder Hilfe. |
+| **Frontend** | `sha-0005672` (26.10. 11:47 UTC), identisch mit der `dev`-Spitze, **läuft** (2 von 2 Pods) | `sha-c65eb2b` (23.10.), **47 Commits hinter `dev`**. Enthält noch den OpenStack-VM-Pfad (`SettingsOpenStackView` ist dort vorhanden) und keine Error Boundaries. |
+| **self-service-ui** | `sha-54130c3` (26.10. 11:46 UTC), identisch mit der `dev`-Spitze, **läuft** (1 Pod, 2 Container). Gegenüber `1e67bd1` kam nur CI dazu (Attestation, GitHub-App-Token). | `sha-728d910` (23.10.), **13 Commits hinter `dev`**. Dort gibt es nur Katalog, Details und Deployment-Liste, **keinen** Wizard, kein Deployment-Detail, keine Zugangsdaten, Einstellungen oder Hilfe. |
 | Backend | `sha-b7103c3` | `sha-4784eb5` |
-| Worker | `pod-deployer` (`sha-049467e`) | `pod-deployer` **und** `vm-executor` (beide `sha-b1683d8`) |
-| noVNC-Proxy | gepinnt (`sha-5998abf`) | nicht gepinnt |
-| ClamAV | lief beim ersten Stand (nicht erneut geprüft) | nicht in den Deployments (erster Stand) |
+| Worker | `pod-deployer` (`sha-049467e`), **kein** `vm-executor` | `pod-deployer` **und** `vm-executor` (beide `sha-b1683d8`) |
+| noVNC-Proxy | per Digest gepinnt (`sha-5998abf`); **kein eigener Workload**: Der pod-deployer setzt das Image in jedes KubeVirt-VM-Deployment ein | Pin **leer**, der Chart nimmt dann ungepinnt `novnc-proxy:latest` (B13) |
+| ClamAV | läuft (StatefulSet, 2 Replikate) | nicht in den Deployments |
 
-Quelle: Image-Pins in `k8s/images/{staging,prod}.yaml` (Branches `dev`, `main`). Beim ersten Stand (`916c93f`, `1e67bd1`) stimmten sie mit den laufenden Pods überein. Die jetzigen Staging-Stände sind **nur als Pins** belegt, nicht als laufende Pods; das Fehlen von `vm-executor` in Staging folgt aus dem fehlenden Pin `worker`.
+Geprüft am 26.10. um 14:14 UTC: **Jeder laufende Digest in `appstore-staging` und `appstore-prod` entspricht dem Pin** in `k8s/images/{staging,prod}.yaml` (Branches `dev`, `main`). Alle Argo-CD-Anwendungen sind `Synced` und `Healthy` (Staging auf Revision `33fdf0f`, Prod auf `b740851`), und `staging_verdict` meldet `healthy`. Dass in Staging kein `vm-executor` läuft, folgt aus dem fehlenden Pin `worker` und ist an den Pods bestätigt. **Nicht geprüft:** `staging_verdict` konnte die öffentlichen Adressen von Frontend, API und Keycloak aus dem Cluster heraus nicht ansprechen (`ConnectError`); die Erreichbarkeit von außen ist damit nicht belegt.
 
 ---
 
@@ -507,6 +507,8 @@ Die Pfeile zeigen den **physischen Weg**: Beide Browser-Anwendungen erreichen al
 | Frontend | 2 | UID 101, read-only Root, `/tmp` als `emptyDir` |
 | self-service-ui | 1 | **Ein Pod, zwei Container** (oauth2-proxy :4180, Caddy :8080), UID 65532, kein Service-Account-Token, read-only Root; Konfiguration in RAM-Volume `/run/appconfig`, Caddy-Zustand in `emptyDir` |
 | API | 2 | kein eigener Ingress |
+
+Replikatzahlen und Images aller drei Workloads wurden am 26.10. an den laufenden Deployments bestätigt (Frontend 2/2, self-service-ui 1/1 mit den Containern `oauth2-proxy` und `ui`, API 2/2). UID, read-only Root und `/tmp`-Volume stammen aus Chart und README und sind **nicht** an den Pods geprüft.
 
 Das Deployment des Frontends und von self-service-ui rollt aus ihrem jeweiligen Repo über den **gleichen Weg** aus:
 
@@ -1059,6 +1061,7 @@ Sortiert nach Relevanz. Belege sind Dateien im Repo; **keine** der Aussagen wurd
 | **B10** | **Die beiden Oberflächen unterscheiden sich beim OpenStack-Pfad:** Das Frontend hat ihn mit #67 entfernt (Credentials-Seite, Picker, Quota-Kachel, Infrastructure-Tab), self-service-ui bietet Zugangsdaten und Credential-Wahl weiterhin an. In Prod läuft außerdem ein `vm-executor`, in Staging nicht. | [`HANDOVER.md`](../../claude_docs/HANDOVER.md), `self-service-ui/web/app-store/api.js`, `wizard/wizard.jsx` | Ob das Backend die `/me/openstack-credentials`-Endpunkte noch anbietet, wurde **nicht geprüft**. |
 | **B11** | **Lockere oder tote Konfiguration im Caddy von self-service-ui:** Die CSP erlaubt `https://*.dhbw.cloud` in `script-src` und `connect-src` (Kommentar: „can be dropped … once the BFF migration is complete“). Die Routen `/api/dyndns/`, `/api/projects/` und `/api/llm/` zeigen auf Standard-Upstreams (`dynamic-zones:8082` u. a.), die es bei uns nicht gibt. | `self-service-ui/Caddyfile` | Wirkt nicht, solange keine URL gesetzt ist, ist aber Fläche ohne Nutzen. |
 | **B12** | **Prod ist für self-service-ui laut HANDOVER nicht fertig vorbereitet:** Der Keycloak-Client im Live-Realm von Prod steht dort als offener Punkt („Promotion nach main/Prod“). Der Prod-Stand hat außerdem nur Katalog, Details und Liste. | `self-service-ui/claude_docs/HANDOVER.md`, 1.1 | Ob der Client inzwischen existiert, wurde **nicht geprüft**. |
+| **B13** | **Prod hat keinen Pin für den noVNC-Proxy:** In `k8s/images/prod.yaml` ist `novncProxy` leer. Der Chart setzt dann `K8S_VNC_PROXY_IMAGE` auf `<registry>/novnc-proxy:latest`, also ungepinnt. Staging pinnt das Image per Digest. Das Image läuft nicht im `appstore-*`-Namespace, sondern wird vom pod-deployer in jedes KubeVirt-VM-Deployment eingesetzt. | `k8s/charts/appstore/templates/_helpers.tpl` und `pod-deployer.yaml` im deployment-Repo, `k8s/images/{staging,prod}.yaml` | Laut Chart-Kommentar bis zum ersten Bump gewollt („as before“). Ob Prod KubeVirt-VMs tatsächlich startet, wurde nicht geprüft. |
 
 ---
 
@@ -1085,9 +1088,9 @@ docker run -it --rm -p 8081:8080 -v "$PWD/docs/architecture:/usr/local/structuri
 
 ## 6. Grenzen dieser Dokumentation
 
-- **Keine Laufzeitbeobachtung.** Weder Staging noch Prod noch ein lokaler Stack wurden aufgerufen. Geprüft wurden die Konfiguration und die Image-Pins, beim ersten Stand auch die laufenden Digests, nicht das Verhalten. Insbesondere B5, B8 und B9 sind aus dem Code abgeleitet.
+- **Keine Verhaltensbeobachtung.** Weder Staging noch Prod noch ein lokaler Stack wurden fachlich aufgerufen. Geprüft wurden die Konfiguration, die Image-Pins und die laufenden Digests und Pods, nicht das Verhalten und nicht die öffentliche Erreichbarkeit. Insbesondere B5, B8 und B9 sind aus dem Code abgeleitet.
 - **Prod ist nicht modelliert.** Das Modell zeigt `dev`. Wie Prod sich unterscheidet, steht nur in 1.1 und 2.9.
 - **Backend und Worker** sind nur als Vertragspartner modelliert. Ob das Backend OpenStack-Zugangsdaten noch prüft, ist nur über self-service-ui belegt.
 - **Dev-Stack:** Das deployment-Repo enthält weiterhin `docker-compose.dev.yml`, während das Kubernetes-README sagt, es gebe keinen Compose-Stack mehr. Das Modell beschreibt nur die Kubernetes-Umgebung.
 - **Upstream-Code von self-service-ui** (Home, `/developer`, DNS, Cloud, LLM) wurde nicht im Detail gelesen, nur seine Einbindung und seine Abschaltung.
-- **Nicht modelliert:** der `appstore-mcp`-Server, der noVNC-Proxy, die Datenbank, ClamAV und die GitHub-App für den Rollout.
+- **Nicht modelliert:** der `appstore-mcp`-Server, der noVNC-Proxy (kein Workload in `appstore-*`, siehe 1.1), die Datenbank, ClamAV und die GitHub-App für den Rollout.
