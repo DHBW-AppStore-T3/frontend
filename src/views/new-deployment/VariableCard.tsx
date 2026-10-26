@@ -22,7 +22,7 @@ export type Accent = 'blue' | 'purple'
 export interface VariableCardProps {
   variable: AppVariable
   accent: Accent
-  /** Key of the variable in the form (``<tkey>.<name>`` for multi-image packer). */
+  /** Key of the variable in the form (the variable name). */
   formKey: string
   teams: WizardTeam[]
   value: any

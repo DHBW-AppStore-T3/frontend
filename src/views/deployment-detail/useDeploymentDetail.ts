@@ -376,8 +376,8 @@ export function useDeploymentDetail(deploymentId: string) {
   }
   const deselectTask = () => setSelectedTask(null)
 
-  // Cancel revokes the worker task and runs a destroy that also reaps the
-  // Packer build instance; the 202 response flows into the existing SSE plumbing.
+  // Cancel revokes the worker task and runs a destroy that also cleans up
+  // everything the deployment created; the 202 response flows into the existing SSE plumbing.
   const confirmCancel = async () => {
     if (!deploymentId || cancelBusy) return
     setCancelBusy(true)
