@@ -76,7 +76,7 @@ function derivePhases(sources: DeploymentPhaseSources) {
     // the deploy/destroy presets render meaningful labels under each dot when the
     // totals match a known shape; an unknown count falls back to numbered labels.
     //
-    // Default to a conservative 5-dot view before the first event arrives so the
+    // Default to a 7-dot view (DEFAULT_PHASE_COUNT, the pod deploy shape) before the first event arrives so the
     // layout doesn't jump when the worker reports its real phase count.
 
 
