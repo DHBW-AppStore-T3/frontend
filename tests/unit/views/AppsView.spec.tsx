@@ -53,6 +53,13 @@ describe('AppsView', () => {
     expect(await screen.findByText('AppsView.noAppsDesc')).toBeInTheDocument()
   })
 
+  it('rendert keinen Eyebrow über der Überschrift', async () => {
+    vi.mocked(appApi.list).mockResolvedValue({ data: [] } as any)
+    const { container } = renderView()
+    await screen.findByText('AppsView.noAppsDesc')
+    expect(container.querySelector('.page-eyebrow')).toBeNull()
+  })
+
   it('zeigt eine Liste von Apps an, wenn die API Daten liefert', async () => {
     vi.mocked(appApi.list).mockResolvedValue({
       data: [
@@ -298,5 +305,60 @@ describe('AppsView — wer Apps anlegen darf', () => {
     await screen.findByText('AppsView.title')
     await waitFor(() => expect(appApi.list).toHaveBeenCalled())
     expect(screen.queryByText('AppsView.addApp')).not.toBeInTheDocument()
+  })
+
+  describe('Filter „Empfohlen"', () => {
+    const apps = [
+      { appId: '1', name: 'Empfohlene App', description: 'a', userId: 'x', recommended: true },
+      { appId: '2', name: 'Andere App', description: 'b', userId: 'x', recommended: false },
+    ]
+    const tabNames = () =>
+      screen.getAllByRole('button', { pressed: undefined }).filter((b) => b.className.includes('catalog-tab'))
+
+    it('zeigt Empfohlen als ersten Tab vor Alle', async () => {
+      vi.mocked(appApi.list).mockResolvedValue({ data: apps } as any)
+      renderView()
+      await screen.findByText('Empfohlene App')
+      const labels = tabNames().map((b) => b.textContent)
+      expect(labels[0]).toContain('workspace.categories.recommended')
+      expect(labels[1]).toContain('workspace.categories.all')
+    })
+
+    it('wählt Empfohlen vor, wenn Apps empfohlen sind, und zeigt nur diese', async () => {
+      vi.mocked(appApi.list).mockResolvedValue({ data: apps } as any)
+      renderView()
+      expect(await screen.findByText('Empfohlene App')).toBeInTheDocument()
+      expect(screen.queryByText('Andere App')).not.toBeInTheDocument()
+      expect(tabNames()[0]).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('blendet den Tab aus und wählt Alle, wenn keine App empfohlen ist', async () => {
+      vi.mocked(appApi.list).mockResolvedValue({
+        data: apps.map((a) => ({ ...a, recommended: false })),
+      } as any)
+      renderView()
+      expect(await screen.findByText('Andere App')).toBeInTheDocument()
+      expect(screen.getByText('Empfohlene App')).toBeInTheDocument()
+      expect(screen.queryByText(/workspace\.categories\.recommended/)).not.toBeInTheDocument()
+      expect(tabNames()[0].textContent).toContain('workspace.categories.all')
+      expect(tabNames()[0]).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('behält die Nutzerauswahl', async () => {
+      vi.mocked(appApi.list).mockResolvedValue({ data: apps } as any)
+      renderView()
+      await screen.findByText('Empfohlene App')
+      await userEvent.click(screen.getByRole('button', { name: /workspace\.categories\.all/ }))
+      expect(screen.getByText('Andere App')).toBeInTheDocument()
+      expect(screen.getByText('Empfohlene App')).toBeInTheDocument()
+    })
+
+    it('zeigt den Leerzustand noRecommendedApps, wenn die Suche nichts findet', async () => {
+      vi.mocked(appApi.list).mockResolvedValue({ data: apps } as any)
+      renderView()
+      await screen.findByText('Empfohlene App')
+      await userEvent.type(screen.getByRole('searchbox'), 'zzz-kein-treffer')
+      expect(screen.getByText('AppsView.noRecommendedApps')).toBeInTheDocument()
+    })
   })
 })

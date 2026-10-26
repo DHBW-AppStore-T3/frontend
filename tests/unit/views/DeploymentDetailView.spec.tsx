@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
     progress: null as number | null,
     currentPhase: null as string | null,
     currentPhaseIndex: null as number | null,
-    totalPhases: 11,
+    totalPhases: 5,
     phaseNames: [] as string[],
     liveLogs: [] as unknown[],
     totalLogCount: 0,
@@ -119,7 +119,7 @@ const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): Deplo
     releaseTag: 'v1.2.3',
     is_private: false,
   },
-  runtime: 'openstack-vm',
+  runtime: 'kubernetes',
   permissions: OWNER,
   actions: ACTIONS_BY_STATUS[overrides.status ?? 'success'] ?? [],
   teams: [
@@ -214,6 +214,16 @@ describe('DeploymentDetailView', () => {
     expect(mocks.listTasks).toHaveBeenCalledWith('dep-1')
     expect(screen.getAllByText('Data Lab').length).toBeGreaterThan(0)
     expect(screen.getByText('Notebook Stack')).toBeInTheDocument()
+  })
+
+  it('verlinkt das Git-Repository nur mit einer http(s)-Adresse', async () => {
+    mocks.getDeployment.mockImplementation(async () => ({
+      data: baseDeployment({ app: { ...baseDeployment().app!, git_link: 'javascript:alert(1)' } }),
+    }))
+    renderView()
+
+    const link = await screen.findByText('javascript:alert(1)')
+    expect(link.closest('a')).not.toHaveAttribute('href')
   })
 
   it('zeigt einen Spinner solange das Deployment nicht geladen ist', () => {
@@ -358,14 +368,14 @@ describe('DeploymentDetailView', () => {
 
   it('startet den Stream wenn ein Task läuft und zeigt den Fortschritt', async () => {
     mocks.listTasks.mockResolvedValue({
-      data: [baseTask({ status: 'running', current_phase: 'TERRAFORM_APPLY', progress_pct: 60 })],
+      data: [baseTask({ status: 'running', current_phase: 'K8S_POLICIES', progress_pct: 60 })],
     })
     renderView()
 
     await waitFor(() => expect(mocks.startStream).toHaveBeenCalledTimes(1))
     // Seeded from the DB task before the first SSE event.
     // Headline + the matching stepper dot label.
-    expect((await screen.findAllByText('Terraform Apply')).length).toBeGreaterThanOrEqual(2)
+    expect((await screen.findAllByText('K8s Policies')).length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('60')).toBeInTheDocument()
   })
 
@@ -502,6 +512,21 @@ describe('DeploymentDetailView — member self-access', () => {
     expect(screen.getAllByText('ssh member1@10.0.0.5')).toHaveLength(1)
   })
 
+  it('verlinkt eine Zugangs-URL nur, wenn sie http(s) ist (kein javascript:)', async () => {
+    mocks.getMyAccess.mockResolvedValue({
+      data: {
+        user_accounts: {
+          'Team Alpha-member1': { username: 'member1', team: 'Team Alpha', auth: 'pw', type: 'password' },
+        },
+        team_vms: { 'Team Alpha': { url: 'javascript:alert(document.domain)' } },
+      },
+    })
+    renderView()
+
+    const text = await screen.findByText('javascript:alert(document.domain)')
+    expect(text.closest('a')).not.toHaveAttribute('href')
+  })
+
   it('bietet kein Zugang-erneut-senden mehr an (die API stellt es nicht mehr bereit)', async () => {
     mocks.getDeployment.mockImplementation(async () => ({
       data: baseDeployment({
@@ -569,7 +594,7 @@ describe('DeploymentDetailView — Rechte aus der API', () => {
     }))
     renderView()
 
-    expect(await screen.findByTestId('deployment-runtime')).toHaveTextContent('runtime.openstackVm')
+    expect(await screen.findByTestId('deployment-runtime')).toHaveTextContent('runtime.kubernetes')
     expect(screen.getByText('abcdef01')).toBeInTheDocument()
   })
 })

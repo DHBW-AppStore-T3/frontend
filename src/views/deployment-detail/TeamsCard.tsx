@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Users, User, Copy, Check, Eye, EyeOff } from 'lucide-react'
 import { sshCommandFor, rdpCommandFor, userUrlFor } from '@/utils/connection-commands'
+import { safeHttpUrl } from '@/utils/safe-url'
 import type { enrichTeams } from './helpers'
 
 type EnrichedTeam = ReturnType<typeof enrichTeams>[number]
@@ -119,7 +120,7 @@ export default function TeamsCard({
                             <div className={`${PILL} max-w-[280px]`}>
                               <span className={PILL_LABEL}>URL:</span>
                               <a
-                                href={userUrl ?? ''}
+                                href={safeHttpUrl(userUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline truncate"
@@ -132,7 +133,7 @@ export default function TeamsCard({
                             <div className={`${PILL} max-w-[280px]`}>
                               <span className={PILL_LABEL}>URL:</span>
                               <a
-                                href={vmUrl}
+                                href={safeHttpUrl(vmUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline truncate"

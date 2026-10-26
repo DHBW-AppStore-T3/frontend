@@ -22,6 +22,6 @@ export const paths = {
   deploymentVariables: '/deployment/new/variables',
   deploymentSummary: '/deployment/new/summary',
   adminApps: '/admin/apps',
+  adminSettings: '/admin/settings',
   user: '/user',
-  userOpenStack: '/user/openstack',
 } as const

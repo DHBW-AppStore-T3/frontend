@@ -20,6 +20,7 @@ import type { App, AppVersionApproval, AppVersionBadgeStatus } from '@/types'
 import './AppsView.css'
 
 type VisibilityFilter = 'all' | 'public' | 'private'
+type CatalogFilter = Department | 'all' | 'favorites' | 'recommended'
 
 export default function AppsView() {
   const { t, i18n } = useTranslation()
@@ -37,7 +38,8 @@ export default function AppsView() {
   // Admin-only filter
   const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedFilter, setSelectedFilter] = useState<Department | 'all' | 'favorites'>('all')
+  // null until the user picks a tab; then the default (recommended or all) applies.
+  const [selectedFilter, setSelectedFilter] = useState<CatalogFilter | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const { favorites, toggleFavorite } = useFavorites(userId)
 
@@ -54,7 +56,13 @@ export default function AppsView() {
     )
   }, [apps, isAdmin, visibilityFilter, searchQuery])
 
+  const hasRecommended = apps.some((app) => app.recommended)
+  const activeFilter: CatalogFilter = selectedFilter ?? (hasRecommended ? 'recommended' : 'all')
+
   const categories = [
+    ...(hasRecommended
+      ? [{ key: 'recommended' as const, count: visibleApps.filter((app) => app.recommended === true).length }]
+      : []),
     { key: 'all' as const, count: visibleApps.length },
     ...DEPARTMENTS.map((key) => ({
       key,
@@ -65,10 +73,12 @@ export default function AppsView() {
 
   const filteredApps = visibleApps.filter(
     (app) =>
-      selectedFilter === 'all' ||
-      (selectedFilter === 'favorites'
-        ? favorites.includes(app.appId)
-        : departmentsForGitLink(app.git_link).includes(selectedFilter)),
+      activeFilter === 'all' ||
+      (activeFilter === 'recommended'
+        ? app.recommended === true
+        : activeFilter === 'favorites'
+          ? favorites.includes(app.appId)
+          : departmentsForGitLink(app.git_link).includes(activeFilter)),
   )
 
   const badgeStatusForApp = (app: App): AppVersionBadgeStatus | null => {
@@ -146,20 +156,22 @@ export default function AppsView() {
     </Link>
   )
 
-  const isDepartmentFilter = selectedFilter !== 'all' && selectedFilter !== 'favorites'
+  const isDepartmentFilter =
+    activeFilter !== 'all' && activeFilter !== 'favorites' && activeFilter !== 'recommended'
 
   const emptyMessage = isDepartmentFilter
-    ? t('AppsView.noAppsInDepartment', { department: t(`workspace.categories.${selectedFilter}`) })
-    : visibilityFilter === 'private'
-      ? t('AppsView.noPrivateApps')
-      : visibilityFilter === 'public'
-        ? t('AppsView.noPublicApps')
-        : t('AppsView.noAppsDesc')
+    ? t('AppsView.noAppsInDepartment', { department: t(`workspace.categories.${activeFilter}`) })
+    : activeFilter === 'recommended'
+      ? t('AppsView.noRecommendedApps')
+      : visibilityFilter === 'private'
+        ? t('AppsView.noPrivateApps')
+        : visibilityFilter === 'public'
+          ? t('AppsView.noPublicApps')
+          : t('AppsView.noAppsDesc')
 
   return (
     <div className="app-page">
       <PageHeader
-        eyebrow={t('nav.apps')}
         title={t('AppsView.title')}
         subtitle={t('AppsView.subtitle')}
         actions={
@@ -204,7 +216,7 @@ export default function AppsView() {
             key={category.key}
             type="button"
             className="catalog-tab"
-            aria-pressed={selectedFilter === category.key}
+            aria-pressed={activeFilter === category.key}
             onClick={() => setSelectedFilter(category.key)}
           >
             {t(`workspace.categories.${category.key}`)} <span className="catalog-count">{category.count}</span>
@@ -218,7 +230,7 @@ export default function AppsView() {
         icon={Inbox}
         emptyMessage={emptyMessage}
         loadingMessage={t('AppsView.loading')}
-        emptyAction={isStaff && visibilityFilter === 'all' && !isDepartmentFilter ? addAppButton : null}
+        emptyAction={isStaff && visibilityFilter === 'all' && !isDepartmentFilter && activeFilter !== 'recommended' ? addAppButton : null}
       >
         <div className="app-catalog-grid">
           {filteredApps.map((app) => {

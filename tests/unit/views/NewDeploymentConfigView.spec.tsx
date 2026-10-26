@@ -12,7 +12,6 @@ import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
 import NewDeploymentConfigView from '@/views/NewDeploymentConfigView'
 import { useDeploymentStore } from '@/stores/deployment.store'
-import { useOpenStackCredentialsStore } from '@/stores/openstack-credentials.store'
 import { useToastStore } from '@/stores/toast.store'
 import { renderWithProviders } from '../../helpers/render'
 
@@ -32,11 +31,6 @@ const renderView = () =>
     { route: '/deployment/new/config' },
   )
 
-const usableCredential = (id: string, project: string) =>
-  ({ credentialId: id, project_name: project, project_verified: true, last_validation_error: null }) as any
-
-const setCredentials = (rows: unknown[]) =>
-  useOpenStackCredentialsStore.setState({ credentials: rows as any, fetch: vi.fn() })
 const draft = () => useDeploymentStore.getState().draft
 const warnings = () => useToastStore.getState().toasts.filter((t) => t.type === 'warning').map((t) => t.message)
 
@@ -47,10 +41,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   useToastStore.setState({ toasts: [] })
   useDeploymentStore.getState().resetDraft()
-  // A pod app by default: it needs no OpenStack credential.
   useDeploymentStore.getState().updateDraft({ appId: 'app-1', releaseTag: 'v1', runtime: 'kubernetes', scope: 'team' })
   useDeploymentStore.getState().studentCache.clear()
-  setCredentials([])
   vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'kubernetes', scope: 'team' } } as any)
   vi.mocked(courseApi.list).mockResolvedValue({ data: [{ courseId: 'c1', name: 'Web Dev' }] } as any)
   vi.mocked(courseApi.getById).mockResolvedValue({ data: { users: [john, jane] } } as any)
@@ -67,59 +59,12 @@ describe('NewDeploymentConfigView', () => {
     await waitFor(() => expect(courseApi.getById).toHaveBeenCalledWith('c1'))
   })
 
-  describe('Laufzeit und Credential', () => {
-    const asVm = (rows: unknown[]) => {
-      useDeploymentStore.getState().updateDraft({ runtime: 'openstack-vm', scope: 'user' })
-      setCredentials(rows)
-    }
-
-    it('eine Pod-App braucht kein Credential: kein Banner, keine Projektwahl, Formular sichtbar', async () => {
+  describe('Laufzeit', () => {
+    it('das Formular ist sofort sichtbar', async () => {
       renderView()
 
       expect(await screen.findByTestId('deployment-name')).toBeInTheDocument()
-      expect(screen.queryByTestId('credential-picker')).not.toBeInTheDocument()
-      expect(screen.queryByText('AppsDetailView.missingCredsTitle')).not.toBeInTheDocument()
       expect(screen.getByTestId('btn-next')).toBeEnabled()
-    })
-
-    it('eine VM-App ohne nutzbares Credential zeigt das Banner und blendet das Formular aus', async () => {
-      asVm([])
-      renderView()
-
-      expect(await screen.findByText('AppsDetailView.missingCredsTitle')).toBeInTheDocument()
-      expect(screen.queryByTestId('deployment-name')).not.toBeInTheDocument()
-      expect(screen.getByTestId('btn-next')).toBeDisabled()
-    })
-
-    it('ein ungeprüftes Credential zählt nicht als nutzbar', async () => {
-      asVm([{ credentialId: 'c-1', project_verified: false, last_validation_error: null }])
-      renderView()
-
-      expect(await screen.findByText('AppsDetailView.missingCredsTitle')).toBeInTheDocument()
-    })
-
-    it('das einzige nutzbare Credential ist vorausgewählt', async () => {
-      asVm([usableCredential('c-1', 'Projekt Eins')])
-      renderView()
-
-      await waitFor(() => expect(useDeploymentStore.getState().draft.credentialId).toBe('c-1'))
-      expect((screen.getByTestId('deployment-credential') as HTMLSelectElement).value).toBe('c-1')
-    })
-
-    it('bei mehreren Projekten muss die Lehrkraft wählen, bevor es weitergeht', async () => {
-      asVm([usableCredential('c-1', 'Projekt Eins'), usableCredential('c-2', 'Projekt Zwei')])
-      useDeploymentStore.getState().updateDraft({ name: 'Kurs', studentIds: ['u1'] })
-      renderView()
-      await screen.findByTestId('deployment-credential')
-
-      await userEvent.click(screen.getByTestId('btn-next'))
-      expect(warnings()).toContain('deployment.config.credentialRequired')
-
-      await userEvent.selectOptions(screen.getByTestId('deployment-credential'), 'c-2')
-      expect(useDeploymentStore.getState().draft.credentialId).toBe('c-2')
-
-      await userEvent.click(screen.getByTestId('btn-next'))
-      expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/teams')
     })
 
     it('fragt die Laufzeit erneut, wenn der Entwurf nach einem Reload keine hat', async () => {
@@ -149,7 +94,9 @@ describe('NewDeploymentConfigView', () => {
 
     await userEvent.click(screen.getByTestId('btn-next'))
 
-    expect(warnings()).toContain('deployment.errors.missingName')
+    expect(
+      useToastStore.getState().toasts.filter((t) => t.type === 'warning').map((t) => t.message),
+    ).toContain('deployment.errors.missingName')
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
   })
 

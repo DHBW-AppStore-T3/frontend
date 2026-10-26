@@ -16,19 +16,20 @@ import {
 } from 'lucide-react'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
-import DeploymentInfrastructurePanel from '@/components/DeploymentInfrastructurePanel'
 import PodWorkloadsPanel from '@/components/PodWorkloadsPanel'
-import InfrastructureVmDrawer from '@/components/InfrastructureVmDrawer'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { formatDateTime } from '@/utils/format'
+import { safeHttpUrl } from '@/utils/safe-url'
 import { paths } from '@/router/paths'
 import BoldSlot from '@/i18n/BoldSlot'
 import { useDeploymentDetail } from './deployment-detail/useDeploymentDetail'
 import { useClipboard } from './deployment-detail/useClipboard'
 import { cleanVariableValue, getStatusStyles } from './deployment-detail/helpers'
 import ActiveTaskCard from './deployment-detail/ActiveTaskCard'
+import DeploymentStatusNotice from './deployment-detail/DeploymentStatusNotice'
 import TeamsCard from './deployment-detail/TeamsCard'
 import TaskHistoryCard from './deployment-detail/TaskHistoryCard'
+import { runtimeLabelKey } from '@/utils/runtime'
 
 const HEADER_ICON_COLOR: Record<string, string> = {
   success: 'text-green-600',
@@ -38,9 +39,9 @@ const HEADER_ICON_COLOR: Record<string, string> = {
 
 const COMMIT_SHORT_LENGTH = 8
 
-function pauseResumeMessageKey(action: 'pause' | 'resume' | null, isPods: boolean): string {
-  const base = action === 'pause' ? 'confirmPauseMessage' : 'confirmResumeMessage'
-  return `DeploymentDetailView.${base}${isPods ? 'Pods' : ''}`
+function pauseResumeMessageKey(action: 'pause' | 'resume' | null): string {
+  const base = action === 'pause' ? 'confirmPauseMessagePods' : 'confirmResumeMessagePods'
+  return `DeploymentDetailView.${base}`
 }
 
 export default function DeploymentDetailView() {
@@ -94,6 +95,7 @@ export default function DeploymentDetailView() {
                   className={HEADER_ICON_COLOR[deployment.status ?? ''] ?? 'text-yellow-600'}
                 />
                 <span
+                  aria-live="polite"
                   className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold border capitalize ${status.badgeClass}`}
                 >
                   {t(status.label)}
@@ -124,8 +126,7 @@ export default function DeploymentDetailView() {
               ) : null}
 
               {/* Stop: only while a worker task is in flight. Revokes the task
-                  and cleans up everything it created, including the Packer
-                  build instance Terraform knows nothing about. */}
+                  and cleans up everything it created. */}
               {d.canCancel ? (
                 <BaseButton
                   onClick={() => d.setShowCancelModal(true)}
@@ -156,6 +157,12 @@ export default function DeploymentDetailView() {
               ) : null}
             </div>
           </div>
+
+          <DeploymentStatusNotice
+            status={deployment.status}
+            pollingState={d.statusPollingState}
+            isMemberView={d.permissions.member && !d.isOwnerView}
+          />
 
           {/* Main info grid with 3 cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -191,7 +198,7 @@ export default function DeploymentDetailView() {
                     {t('DeploymentDetailView.runtime')}
                   </div>
                   <div className="text-sm font-medium text-gray-900" data-testid="deployment-runtime">
-                    {d.isPods ? t('runtime.kubernetes') : t('runtime.openstackVm')}
+                    {t(runtimeLabelKey(d.deployment?.runtime))}
                   </div>
                 </div>
                 <div>
@@ -238,7 +245,7 @@ export default function DeploymentDetailView() {
                   <div>
                     <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Git Repository</div>
                     <a
-                      href={deployment.app.git_link ?? undefined}
+                      href={safeHttpUrl(deployment.app.git_link)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
@@ -398,8 +405,8 @@ export default function DeploymentDetailView() {
             />
           ) : null}
 
-          {/* Teams & Members — above Infrastructure so the human-readable view
-              (who has access to what) precedes the technical resource listing. */}
+          {/* Teams & Members — above the workloads so the human-readable view
+              (who has access to what) precedes the technical listing. */}
           {deployment.teams && deployment.teams.length > 0 ? (
             <TeamsCard
               teamCount={deployment.teams.length}
@@ -411,7 +418,7 @@ export default function DeploymentDetailView() {
 
           {/* Pods: their workloads, live from the cluster. Owner view only; the
               backend gates the endpoint the same way. */}
-          {d.isOwnerView && d.isPods ? (
+          {d.isOwnerView && d.isCluster ? (
             <PodWorkloadsPanel
               workloads={d.workloads}
               loading={d.resourcesLoading}
@@ -422,20 +429,6 @@ export default function DeploymentDetailView() {
               onRefresh={() => void d.loadResources()}
               onRestart={d.restartWorkload}
               onReset={d.askResetWorkload}
-            />
-          ) : d.isOwnerView ? (
-            <DeploymentInfrastructurePanel
-              vmResources={d.vmResources}
-              networkResources={d.networkResources}
-              securityResources={d.securityResources}
-              resourcesLoading={d.resourcesLoading}
-              resourcesError={d.resourcesError}
-              redeployInFlight={d.redeployInFlight}
-              openDrawerAddress={d.openDrawerAddress}
-              canRedeploy={d.canRedeploy}
-              onRefresh={() => void d.loadResources()}
-              onOpenVm={d.openVmDrawer}
-              onRedeployVm={d.redeployVm}
             />
           ) : null}
 
@@ -456,17 +449,6 @@ export default function DeploymentDetailView() {
           />
         </div>
 
-        {/* VM detail sidebar — sticky right column, rendered only when a VM is
-            open. Below ``xl`` it falls into the page flow as a normal card. */}
-        {d.openDrawerAddress ? (
-          <aside className="w-full xl:w-[420px] xl:shrink-0 xl:sticky xl:top-0 xl:self-start xl:max-h-[calc(100vh-3.5rem)] xl:flex xl:flex-col">
-            <InfrastructureVmDrawer
-              deploymentId={id}
-              address={d.openDrawerAddress}
-              onClose={d.closeVmDrawer}
-            />
-          </aside>
-        ) : null}
       </div>
 
       {/* Stop confirmation. Worth a confirm: cancelling throws away an
@@ -478,7 +460,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={d.isPods ? 'DeploymentDetailView.confirmStopMessagePods' : 'DeploymentDetailView.confirmStopMessage'}
+              i18nKey='DeploymentDetailView.confirmStopMessagePods'
               slot="name"
               value={deployment.name}
             />
@@ -503,7 +485,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={d.isPods ? 'DeploymentDetailView.confirmDeleteMessagePods' : 'DeploymentDetailView.confirmDeleteMessage'}
+              i18nKey='DeploymentDetailView.confirmDeleteMessagePods'
               slot="name"
               value={deployment.name}
             />
@@ -520,34 +502,6 @@ export default function DeploymentDetailView() {
               onClick={() => void d.confirmDelete()}
             >
               {t('DeploymentDetailView.confirmButton')}
-            </BaseButton>
-          </div>
-        }
-      />
-
-      {/* Redeploy confirmation — surfaces the VM address so the user can
-          sanity-check which instance they're about to recreate. */}
-      <Modal
-        show={d.showRedeployModal}
-        onClose={() => d.setShowRedeployModal(false)}
-        title={t('DeploymentDetailView.confirmRedeployTitle')}
-        body={
-          <div className="space-y-3">
-            <p className="text-gray-700">{t('DeploymentDetailView.confirmRedeployMessage')}</p>
-            {d.redeployTargetAddress ? (
-              <p className="text-xs font-mono text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 break-all">
-                {d.redeployTargetAddress}
-              </p>
-            ) : null}
-          </div>
-        }
-        footer={
-          <div className="flex justify-end gap-3">
-            <BaseButton variant="text" onClick={() => d.setShowRedeployModal(false)}>
-              {t('DeploymentDetailView.cancelButton')}
-            </BaseButton>
-            <BaseButton variant="destructive" onClick={() => void d.confirmRedeploy()}>
-              Redeploy
             </BaseButton>
           </div>
         }
@@ -592,7 +546,7 @@ export default function DeploymentDetailView() {
         body={
           <p className="text-gray-700">
             <BoldSlot
-              i18nKey={pauseResumeMessageKey(d.pauseResumeAction, d.isPods)}
+              i18nKey={pauseResumeMessageKey(d.pauseResumeAction)}
               slot="name"
               value={deployment.name}
             />

@@ -11,8 +11,9 @@
  */
 import { useTranslation } from 'react-i18next'
 import { Boxes, RefreshCw, AlertCircle, RotateCcw, Eraser, ExternalLink } from 'lucide-react'
-import type { PodWorkload } from '@/types'
+import type { PodSetupProgress, PodWorkload } from '@/types'
 import { safeHttpUrl } from '@/utils/safe-url'
+import { etaParts } from '@/utils/resources'
 
 export interface PodWorkloadsPanelProps {
   workloads: PodWorkload[]
@@ -39,6 +40,41 @@ export function phaseTone(workload: Pick<PodWorkload, 'ready' | 'phase'>): strin
   if (workload.ready) return TONE_READY
   if (workload.phase === 'Stopped') return TONE_STOPPED
   return STARTING_PHASES.includes(workload.phase) ? TONE_STARTING : TONE_FAILED
+}
+
+/** The second bar: what the app does after it started (an installer), with the time it expects to need. */
+function SetupProgress({ name, setup }: { name: string; setup: PodSetupProgress }) {
+  const { t } = useTranslation()
+  const percent = Math.min(100, Math.max(0, Math.round(setup.percent)))
+  const eta = setup.etaSeconds != null ? etaParts(setup.etaSeconds) : null
+  let remaining: string
+  if (setup.etaSeconds == null) remaining = t('pods.setup.etaUnknown')
+  else if (eta == null) remaining = t('pods.setup.etaSoon')
+  else if (eta.hours > 0) remaining = t('pods.setup.etaHours', { hours: eta.hours, minutes: eta.minutes })
+  else remaining = t('pods.setup.etaMinutes', { minutes: eta.minutes })
+  return (
+    <div className="mt-1.5" data-testid={`setup-${name}`}>
+      <div className="flex justify-between gap-2 text-[11px] text-textHeading">
+        <span className="truncate" title={setup.step ?? ''}>
+          {t('pods.setup.title')}
+          {setup.step ? `: ${setup.step}` : ''}
+        </span>
+        <span className="tabular-nums whitespace-nowrap">
+          {percent} % · {remaining}
+        </span>
+      </div>
+      <div
+        className="mt-0.5 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden"
+        role="progressbar"
+        aria-label={t('pods.setup.title')}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div className="h-full bg-info transition-all" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  )
 }
 
 function WorkloadRow({
@@ -75,8 +111,17 @@ function WorkloadRow({
       <td className={`py-2.5 pr-4 tabular-nums ${workload.restarts > 0 ? 'text-warning font-semibold' : 'text-textMuted'}`}>
         {workload.restarts}
       </td>
-      <td className="py-2.5 pr-4 text-xs text-textMuted max-w-[320px] truncate" title={workload.lastEvent ?? ''}>
-        {workload.lastEvent || '–'}
+      <td className="py-2.5 pr-4 text-xs text-textMuted max-w-[320px]">
+        {workload.ready ? (
+          <span className="text-green-700 font-medium" data-testid={`started-${name}`}>
+            {t('pods.started')}
+          </span>
+        ) : (
+          <span className="block truncate" title={workload.lastEvent ?? ''}>
+            {workload.lastEvent || '–'}
+          </span>
+        )}
+        {workload.setup ? <SetupProgress name={name} setup={workload.setup} /> : null}
       </td>
       {canAct ? (
         <td className="py-2.5">

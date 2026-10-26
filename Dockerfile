@@ -1,7 +1,7 @@
 # ===============================
 # Build Stage
 # ===============================
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
@@ -32,9 +32,11 @@ USER root
 # Apply outstanding base-image security patches that the upstream tag
 # hasn't picked up yet (Trivy scans the runtime image — anything
 # HIGH/CRITICAL here blocks the push).
-RUN apk upgrade --no-cache && \
-    apk add --no-cache "libcrypto3>=3.5.7-r0" "libssl3>=3.5.7-r0" "libexpat>=2.8.5-r0" || \
-    apk upgrade --no-cache libcrypto3 libssl3 libexpat
+# SECURITY_REFRESH changes in every CI build (ci.yml passes the run id), so this
+# layer never comes from the build cache: a cached one kept the package state of
+# its first build, and every fix needed a pin here (libssl3, curl, ...).
+ARG SECURITY_REFRESH
+RUN apk upgrade --no-cache
 
 # Default Nginx Config entfernen
 RUN rm /etc/nginx/conf.d/default.conf

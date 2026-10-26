@@ -4,20 +4,29 @@ import { useTranslation } from 'react-i18next'
 import { appApi } from '@/api/app.api'
 import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
-import type { AppVariableMarkerError, AppVersionApproval } from '@/types'
+import type { AppVersionApproval } from '@/types'
 import type { AppDetail } from './versionInfo'
 import { buildEditPayload, type EditFormValues, type EditImage } from './editPayload'
 
 const HTTP_CONFLICT = 409
 const HTTP_UNPROCESSABLE = 422
 
+/** The lines of a 422 about the appstore.yaml: one per field problem, or the reason itself. */
+function specErrorLines(detail: any, t: (key: string) => string): string[] {
+  if (detail.reason === 'appstore_yaml_missing') return [t('AppsDetailView.submitModal.yamlMissing')]
+  if (Array.isArray(detail.errors) && detail.errors.length) {
+    return detail.errors.map((e: { loc: string; msg: string }) => `${e.loc}: ${e.msg}`)
+  }
+  return [String(detail.message ?? detail.reason)]
+}
+
 /**
  * Data and mutations of the app detail page: the app, its version approvals
- * (owner/admin only), and the owner actions (submit/withdraw versions, toggle
+ * (only when ``loadsApprovals`` says the view needs them), and the owner actions (submit/withdraw versions, toggle
  * privacy, edit, delete). Toasts and navigation are handled here so the view
  * stays declarative.
  */
-export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) => boolean) {
+export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => boolean) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
@@ -28,9 +37,10 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
   const [withdrawingVersion, setWithdrawingVersion] = useState<string | null>(null)
   const [isTogglingPrivacy, setIsTogglingPrivacy] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [markerErrors, setMarkerErrors] = useState<AppVariableMarkerError[]>([])
+  const [specErrors, setSpecErrors] = useState<string[]>([])
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSettingDeployVersion, setIsSettingDeployVersion] = useState(false)
 
   const fetchApprovals = useCallback(async () => {
     try {
@@ -52,7 +62,7 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
         if (cancelled) return
         const loaded = response.data as unknown as AppDetail
         setApp(loaded)
-        if (canManageVersions(loaded)) await fetchApprovals()
+        if (loadsApprovals(loaded)) await fetchApprovals()
       } catch {
         if (cancelled) return
         toast.error(t('AppsDetailView.toasts.loadError'))
@@ -70,7 +80,7 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
 
   const submitVersion = async (versionTag: string, notes: string): Promise<boolean> => {
     setIsSubmitting(true)
-    setMarkerErrors([])
+    setSpecErrors([])
     try {
       await appApi.submitVersion(appId, versionTag, undefined, notes.trim() || undefined)
       toast.success(t('AppsDetailView.toasts.submitSuccess'))
@@ -81,8 +91,8 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
       const detail = err?.response?.data?.detail
       if (status === HTTP_CONFLICT) {
         toast.warning(t('AppsDetailView.toasts.submitDuplicate'))
-      } else if (status === HTTP_UNPROCESSABLE && detail?.marker_errors?.length) {
-        setMarkerErrors(detail.marker_errors)
+      } else if (status === HTTP_UNPROCESSABLE && detail?.reason) {
+        setSpecErrors(specErrorLines(detail, t))
       } else {
         toast.error(t('AppsDetailView.toasts.submitError'))
       }
@@ -119,6 +129,22 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
       toast.error(t('AppsDetailView.toasts.updateError'))
     } finally {
       setIsTogglingPrivacy(false)
+    }
+  }
+
+  /** Admin only: fix the version teachers deploy. Resolves ``true`` when it was saved. */
+  const setDeployVersion = async (versionTag: string): Promise<boolean> => {
+    setIsSettingDeployVersion(true)
+    try {
+      const res = await appApi.admin.setDeployVersion(appId, versionTag)
+      setApp((prev) => (prev ? { ...prev, deploy_version: res.data.deploy_version } : prev))
+      toast.success(t('AppsDetailView.toasts.deployVersionSet', { version: versionTag }))
+      return true
+    } catch {
+      toast.error(t('AppsDetailView.toasts.deployVersionError'))
+      return false
+    } finally {
+      setIsSettingDeployVersion(false)
     }
   }
 
@@ -178,10 +204,12 @@ export function useAppDetail(appId: string, canManageVersions: (app: AppDetail) 
     withdrawingVersion,
     isTogglingPrivacy,
     isSubmitting,
-    markerErrors,
-    clearMarkerErrors: () => setMarkerErrors([]),
+    specErrors,
+    clearSpecErrors: () => setSpecErrors([]),
     isSavingEdit,
     isDeleting,
+    isSettingDeployVersion,
+    setDeployVersion,
     submitVersion,
     withdrawVersion,
     togglePrivacy,

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Boxes, Monitor } from 'lucide-react'
 import type { AppRuntime } from '@/types'
 import { runtimeLabelKey } from './runtime'
+import { isClusterRuntime } from '@/utils/runtime'
 
 export interface RuntimeStatusProps {
   runtime: AppRuntime | null
@@ -16,7 +17,7 @@ const VM_TONE = 'bg-indigo-50 text-indigo-800 border-indigo-200'
 /** How the selected version runs: pods in the cluster, or a VM (Windows). */
 export default function RuntimeStatus({ runtime, isLoading, errorKey }: RuntimeStatusProps) {
   const { t } = useTranslation()
-  const isPod = runtime?.runtime === 'kubernetes'
+  const isPod = isClusterRuntime(runtime?.runtime)
 
   return (
     <div className="mb-4 text-sm" data-testid="version-runtime">

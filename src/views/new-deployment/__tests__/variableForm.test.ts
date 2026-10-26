@@ -10,9 +10,6 @@ import {
   formatSlotLabel,
   seedScopedDefault,
   dedupeVariables,
-  groupPackerByTemplate,
-  isMultiImageLayout,
-  formKeyOf,
   restoreFromDraft,
   initialFromFetch,
   normalizeValue,
@@ -20,7 +17,6 @@ import {
   findMissingRequired,
   dropStaleSlots,
   hasBlockingExpert,
-  markerErrorLines,
   type WizardTeam,
 } from '../variableForm'
 
@@ -95,60 +91,25 @@ describe('seedScopedDefault', () => {
   })
 })
 
-describe('packer grouping', () => {
-  const defs = [
-    v({ name: 'a', source: 'packer', template_key: 'web' }),
-    v({ name: 'b', source: 'packer', template_key: 'db' }),
-    v({ name: 'c', source: 'packer' }),
-    v({ name: 't', source: 'terraform' }),
-  ]
-
-  it('groups packer variables by template key', () => {
-    const grouped = groupPackerByTemplate(defs)
-    expect(Object.keys(grouped).sort()).toEqual(['db', 'default', 'web'])
-    expect(grouped.web!.map((d) => d.name)).toEqual(['a'])
-  })
-
-  it('is multi-image for several keys or one non-default key', () => {
-    expect(isMultiImageLayout(['default'])).toBe(false)
-    expect(isMultiImageLayout(['web'])).toBe(true)
-    expect(isMultiImageLayout(['a', 'b'])).toBe(true)
-    expect(isMultiImageLayout([])).toBe(false)
-  })
-
-  it('namespaces packer form keys only in multi-image mode', () => {
-    const d = v({ name: 'a', source: 'packer', template_key: 'web' })
-    expect(formKeyOf(d, true)).toBe('web.a')
-    expect(formKeyOf(d, false)).toBe('a')
-    expect(formKeyOf(v({ name: 'a', source: 'packer' }), true)).toBe('a')
-    expect(formKeyOf(v({ name: 't' }), true)).toBe('t')
-  })
-
-  it('removes duplicate definitions (same template key + name)', () => {
-    const dup = [defs[0], { ...defs[0], description: 'second' }, defs[3]]
-    expect(dedupeVariables(dup as any)).toHaveLength(2)
+describe('dedupeVariables', () => {
+  it('removes duplicate definitions (same name)', () => {
+    const a = v({ name: 'a' })
+    expect(dedupeVariables([a, { ...a, description: 'second' }, v({ name: 't' })] as any)).toHaveLength(2)
   })
 })
 
 describe('restoreFromDraft', () => {
-  it('restores flat, nested and scoped values and fills defaults', () => {
+  it('restores flat and scoped values and fills defaults', () => {
     const defs = [
       v({ name: 'flat', default: 'd' }),
-      v({ name: 'img', source: 'packer', template_key: 'web' }),
       v({ name: 'lst', type: 'list(string)' }),
       v({ name: 'sc', varScope: 'team', default: 's' }),
       v({ name: 'file', osType: 'file' }),
     ]
-    const stored = { packer: { web: { img: 'ubuntu' } }, lst: ['a', 'b'], sc: { Alpha: 'x' } }
-    const values = restoreFromDraft(defs, stored, true, teams)
+    const stored = { lst: ['a', 'b'], sc: { Alpha: 'x' } }
+    const values = restoreFromDraft(defs, stored, teams)
 
-    expect(values).toEqual({ flat: 'd', 'web.img': 'ubuntu', lst: 'a, b', sc: { Alpha: 'x', Beta: 's' } })
-  })
-
-  it('reads single-image packer values from packer or flat storage', () => {
-    const d = v({ name: 'p', source: 'packer' })
-    expect(restoreFromDraft([d], { packer: { p: 1 } }, false, [])).toEqual({ p: 1 })
-    expect(restoreFromDraft([d], { p: 2 }, false, [])).toEqual({ p: 2 })
+    expect(values).toEqual({ flat: 'd', lst: 'a, b', sc: { Alpha: 'x', Beta: 's' } })
   })
 })
 
@@ -160,7 +121,7 @@ describe('initialFromFetch', () => {
       v({ name: 'flag', type: 'bool' }),
       v({ name: 'lst', type: 'list(string)', default: ['x', 'y'] }),
     ]
-    const values = initialFromFetch(defs, { a: 'saved' }, false, [])
+    const values = initialFromFetch(defs, { a: 'saved' }, [])
     expect(values).toEqual({ a: 'saved', b: 'db', flag: false, lst: 'x, y' })
   })
 })
@@ -188,28 +149,20 @@ describe('buildDraftValues', () => {
     const { changed, all } = buildDraftValues(
       defs,
       { same: 'a', changed: 'b', n: '3', l: 'x, y' },
-      false,
     )
     expect(changed).toEqual({ changed: 'b', n: 3, l: ['x', 'y'] })
     expect(all).toEqual({ same: 'a', changed: 'b', n: 3, l: ['x', 'y'] })
   })
 
-  it('nests multi-image packer values under packer[template_key]', () => {
-    const defs = [v({ name: 'img', source: 'packer', template_key: 'web', default: 'u' })]
-    const { changed, all } = buildDraftValues(defs, { 'web.img': 'ubuntu' }, true)
-    expect(changed).toEqual({ packer: { web: { img: 'ubuntu' } } })
-    expect(all).toEqual({ packer: { web: { img: 'ubuntu' } } })
-  })
-
   it('drops empty slots of scoped variables and coerces slot values', () => {
     const defs = [v({ name: 'sc', varScope: 'team', type: 'number' })]
-    const { changed, all } = buildDraftValues(defs, { sc: { Alpha: '2', Beta: '' } }, false)
+    const { changed, all } = buildDraftValues(defs, { sc: { Alpha: '2', Beta: '' } })
     expect(changed).toEqual({ sc: { Alpha: 2 } })
     expect(all).toEqual({ sc: { Alpha: 2 } })
   })
 
   it('keeps an empty scoped map in all-values but out of the changed ones', () => {
-    const { changed, all } = buildDraftValues([v({ name: 'sc', varScope: 'team' })], { sc: {} }, false)
+    const { changed, all } = buildDraftValues([v({ name: 'sc', varScope: 'team' })], { sc: {} })
     expect(changed).toEqual({})
     expect(all).toEqual({ sc: {} })
   })
@@ -224,44 +177,35 @@ describe('findMissingRequired', () => {
       v({ name: 'file', required: true, osType: 'file' }),
       v({ name: 'sc', required: true, varScope: 'team' }),
     ]
-    const missing = findMissingRequired(defs, { req: ' ', ok: 'x', sc: { Alpha: 'v' } }, false, teams)
+    const missing = findMissingRequired(defs, { req: ' ', ok: 'x', sc: { Alpha: 'v' } }, teams)
     expect(missing).toEqual(['req', 'sc (Beta)'])
   })
 
   it('reports a scoped required variable when there are no slots at all', () => {
-    expect(findMissingRequired([v({ name: 'sc', required: true, varScope: 'team' })], {}, false, [])).toEqual(['sc'])
+    expect(findMissingRequired([v({ name: 'sc', required: true, varScope: 'team' })], {}, [])).toEqual(['sc'])
   })
 })
 
 describe('dropStaleSlots', () => {
   it('removes slots that no longer exist and lists them', () => {
     const defs = [v({ name: 'sc', varScope: 'team' })]
-    const result = dropStaleSlots(defs, { sc: { Alpha: '1', Gone: '2' } }, false, teams)
+    const result = dropStaleSlots(defs, { sc: { Alpha: '1', Gone: '2' } }, teams)
     expect(result.values).toEqual({ sc: { Alpha: '1' } })
     expect(result.dropped).toEqual(['sc → Gone'])
   })
 
   it('returns the same object when nothing was dropped', () => {
     const values = { sc: { Alpha: '1' } }
-    const result = dropStaleSlots([v({ name: 'sc', varScope: 'team' })], values, false, teams)
+    const result = dropStaleSlots([v({ name: 'sc', varScope: 'team' })], values, teams)
     expect(result.values).toBe(values)
     expect(result.dropped).toEqual([])
   })
 })
 
-describe('expert / marker helpers', () => {
+describe('expert helpers', () => {
   it('blocks (opens the expert accordion) for required expert vars without default', () => {
     expect(hasBlockingExpert([v({ description: '@expert', required: true })])).toBe(true)
     expect(hasBlockingExpert([v({ description: '@expert', required: true, default: 'x' })])).toBe(false)
     expect(hasBlockingExpert([v({ required: true })])).toBe(false)
-  })
-
-  it('formats marker errors as bullet lines', () => {
-    const lines = markerErrorLines([
-      v({ markerError: { variable: 'vm', location: 'main.tf:3', message: 'bad' } }),
-      v({ markerError: { variable: 'x', message: 'worse' } }),
-      v(),
-    ])
-    expect(lines).toEqual(['• vm (main.tf:3): bad', '• x: worse'])
   })
 })

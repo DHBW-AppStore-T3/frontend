@@ -20,6 +20,9 @@ vi.mock('@/stores/auth.store', () => ({
   useAuthStore: { getState: () => authStoreMock },
 }))
 
+const redeem = vi.fn()
+vi.mock('@/api/axios', () => ({ default: { post: (...a: unknown[]) => redeem(...a) } }))
+
 function setLocation(search: string) {
   window.history.replaceState({}, '', `/${search}`)
 }
@@ -53,35 +56,50 @@ describe('bootstrap dispatch', () => {
     expect(renderMock).toHaveBeenCalledTimes(1)
   })
 
-  it('boots into authenticated state from the LTI launch fragment', async () => {
-    setLocation('#lti=1&email=teacher@dhbw.de&role=instructor&session_token=jwt-abc')
+  it('redeems the launch code and boots into the LTI session', async () => {
+    redeem.mockResolvedValue({ data: { session_token: 'jwt-abc', email: 'teacher@dhbw.de', role: 'teacher' } })
+    setLocation('#lti=1&code=one-time-abc')
 
     await boot()
 
+    expect(redeem).toHaveBeenCalledWith('/lti13/session', { code: 'one-time-abc' }, { withCredentials: true })
     expect(authStoreMock.setLtiUser).toHaveBeenCalledWith('teacher@dhbw.de', 'jwt-abc', 'teacher')
     expect(authStoreMock.initialize).not.toHaveBeenCalled()
     expect(renderMock).toHaveBeenCalled()
   })
 
-  it('maps a non-instructor LTI role to student', async () => {
-    setLocation('#lti=1&email=s@dhbw.de&role=learner&session_token=jwt')
+  it('falls back to the normal sign-in when the code is refused (reload, foreign link)', async () => {
+    redeem.mockRejectedValue({ response: { status: 400 } })
+    setLocation('#lti=1&code=used-up')
 
     await boot()
 
-    expect(authStoreMock.setLtiUser).toHaveBeenCalledWith('s@dhbw.de', 'jwt', 'student')
+    expect(authStoreMock.setLtiUser).not.toHaveBeenCalled()
+    expect(authStoreMock.initialize).toHaveBeenCalled()
+  })
+
+  it('does not trust a session token in the fragment', async () => {
+    setLocation('#lti=1&email=teacher@dhbw.de&role=instructor&session_token=jwt-abc')
+
+    await boot()
+
+    expect(redeem).not.toHaveBeenCalled()
+    expect(authStoreMock.setLtiUser).not.toHaveBeenCalled()
+    expect(authStoreMock.initialize).toHaveBeenCalled()
   })
 
   it('removes the LTI fragment before the app is rendered', async () => {
+    redeem.mockResolvedValue({ data: { session_token: 'jwt', email: 'a@dhbw.de', role: 'student' } })
     let hashAtRender: string | null = null
     renderMock.mockImplementationOnce(() => {
       hashAtRender = window.location.hash
     })
-    setLocation('#lti=1&email=a@dhbw.de&role=learner&session_token=jwt-abc')
+    setLocation('#lti=1&code=one-time-abc')
 
     await boot()
 
     expect(hashAtRender).toBe('')
-    expect(window.location.href).not.toContain('jwt-abc')
+    expect(window.location.href).not.toContain('one-time-abc')
   })
 
   it('ignores LTI parameters in the query string (the token never travels there)', async () => {

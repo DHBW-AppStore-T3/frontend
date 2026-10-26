@@ -248,6 +248,44 @@ describe('DeploymentStore', () => {
       await expect(store.submitDraft()).rejects.toThrow('App und Name sind Pflichtfelder')
     })
 
+    describe('network expert settings', () => {
+      const submit = async (over: Record<string, unknown>) => {
+        const { deploymentApi } = await import('@/api/deployment.api')
+        vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
+        const store = liveStore(useDeploymentStore)
+        store.draft.appId = 'app-1'
+        store.draft.name = 'N'
+        store.draft.releaseTag = 'v1'
+        store.draft.groupNames = ['A', 'B']
+        Object.assign(store.draft, over)
+        await store.submitDraft()
+        return vi.mocked(deploymentApi.create).mock.calls.at(-1)![0] as any
+      }
+
+      it('sends nothing when the app allows nothing', async () => {
+        const payload = await submit({ networkChoices: {}, network: {} })
+        expect(payload.userInputVar).not.toHaveProperty('network')
+      })
+
+      it('sends the allowed keys with the chosen values', async () => {
+        const payload = await submit({
+          networkChoices: { internet: { default: false } },
+          network: { internet: true, podNetwork: true },
+        })
+        expect(payload.userInputVar.network).toEqual({ internet: true })
+      })
+
+      it('leaves out pod networking with a single workload', async () => {
+        const payload = await submit({
+          networkChoices: { internet: { default: false }, podNetwork: { default: false } },
+          network: { internet: false, podNetwork: true },
+          groupNames: ['A'],
+          groupCount: 1,
+        })
+        expect(payload.userInputVar.network).toEqual({ internet: false })
+      })
+    })
+
     it('resolves the release tag from a plain string', async () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
@@ -357,31 +395,6 @@ describe('DeploymentStore', () => {
       )
     })
 
-    it('splits flat draft variables into packer/terraform by variableDefinitions', async () => {
-      const { deploymentApi } = await import('@/api/deployment.api')
-      vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
-
-      const store = liveStore(useDeploymentStore)
-      store.draft.appId = 'app-1'
-      store.draft.name = 'My Deployment'
-      store.draft.variables = { image_type: 'ubuntu', flavor: 'm1.small' }
-      store.draft.variableDefinitions = [
-        { name: 'image_type', source: 'packer' } as any,
-        { name: 'flavor', source: 'terraform' } as any,
-      ]
-
-      await store.submitDraft()
-
-      expect(deploymentApi.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userInputVar: {
-            packer: { image_type: 'ubuntu' },
-            terraform: { flavor: 'm1.small' },
-          },
-        }),
-      )
-    })
-
     it('skips empty/undefined/null variable values so the HCL default applies', async () => {
       const { deploymentApi } = await import('@/api/deployment.api')
       vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
@@ -399,7 +412,7 @@ describe('DeploymentStore', () => {
       await store.submitDraft()
 
       expect(deploymentApi.create).toHaveBeenCalledWith(
-        expect.objectContaining({ userInputVar: { packer: {}, terraform: { present: 'value' } } }),
+        expect.objectContaining({ userInputVar: { terraform: { present: 'value' } } }),
       )
     })
 
@@ -418,7 +431,7 @@ describe('DeploymentStore', () => {
       await store.submitDraft()
 
       expect(deploymentApi.create).toHaveBeenCalledWith(
-        expect.objectContaining({ userInputVar: { packer: {}, terraform: {} } }),
+        expect.objectContaining({ userInputVar: { terraform: {} } }),
       )
     })
 
@@ -437,30 +450,7 @@ describe('DeploymentStore', () => {
       await store.submitDraft()
 
       expect(deploymentApi.create).toHaveBeenCalledWith(
-        expect.objectContaining({ userInputVar: { packer: {}, terraform: {} } }),
-      )
-    })
-
-    it('resolves multi-image packer variables nested under the template key', async () => {
-      const { deploymentApi } = await import('@/api/deployment.api')
-      vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
-
-      const store = liveStore(useDeploymentStore)
-      store.draft.appId = 'app-1'
-      store.draft.name = 'My Deployment'
-      store.draft.variables = {
-        packer: { web: { image_type: 'ubuntu' }, db: { image_type: 'debian' } },
-      }
-      store.draft.variableDefinitions = [
-        { name: 'image_type', source: 'packer', template_key: 'web' } as any,
-      ]
-
-      await store.submitDraft()
-
-      expect(deploymentApi.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userInputVar: { packer: { web: { image_type: 'ubuntu' } }, terraform: {} },
-        }),
+        expect.objectContaining({ userInputVar: { terraform: {} } }),
       )
     })
 
@@ -477,7 +467,7 @@ describe('DeploymentStore', () => {
       await store.submitDraft()
 
       expect(deploymentApi.create).toHaveBeenCalledWith(
-        expect.objectContaining({ userInputVar: { packer: {}, terraform: { anything: 'goes' } } }),
+        expect.objectContaining({ userInputVar: { terraform: { anything: 'goes' } } }),
       )
     })
 
@@ -530,30 +520,5 @@ describe('DeploymentStore', () => {
       expect(result).toEqual(created)
     })
 
-    describe('credential (project) of the deployment', () => {
-      async function submitWith(runtime: 'kubernetes' | 'openstack-vm' | null, credentialId: string | null) {
-        const { deploymentApi } = await import('@/api/deployment.api')
-        vi.mocked(deploymentApi.create).mockResolvedValueOnce({ data: { deploymentId: 'd-1' } } as any)
-        const store = liveStore(useDeploymentStore)
-        store.draft.appId = 'app-1'
-        store.draft.name = 'My Deployment'
-        store.draft.runtime = runtime
-        store.draft.credentialId = credentialId
-        await store.submitDraft()
-        return vi.mocked(deploymentApi.create).mock.calls.at(-1)![0] as unknown as Record<string, unknown>
-      }
-
-      it('a VM app is created with the chosen credential', async () => {
-        expect(await submitWith('openstack-vm', 'c-1')).toMatchObject({ credentialId: 'c-1' })
-      })
-
-      it('a pod app sends none, even if one was left in the draft', async () => {
-        expect(await submitWith('kubernetes', 'c-1')).not.toHaveProperty('credentialId')
-      })
-
-      it('a VM app without a chosen credential sends none', async () => {
-        expect(await submitWith('openstack-vm', null)).not.toHaveProperty('credentialId')
-      })
-    })
   })
 })

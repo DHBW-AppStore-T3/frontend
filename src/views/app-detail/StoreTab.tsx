@@ -11,7 +11,11 @@ export interface StoreTabProps {
   banner: BannerStatus
   versionOptions: string[]
   approvalByVersion: Record<string, AppVersionApproval>
-  isOwner: boolean
+  /**
+   * Owner or admin: the backend lets both submit, withdraw and resubmit a version
+   * (`can_submit_app_version`), so the actions are shown to both.
+   */
+  canSubmitVersion: boolean
   /** Admins may make a deactivated app public again; nobody else. */
   isAdmin: boolean
   isTogglingPrivacy: boolean
@@ -27,7 +31,7 @@ const PANEL_TITLE = 'text-sm font-semibold text-textMuted uppercase tracking-wid
 const LINK_ACTION = 'text-xs hover:underline flex items-center gap-1 disabled:opacity-50'
 
 export default function StoreTab(props: StoreTabProps) {
-  const { app, banner, versionOptions, approvalByVersion, isOwner, isAdmin } = props
+  const { app, banner, versionOptions, approvalByVersion, canSubmitVersion, isAdmin } = props
   const { t } = useTranslation()
   const isPrivate = !!app.is_private
   const VisibilityIcon = isPrivate ? Lock : Globe
@@ -42,7 +46,7 @@ export default function StoreTab(props: StoreTabProps) {
           <p className="text-xs text-danger italic">
             {t('AppsDetailView.rejectionReasonLabel')} {approval.rejection_reason || '–'}
           </p>
-          {isOwner ? (
+          {canSubmitVersion ? (
             <button
               type="button"
               onClick={() => props.onSubmitVersion(ver)}
@@ -55,7 +59,7 @@ export default function StoreTab(props: StoreTabProps) {
         </div>
       )
     }
-    if (approval?.status === 'pending' && isOwner) {
+    if (approval?.status === 'pending' && canSubmitVersion) {
       return (
         <button
           type="button"
@@ -68,7 +72,7 @@ export default function StoreTab(props: StoreTabProps) {
         </button>
       )
     }
-    if (!approval && isOwner) {
+    if (!approval && canSubmitVersion) {
       return (
         <button type="button" onClick={() => props.onSubmitVersion(ver)} className={`${LINK_ACTION} text-success`}>
           <Send size={12} />
@@ -174,7 +178,7 @@ export default function StoreTab(props: StoreTabProps) {
                         <td className="py-2.5 pr-4 text-xs text-textMuted">
                           {approval ? (
                             <>
-                              {t(runtimeLabelKey(approval.runtime ?? 'openstack-vm'))}
+                              {t(runtimeLabelKey(approval.runtime ?? 'kubernetes'))}
                               {approval.commit_sha ? (
                                 <span className="block font-mono text-textFaint" title={approval.commit_sha}>
                                   {approval.commit_sha.slice(0, COMMIT_SHORT_LENGTH)}

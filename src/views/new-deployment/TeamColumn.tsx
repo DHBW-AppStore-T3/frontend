@@ -7,6 +7,8 @@ export interface TeamColumnProps {
   studentIds: string[]
   nameOf: (id: string) => string
   isDragOver: boolean
+  /** Chips cannot be moved or removed (assignment is fixed by the app). */
+  dragDisabled?: boolean
   onRename: (name: string) => void
   onDragStart: (studentId: string, event: React.DragEvent) => void
   onDragEnd: () => void
@@ -18,7 +20,7 @@ export interface TeamColumnProps {
 
 /** One team: editable name, student count and a drop zone with draggable chips. */
 export default function TeamColumn(props: TeamColumnProps) {
-  const { index, name, studentIds, nameOf, isDragOver } = props
+  const { index, name, studentIds, nameOf, isDragOver, dragDisabled = false } = props
   const { t } = useTranslation()
 
   return (
@@ -65,27 +67,33 @@ export default function TeamColumn(props: TeamColumnProps) {
             {studentIds.map((studentId) => (
               <div
                 key={studentId}
-                draggable
+                draggable={!dragDisabled}
                 onDragStart={(e) => props.onDragStart(studentId, e)}
                 onDragEnd={props.onDragEnd}
-                className="group bg-white rounded-lg px-3 py-2.5 border-2 border-borderSubtle cursor-move hover:border-primary hover:shadow-lg hover:scale-[1.02] transition-all flex items-center gap-2"
+                className={`group bg-white rounded-lg px-3 py-2.5 border-2 border-borderSubtle transition-all flex items-center gap-2 ${
+                  dragDisabled ? '' : 'cursor-move hover:border-primary hover:shadow-lg hover:scale-[1.02]'
+                }`}
               >
-                <GripVertical
-                  size={16}
-                  className="text-textFaint group-hover:text-primary transition-colors flex-shrink-0"
-                />
+                {dragDisabled ? null : (
+                  <GripVertical
+                    size={16}
+                    className="text-textFaint group-hover:text-primary transition-colors flex-shrink-0"
+                  />
+                )}
                 <span className="font-semibold text-textMuted group-hover:text-textHeading flex-1 text-sm transition-colors">
                   {nameOf(studentId)}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => props.onRemove(studentId)}
-                  data-testid="btn-remove-student"
-                  className="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-dangerTint rounded-lg"
-                  title={t('deployment.assignment.removeStudent')}
-                >
-                  <X size={14} className="text-danger" />
-                </button>
+                {dragDisabled ? null : (
+                  <button
+                    type="button"
+                    onClick={() => props.onRemove(studentId)}
+                    data-testid="btn-remove-student"
+                    className="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-dangerTint rounded-lg"
+                    title={t('deployment.assignment.removeStudent')}
+                  >
+                    <X size={14} className="text-danger" />
+                  </button>
+                )}
               </div>
             ))}
           </div>

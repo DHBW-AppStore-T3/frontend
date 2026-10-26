@@ -6,27 +6,14 @@ import { useDashboard } from '@/composables/useDashboard'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRole } from '@/composables/useRole'
 import { paths } from '@/router/paths'
-import CredentialBanners from './dashboard/CredentialBanners'
-import QuotaTile from './dashboard/QuotaTile'
-import { useQuotaCredential } from './dashboard/useQuotaCredential'
+import { greetingNameOf } from '@/utils/user-display'
 import './DashboardView.css'
 
 export default function DashboardView() {
   const { t } = useTranslation()
   const { stats, fetchStats } = useDashboard()
   const { isStaff } = useRole()
-  const quotas = useQuotaCredential(isStaff)
-  const username = useAuthStore((s) => s.user?.username) || ''
-
-  const firstName = username.charAt(0).toUpperCase() + username.slice(1)
-
-  const hour = new Date().getHours()
-  const timeGreeting =
-    hour < 12
-      ? t('DashboardView.timeGreetings.morning')
-      : hour < 18
-        ? t('DashboardView.timeGreetings.afternoon')
-        : t('DashboardView.timeGreetings.evening')
+  const name = greetingNameOf(useAuthStore((s) => s.user))
 
   useEffect(() => {
     void fetchStats().catch(() => {})
@@ -43,13 +30,12 @@ export default function DashboardView() {
 
   return (
     <div className="dashboard-page">
-      {isStaff ? <CredentialBanners /> : null}
-
       {/* Hero banner */}
       <div className="hero-banner">
         <div className="hero-content">
-          <p className="page-eyebrow">{timeGreeting}</p>
-          <h1 className="dashboard-name">{firstName}</h1>
+          <h1 className="dashboard-name">
+            {name ? t('DashboardView.greeting', { name }) : t('DashboardView.greetingAnonymous')}
+          </h1>
           <p className="dashboard-subtitle">{t('DashboardView.subtitle')}</p>
         </div>
       </div>
@@ -93,19 +79,6 @@ export default function DashboardView() {
           </Link>
         ) : null}
       </div>
-
-      {isStaff ? (
-        <QuotaTile
-          rows={quotas.formattedQuotas}
-          loading={quotas.loading}
-          hasCachedQuotas={quotas.hasCachedQuotas}
-          usable={quotas.usable}
-          selectedCredentialId={quotas.credentialId}
-          credentialsResolved={quotas.isResolved}
-          getColorClass={quotas.getColorClass}
-          onSelectCredential={quotas.selectCredential}
-        />
-      ) : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { useAdminViewStore } from '@/stores/admin-view.store'
 import type { App, Deployment, Course, UserRole as Role } from '@/types'
 
 /**
@@ -14,6 +15,9 @@ import type { App, Deployment, Course, UserRole as Role } from '@/types'
  */
 export function useRole() {
   const user = useAuthStore((s) => s.user)
+  const adminViewEnabled = useAdminViewStore((s) =>
+    user ? s.enabledByAccount[user.userId] === true : false,
+  )
 
   return useMemo(() => {
     const role: Role | null = user?.role ?? null
@@ -35,6 +39,7 @@ export function useRole() {
       isTeacher,
       isStudent,
       isStaff,
+      isAdminView: isAdmin && adminViewEnabled,
       canEditApp,
       canDeleteApp: canEditApp,
       canSubmitAppVersion: canEditApp,
@@ -43,5 +48,5 @@ export function useRole() {
       canEditCourse,
       canChangeUserRole: isAdmin,
     }
-  }, [user])
+  }, [user, adminViewEnabled])
 }

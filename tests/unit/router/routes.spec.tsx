@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '@/i18n'
 
@@ -25,6 +25,9 @@ vi.mock('@/stores/deployment.store', () => ({
   useDeploymentStore: { getState: () => ({ draft: mocks.draft }) },
 }))
 
+// AdminSettingsView renders RecommendedAppsCard, which lists the catalogue.
+vi.mock('@/api/app.api', () => ({ appApi: { list: vi.fn().mockResolvedValue({ data: [] }) } }))
+
 vi.mock('@/views/CoursesView', () => ({ default: () => <p>courses</p> }))
 vi.mock('@/views/AppsView', () => ({ default: () => <p>apps</p> }))
 vi.mock('@/views/DashboardView', () => ({ default: () => <p>dashboard</p> }))
@@ -46,6 +49,20 @@ function renderAt(url: string) {
   )
   return router
 }
+
+// Views that are not mocked above are loaded by a real dynamic import the first
+// time a route needs them. Transforming them can take longer than the 1 s the
+// waitFor assertions below allow, so load every lazy route once up front and
+// keep the assertions about routing, not about module loading.
+const loadLazyRoutes = (routes: RouteObject[]): Promise<unknown>[] =>
+  routes.flatMap((r) => [
+    ...(r.lazy ? [(r.lazy as () => Promise<unknown>)()] : []),
+    ...loadLazyRoutes(r.children ?? []),
+  ])
+
+beforeAll(async () => {
+  await Promise.all(loadLazyRoutes(appRoutes))
+}, 120_000)
 
 beforeEach(() => {
   mocks.auth.user = null
@@ -114,14 +131,13 @@ describe('app routes', () => {
   })
 })
 
-describe('staff-only routes (teachers and admins register apps, deploy, manage credentials)', () => {
+describe('staff-only routes (teachers and admins register apps and deploy)', () => {
   const STAFF_ONLY = [
     '/apps/create',
     '/deployment/new/config',
     '/deployment/new/teams',
     '/deployment/new/variables',
     '/deployment/new/summary',
-    '/user/openstack',
     '/courses',
   ]
 
@@ -136,8 +152,6 @@ describe('staff-only routes (teachers and admins register apps, deploy, manage c
     ['teacher', '/apps/create'],
     ['admin', '/apps/create'],
     ['teacher', '/deployment/new/config'],
-    ['teacher', '/user/openstack'],
-    ['admin', '/user/openstack'],
   ] as const)('lets a %s open %s', async (role, url) => {
     loginAs(role)
     const router = renderAt(url)
@@ -151,6 +165,21 @@ describe('staff-only routes (teachers and admins register apps, deploy, manage c
     const router = renderAt('/admin/apps')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/forbidden'))
+  })
+
+  it('keeps the admin settings admin-only', async () => {
+    loginAs('teacher')
+    const router = renderAt('/admin/settings')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/forbidden'))
+  })
+
+  it('lets admins open the admin settings', async () => {
+    loginAs('admin')
+    const router = renderAt('/admin/settings')
+
+    await waitFor(() => expect(document.querySelector('.app-shell')).not.toBeNull())
+    expect(router.state.location.pathname).toBe('/admin/settings')
   })
 
   it('lets every signed-in role open the app catalogue and the deployments', async () => {

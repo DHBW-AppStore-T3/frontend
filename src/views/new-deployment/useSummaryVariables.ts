@@ -3,23 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/stores/app.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
-import { ensureLoaded, setCredential } from '@/composables/useOpenStackResourceCache'
-import type { OsResourceType } from '@/api/openstack-resources.api'
-import { isOsResourceVar, type AppVariable } from '@/types'
+import type { AppVariable } from '@/types'
 import { versionLabelOf } from './summary'
-
-/** Fills the display cache so summary rows show resource names instead of UUIDs. */
-async function primeOsDisplayCache(defs: AppVariable[]): Promise<void> {
-  const types = new Set<OsResourceType>()
-  for (const def of defs) {
-    // ``file`` and ``enum`` are no OpenStack resources: the cache only tracks real ones.
-    if (def.osType && isOsResourceVar(def)) types.add(def.osType as OsResourceType)
-  }
-  if (types.size === 0) return
-  // The lists come from the project of the credential the deployment is created with.
-  setCredential(useDeploymentStore.getState().draft.credentialId ?? null)
-  await Promise.all([...types].map((type) => ensureLoaded(type)))
-}
 
 function parseUserOverrides(raw: unknown, onInvalid: () => void): Record<string, any> {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, any>
@@ -60,10 +45,7 @@ export function useSummaryVariables() {
     const cached = drafts.draft.variableDefinitions
 
     void (async () => {
-      if (cached && cached.length > 0) {
-        await primeOsDisplayCache(cached)
-        return
-      }
+      if (cached && cached.length > 0) return
 
       try {
         const apps = useAppStore.getState()
@@ -89,7 +71,6 @@ export function useSummaryVariables() {
 
         useDeploymentStore.getState().updateDraft({ variableDefinitions: variables, variables: merged })
         setDefs(variables)
-        void primeOsDisplayCache(variables)
       } catch (error: any) {
         console.error(error)
         if (cancelled) return

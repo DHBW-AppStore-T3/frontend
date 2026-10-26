@@ -3,8 +3,7 @@
  * form values from the draft, comparing against defaults, and required-gating.
  * The view only wires these functions to React state.
  *
- * Form values are keyed by ``formKeyOf``: the variable name, except for Packer
- * variables of multi-image apps, which are namespaced ``<template_key>.<name>``.
+ * Form values are keyed by ``formKeyOf``, i.e. the variable name.
  */
 import type { AppVariable, User } from '@/types'
 import { isBool, isList, isNumber } from '@/utils/variable-types'
@@ -22,7 +21,6 @@ export interface WizardTeam {
   members: WizardTeamMember[]
 }
 
-const DEFAULT_TEMPLATE_KEY = 'default'
 const FALLBACK_USERNAME_LENGTH = 8
 
 // ------------------------------------------------------------------ flags
@@ -125,33 +123,15 @@ export function seedScopedDefault(
 }
 
 // ------------------------------------------------------ definitions/layout
-/** Packer variables per template key (``default`` when the app has a single image). */
-export function groupPackerByTemplate(defs: AppVariable[]): Record<string, AppVariable[]> {
-  const out: Record<string, AppVariable[]> = {}
-  for (const v of defs) {
-    if (v.source !== 'packer') continue
-    ;(out[v.template_key ?? DEFAULT_TEMPLATE_KEY] ??= []).push(v)
-  }
-  return out
+export function formKeyOf(v: AppVariable): string {
+  return v.name
 }
 
-/** Multi-image when there are several template keys, or one that isn't ``default``. */
-export function isMultiImageLayout(templateKeys: string[]): boolean {
-  return templateKeys.length > 1 || (templateKeys.length === 1 && templateKeys[0] !== DEFAULT_TEMPLATE_KEY)
-}
-
-export function formKeyOf(v: AppVariable, isMultiImage: boolean): string {
-  if (v.source !== 'packer') return v.name
-  const tkey = v.template_key ?? DEFAULT_TEMPLATE_KEY
-  return !isMultiImage || tkey === DEFAULT_TEMPLATE_KEY ? v.name : `${tkey}.${v.name}`
-}
-
-/** Drops duplicate definitions (same template key + name; terraform: name). */
+/** Drops duplicate definitions (same name). */
 export function dedupeVariables(defs: AppVariable[]): AppVariable[] {
   const seen = new Map<string, AppVariable>()
   for (const v of defs) {
-    const key = v.source === 'packer' ? `${v.template_key ?? DEFAULT_TEMPLATE_KEY}.${v.name}` : v.name
-    if (!seen.has(key)) seen.set(key, v)
+    if (!seen.has(v.name)) seen.set(v.name, v)
   }
   return [...seen.values()]
 }
@@ -163,28 +143,19 @@ const listAsText = (key: string, type: string, values: FormValues) => {
 
 /**
  * Re-hydrate form values from ``draft.variables`` (the user came back via
- * "Back"). Packer values are stored flat for single-image and nested under
- * ``packer[<tkey>]`` for multi-image apps; missing values fall back to defaults.
+ * "Back"); missing values fall back to defaults.
  */
 export function restoreFromDraft(
   defs: AppVariable[],
   stored: Record<string, any>,
-  isMultiImage: boolean,
   teams: WizardTeam[],
 ): FormValues {
   const values: FormValues = {}
   for (const v of defs) {
     if (isFileVar(v)) continue // files travel through draft.fileUploads
-    const key = formKeyOf(v, isMultiImage)
+    const key = formKeyOf(v)
 
-    let storedValue: any
-    if (v.source === 'packer' && isMultiImage) {
-      storedValue = stored.packer?.[v.template_key ?? DEFAULT_TEMPLATE_KEY]?.[v.name]
-    } else if (v.source === 'packer') {
-      storedValue = stored.packer?.[v.name] ?? stored[v.name]
-    } else {
-      storedValue = stored[v.name]
-    }
+    const storedValue: any = stored[v.name]
 
     if (isScoped(v)) {
       values[key] = seedScopedDefault(v, isPlainObject(storedValue) ? storedValue : undefined, teams)
@@ -204,12 +175,11 @@ export function restoreFromDraft(
 export function initialFromFetch(
   defs: AppVariable[],
   saved: Record<string, any>,
-  isMultiImage: boolean,
   teams: WizardTeam[],
 ): FormValues {
   const values: FormValues = {}
   for (const v of defs) {
-    const key = formKeyOf(v, isMultiImage)
+    const key = formKeyOf(v)
     let value: any = ''
     if (saved[key] !== undefined) value = saved[key]
     else if (saved[v.name] !== undefined) value = saved[v.name]
@@ -269,24 +239,18 @@ function cleanScopedMap(map: unknown, type: string): Record<string, any> {
 
 /**
  * Splits the form into ``changed`` (differs from the author default; becomes
- * ``userInputVar``) and ``all`` (becomes ``draft.variables``). Multi-image
- * Packer values are nested under ``packer[<tkey>]``.
+ * ``userInputVar``) and ``all`` (becomes ``draft.variables``).
  */
 export function buildDraftValues(
   defs: AppVariable[],
   form: FormValues,
-  isMultiImage: boolean,
 ): { changed: Record<string, any>; all: Record<string, any> } {
   const changed: Record<string, any> = {}
   const all: Record<string, any> = {}
-  const nestedChanged: Record<string, Record<string, any>> = {}
-  const nestedAll: Record<string, Record<string, any>> = {}
 
   for (const v of defs) {
     if (isFileVar(v)) continue
-    const key = formKeyOf(v, isMultiImage)
-    const tkey = v.template_key ?? DEFAULT_TEMPLATE_KEY
-    const nested = v.source === 'packer' && isMultiImage
+    const key = formKeyOf(v)
 
     let value: any
     let hasChanged: boolean
@@ -298,17 +262,9 @@ export function buildDraftValues(
       hasChanged = normalizeValue(form[key], v.type) !== normalizeValue(v.default, v.type)
     }
 
-    if (nested) {
-      if (hasChanged) (nestedChanged[tkey] ??= {})[v.name] = value
-      ;(nestedAll[tkey] ??= {})[v.name] = value
-    } else {
-      if (hasChanged) changed[v.name] = value
-      all[v.name] = value
-    }
+    if (hasChanged) changed[v.name] = value
+    all[v.name] = value
   }
-
-  if (isMultiImage && Object.keys(nestedChanged).length > 0) changed.packer = nestedChanged
-  if (isMultiImage && Object.keys(nestedAll).length > 0) all.packer = nestedAll
   return { changed, all }
 }
 
@@ -317,13 +273,12 @@ export function buildDraftValues(
 export function findMissingRequired(
   defs: AppVariable[],
   form: FormValues,
-  isMultiImage: boolean,
   teams: WizardTeam[],
 ): string[] {
   const missing: string[] = []
   for (const v of defs) {
     if (!v.required || isFileVar(v)) continue
-    const key = formKeyOf(v, isMultiImage)
+    const key = formKeyOf(v)
     if (isScoped(v)) {
       const map = (form[key] ?? {}) as Record<string, any>
       const slots = slotKeysFor(v, teams)
@@ -340,14 +295,13 @@ export function findMissingRequired(
 export function dropStaleSlots(
   defs: AppVariable[],
   form: FormValues,
-  isMultiImage: boolean,
   teams: WizardTeam[],
 ): { values: FormValues; dropped: string[] } {
   const dropped: string[] = []
   let values = form
   for (const v of defs) {
     if (!isScoped(v) || isFileVar(v)) continue
-    const key = formKeyOf(v, isMultiImage)
+    const key = formKeyOf(v)
     const map = form[key]
     if (!isPlainObject(map)) continue
     const valid = new Set(slotKeysFor(v, teams))
@@ -363,12 +317,3 @@ export function dropStaleSlots(
 /** Expert sections open by default when a required expert variable has no default. */
 export const hasBlockingExpert = (defs: AppVariable[]): boolean =>
   defs.some((v) => isExpert(v) && v.required && (v.default === null || v.default === undefined))
-
-export function markerErrorLines(defs: AppVariable[]): string[] {
-  return defs
-    .filter((v) => v.markerError)
-    .map((v) => {
-      const loc = v.markerError?.location ? ` (${v.markerError.location})` : ''
-      return `• ${v.markerError?.variable}${loc}: ${v.markerError?.message}`
-    })
-}

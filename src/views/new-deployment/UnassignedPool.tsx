@@ -5,6 +5,8 @@ export interface UnassignedPoolProps {
   studentIds: string[]
   nameOf: (id: string) => string
   isDragOver: boolean
+  /** Chips cannot be moved (assignment is fixed by the app). */
+  dragDisabled?: boolean
   onDragStart: (studentId: string, event: React.DragEvent) => void
   onDragEnd: () => void
   onDragEnter: () => void
@@ -14,7 +16,7 @@ export interface UnassignedPoolProps {
 
 /** Students without a team; also a drop target to un-assign someone. */
 export default function UnassignedPool(props: UnassignedPoolProps) {
-  const { studentIds, nameOf, isDragOver } = props
+  const { studentIds, nameOf, isDragOver, dragDisabled = false } = props
   const { t } = useTranslation()
 
   return (
@@ -48,12 +50,16 @@ export default function UnassignedPool(props: UnassignedPoolProps) {
             {studentIds.map((studentId) => (
               <div
                 key={studentId}
-                draggable
+                draggable={!dragDisabled}
                 onDragStart={(e) => props.onDragStart(studentId, e)}
                 onDragEnd={props.onDragEnd}
-                className="group bg-white rounded-lg px-4 py-3 border-2 border-borderSubtle cursor-move hover:border-textFaint hover:shadow-lg hover:scale-[1.02] transition-all flex items-center gap-3"
+                className={`group bg-white rounded-lg px-4 py-3 border-2 border-borderSubtle transition-all flex items-center gap-3 ${
+                  dragDisabled ? '' : 'cursor-move hover:border-textFaint hover:shadow-lg hover:scale-[1.02]'
+                }`}
               >
-                <GripVertical size={18} className="text-textFaint group-hover:text-textMuted transition-colors" />
+                {dragDisabled ? null : (
+                  <GripVertical size={18} className="text-textFaint group-hover:text-textMuted transition-colors" />
+                )}
                 <span className="font-semibold text-textMuted group-hover:text-textHeading flex-1 transition-colors">
                   {nameOf(studentId)}
                 </span>

@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatValue,
-  renderOsValue,
   toSummaryEntry,
-  buildPackerEntries,
   buildTerraformEntries,
   buildFileSummaries,
   formatSubmitError,
@@ -11,9 +9,6 @@ import {
 } from '../summary'
 
 const t = (key: string, o?: Record<string, unknown>) => (o ? `${key} ${JSON.stringify(o)}` : key)
-const noCache = () => null
-const names = (known: Record<string, string>) => (_t: any, _m: any, v: string) =>
-  known[v] ? { name: known[v], known: true } : null
 
 describe('formatValue', () => {
   it.each([
@@ -29,39 +24,11 @@ describe('formatValue', () => {
   })
 })
 
-describe('renderOsValue', () => {
-  it('shows the cached display name and falls back to the raw value', () => {
-    const lookup = names({ 'id-1': 'private-net' })
-    expect(renderOsValue('network', 'id', 'id-1', false, lookup)).toBe('private-net')
-    expect(renderOsValue('network', 'id', 'id-2', false, lookup)).toBe('id-2')
-  })
-
-  it('joins multi values from arrays and CSV strings', () => {
-    const lookup = names({ a: 'A', b: 'B' })
-    expect(renderOsValue('flavor', 'id', ['a', 'b'], true, lookup)).toBe('A, B')
-    expect(renderOsValue('flavor', 'id', 'a, b', true, lookup)).toBe('A, B')
-  })
-
-  it('renders empty values as a dash', () => {
-    expect(renderOsValue('flavor', 'id', '', false, noCache)).toBe('-')
-    expect(renderOsValue('flavor', 'id', [], true, noCache)).toBe('-')
-  })
-})
-
 describe('toSummaryEntry', () => {
-  const ctx = { t, getDisplayName: names({ 'id-1': 'big' }) }
+  const ctx = { t }
 
   it('formats plain values', () => {
     expect(toSummaryEntry({ name: 'count', type: 'number' } as any, 3, ctx)).toEqual({ label: 'count', value: '3' })
-  })
-
-  it('shows the display name for OpenStack markers and keeps the raw value as tooltip', () => {
-    const entry = toSummaryEntry({ name: 'flavor', osType: 'flavor', osMode: 'id' } as any, 'id-1', ctx)
-    expect(entry).toEqual({ label: 'flavor', value: 'big', raw: 'id-1' })
-  })
-
-  it('does not repeat the raw value when it equals the display', () => {
-    expect(toSummaryEntry({ name: 'k', osType: 'keypair', osMode: 'name' } as any, 'key', ctx).raw).toBeUndefined()
   })
 
   it('renders scoped values as "slot: value" lines', () => {
@@ -73,24 +40,13 @@ describe('toSummaryEntry', () => {
 })
 
 describe('entry builders', () => {
-  const ctx = { t, getDisplayName: noCache }
+  const ctx = { t }
   const defs = [
-    { name: 'region', source: 'packer', default: 'eu' },
     { name: 'cpu', source: 'terraform', default: 2 },
     { name: 'data', source: 'terraform', osType: 'file' },
-    { name: 'img', source: 'packer', template_key: 'web', default: 'u' },
   ] as any
 
-  it('flat packer entries fall back to the default', () => {
-    expect(buildPackerEntries(defs.slice(0, 1), {}, ctx)).toEqual([{ label: 'region', value: 'eu' }])
-  })
-
-  it('multi-image packer entries are prefixed with the template key and read nested values', () => {
-    const vars = { packer: { web: { img: 'ubuntu' } } }
-    expect(buildPackerEntries([defs[3]], vars, ctx)).toEqual([{ label: '[web] img', value: 'ubuntu' }])
-  })
-
-  it('terraform entries skip file variables and use the draft value over the default', () => {
+  it('entries skip file variables and use the draft value over the default', () => {
     expect(buildTerraformEntries(defs, { cpu: 4 }, ctx)).toEqual([{ label: 'cpu', value: '4' }])
     expect(buildTerraformEntries(defs, {}, ctx)).toEqual([{ label: 'cpu', value: '2' }])
   })
@@ -123,7 +79,17 @@ describe('formatSubmitError', () => {
     expect(formatSubmitError(err({ reason: 'file_b64_invalid', variable: 'v', slot: 's' }), t)).toContain('"filename":"v/s"')
   })
 
-  it.each(['version_not_approved', 'role_required'])('maps the code %s', (code) => {
+  it('names the reason when the server rejects the content of a file', () => {
+    const rejected = (code: string, message = 'english text') =>
+      formatSubmitError(err({ reason: 'file_content_rejected', code, message, filename: 'a.zip' }), t)
+    expect(rejected('zip_path_traversal')).toBe(
+      'deployment.summary.errors.fileContentRejected {"filename":"a.zip","reason":"deployment.summary.errors.fileContent.zip_path_traversal"}',
+    )
+    // a code the frontend does not know yet falls back to the server's message
+    expect(rejected('something_new', 'Something new happened')).toContain('"reason":"Something new happened"')
+  })
+
+  it.each(['version_not_approved', 'role_required', 'app_deactivated'])('maps the code %s', (code) => {
     expect(formatSubmitError(err({ code }), t)).toBe(`deployment.summary.errors.${code}`)
   })
 
@@ -131,7 +97,7 @@ describe('formatSubmitError', () => {
     'invalid_teams',
     'member_in_several_teams',
     'too_many_workloads',
-    'openstack_credentials_unverified',
+    'appstore_yaml_missing',
     'invalid_app_spec',
     'version_moved',
     'git_host_not_allowed',

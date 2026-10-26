@@ -34,6 +34,15 @@ const repoInput = () => screen.getByPlaceholderText('AppsCreateView.form.repoPla
 const submitButton = () => screen.getByRole('button', { name: 'AppsCreateView.buttons.add' })
 const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement
 
+// Every keystroke re-renders the markdown preview (DOMPurify in jsdom), so typing
+// a URL char by char costs seconds and can run into the 5 s test timeout on a
+// loaded machine. A paste sets the same value with one input event; the test
+// that checks the live preview still types.
+const fill = async (el: HTMLElement, text: string) => {
+  await userEvent.click(el)
+  await userEvent.paste(text)
+}
+
 const pickFile = (file: File) => fireEvent.change(fileInput(), { target: { files: [file] } })
 
 beforeEach(() => {
@@ -54,8 +63,8 @@ describe('AddAppsView', () => {
 
   it('zeigt einen Fehler, wenn die Git-URL ein ungültiges Format hat', async () => {
     renderView()
-    await userEvent.type(nameInput(), 'Meine App')
-    await userEvent.type(repoInput(), 'keine-echte-url')
+    await fill(nameInput(), 'Meine App')
+    await fill(repoInput(), 'keine-echte-url')
     await userEvent.click(submitButton())
 
     expect(toasts()).toContainEqual(['error', 'AppsCreateView.messages.invalidUrl'])
@@ -104,9 +113,9 @@ describe('AddAppsView', () => {
     vi.mocked(appApi.create).mockResolvedValue({ data: {} } as any)
     renderView()
 
-    await userEvent.type(nameInput(), 'Super App')
-    await userEvent.type(screen.getByPlaceholderText('AppsCreateView.form.descPlaceholder'), 'Eine Testbeschreibung')
-    await userEvent.type(repoInput(), 'https://github.com/user/repo')
+    await fill(nameInput(), 'Super App')
+    await fill(screen.getByPlaceholderText('AppsCreateView.form.descPlaceholder'), 'Eine Testbeschreibung')
+    await fill(repoInput(), 'https://github.com/user/repo')
     await userEvent.click(submitButton())
 
     await waitFor(() =>
@@ -131,8 +140,8 @@ describe('AddAppsView', () => {
     await userEvent.click(screen.getByRole('button', { name: 'AppsCreateView.form.visibilityPrivate' }))
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
 
-    await userEvent.type(nameInput(), 'Geheim')
-    await userEvent.type(repoInput(), 'git@github.com:u/r.git')
+    await fill(nameInput(), 'Geheim')
+    await fill(repoInput(), 'git@github.com:u/r.git')
     await userEvent.click(submitButton())
 
     await waitFor(() =>
@@ -147,8 +156,8 @@ describe('AddAppsView', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     renderView()
 
-    await userEvent.type(nameInput(), 'Super App')
-    await userEvent.type(repoInput(), 'https://github.com/user/repo')
+    await fill(nameInput(), 'Super App')
+    await fill(repoInput(), 'https://github.com/user/repo')
     await userEvent.click(submitButton())
 
     await waitFor(() => expect(toasts()).toContainEqual(['error', 'AppsCreateView.messages.noAccess']))
@@ -159,8 +168,8 @@ describe('AddAppsView', () => {
     vi.mocked(appApi.create).mockRejectedValue(new Error('offline'))
     renderView()
 
-    await userEvent.type(nameInput(), 'Super App')
-    await userEvent.type(repoInput(), 'https://github.com/user/repo')
+    await fill(nameInput(), 'Super App')
+    await fill(repoInput(), 'https://github.com/user/repo')
     await userEvent.click(submitButton())
 
     await waitFor(() => expect(toasts()).toContainEqual(['error', 'AppsCreateView.messages.networkError']))

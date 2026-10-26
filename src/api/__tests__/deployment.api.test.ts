@@ -20,7 +20,17 @@ describe('deploymentApi', () => {
 
     deploymentApi.getById('d-1')
 
-    expect(api.get).toHaveBeenCalledWith('/deployments/d-1')
+    expect(api.get).toHaveBeenCalledWith('/deployments/d-1', undefined)
+  })
+
+  it('getById() passes the abort signal through to the request', async () => {
+    const api = (await import('@/api/axios')).default
+    const { deploymentApi } = await import('@/api/deployment.api')
+    const { signal } = new AbortController()
+
+    deploymentApi.getById('d-1', { signal })
+
+    expect(api.get).toHaveBeenCalledWith('/deployments/d-1', { signal })
   })
 
   it('create() posts the payload to /deployments/', async () => {
@@ -96,43 +106,12 @@ describe('deploymentApi', () => {
     expect(api.get).toHaveBeenCalledWith('/deployments/d-1/my-access')
   })
 
-  it('listResources() defaults refresh to true', async () => {
+  it('listResources() reads the workloads of the deployment', async () => {
     const api = (await import('@/api/axios')).default
     const { deploymentApi } = await import('@/api/deployment.api')
 
     deploymentApi.listResources('d-1')
 
-    expect(api.get).toHaveBeenCalledWith('/deployments/d-1/resources', { params: { refresh: true } })
-  })
-
-  it('listResources() forwards an explicit refresh=false', async () => {
-    const api = (await import('@/api/axios')).default
-    const { deploymentApi } = await import('@/api/deployment.api')
-
-    deploymentApi.listResources('d-1', { refresh: false })
-
-    expect(api.get).toHaveBeenCalledWith('/deployments/d-1/resources', { params: { refresh: false } })
-  })
-
-  it('getResourceDetail() URL-encodes the terraform state address', async () => {
-    const api = (await import('@/api/axios')).default
-    const { deploymentApi } = await import('@/api/deployment.api')
-
-    deploymentApi.getResourceDetail('d-1', 'openstack_compute_instance_v2.team_ide["Team-A"]')
-
-    expect(api.get).toHaveBeenCalledWith(
-      `/deployments/d-1/resources/${encodeURIComponent('openstack_compute_instance_v2.team_ide["Team-A"]')}`,
-    )
-  })
-
-  it('redeployResource() posts to the redeploy endpoint with an encoded address', async () => {
-    const api = (await import('@/api/axios')).default
-    const { deploymentApi } = await import('@/api/deployment.api')
-
-    deploymentApi.redeployResource('d-1', 'addr/with/slash')
-
-    expect(api.post).toHaveBeenCalledWith(
-      `/deployments/d-1/resources/${encodeURIComponent('addr/with/slash')}/redeploy`,
-    )
+    expect(api.get).toHaveBeenCalledWith('/deployments/d-1/resources')
   })
 })

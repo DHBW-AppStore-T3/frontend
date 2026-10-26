@@ -6,6 +6,7 @@ import { useRole } from '@/composables/useRole'
  *
  *   <RoleGate admin>…</RoleGate>          – only admins see the children
  *   <RoleGate staff>…</RoleGate>          – teacher + admin
+ *   <RoleGate adminView>…</RoleGate>      – admin with the admin-view switch on
  *   <RoleGate can={canEditApp(app)}>…</RoleGate>
  *
  * Capability checks (``can``) are evaluated by the parent and passed in as a
@@ -14,16 +15,18 @@ import { useRole } from '@/composables/useRole'
 export interface RoleGateProps {
   admin?: boolean
   staff?: boolean
+  adminView?: boolean
   can?: boolean
   children?: ReactNode
 }
 
-export default function RoleGate({ admin, staff, can, children }: RoleGateProps) {
-  const { isAdmin, isStaff } = useRole()
+export default function RoleGate({ admin, staff, adminView, can, children }: RoleGateProps) {
+  const { isAdmin, isStaff, isAdminView } = useRole()
 
   let allow = true
   if (admin) allow = isAdmin
   else if (staff) allow = isStaff
+  else if (adminView) allow = isAdminView
   else if (can !== undefined) allow = can
 
   return allow ? <>{children}</> : null
