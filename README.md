@@ -30,6 +30,8 @@ npm run test:coverage   # Vitest + Coverage (istanbul)
 npm run build           # tsc + vite build
 ```
 
+Die Tests in `tests/unit/infra/docker-entrypoint.spec.ts` führen `docker-entrypoint.sh` mit `sh` und `envsubst` aus. Unter Windows kommen beide mit Git for Windows (im `PATH`), unter Linux/macOS sind sie üblicherweise vorhanden (`gettext`). Alle Tests laufen auf beiden Systemen; ohne diese Werkzeuge werden sie lokal sichtbar übersprungen, in der CI schlagen sie fehl.
+
 ### API-Typen aus dem Backend-Schema
 
 `src/types/api.generated.ts` wird aus `src/types/openapi.json` erzeugt und **nicht von Hand bearbeitet**. Die Datei `openapi.json` ist eine committete Kopie des Backend-Schemas — FastAPI ist laut HARNESS.md die Single Source of Truth für den API-Contract.

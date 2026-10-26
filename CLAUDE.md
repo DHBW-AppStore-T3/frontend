@@ -12,6 +12,7 @@ Harness-Gesamtkonzept: siehe https://github.com/DHBW-AppStore-T3/.github/blob/ma
 - Dev-Server: `npm run dev`
 - Build & Typecheck: `npm run build` (`tsc -b && vite build`)
 - Tests & Coverage: `npm run test` / `npm run test:coverage`
+  - `docker-entrypoint.spec.ts` braucht `sh` und `envsubst` (Windows: Git for Windows im `PATH`); läuft auf Windows und Linux, kein Plattform-Skip
 - OpenAPI Typen synchronisieren: `npx openapi-typescript ../backend/openapi.json -o src/types/api.generated.ts`
 - Lebendes Übergabedokument: `claude_docs/HANDOVER.md`
 
