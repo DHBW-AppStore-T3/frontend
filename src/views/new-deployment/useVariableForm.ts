@@ -58,9 +58,6 @@ export function useVariableForm() {
     () => buildWizardTeams(draft.groupNames, draft.assignments as string[][], studentCache),
     [draft.groupNames, draft.assignments, studentCache],
   )
-  // The app declares its settings in appstore.yaml; the multi-image (Packer)
-  // layout is gone, so a variable's form key is its name.
-  const isMultiImage = false
   const terraformVariables = useMemo(() => variables.filter((v) => v.source === 'terraform'), [variables])
   // ---------------------------------------------------------- initial load
   useEffect(() => {
@@ -83,7 +80,7 @@ export function useVariableForm() {
     void (async () => {
       const cached = store.draft.variableDefinitions
       if (cached && cached.length > 0) {
-        setFormValues(restoreFromDraft(cached, (store.draft.variables || {}) as Record<string, any>, false, currentTeams()))
+        setFormValues(restoreFromDraft(cached, (store.draft.variables || {}) as Record<string, any>, currentTeams()))
         openBlockingExperts(cached)
         return
       }
@@ -99,7 +96,7 @@ export function useVariableForm() {
         const saved = parseSavedInput(useDeploymentStore.getState().draft.userInputVar, () =>
           toast.error(t('deployment.summary.invalidJson')),
         )
-        setFormValues(initialFromFetch(defs, saved, false, currentTeams()))
+        setFormValues(initialFromFetch(defs, saved, currentTeams()))
         openBlockingExperts(defs)
       } catch (error) {
         console.error(error)
@@ -126,9 +123,9 @@ export function useVariableForm() {
   const reconciled = useMemo(
     () =>
       teamsChanged && variables.length > 0
-        ? dropStaleSlots(variables, rawFormValues, isMultiImage, teams)
+        ? dropStaleSlots(variables, rawFormValues, teams)
         : { values: rawFormValues, dropped: [] as string[] },
-    [teamsChanged, variables, rawFormValues, isMultiImage, teams],
+    [teamsChanged, variables, rawFormValues, teams],
   )
   const formValues = reconciled.values
   const droppedKey = reconciled.dropped.join('\n')
@@ -143,8 +140,8 @@ export function useVariableForm() {
   }, [droppedKey])
 
   const missingRequired = useMemo(
-    () => findMissingRequired(variables, formValues, isMultiImage, teams),
-    [variables, formValues, isMultiImage, teams],
+    () => findMissingRequired(variables, formValues, teams),
+    [variables, formValues, teams],
   )
 
   // --------------------------------------------------------------- actions
@@ -177,7 +174,7 @@ export function useVariableForm() {
 
   const next = () => {
     try {
-      const { changed, all } = buildDraftValues(variables, formValues, isMultiImage)
+      const { changed, all } = buildDraftValues(variables, formValues)
       useDeploymentStore.getState().updateDraft({
         userInputVar: JSON.stringify(changed) as any,
         variables: all,
@@ -195,7 +192,6 @@ export function useVariableForm() {
     variables,
     teams,
     terraformVariables,
-    isMultiImage,
     formValues,
     missingRequired,
     canSubmit: missingRequired.length === 0,

@@ -983,8 +983,6 @@ export default {
     kubernetesShort: "Pods",
     kubevirtVm: "VM in the cluster",
     kubevirtVmShort: "VM",
-    openstackVm: "VM in OpenStack",
-    openstackVmShort: "VM",
   },
   pods: {
     started: "App started successfully",

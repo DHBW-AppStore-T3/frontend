@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { canResetWorkloads, canRestartWorkloads, confirmMessageSuffix, isClusterRuntime, runtimeLabelKey } from '../runtime'
 
 describe('isClusterRuntime', () => {
-  it('pods and KubeVirt VMs live in the cluster, OpenStack VMs do not', () => {
+  it('pods and KubeVirt VMs live in the cluster', () => {
     expect(isClusterRuntime('kubernetes')).toBe(true)
     expect(isClusterRuntime('kubevirt-vm')).toBe(true)
-    expect(isClusterRuntime('openstack-vm')).toBe(false)
   })
 
   it('an unknown runtime is not assumed to be a cluster one', () => {
@@ -19,7 +18,7 @@ describe('runtimeLabelKey', () => {
     expect(runtimeLabelKey('kubernetes')).toBe('runtime.kubernetes')
     expect(runtimeLabelKey('kubevirt-vm')).toBe('runtime.kubevirtVm')
     expect(runtimeLabelKey('kubevirt-vm', 'short')).toBe('runtime.kubevirtVmShort')
-    expect(runtimeLabelKey('openstack-vm', 'short')).toBe('runtime.openstackVmShort')
+    expect(runtimeLabelKey(null)).toBe('runtime.kubernetes')
   })
 })
 

@@ -130,8 +130,7 @@ export default function DeploymentDetailView() {
               ) : null}
 
               {/* Stop: only while a worker task is in flight. Revokes the task
-                  and cleans up everything it created, including the Packer
-                  build instance Terraform knows nothing about. */}
+                  and cleans up everything it created. */}
               {d.canCancel ? (
                 <BaseButton
                   onClick={() => d.setShowCancelModal(true)}

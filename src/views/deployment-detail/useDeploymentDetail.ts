@@ -58,7 +58,7 @@ export function useDeploymentDetail(deploymentId: string) {
   const permissions = permissionsOf(deployment)
   const isOwnerView = permissions.owner_view
   const gates = lifecycleGates(deployment)
-  // Pods (Linux apps) or OpenStack VMs (the Windows desktop).
+  // Pods (Linux apps) or KubeVirt VMs (the Windows desktop).
   const isCluster = isClusterRuntime(deployment?.runtime)
 
   // Imperative (non-render) read, so async flows decide on fresh data.
@@ -376,8 +376,8 @@ export function useDeploymentDetail(deploymentId: string) {
   }
   const deselectTask = () => setSelectedTask(null)
 
-  // Cancel revokes the worker task and runs a destroy that also reaps the
-  // Packer build instance; the 202 response flows into the existing SSE plumbing.
+  // Cancel revokes the worker task and runs a destroy that also cleans up
+  // everything the deployment created; the 202 response flows into the existing SSE plumbing.
   const confirmCancel = async () => {
     if (!deploymentId || cancelBusy) return
     setCancelBusy(true)

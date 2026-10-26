@@ -6,10 +6,9 @@
  * pause/resume flows, SSE wiring, JSON highlighting and clipboard helpers.
  *
  * The worker owns the phase contract: it emits `phase_names` on every progress
- * event, including the `:<template_key>` suffixes that multi-image builds use.
- * The static tables below are only a pre-first-event fallback so the stepper
- * renders at the right width instead of collapsing, and they are matched by
- * length rather than assumed.
+ * event. The static tables below mirror the worker's pod-task phase lists
+ * (`PHASES_*` in worker `app/pod_tasks.py`) and are only a pre-first-event
+ * fallback so the stepper renders at the right width instead of collapsing.
  */
 
 import { useMemo } from 'react'
@@ -20,7 +19,7 @@ import type { Task } from '@/types'
  * Dot count used before the worker reports its real phase total, so the
  * stepper does not visibly resize on the first progress event.
  */
-export const DEFAULT_PHASE_COUNT = 11
+export const DEFAULT_PHASE_COUNT = 7
 
 export interface DeploymentPhaseSources {
     /** Live phase total from the worker; 0 before the first event. */
@@ -77,41 +76,47 @@ function derivePhases(sources: DeploymentPhaseSources) {
     // the deploy/destroy presets render meaningful labels under each dot when the
     // totals match a known shape; an unknown count falls back to numbered labels.
     //
-    // Default to a conservative 5-dot view before the first event arrives so the
+    // Default to a 7-dot view (DEFAULT_PHASE_COUNT, the pod deploy shape) before the first event arrives so the
     // layout doesn't jump when the worker reports its real phase count.
 
 
     const PHASE_LABELS_DEPLOY = [
         'STARTING',
-        'DEPLOYING',
-        'RUNNING',
-        'CLEANUP',
-        'DONE',
+        'SPEC_LOAD',
+        'K8S_NAMESPACE',
+        'K8S_POLICIES',
+        'K8S_APPLY',
+        'K8S_WAIT_READY',
+        'OUTPUTS_AND_CLEANUP',
     ] as const
 
     const PHASE_LABELS_DESTROY = [
         'STARTING',
-        'STOPPING',
+        'K8S_DELETE',
+        'K8S_WAIT_GONE',
         'CLEANUP',
-        'DONE',
     ] as const
 
-    // Pause/Resume share a common short shape.
     const PHASE_LABELS_PAUSE = [
         'STARTING',
-        'SERVER_STOP',
-        'CLEANUP',
+        'K8S_SCALE_DOWN',
+        'K8S_WAIT_STOPPED',
     ] as const
 
     const PHASE_LABELS_RESUME = [
         'STARTING',
-        'SERVER_START',
-        'CLEANUP',
+        'K8S_SCALE_UP',
+        'K8S_WAIT_READY',
+    ] as const
+
+    const PHASE_LABELS_REDEPLOY = [
+        'STARTING',
+        'K8S_RESTART',
+        'K8S_WAIT_READY',
     ] as const
 
     // Stepper labels: the worker sends the full phase sequence as ``phase_names``
-    // with every progress event — the authoritative source, since multi-image
-    // deploys have a dynamic sequence whose template keys the frontend can't guess.
+    // with every progress event — the authoritative source.
     // Before the first progress event, we fall back to the static tables below.
 
     const phaseStepCount: number =
@@ -139,6 +144,8 @@ function derivePhases(sources: DeploymentPhaseSources) {
             table = PHASE_LABELS_PAUSE
         } else if (activeType === 'resume') {
             table = PHASE_LABELS_RESUME
+        } else if (activeType === 'redeploy') {
+            table = PHASE_LABELS_REDEPLOY
         } else if (activeType === 'destroy') {
             table = PHASE_LABELS_DESTROY
         } else if (activeType === 'deploy') {
@@ -146,8 +153,8 @@ function derivePhases(sources: DeploymentPhaseSources) {
         }
         // Length-based last resort (no active task type known yet).
         if (!table) {
-            if (streamTotalPhases === PHASE_LABELS_DESTROY.length) table = PHASE_LABELS_DESTROY
-            else if (streamTotalPhases === PHASE_LABELS_DEPLOY.length) table = PHASE_LABELS_DEPLOY
+            if (streamTotalPhases === PHASE_LABELS_DEPLOY.length) table = PHASE_LABELS_DEPLOY
+            else if (streamTotalPhases === PHASE_LABELS_DESTROY.length) table = PHASE_LABELS_DESTROY
         }
         if (table && idx >= 0 && idx < table.length) {
             return phaseLabel(table[idx])
@@ -171,18 +178,10 @@ function derivePhases(sources: DeploymentPhaseSources) {
 
     const phaseLabel = (phase: unknown): string => {
         if (typeof phase !== 'string' || !phase) return ''
-        // Worker-emitted multi-image phases carry the template key as a ``:<key>``
-        // suffix (e.g. ``PACKER_BUILD:database``). Split the suffix off, title-case
-        // the base name, and append the sub-key as ``[<key>]`` so the stepper reads
-        // ``Packer Build [database]`` instead of ``Packer Build:database``.
-        const colonIdx = phase.indexOf(':')
-        const base = colonIdx === -1 ? phase : phase.slice(0, colonIdx)
-        const subKey = colonIdx === -1 ? '' : phase.slice(colonIdx + 1).trim()
-        const formattedBase = base
+        return phase
             .split('_')
             .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
             .join(' ')
-        return subKey ? `${formattedBase} [${subKey}]` : formattedBase
     }
 
     return { phaseStepCount, phaseStepLabel, currentPhaseIndex, phaseLabel }
