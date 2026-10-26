@@ -273,7 +273,7 @@ describe('AdminAppsView', () => {
 
     it('weist eine Version ohne Commit darauf hin, dass sie neu eingereicht werden muss', async () => {
       const scope = await expandWith([
-        { approvalId: 'v-1', version_tag: '1.0.0', status: 'pending', created_at: '2026-01-01T00:00:00Z', runtime: 'openstack-vm', commit_sha: null },
+        { approvalId: 'v-1', version_tag: '1.0.0', status: 'pending', created_at: '2026-01-01T00:00:00Z', runtime: 'kubevirt-vm', commit_sha: null },
       ])
 
       expect(scope.getByText('AdminAppsView.notPinned')).toBeInTheDocument()
