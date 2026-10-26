@@ -58,7 +58,7 @@ export function useDeploymentDetail(deploymentId: string) {
   const permissions = permissionsOf(deployment)
   const isOwnerView = permissions.owner_view
   const gates = lifecycleGates(deployment)
-  // Pods (Linux apps) or OpenStack VMs (the Windows desktop).
+  // Pods (Linux apps) or KubeVirt VMs (the Windows desktop).
   const isCluster = isClusterRuntime(deployment?.runtime)
 
   // Imperative (non-render) read, so async flows decide on fresh data.
