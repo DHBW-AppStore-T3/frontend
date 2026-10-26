@@ -99,9 +99,12 @@ jobs:
       - name: Test Coverage Gate
         if: always()
         run: |
-          # Lowered 2026-10 back to 40 %. Gate applies to every branch so
-          # coverage regressions are caught before they reach dev/main.
-          MIN_COVERAGE=40.0
+          # Line coverage, every branch, so regressions are caught before they
+          # reach dev/main. Raised 2026-10 from 40 to 85 % (frontend#80): the
+          # Linux CI measures about 91 %, so 85 keeps a margin of about 6 points.
+          # Keep it at least 2 points below the CI value (a flaky drop must not
+          # block merges) and update CLAUDE.md and claude_docs/HANDOVER.md with it.
+          MIN_COVERAGE=85.0
           PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
           echo "Current frontend coverage: ${PCT}%, required minimum: ${MIN_COVERAGE}%"
           node -e "const p = Number(require('./coverage/coverage-summary.json').total.lines.pct); if (p < $MIN_COVERAGE) { console.error('❌ Coverage Gate Failed: ' + p + '% < $MIN_COVERAGE%'); process.exit(1); } else { console.log('✅ Coverage Gate Passed: ' + p + '% >= $MIN_COVERAGE%'); }"
