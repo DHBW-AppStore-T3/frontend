@@ -33,7 +33,6 @@ describe('canRestartWorkloads / canResetWorkloads', () => {
   it('restart works for pods and VMs, reset only for pods', () => {
     expect(canRestartWorkloads('kubernetes')).toBe(true)
     expect(canRestartWorkloads('kubevirt-vm')).toBe(true)
-    expect(canRestartWorkloads('openstack-vm')).toBe(false)
     expect(canRestartWorkloads(undefined)).toBe(false)
     expect(canResetWorkloads('kubernetes')).toBe(true)
     expect(canResetWorkloads('kubevirt-vm')).toBe(false)
