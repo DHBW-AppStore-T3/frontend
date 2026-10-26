@@ -1,8 +1,8 @@
 # Frontend-Architektur des AppStore – Ist-Stand
 
-> **Stand:** 2026-10-26 · beschrieben ist der Stand von `dev`, der auf **Staging** läuft:
-> **Frontend** `dev` @ `916c93f` · **self-service-ui** `dev` @ `1e67bd1`. Prod läuft auf älteren Ständen (Abschnitt 1.1).
-> **Quellen:** Code beider Repos, Importanalyse, `nginx.conf`, `Caddyfile`, Docker- und CI-Dateien, das Kubernetes-README und das Helm-Template im deployment-Repo, `claude_docs/` beider Repos, die laufenden Pods (appstore-MCP).
+> **Stand:** 2026-10-26 · beschrieben ist der Stand von `dev`, der auf **Staging** ausgerollt ist:
+> **Frontend** `dev` @ `0005672` · **self-service-ui** `dev` @ `54130c3`. Prod läuft auf älteren Ständen (Abschnitt 1.1). Der erste Stand dieser Doku (`916c93f` und `1e67bd1`) steht in der Git-Historie.
+> **Quellen:** Code beider Repos, Importanalyse, `nginx.conf`, `Caddyfile`, Docker- und CI-Dateien, das Kubernetes-README, die Workflows und Skripte sowie das Helm-Template im deployment-Repo, `claude_docs/` beider Repos, die Image-Pins in `k8s/images/`. Beim ersten Stand zusätzlich die laufenden Pods (appstore-MCP).
 > **Modell:** [`workspace.dsl`](workspace.dsl) (Structurizr DSL, C4). Die Diagramme sind aus diesem Modell erzeugt, über den Structurizr MCP Server (v2026.04.20, lokal; Tools `validate`, `parse`, `inspect`, `export-mermaid`).
 
 ## Kurzfassung
@@ -12,7 +12,7 @@
 - **self-service-ui:** Ein **oauth2-proxy** (BFF) meldet bei Keycloak an. Der Browser hält nur ein Cookie, der Proxy setzt den Access-Token als Bearer, Caddy reicht `/api/app-store/*` an die API. Keine LTI-Anbindung.
 - **Live-Status:** Beide Oberflächen zeigen den Fortschritt per **SSE** (nur Eigentümer) und **Polling** (Frontend: 10 s für Mitglieder, self-service-ui: 5 s, solange der Status in Bewegung ist).
 - **Unterschied im Funktionsumfang:** Das Frontend hat seinen **OpenStack-VM-Pfad entfernt** (nur Pods und KubeVirt), self-service-ui bietet **weiterhin OpenStack-Zugangsdaten** an. Lifecycle-Aktionen, App-Verwaltung und Kurse gibt es nur im Frontend; self-service-ui verlinkt dorthin.
-- **Prod hängt hinterher:** Das Frontend ist dort 42 Commits, self-service-ui 11 Commits hinter `dev`. Dieses Dokument beschreibt `dev`/Staging.
+- **Prod hängt hinterher:** Das Frontend ist dort 47 Commits, self-service-ui 13 Commits hinter `dev`. Dieses Dokument beschreibt `dev`/Staging.
 - **Auffälligkeiten** (Abschnitt 4): direkte API-Aufrufe aus 14 Frontend-Dateien, kein Retry nach 401, zwei kopierte Wizard- und Katalog-Logiken, Doku-Drift.
 
 **Lesehilfe:** *Kontext → Container → Komponenten* beschreiben die **statische** Architektur (Abschnitt 2), zehn C4-Dynamic-Diagramme (Sequenz-Notation) und zwei Zustandsautomaten die **dynamische** (Abschnitt 3). Rote Pfeile mit ⚠ weichen von der dokumentierten Schichtung ab. Graue, gestrichelte Elemente sind im Code vorhanden, aber abgeschaltet.
@@ -26,21 +26,22 @@
 | **Im Scope** | Die beiden Oberflächen mit ihren Web-Servern, ihre Anbindung an Keycloak, Moodle und die API sowie die Laufzeitumgebung. |
 | **Außerhalb** | Innenleben von Backend-API und Worker. Sie stehen als graue Container im Modell, weil beide Oberflächen ihren Vertrag nutzen. |
 | **Nur der Ist-Stand** | Beschrieben ist, was im Code von `dev` steht und auf Staging läuft. Geplantes, Idealtypisches und Entwürfe aus Issues kommen nicht vor. Wo Doku und Code auseinanderlaufen, gilt der Code, und die Abweichung steht in Abschnitt 4. |
-| **Methode** | Statisch: Verzeichnis- und Importanalyse (nur Nicht-Test-Code), Konfigurationsdateien, Helm-Template. Dynamisch: Code-Lektüre der beteiligten Module. Die laufenden Image-Digests wurden über den appstore-MCP geprüft. **Das Verhalten selbst wurde nicht zur Laufzeit beobachtet.** Wo eine Aussage nur aus dem Code abgeleitet ist, steht „abgeleitet“. |
-| **Basis des Frontends** | Der lokale Checkout steht auf `f2532fe`, vier Commits hinter `dev`. Die Analyse nutzt deshalb den Stand `team/dev` (`916c93f`, exportiert per `git archive`), also genau das, was auf Staging läuft. |
-| **Modellprüfung** | `validate`: OK. `inspect`: 40 Hinweise, davon 38 „Beziehung ohne Technologie“ (bewusst: prozessinterne Aufrufe zwischen Komponenten haben keine eigene Technologie, sonst trägt jede Kante dasselbe Label) und 2 für fehlende `!docs`/`!adrs` (der zustandslose MCP-Server sieht das Dateisystem nicht). |
+| **Methode** | Statisch: Verzeichnis- und Importanalyse (nur Nicht-Test-Code), Konfigurationsdateien, Helm-Template. Dynamisch: Code-Lektüre der beteiligten Module. Die **deklarierten** Image-Pins wurden aus dem deployment-Repo gelesen. Die **laufenden** Digests hatte ich beim ersten Stand (`916c93f`, `1e67bd1`) über den appstore-MCP geprüft; für die Aktualisierung war der MCP nicht erreichbar (Anmeldung abgelaufen). **Das Verhalten selbst wurde nicht zur Laufzeit beobachtet.** Wo eine Aussage nur aus dem Code abgeleitet ist, steht „abgeleitet“. |
+| **Basis des Frontends** | Beschrieben ist `team/dev` @ `0005672`, exportiert per `git archive`. Der Branch `doku/architektur-lea` zweigt von `916c93f` ab, der Quelltext in diesem Branch weicht deshalb in wenigen Dateien vom beschriebenen Stand ab (u. a. #93, #95, #96). Aus diesem Grund zitiert das Dokument keine Zeilennummern. |
+| **Modellprüfung** | `validate`: OK. `inspect`: 42 Hinweise, davon 38 „Beziehung ohne Technologie“ (bewusst: prozessinterne Aufrufe zwischen Komponenten haben keine eigene Technologie, sonst trägt jede Kante dasselbe Label), 2 für fehlende `!docs`/`!adrs` (der zustandslose MCP-Server sieht das Dateisystem nicht) und 2 zu Keycloak und Moodle („nicht in einer Sicht“). Letztere sind ein Artefakt: Ich blende ihre Instanzen im Deployment-View bewusst aus, damit er lesbar bleibt; beide Systeme stehen in mehreren anderen Sichten. |
 
 ### 1.1 Stand je Umgebung
 
 | | Staging (Branch `dev`) | Prod (Branch `main`) |
 |---|---|---|
-| **Frontend** | `sha-916c93f` (25.10. 23:39 UTC), identisch mit der `dev`-Spitze | `sha-c65eb2b` (23.10.), **42 Commits hinter `dev`**. Enthält noch den OpenStack-VM-Pfad (`SettingsOpenStackView` ist dort vorhanden) und keine Error Boundaries. |
-| **self-service-ui** | `sha-1e67bd1` (25.10.), identisch mit der `dev`-Spitze | `sha-728d910` (23.10.), **11 Commits hinter `dev`**. Dort gibt es nur Katalog, Details und Deployment-Liste, **keinen** Wizard, kein Deployment-Detail, keine Zugangsdaten, Einstellungen oder Hilfe. |
-| Backend | `sha-5801ed8` | `sha-4784eb5` |
-| Worker | `pod-deployer` | `pod-deployer` **und** `vm-executor` |
-| ClamAV | läuft | nicht in den Deployments |
+| **Frontend** | `sha-0005672` (26.10. 11:47 UTC), identisch mit der `dev`-Spitze | `sha-c65eb2b` (23.10.), **47 Commits hinter `dev`**. Enthält noch den OpenStack-VM-Pfad (`SettingsOpenStackView` ist dort vorhanden) und keine Error Boundaries. |
+| **self-service-ui** | `sha-54130c3` (26.10. 11:46 UTC), identisch mit der `dev`-Spitze. Gegenüber `1e67bd1` kam nur CI dazu (Attestation, GitHub-App-Token). | `sha-728d910` (23.10.), **13 Commits hinter `dev`**. Dort gibt es nur Katalog, Details und Deployment-Liste, **keinen** Wizard, kein Deployment-Detail, keine Zugangsdaten, Einstellungen oder Hilfe. |
+| Backend | `sha-b7103c3` | `sha-4784eb5` |
+| Worker | `pod-deployer` (`sha-049467e`) | `pod-deployer` **und** `vm-executor` (beide `sha-b1683d8`) |
+| noVNC-Proxy | gepinnt (`sha-5998abf`) | nicht gepinnt |
+| ClamAV | lief beim ersten Stand (nicht erneut geprüft) | nicht in den Deployments (erster Stand) |
 
-Quelle: Image-Pins in `k8s/images/{staging,prod}.yaml` (Branches `dev`, `main`) und die laufenden Pods; beide stimmen überein.
+Quelle: Image-Pins in `k8s/images/{staging,prod}.yaml` (Branches `dev`, `main`). Beim ersten Stand (`916c93f`, `1e67bd1`) stimmten sie mit den laufenden Pods überein. Die jetzigen Staging-Stände sind **nur als Pins** belegt, nicht als laufende Pods; das Fehlen von `vm-executor` in Staging folgt aus dem fehlenden Pin `worker`.
 
 ---
 
@@ -244,17 +245,17 @@ graph TB
 | **Bootstrap** | `main.tsx`, `bootstrap.tsx`, `App.tsx`, `env.ts` | 4 | Boot-Reihenfolge *Theme → LTI-Fragment → Auth → Render*. Auth ist entschieden, **bevor** die erste Route rendert. `env.ts` liest `window.__ENV__` (aus `/env-config.js`), dann `import.meta.env`, dann Defaults für localhost. |
 | **Router & Guards** | `router/`, `components/RouteError.tsx` | 3 / 274 | Datenrouter mit `lazy()` je View. Guards laufen als **Loader**: Login nötig, nur Gäste, Rolle, Wizard-Schritt vollständig. **Error Boundaries** (`RouteError`) auf der Root-Route und auf einer pfadlosen Wrapper-Route um die Kindrouten jedes Layouts: ein Seitenfehler ersetzt nur die Seite, nicht Sidebar und Header. Unbekannte Pfade leiten auf `/`. |
 | **Layouts** | `layouts/` | 7 / 408 | `AuthLayout`, `AppLayout` (Sidebar, Header), `UserLayout`. |
-| **Views & Feature-Hooks** | `views/` | 72 / 10 264 | 20 Seiten. Zu jeder gehören `use*`-Hooks für Daten und Zustand (z. B. `useDeploymentDetail`, `useAppDetail`), reine Logikmodule und Teilkomponenten. **Größte Schicht, hier liegt die Fachlogik.** |
+| **Views & Feature-Hooks** | `views/` | 72 / 10 213 | 20 Seiten. Zu jeder gehören `use*`-Hooks für Daten und Zustand (z. B. `useDeploymentDetail`, `useAppDetail`), reine Logikmodule und Teilkomponenten. **Größte Schicht, hier liegt die Fachlogik.** |
 | **UI-Komponenten** | `components/` | 22 / 1 667 | `ui/` (Button, Modal, Drawer, Toast, Badge …), Variablen-Eingabe, Dropzone, Markdown-Editor und -Renderer, `RouteError`. |
-| **Composables** | `composables/` | 9 / 838 | `useRole`, `useToast`, `useOverlay`, `useDashboard`, `useDeploymentPhases` u. a. |
+| **Composables** | `composables/` | 9 / 831 | `useRole`, `useToast`, `useOverlay`, `useDashboard`, `useDeploymentPhases` u. a. |
 | **Live-Stream-Client** | `composables/useDeploymentStream.ts` | 1 | SSE-Client mit eigenem Zustandsautomaten (3.7). |
 | **Stores** | `stores/` | 7 / 878 | Zustand: `auth`, `app`, `course`, `deployment` (inkl. Wizard-Draft und Caches), `admin-view` (persistiert unter `appstore.adminView`), `toast`. `_request.ts` kapselt das Muster *loading → Fehler → finally*. |
 | **API-Layer** | `api/` | 7 / 448 | Eine axios-Instanz (30 s Timeout) mit Token-Interceptor und 401-Behandlung, dazu je Ressource ein `*.api.ts`. |
 | **Auth-Services** | `services/` | 3 / 398 | `keycloak.service` (OIDC, Tokens nur im Speicher, Single-Flight-Refresh), `auth.service` (`/users/me`, Nutzer-Cache in `localStorage`), `lti-launch` (Einmal-Code einlösen). |
 | **Silent-Refresh-Seite** | `silent-refresh.html`, `silent-refresh.ts` | 2 | Callback des versteckten Iframes. Wird mitgebündelt, weil die CSP nur Skripte von `self` erlaubt. |
-| **i18n** | `i18n/` | 7 / 2 233 | DE/EN, Rollenlabels, `BoldSlot` für Nutzernamen in Texten (Text statt HTML). |
+| **i18n** | `i18n/` | 7 / 2 229 | DE/EN, Rollenlabels, `BoldSlot` für Nutzernamen in Texten (Text statt HTML). |
 | **Theming** | `theme/` | 5 / 176 | White-Label: Registry (Standard `t3`), Farbkanäle als CSS-Variablen, Titel, Favicon. Auswahl über `VITE_THEME`. |
-| **Utils, Config & Types** | `utils/`, `config/`, `types/` | 15 / 5 155 | Reine Helfer, App-/Fachbereichs-Katalog (`department-catalog.ts`), API-Typen. 3 965 Zeilen sind generiert (`api.generated.ts`). |
+| **Utils, Config & Types** | `utils/`, `config/`, `types/` | 15 / 5 151 | Reine Helfer, App-/Fachbereichs-Katalog (`department-catalog.ts`), API-Typen. 3 965 Zeilen sind generiert (`api.generated.ts`). |
 
 Zusammen **162** Quelldateien und **123** Testdateien.
 
@@ -514,11 +515,14 @@ flowchart LR
   push["Push auf dev oder main (Frontend oder self-service-ui)"] --> ci["CI: Typecheck, Lint, Test, Security-Scan, Trivy"]
   ci --> build["Docker-Build amd64, Image-Scan"]
   build --> reg["Push nach ghcr.io (Tag sha-KÜRZEL)"]
-  reg --> bump["k8s-bump.yml im deployment-Repo pinnt den Digest"]
-  bump --> argo["Argo CD: dev wird Staging, main wird Prod"]
+  reg --> att["Attestation: signiert Repository, Workflow, Branch und Commit (SLSA, keyless)"]
+  att --> bump["CI startet k8s-bump.yml im deployment-Repo mit einem einstündigen GitHub-App-Token"]
+  bump --> ver["verify-image.sh prüft die Herkunft des Digests"]
+  ver --> pr["Bump-PR: auf dev sofort gemergt, auf main von einer Person"]
+  pr --> argo["Argo CD: dev wird Staging, main wird Prod"]
 ```
 
-Frontend-CI laut `ci.yml`: Typecheck, Lint, Test mit Coverage-Gate **40 %**, `npm audit`, Trivy. self-service-ui hat die Jobs `checks`, `security`, `image` und `k8s-rollout`. Auf `dev` ist der Bump ein Commit, auf `main` ein PR, der nach den Pflicht-Checks automatisch gemergt wird (deployment-README). Der Bump ist ein `gh workflow run` mit `DEPLOYMENT_PAT`.
+Frontend-CI laut `ci.yml`: Typecheck, Lint, Test mit Coverage-Gate **40 %**, `npm audit`, Trivy. self-service-ui hat die Jobs `checks`, `security`, `image` und `k8s-rollout`. **Beide CIs signieren** für den gepushten Digest, welches Repository, welcher Workflow, Branch und Commit ihn gebaut hat (`actions/attest`, SLSA-Provenance, keyless). Das deployment-Repo pinnt nur Digests mit dieser Signatur: `k8s-bump.yml` ruft `verify-image.sh` auf und lehnt einen Digest ab, dessen Signatur nicht die CI der Komponente, den Branch der Umgebung und den Commit des Tags nennt. Gestartet wird der Bump mit einem **einstündigen Token der GitHub App „DHBW AppStore deploy“** (nur auf dem deployment-Repo installiert, nur *Actions: write*); der frühere `DEPLOYMENT_PAT` ist in beiden CIs abgelöst. Auf `dev` ist der Bump ein Pull Request, der sofort gemergt wird (`dev` nimmt Änderungen nur per PR an). Auf `main` ist es ein PR, den eine Person prüft und mergt. Mit der Repository-Variable `PROD_AUTO_MERGE=true` merged er sich selbst; ob sie gesetzt ist, wurde nicht geprüft.
 
 ### 2.7 Routen und Rollen
 
@@ -582,7 +586,7 @@ In beiden Oberflächen ist die Rollenprüfung **kosmetisch** (Sichtbarkeit, Weit
 | Lifecycle-Aktionen, App-Verwaltung, Kurse | ja | nein, verlinkt ins Frontend |
 | OpenStack-VM-Pfad | **entfernt** (nur Pods und KubeVirt) | Zugangsdaten-Seite und Credential-Wahl im Wizard noch vorhanden |
 | Replikate | 2 | 1 |
-| Stand in Prod | 42 Commits hinter `dev` | 11 Commits hinter `dev` |
+| Stand in Prod | 47 Commits hinter `dev` | 13 Commits hinter `dev` |
 
 ---
 
@@ -798,7 +802,7 @@ sequenceDiagram
 - **Reihenfolge der Schritte laut Code:** App-Detail → Konfiguration (`/config`) → Teams (`/teams`) → Variablen (`/variables`) → Zusammenfassung (`/summary`). Die README nennt „Variablen“ vor „Gruppen“ und weicht damit ab (Befund B6).
 - Der **Wizard-Zustand ist ein Draft im Deployment-Store**, nicht im URL. Ein Reload oder Deep-Link ohne Draft wird vom Guard auf Schritt 1 bzw. auf den Katalog zurückgeleitet.
 - `submitDraft()` baut den Payload: Teams (`groupNames` × `assignments`, Fallback: gleichmäßige Aufteilung nach `groupCount`), `userInputVar` (nur noch der Schlüssel `terraform`, der Name ist historisch), Dateien unter `files`, dazu `resources` und `network`. Leere Werte werden **weggelassen**, damit HCL-Defaults greifen.
-- Es gibt **keine Credential-Wahl mehr**: Das Frontend kennt nur noch die Laufzeiten `kubernetes` und `kubevirt-vm`, beide im Cluster. `openstack-vm` existiert nur noch als Typwert (`types/index.ts`) und als Label-Zweig in `utils/runtime.ts`.
+- Es gibt **keine Credential-Wahl mehr**: Das Frontend kennt nur noch die Laufzeiten `kubernetes` und `kubevirt-vm`, beide im Cluster. Der Typwert `openstack-vm` ist entfernt (#93, #96); eine unbekannte Laufzeit wird wie `kubernetes` beschriftet.
 - Bei Fehlern bleibt der Draft erhalten. Bei Erfolg: `resetDraft`, Toast, Weiterleitung auf `/deployments`. Die **Ausführung ist asynchron** (Worker); den Fortschritt zeigt 3.7 bzw. 3.8.
 
 #### 3.7 Live-Fortschritt für Eigentümer und Dozierende (SSE)
@@ -857,6 +861,7 @@ stateDiagram-v2
 - Der Stream wird nur gestartet, wenn die **Owner-Ansicht** gilt **und** die aktive Task `PENDING` oder `RUNNING` ist. Er endet mit der Task: Dann lädt die Seite Deployment, Tasks, Zugangsdaten und Ressourcen neu.
 - **Soft-Delete-Erkennung:** Nach einem erfolgreichen Destroy liefert der Refetch kein Deployment mehr. Die Seite zeigt Erfolg und springt zur Liste. Existiert die Zeile noch, war der Destroy fehlgeschlagen.
 - **Puffer:** Der Client hält höchstens 100 Logzeilen, zählt aber alle. Ein `overflow`-Event schreibt einen Warnhinweis in den Log. Der Snapshot übernimmt Fortschritt und Phase nur bei **aktiver** Task, damit der alte 100 %-Stand nicht kurz aufblitzt.
+- **Phasenliste:** Vor dem ersten Event zeigt der Stepper eine statische Liste der Pod-Phasen (`useDeploymentPhases`, Standard **7** Schritte, je Task-Typ für Deploy, Destroy, Pause, Resume und Redeploy). Sobald ein Event eintrifft, gilt die Liste, die der Worker mitschickt. Laut Code-Kommentar spiegeln die Tabellen die Pod-Phasen des Workers; die früheren Packer-Phasen mit Template-Suffix sind entfernt.
 - Das 401-Handling des Interceptors greift hier **nicht**, weil der Client `fetch` direkt nutzt. `getAccessToken()` erneuert ein abgelaufenes Token aber vor jedem Verbindungsaufbau.
 - Zusätzlich fragt die Detailseite **alle 10 s** die Workloads aus dem Cluster ab, solange ein Pod nicht bereit ist oder sich einrichtet.
 
@@ -1047,7 +1052,7 @@ Sortiert nach Relevanz. Belege sind Dateien im Repo; **keine** der Aussagen wurd
 | **B3** | **Ordnerzyklus `api/` ⇄ `services/` im Frontend:** `axios.ts` holt Tokens aus `keycloak.service`; `auth.service` und `lti-launch` rufen die API. | [`axios.ts`](../../src/api/axios.ts), [`auth.service.ts`](../../src/services/auth.service.ts), [`lti-launch.ts`](../../src/services/lti-launch.ts) | Kein **Modul**zyklus (`keycloak.service` importiert die API nicht), aber die Ordnergrenze ist unscharf. |
 | **B4** | **Der SSE-Client des Frontends umgeht axios** und damit das 401-Handling. | [`useDeploymentStream.ts`](../../src/composables/useDeploymentStream.ts) | Bewusst (Header und Stream-Kontrolle). Ein abgelaufenes Token wird vor dem Verbindungsaufbau erneuert; ein 401 mitten im Stream endet als `error` ohne Login-Umleitung. |
 | **B5** | **Kein Retry nach erfolgreichem Token-Refresh bei 401** (Frontend). | [`axios.ts`](../../src/api/axios.ts) | Der erste Request nach einer Ablaufgrenze kann als Fehler beim Nutzer landen, obwohl die Sitzung gültig ist. Ein Retry mit `config._retry` wäre eine kleine Änderung. |
-| **B6** | **Dokumentations-Drift im Frontend:** Die README nennt die Wizard-Reihenfolge Konfiguration → Variablen → Gruppen → Zusammenfassung; der Code geht Konfiguration → **Teams** → **Variablen** → Zusammenfassung. Das HANDOVER nennt ein Coverage-Gate von 60 % für `main`, `ci.yml` erzwingt `MIN_COVERAGE=40` auf allen Branches. Das HANDOVER führt den Pods-Cutover (AP8) noch als offen, `2026-react-pods.md` meldet ihn als vollzogen. Das HANDOVER weist selbst darauf hin, dass seine Abschnitte teils den Stand vor der VM-Entfernung beschreiben. | [`NewDeploymentConfigView.tsx:91`](../../src/views/NewDeploymentConfigView.tsx), [`useVariableForm.ts:185`](../../src/views/new-deployment/useVariableForm.ts), [`ci.yml`](../../.github/workflows/ci.yml), [`HANDOVER.md`](../../claude_docs/HANDOVER.md) | Reine Textpflege, aber die README ist der Einstieg für neue Mitglieder. |
+| **B6** | **Dokumentations-Drift im Frontend:** Die README nennt die Wizard-Reihenfolge Konfiguration → Variablen → Gruppen → Zusammenfassung; der Code geht Konfiguration → **Teams** → **Variablen** → Zusammenfassung. Das HANDOVER nennt ein Coverage-Gate von 60 % für `main`, `ci.yml` erzwingt `MIN_COVERAGE=40` auf allen Branches. Das HANDOVER führt den Pods-Cutover (AP8) noch als offen, `2026-react-pods.md` meldet ihn als vollzogen. Das HANDOVER weist selbst darauf hin, dass seine Abschnitte teils den Stand vor der VM-Entfernung beschreiben. | [`NewDeploymentConfigView.tsx`](../../src/views/NewDeploymentConfigView.tsx) (geht zu `paths.deploymentTeams`), [`useVariableForm.ts`](../../src/views/new-deployment/useVariableForm.ts) (geht zu `paths.deploymentSummary`), [`ci.yml`](../../.github/workflows/ci.yml), [`HANDOVER.md`](../../claude_docs/HANDOVER.md) | Reine Textpflege, aber die README ist der Einstieg für neue Mitglieder. |
 | **B7** | **API-Vertrag im Frontend nicht aktuell:** `openapi.json` und `api.generated.ts` kennen weder `/admin/apps/{id}/recommended` noch `/deploy-version` (#55, #56); der Contract-Test prüft diese Endpunkte daher nicht. Zusätzlich gibt es laut CI-Kommentar rund 157 ESLint-Warnungen, überwiegend `any` aus handgepflegten Typen. self-service-ui hat gar keine Typen für die API. | [`HANDOVER.md`](../../claude_docs/HANDOVER.md), [`ci.yml`](../../.github/workflows/ci.yml) | Beide Clients sind in diesem Punkt nur durch ihre eigenen Tests gesichert. |
 | **B8** | **Abgeleitet, nicht geprüft:** Auf `/callback` startet `bootstrap()` die Initialisierung mit stiller Anmeldung, obwohl der Guard diese Route ausnimmt (siehe 3.3). | [`bootstrap.tsx`](../../src/bootstrap.tsx), [`guards.ts`](../../src/router/guards.ts) | Im Netzwerk-Log eines Logins prüfen, ob ein zusätzlicher `prompt=none`-Aufruf erscheint. |
 | **B9** | **SSE durch Proxy und Caddy nicht live geprüft** (self-service-ui). Laut HANDOVER steht „echter Live-Lauf des SSE-Logs auf Staging“ aus. Der Client baut nach einem Abbruch nicht neu auf. | `self-service-ui/claude_docs/HANDOVER.md`, `queries.jsx` | Wenn der Pfad den Stream puffert, fällt das Live-Log still auf Polling zurück; ein Fehler wäre für Nutzer kaum sichtbar. |
@@ -1080,9 +1085,9 @@ docker run -it --rm -p 8081:8080 -v "$PWD/docs/architecture:/usr/local/structuri
 
 ## 6. Grenzen dieser Dokumentation
 
-- **Keine Laufzeitbeobachtung.** Weder Staging noch Prod noch ein lokaler Stack wurden aufgerufen. Geprüft wurden die laufenden Image-Digests und die Konfiguration, nicht das Verhalten. Insbesondere B5, B8 und B9 sind aus dem Code abgeleitet.
+- **Keine Laufzeitbeobachtung.** Weder Staging noch Prod noch ein lokaler Stack wurden aufgerufen. Geprüft wurden die Konfiguration und die Image-Pins, beim ersten Stand auch die laufenden Digests, nicht das Verhalten. Insbesondere B5, B8 und B9 sind aus dem Code abgeleitet.
 - **Prod ist nicht modelliert.** Das Modell zeigt `dev`. Wie Prod sich unterscheidet, steht nur in 1.1 und 2.9.
 - **Backend und Worker** sind nur als Vertragspartner modelliert. Ob das Backend OpenStack-Zugangsdaten noch prüft, ist nur über self-service-ui belegt.
 - **Dev-Stack:** Das deployment-Repo enthält weiterhin `docker-compose.dev.yml`, während das Kubernetes-README sagt, es gebe keinen Compose-Stack mehr. Das Modell beschreibt nur die Kubernetes-Umgebung.
 - **Upstream-Code von self-service-ui** (Home, `/developer`, DNS, Cloud, LLM) wurde nicht im Detail gelesen, nur seine Einbindung und seine Abschaltung.
-- **Nicht modelliert:** der `appstore-mcp`-Server, die Datenbank, ClamAV.
+- **Nicht modelliert:** der `appstore-mcp`-Server, der noVNC-Proxy, die Datenbank, ClamAV und die GitHub-App für den Rollout.

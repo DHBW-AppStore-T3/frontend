@@ -1,4 +1,4 @@
-workspace "DHBW AppStore – Frontends" "Ist-Architektur der beiden Frontends: Frontend (React-SPA, dev @ 916c93f) und self-service-ui (Fork, dev @ 1e67bd1). Beides ist der Stand von dev und damit von Staging, Stand 2026-10-26. Prod läuft auf älteren Ständen (siehe architecture.md)." {
+workspace "DHBW AppStore – Frontends" "Ist-Architektur der beiden Frontends: Frontend (React-SPA, dev @ 0005672) und self-service-ui (Fork, dev @ 54130c3). Beides ist der Stand von dev und damit von Staging, Stand 2026-10-26. Prod läuft auf älteren Ständen (siehe architecture.md)." {
 
     !impliedRelationships true
 
