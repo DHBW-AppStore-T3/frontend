@@ -97,7 +97,7 @@ export function useDeploymentDetail(deploymentId: string) {
     try {
       const { data } = await deploymentApi.getMyAccess(deploymentId)
       setMyAccounts((data.user_accounts ?? null) as UserAccountMap | null)
-      setMyTeamVms((data.team_vms ?? null) as TeamVmMap | null)
+      setMyTeamVms(((data as { team_endpoints?: unknown }).team_endpoints ?? data.team_vms ?? null) as TeamVmMap | null)
     } catch (err) {
       console.error('Error loading own access credentials:', err)
     }

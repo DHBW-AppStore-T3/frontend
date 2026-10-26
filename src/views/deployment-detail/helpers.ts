@@ -56,7 +56,8 @@ export function teamVmsOf(
   outputs: unknown,
   mine: TeamVmMap | null,
 ): TeamVmMap {
-  const raw = (outputs as { raw?: { team_vms?: { value?: unknown } } } | null | undefined)?.raw?.team_vms?.value
+  const rawOutputs = (outputs as { raw?: Record<string, { value?: unknown } | undefined> } | null | undefined)?.raw
+  const raw = (rawOutputs?.team_endpoints ?? rawOutputs?.team_vms)?.value
   if (raw && typeof raw === 'object') return raw as TeamVmMap
   return mine ?? {}
 }
