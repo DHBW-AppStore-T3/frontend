@@ -4,6 +4,7 @@ import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
 import { useToast } from '@/composables/useToast'
 import { useDeploymentStore } from '@/stores/deployment.store'
+import { useToastStore } from '@/stores/toast.store'
 import { extractErrorMessage } from '@/utils/http-error'
 import type { Course, User } from '@/types'
 import { mergeIntoCache } from './studentSelection'
@@ -112,35 +113,45 @@ export function useStudentDirectory() {
     latest.current = { toast, t, remember }
   })
 
+  // The error toast of a failed search goes away with the next search. Only
+  // that one: the toast store is shared, clearing it would also wipe load
+  // errors and the wizard's validation hints.
+  const searchErrorId = useRef<string | null>(null)
+  const dismissSearchError = useCallback(() => {
+    if (searchErrorId.current) useToastStore.getState().removeToast(searchErrorId.current)
+    searchErrorId.current = null
+  }, [])
+
   useEffect(() => {
     const q = query.trim()
     const timer = window.setTimeout(async () => {
       const { toast: toaster, t: translate, remember: rememberStudents } = latest.current
       if (!q) {
         setSearchResults(null)
-        toaster.clear()
+        dismissSearchError()
         return
       }
       if (q.length < MIN_QUERY_LENGTH) {
-        toaster.clear()
+        dismissSearchError()
         return
       }
       setLoadingStudents(true)
       try {
         const res = await userApi.search(q, SEARCH_LIMIT)
-        toaster.clear()
+        dismissSearchError()
         const list = (res.data || []) as User[]
         setSearchResults(list)
         rememberStudents(list)
       } catch (err) {
         console.error('User search error:', err)
-        toaster.error(extractErrorMessage(err, translate('CourseDetailView.toasts.loadUsersError')))
+        dismissSearchError()
+        searchErrorId.current = toaster.error(extractErrorMessage(err, translate('CourseDetailView.toasts.loadUsersError')))
       } finally {
         setLoadingStudents(false)
       }
     }, DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [query])
+  }, [query, dismissSearchError])
 
   return {
     courses,

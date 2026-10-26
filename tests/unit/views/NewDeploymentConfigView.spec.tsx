@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
@@ -100,6 +100,23 @@ describe('NewDeploymentConfigView', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
   })
 
+  it('räumt beim Öffnen keine fremden Hinweise weg, wenn die Wartezeit der Suche abläuft', async () => {
+    vi.useFakeTimers()
+    try {
+      renderView()
+      useToastStore.getState().warning('bleibt stehen')
+
+      // 300 ms Wartezeit der Suche (DEBOUNCE_MS) plus Reserve, aber weit unter den 5 s des Toasts
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(400)
+      })
+
+      expect(warnings()).toContain('bleibt stehen')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('verlangt mindestens einen Studierenden', async () => {
     renderView()
     await screen.findByText('Web Dev')
@@ -160,6 +177,43 @@ describe('NewDeploymentConfigView', () => {
     // The selection panel shows the chosen student with a remove button.
     await userEvent.click(screen.getByTestId('remove-u2'))
     expect(draft().studentIds).toEqual([])
+  })
+
+  describe('Hinweise während der Suche', () => {
+    const messages = () => useToastStore.getState().toasts.map((t) => t.message)
+    const openSearch = async () => {
+      renderView()
+      await screen.findByText('Web Dev')
+      await userEvent.click(screen.getByRole('button', { name: /deployment\.config\.studentsLabel/ }))
+    }
+
+    it('lässt fremde Warnungen und Fehler stehen, auch nach einer abgeschlossenen Suche', async () => {
+      await openSearch()
+      await userEvent.type(screen.getByTestId('student-search'), 'Ja')
+      useToastStore.getState().warning('fremde Warnung')
+      useToastStore.getState().error('fremder Fehler')
+
+      await waitFor(() => expect(userApi.search).toHaveBeenCalledWith('Ja', 50))
+      // The result list is set right after the search finished.
+      await screen.findByTestId('student-u2')
+
+      expect(messages()).toContain('fremde Warnung')
+      expect(messages()).toContain('fremder Fehler')
+    })
+
+    it('entfernt nur den Fehlerhinweis der Suche, sobald eine spätere Suche gelingt', async () => {
+      vi.mocked(userApi.search).mockRejectedValueOnce(new Error('Suche kaputt'))
+      await openSearch()
+      await userEvent.type(screen.getByTestId('student-search'), 'Ja')
+      await waitFor(() => expect(messages()).toContain('Suche kaputt'))
+      useToastStore.getState().warning('fremde Warnung')
+
+      await userEvent.type(screen.getByTestId('student-search'), 'ne')
+      await waitFor(() => expect(userApi.search).toHaveBeenCalledWith('Jane', 50))
+      await waitFor(() => expect(messages()).not.toContain('Suche kaputt'))
+
+      expect(messages()).toContain('fremde Warnung')
+    })
   })
 
   it('geht über „Zurück" zur App-Detailseite', async () => {
