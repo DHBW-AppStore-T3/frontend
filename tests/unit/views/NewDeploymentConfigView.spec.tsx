@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
@@ -100,6 +100,23 @@ describe('NewDeploymentConfigView', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
   })
 
+  it('räumt beim Öffnen keine fremden Hinweise weg, wenn die Wartezeit der Suche abläuft', async () => {
+    vi.useFakeTimers()
+    try {
+      renderView()
+      useToastStore.getState().warning('bleibt stehen')
+
+      // 300 ms Wartezeit der Suche (DEBOUNCE_MS) plus Reserve, aber weit unter den 5 s des Toasts
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(400)
+      })
+
+      expect(warnings()).toContain('bleibt stehen')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('verlangt mindestens einen Studierenden', async () => {
     renderView()
     await screen.findByText('Web Dev')
@@ -160,6 +177,18 @@ describe('NewDeploymentConfigView', () => {
     // The selection panel shows the chosen student with a remove button.
     await userEvent.click(screen.getByTestId('remove-u2'))
     expect(draft().studentIds).toEqual([])
+  })
+
+  it('räumt einen alten Hinweis weg, sobald eine Suche abgeschlossen ist', async () => {
+    renderView()
+    await screen.findByText('Web Dev')
+    await userEvent.click(screen.getByRole('button', { name: /deployment\.config\.studentsLabel/ }))
+    await userEvent.type(screen.getByTestId('student-search'), 'Ja')
+    useToastStore.getState().warning('alter Hinweis')
+    expect(warnings()).toContain('alter Hinweis')
+
+    await waitFor(() => expect(userApi.search).toHaveBeenCalledWith('Ja', 50))
+    await waitFor(() => expect(warnings()).not.toContain('alter Hinweis'))
   })
 
   it('geht über „Zurück" zur App-Detailseite', async () => {

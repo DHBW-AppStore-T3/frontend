@@ -112,8 +112,13 @@ export function useStudentDirectory() {
     latest.current = { toast, t, remember }
   })
 
+  // Nothing to reset or dismiss until something was typed: without this, the
+  // timer of the initial empty query cleared every toast 300 ms after opening.
+  const searched = useRef(false)
   useEffect(() => {
     const q = query.trim()
+    if (!q && !searched.current) return
+    searched.current = true
     const timer = window.setTimeout(async () => {
       const { toast: toaster, t: translate, remember: rememberStudents } = latest.current
       if (!q) {

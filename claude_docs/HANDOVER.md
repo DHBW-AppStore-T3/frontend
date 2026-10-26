@@ -39,12 +39,37 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 5. **Windows:** `docker-entrypoint.spec.ts` braucht `sh` und `envsubst` (Git for Windows im `PATH`). Die Tests laufen auf Windows und
    Linux (frontend#79); ohne die Werkzeuge werden sie lokal sichtbar übersprungen, in der CI schlagen sie fehl. Der Pfad des
    Scratch-Verzeichnisses wird als gequoteter POSIX-Pfad in das Skript eingesetzt (`shQuote`), nie als Windows-Pfad.
-6. **Flackernde Tests (offen):** `NewDeploymentConfigView.spec` flackert (vorbestehend, ca. 15 %); Läufe mit
-   `--maxWorkers=1 --no-file-parallelism` für reproduzierbare Messungen.
+6. **Messen statt raten:** Flackernde Tests mit `--maxWorkers=1 --no-file-parallelism` und vielen Einzelläufen messen (ein Flake
+   kann bei 3 % bis 15 % liegen). Ein globaler Store (Toasts, Deployment-Entwurf) ist geteilter Zustand: Code, der ihn leert
+   (`clear()`), trifft auch Hinweise, die ihm nicht gehören (frontend#102).
+7. **Effekte sind nicht "fertig", wenn das DOM da ist:** `findBy...` löst beim Einfügen des Knotens auf; ein `useEffect`
+   (Log, Analytics) kann erst danach laufen. Auf den Effekt selbst mit `waitFor` warten.
 
 ---
 
 ## 4. Letzte Übergaben (Historie)
+
+- **2026-10-26 (zwei verbleibende Flakes, frontend#102, Teil von Epic #77):** `NewDeploymentConfigView.spec` ("verlangt
+  mindestens einen Studierenden") und `error-boundary.spec` ("logs the error once"). **Beides echte Ursachen, keine Timeouts erhöht.**
+  1. **`NewDeploymentConfigView` (Produktcode-Fehler):** `useStudentDirectory` plante beim Öffnen einen Debounce-Timer für die
+     Suche mit leerer Query. Nach 300 ms rief er `toaster.clear()` auf und leerte damit den **globalen** Toast-Store, also auch
+     Hinweise, die nichts mit der Suche zu tun haben (die Validierung "Weiter", ebenso ein Ladefehler der Kurse). Im Test lag der
+     Klick manchmal knapp vor diesem Timer (gemessen: Toast `0->1`, 1 bis 13 ms später `1->0`). Reproduziert: 2 von 20, 1 von 30,
+     2 von 40 Einzelläufen. **Fix in `src/views/new-deployment/useStudentDirectory.ts`:** Die Suche läuft erst, wenn schon einmal
+     etwas getippt wurde (`searched`-Ref); die Absicht "leere Query oder 1 Zeichen räumt einen alten Such-Hinweis weg" bleibt.
+     **Neue Tests:** deterministisch mit Fake-Timern (vorher rot: fremder Hinweis überlebt die 300 ms nicht; nachher grün) und
+     ein Absicherungstest, dass ein alter Hinweis nach abgeschlossener Suche weiter weggeräumt wird.
+  2. **`error-boundary` ("logs the error once"):** `RouteError` loggt in einem `useEffect`; `findByRole('alert')` löst beim Einfügen
+     des Knotens auf, der Effekt konnte danach laufen. Gemessen mit Zeitstempeln: im Fehlerfall nur `alert-found`, der
+     `[RouteError]`-Log kam erst nach dem Testkörper (stand dann im echten stderr, weil `afterEach` den Spy schon zurückgesetzt
+     hatte). **Fix im Test:** `waitFor` auf genau einen Log-Eintrag, danach `await act(async () => {})` und erneut genau
+     einen erwarten, damit "einmal" weiter geprüft wird. Die Rate ist niedrig (Original: 0 von 30 unter Last, Diagnose-Variante
+     1 bis 4 von 10 bis 30), die Ursache ist per Reihenfolge belegt, die Korrektur wartet auf die Bedingung selbst.
+  **Abweichung vom Issue:** #102 schloss `src/` aus, die Ursache von 1. liegt aber im Produktcode und wird hier begründet
+  behoben. **Verifikation (Windows, 1 Worker):** beide Dateien 20/20 grün, `tsc`, Lint (0 Errors), Build grün, Gesamtsuite grün.
+  **Lehren:** (a) Wer einen globalen Store leert, leert ihn für alle. (b) Beim Flake-Debugging die Zwischenzustände mitschreiben
+  (Store-Subscription, Event-Listener, Zeitstempel) statt zu raten: erst das zeigte, dass der Toast entstand und wieder verschwand.
+  (c) Ähnlich gebaute Prüfungen ("nach `findBy...` sofort Seiteneffekt eines Effekts prüfen") wurden nicht systematisch gesucht.
 
 - **2026-10-26 (docker-entrypoint-Tests plattformfest, frontend#79, Teil von Epic #77):** Nur Tests und Doku, `docker-entrypoint.sh`
   unverändert. **Ursache (per Experiment belegt, nicht wie im Issue vermutet fehlendes `sh`/`envsubst`):** Der Test ersetzt

@@ -174,8 +174,12 @@ describe('route error boundaries', () => {
 
     await screen.findByRole('alert')
     // React logs the render error itself; RouteError adds exactly one entry.
-    const own = consoleError.mock.calls.filter((args: unknown[]) => args[0] === '[RouteError]')
-    expect(own).toHaveLength(1)
+    const own = () => consoleError.mock.calls.filter((args: unknown[]) => args[0] === '[RouteError]')
+    // RouteError logs from an effect, which React may run after the alert is in the DOM.
+    await waitFor(() => expect(own()).toHaveLength(1))
+    // Let anything still pending run: it must not log a second time.
+    await act(async () => {})
+    expect(own()).toHaveLength(1)
   })
 
   it('offers a link back to the dashboard and a reload button', async () => {
