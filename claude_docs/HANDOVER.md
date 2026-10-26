@@ -34,10 +34,39 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 1. **Typensicherheit:** `tsc -b` schlägt bei fehlerhaften Typen im CI Build fehl; Typen vor dem Commit immer lokal prüfen.
 2. **Coverage Gate:** PRs auf `main` verlangen mindestens 60% Zeilen-Abdeckung.
 3. **Security-Audit:** `js-yaml` und `nanoid` wurden über PR #3 gepatcht; `npm audit` regelmäßig prüfen.
+4. **Netzwerk-Guard:** Jeder ungemockte `fetch`/XHR lässt den Test fehlschlagen. Neue Views brauchen ihre API-Module als Mock
+   (oder `allowRealNetwork()` mit Begründung). `NETWORK_GUARD=warn` listet alle Verursacher.
+5. **Windows:** `docker-entrypoint.spec.ts` (10 Tests) ist unter Windows rot (frontend#79), lokal Linux/WSL oder CI nutzen.
+6. **Flackernde Tests (offen):** `NewDeploymentConfigView.spec` flackert (vorbestehend, ca. 15 %); Läufe mit
+   `--maxWorkers=1 --no-file-parallelism` für reproduzierbare Messungen.
 
 ---
 
 ## 4. Letzte Übergaben (Historie)
+
+- **2026-10-26 (Testinstabilität und Netzwerk-Guard, frontend#78, Teil von Epic #77, PR #100):** Nur Tests, kein `src`.
+  **Netzwerk-Guard** (`tests/helpers/network-guard.ts`, eingehängt in `tests/setup.ts`): ein Test, der ein ungemocktes
+  `fetch` oder `XMLHttpRequest` schickt, schlägt fehl (axios nutzt unter happy-dom den xhr-Adapter). Der Verstoß wird
+  zusätzlich gemerkt und in `afterEach` erneut geworfen, weil getesteter Code abgelehnte Requests oft verschluckt.
+  `allowRealNetwork()` hebt den Guard pro Test auf; mit `vi.stubGlobal` ersetzte Funktionen und Node-Environment-Tests
+  bleiben unberührt; `NETWORK_GUARD=warn` loggt nur (zum Auflisten aller Verursacher). Tests dazu:
+  `tests/unit/helpers/network-guard.spec.ts` und `network-guard.node.spec.ts`. **Behobene Ursachen des Flackerns:**
+  1. `routes.spec`: `AdminSettingsView` rendert `RecommendedAppsCard`, deren Request als einziger der ganzen Suite
+     ungemockt war. Jetzt wird `@/api/app.api` gemockt. Dazu werden alle Lazy-Routen einmal in `beforeAll` geladen, damit
+     das 1-s-`waitFor` Routing misst und nicht den ersten dynamischen Import.
+  2. `AddAppsView.spec`: `userEvent.type` rendert bei jedem Tastendruck die Markdown-Vorschau neu und lief ins
+     5-s-Timeout. Felder werden jetzt per Klick + `paste` gefüllt; der Live-Vorschau-Test tippt weiterhin. Kein Netzwerk
+     beteiligt. Es wurde keine Assertion entfernt oder abgeschwächt.
+  **Verifikation (Windows, 1 Worker):** 20 Wiederholungen der drei betroffenen Gruppen 20/20 grün, `tsc`, Lint (0 Errors),
+  Build grün; ein Probe-Merge von `dev` bleibt typ- und konfliktfrei. **Lehren:**
+  1. `tsc -b` verbietet Parameter-Properties im Konstruktor (`erasableSyntaxOnly`, TS1294), auch in `tests/`.
+  2. **Weiter flackernd, vorbestehend, nicht von #78:** `NewDeploymentConfigView.spec` ("verlangt mindestens einen
+     Studierenden") scheitert auch auf der Basis `916c93f` ohne diese Änderung (3 von 20 Einzelläufen); in der
+     Gesamtsuite zeigte sich einmalig auch `error-boundary.spec` ("logs the error once", Spy sieht den Log-Aufruf zu
+     früh). Der Guard meldet dabei keine Verstöße. Eigenes Issue nötig.
+  3. Unter Windows bleiben die 10 `docker-entrypoint.spec`-Tests rot (frontend#79, im Issue steht noch 9); das ist
+     erwartet und kein Befund.
+  4. Im Worktree `frontend/` fehlt `vitest` in `node_modules`; Tests dort starten nicht.
 
 - **2026-10-25 (Error Boundaries, frontend#81, Teil von Epic #77):** Ein Render-, Lazy-Import- oder Loader-Fehler lässt die App
   nicht mehr weiß werden. `src/components/RouteError.tsx` ist der `errorElement` (Titel + Kurztext, Schaltflächen „Seite neu
@@ -48,7 +77,8 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   (Loader) und Navigation sind unverändert, der Fehler wird beim nächsten Routenwechsel vom Router zurückgesetzt. Texte unter
   `router.error.*` (de/en). Tests: `tests/unit/router/error-boundary.spec.tsx` (10). **Nicht im Browser geprüft**, nur
   per Test; Hauptbundle +3 kB. **Bekannt, nicht von dieser Änderung:** `routes.spec` ("sends role-less users from admin routes
-  to /forbidden") flackert auch auf `dev` (gemessen 2 von 12 Läufen mit und ohne die Änderung), siehe frontend#78.
+  to /forbidden") flackerte auch auf `dev` (gemessen 2 von 12 Läufen mit und ohne die Änderung); Ursache in frontend#78
+  behoben (siehe Eintrag 2026-10-26).
 
 - **2026-10-25 (Statuspolling für Mitglieder, frontend#71):** Studierende (`permissions.member && !owner_view`) sehen den
   Status einer laufenden Bereitstellung (`pending`/`running`) in `/deployments/:id` ohne Neuladen. Der SSE-Stream bleibt
