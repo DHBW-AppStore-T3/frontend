@@ -120,6 +120,8 @@ location /api/ {
   # parses the whole JSON body before it checks a file: the most it accepts
   # is 10 MiB of files, which is about 13.4 MiB as base64, so 16m leaves room
   # for the rest of the request and nothing more (.github#13).
+  # Applies to the Kubernetes Ingress path only: the self-service-ui (its own
+  # Caddy upstream) and the old Compose/VM path do not pass through this gateway.
   client_max_body_size 16m;
   proxy_request_buffering off;
   # The live stream (SSE) of a deployment runs as long as its job.
