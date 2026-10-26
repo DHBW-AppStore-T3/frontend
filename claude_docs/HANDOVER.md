@@ -32,7 +32,9 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 ## 3. Bekannte Fallstricke & Blocker
 
 1. **Typensicherheit:** `tsc -b` schlägt bei fehlerhaften Typen im CI Build fehl; Typen vor dem Commit immer lokal prüfen.
-2. **Coverage Gate:** PRs auf `main` verlangen mindestens 60% Zeilen-Abdeckung.
+2. **Coverage Gate:** Der Job `🧪 Test` in `ci.yml` verlangt auf **jedem** Branch und PR mindestens 85,0 % Zeilen (`MIN_COVERAGE`,
+   Metrik `total.lines.pct`). Die Linux-CI misst ca. 91,3 %. Wert immer mindestens 2 Punkte unter dem CI-Ist-Wert halten und
+   `CLAUDE.md` mit anpassen.
 3. **Security-Audit:** `js-yaml` und `nanoid` wurden über PR #3 gepatcht; `npm audit` regelmäßig prüfen.
 4. **Netzwerk-Guard:** Jeder ungemockte `fetch`/XHR lässt den Test fehlschlagen. Neue Views brauchen ihre API-Module als Mock
    (oder `allowRealNetwork()` mit Begründung). `NETWORK_GUARD=warn` listet alle Verursacher.
@@ -48,6 +50,20 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 ---
 
 ## 4. Letzte Übergaben (Historie)
+
+- **2026-10-26 (Coverage-Gate auf 85 %, frontend#80, Teil von Epic #77):** `MIN_COVERAGE` in `.github/workflows/ci.yml` von 40,0 auf
+  85,0 angehoben. **Gemessen auf der Linux-CI:** 91,33 % Zeilen im Push-Lauf auf `dev` (`40408558912`), 91,33 % und 91,19 % in zwei
+  weiteren grünen Läufen (`40407041329`, `40403557161`); Statements 90,01 %, Branches 82,69 %, Funktionen 90,79 %. Lokal unter Windows
+  exakt dieselben Zahlen (91,33 %). Das Gate prüft nur Zeilen. 91,3 % ist über der Schwelle von 87 % aus dem Issue, daher 85,0 und
+  ca. 6 Punkte Puffer. Die 90,7 % im Issue-Text waren ein älterer Wert. **Nachweis, dass das Gate greift:** Wegwerf-Branch
+  `tmp/80-gate-proof` (inzwischen gelöscht) mit `MIN_COVERAGE=92.0`, CI per `workflow_dispatch` gestartet (Lauf `40409842918`): Job `Test`
+  scheitert im Schritt `Test Coverage Gate` mit `Coverage Gate Failed: 91.33% < 92.0%`, `Build`/`Image Scan`/`Push`/`Rollout` übersprungen.
+  **Doku angeglichen:** `CLAUDE.md` (85 %), dieser Fallstrick 2 (stand auf 60 % für `main`, die Workflow-Datei auf 40 %) und
+  `docs/architecture/architecture.md` (Momentaufnahme, nur mit Hinweis ergänzt). Das alte Log `claude_docs/log/2026-W39.md` blieb als
+  Historie unverändert. **Lehren:**
+  1. Das Gate galt schon vorher auf jedem Branch, nicht nur auf `main`; die alten Angaben ("PRs auf `main`", 60 %) stimmten nicht.
+  2. Ein Gate-Nachweis geht ohne PR: `workflow_dispatch` auf einem Wegwerf-Branch. Push und Rollout laufen dort nicht (nur `main`/`dev`).
+  3. Beim Anheben nicht nur die Zahl, auch den Kommentar in `ci.yml` pflegen: der alte nannte "Lowered 2026-10 back to 40 %".
 
 - **2026-10-26 (zwei verbleibende Flakes, frontend#102, Teil von Epic #77):** `NewDeploymentConfigView.spec` ("verlangt
   mindestens einen Studierenden") und `error-boundary.spec` ("logs the error once"). **Beides echte Ursachen, keine Timeouts erhöht.**
