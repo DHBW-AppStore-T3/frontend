@@ -53,6 +53,8 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-27 (OpenAPI-Schema und Contract-Test, frontend#84, Teil von Epic #77):** Das Schema `src/types/openapi.json` stimmt mit dem Backend überein: ein frischer Export aus Backend `origin/dev` (`753cdf8`) ist **byte-identisch** mit der committeten Datei (sie wurde schon in #92 neu erzeugt, das Issue-Bild "fehlen im Schema" war überholt). `npm run gen:api-types` ergibt reproduzierbar keinen Diff, `tsc -b` ist sauber, an `src/` ändert sich nichts. **Neu:** `tests/unit/contract/openapi.spec.ts` prüft zusätzlich `PUT /admin/apps/{app_id}/recommended` und `PUT /admin/apps/{app_id}/deploy-version`. **Doku korrigiert:** README (Abschnitt "Bei einer Backend-API-Änderung") und `CLAUDE.md` nannten `make openapi` bzw. `../backend/openapi.json`; beides gibt es nicht. Der funktionierende Weg ist `poetry run python scripts/export_openapi.py <Ziel>` im Backend, dann `npm run gen:api-types`. **Lehren:** (1) Ohne installiertes Poetry reicht `pip install --target <Ordner> poetry` und `PYTHONPATH=<Ordner> python -m poetry ...`; `poetry install` in einem tief verschachtelten Pfad scheitert unter Windows (WinError 206), dann `POETRY_VIRTUALENVS_PATH` auf einen kurzen Pfad setzen. (2) Den Export aus einem `git archive origin/dev` machen, wenn das Backend-Checkout auf einem anderen Branch steht; das Checkout bleibt unberührt.
+
 - **2026-10-27 (Windows-VM-App: Internetzugriff sichtbar, Ressourcen in den Experteneinstellungen, frontend#109):** Variablen-Schritt
   (`NewDeploymentVariableView`) hat für `draft.runtime === 'kubevirt-vm'` ein eigenes Layout; **Pod-Apps (`kubernetes`) bleiben
   unverändert** (`NetworkSettings` und `ResourcePicker` nicht angefasst), die Weiche steht in der View. Neue Dateien unter
@@ -233,14 +235,13 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   laufendem Speichern, bereits festgelegter oder nicht freigegebener Version; er startet kein Deployment. `useAppDetail`
   lädt Freigaben nur noch für die Admin-Ansicht (Parameter `loadsApprovals`). Folge laut Issue: Besitzer ohne Admin-Rolle
   können Versionen nicht mehr selbst einreichen (Tab weg). Der alte Test „Besitzer kann deaktivierte App nicht öffentlich
-  machen" im View-Test entfiel, weil der Store-Tab nur noch für Admins erreichbar ist. Offen: `openapi.json`/
-  `api.generated.ts` nicht neu generiert (siehe #55).
+  machen" im View-Test entfiel, weil der Store-Tab nur noch für Admins erreichbar ist. `openapi.json`/
+  `api.generated.ts` waren damals nicht neu generiert (inzwischen erledigt, siehe Eintrag frontend#84).
 - **2026-10-25 (Filter „Empfohlen", frontend#55):** `AppsView` hat den Tab „Empfohlen" als ersten (nur wenn eine App
   `recommended` ist); `selectedFilter` ist `CatalogFilter | null`, `activeFilter` fällt auf „Empfohlen" bzw. „Alle" zurück,
   eine Nutzerauswahl bleibt. Admins schalten pro App in `/admin/settings` (neue Karte `RecommendedAppsCard`, Schalter bis zur
   Antwort deaktiviert, Fehler-Toast) über `appApi.admin.setRecommended` → `PUT /admin/apps/{id}/recommended` (Backend #42).
-  `Toggle` hat die neue Prop `disabled`. Offen: `src/types/openapi.json` und `api.generated.ts` sind nicht neu generiert
-  (im Backend liegt keine `openapi.json` im Repo), der Contract-Test prüft den neuen Endpunkt daher noch nicht.
+  `Toggle` hat die neue Prop `disabled`. `src/types/openapi.json` und `api.generated.ts` waren damals nicht neu generiert (inzwischen erledigt, siehe Eintrag frontend#84).
 - **2026-10-24 (Hilfe-Seite gekürzt, frontend#54):** `HelpView` ohne Einleitung, „Für wen ist diese Seite?", `quickTip`,
   Seitenübersicht (`quickHelp.page*`, `processTitle`, `pagesTitle`) und `troubleshooting.description`; die Schlüssel sind
   aus `de.ts`/`en.ts` gelöscht. Checkliste hat jetzt drei Punkte (neu: OpenStack-Credentials), Schrittfolge „So starten Sie
