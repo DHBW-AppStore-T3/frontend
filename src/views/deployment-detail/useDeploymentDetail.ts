@@ -21,6 +21,7 @@ import { extractErrorMessage, errorReason, localizedError } from '@/utils/http-e
 import { paths } from '@/router/paths'
 import type { Task, PodWorkload } from '@/types'
 import {
+  type AccountHit,
   type UserAccountMap,
   type TeamVmMap,
   teamVmsOf,
@@ -105,9 +106,15 @@ export function useDeploymentDetail(deploymentId: string) {
 
   const teamVms = useMemo(() => teamVmsOf(deployment?.outputs, myTeamVms), [deployment?.outputs, myTeamVms])
   const ownAccount = useMemo(() => ownAccountOf(myAccounts), [myAccounts])
-  const enrichedTeams = useMemo(
-    () => enrichTeams(deployment?.teams, teamVms, authUserId, ownAccount),
-    [deployment?.teams, teamVms, authUserId, ownAccount],
+
+  // One member's credentials, on request (operate right: the deploying
+  // teacher, an admin). Returned to the caller, never kept here.
+  const revealMemberAccess = useCallback(
+    async (userId: string): Promise<AccountHit | null> => {
+      const { data } = await deploymentApi.getMemberAccess(deploymentId, userId)
+      return ownAccountOf((data.user_accounts ?? null) as UserAccountMap | null)
+    },
+    [deploymentId],
   )
   const logCount = logEntryCount(selectedTask?.logs)
   const taskLogsSplit = splitTaskLogs(typeof selectedTask?.logs === 'string' ? selectedTask.logs : null)
@@ -140,6 +147,12 @@ export function useDeploymentDetail(deploymentId: string) {
   const [workloads, setWorkloads] = useState<PodWorkload[]>([])
   const [workloadsLive, setWorkloadsLive] = useState(true)
   const [workloadBusy, setWorkloadBusy] = useState<Set<string>>(new Set())
+
+  // The workload list also tells whose workload carries which link (scope: user).
+  const enrichedTeams = useMemo(
+    () => enrichTeams(deployment?.teams, teamVms, authUserId, ownAccount, workloads),
+    [deployment?.teams, teamVms, authUserId, ownAccount, workloads],
+  )
 
   const loadResources = useCallback(
     async () => {
@@ -531,6 +544,7 @@ export function useDeploymentDetail(deploymentId: string) {
     deselectGroup: () => setSelectedGroup(null),
     deploymentVariables,
     enrichedTeams,
+    revealMemberAccess,
 
     // status polling (members)
     statusPollingState,

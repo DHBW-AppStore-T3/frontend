@@ -2700,7 +2700,7 @@
           "Deployments"
         ],
         "summary": "List Deployment Resources",
-        "description": "The workloads of a pod deployment, read live from its namespace.\n\nInspect-only view: owner, admin, or a course-teacher of the\ndeployment-owner's course. Course-teachers explicitly do NOT have\noperate rights; this endpoint is read-only.",
+        "description": "The workloads of a pod deployment, read live from its namespace.\n\nOwner view (owner, admin); this endpoint is read-only.",
         "operationId": "list_deployment_resources_deployments__deployment_id__resources_get",
         "security": [
           {
@@ -3190,6 +3190,81 @@
               "type": "string",
               "format": "uuid",
               "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "X-Dev-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments/{deployment_id}/members/{user_id}/access": {
+      "get": {
+        "tags": [
+          "Deployments"
+        ],
+        "summary": "Get Member Access",
+        "description": "Return ONE member's access credentials, e.g. to answer their question.\n\nThe only path that hands a member's credentials to somebody else: the\nowner view's outputs stay redacted (.github#7 E) and ``my-access``\nreturns the caller's own entry only. Gated by the operate right\n(owner or admin), not the wider owner view, and one member per call:\nthe credentials leave the server when somebody asks for them, not\nwith every detail response. Same entry as the member's own\n``my-access``, matched exactly by ``services.access`` (.github#7 H).\n\nNever cached and never logged. Empty maps when the user is in none of\nthe deployment's teams or there is no entry for them.",
+        "operationId": "get_member_access_deployments__deployment_id__members__user_id__access_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
             }
           },
           {
@@ -5043,11 +5118,6 @@
           "courses": {
             "type": "integer",
             "title": "Courses"
-          },
-          "courseScopeDeployments": {
-            "type": "integer",
-            "title": "Coursescopedeployments",
-            "default": 0
           }
         },
         "type": "object",
@@ -5561,6 +5631,15 @@
             },
             "type": "object",
             "title": "User Accounts",
+            "default": {}
+          },
+          "team_endpoints": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Team Endpoints",
             "default": {}
           },
           "team_vms": {

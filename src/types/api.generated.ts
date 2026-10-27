@@ -782,9 +782,7 @@ export interface paths {
          * List Deployment Resources
          * @description The workloads of a pod deployment, read live from its namespace.
          *
-         *     Inspect-only view: owner, admin, or a course-teacher of the
-         *     deployment-owner's course. Course-teachers explicitly do NOT have
-         *     operate rights; this endpoint is read-only.
+         *     Owner view (owner, admin); this endpoint is read-only.
          */
         get: operations["list_deployment_resources_deployments__deployment_id__resources_get"];
         put?: never;
@@ -961,6 +959,37 @@ export interface paths {
          *     credentials yet" state rather than treating it as an error.
          */
         get: operations["get_my_access_deployments__deployment_id__my_access_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deployments/{deployment_id}/members/{user_id}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Member Access
+         * @description Return ONE member's access credentials, e.g. to answer their question.
+         *
+         *     The only path that hands a member's credentials to somebody else: the
+         *     owner view's outputs stay redacted (.github#7 E) and ``my-access``
+         *     returns the caller's own entry only. Gated by the operate right
+         *     (owner or admin), not the wider owner view, and one member per call:
+         *     the credentials leave the server when somebody asks for them, not
+         *     with every detail response. Same entry as the member's own
+         *     ``my-access``, matched exactly by ``services.access`` (.github#7 H).
+         *
+         *     Never cached and never logged. Empty maps when the user is in none of
+         *     the deployment's teams or there is no entry for them.
+         */
+        get: operations["get_member_access_deployments__deployment_id__members__user_id__access_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1634,11 +1663,6 @@ export interface components {
             apps: number;
             /** Courses */
             courses: number;
-            /**
-             * Coursescopedeployments
-             * @default 0
-             */
-            courseScopeDeployments: number;
         };
         /** DeploymentCreate */
         DeploymentCreate: {
@@ -1900,6 +1924,15 @@ export interface components {
              * @default {}
              */
             user_accounts: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /**
+             * Team Endpoints
+             * @default {}
+             */
+            team_endpoints: {
                 [key: string]: {
                     [key: string]: unknown;
                 };
@@ -3726,6 +3759,40 @@ export interface operations {
             };
             path: {
                 deployment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAccessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_member_access_deployments__deployment_id__members__user_id__access_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                deployment_id: string;
+                user_id: string;
             };
             cookie?: never;
         };

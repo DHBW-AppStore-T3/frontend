@@ -3,6 +3,7 @@ import {
   teamVmsOf,
   ownAccountOf,
   enrichTeams,
+  accessLinkFor,
   logEntryCount,
   splitTaskLogs,
   getStatusStyles,
@@ -86,6 +87,57 @@ describe('enrichTeams', () => {
 
   it('tolerates a deployment without teams', () => {
     expect(enrichTeams(undefined, {}, 'u-lea', own)).toEqual([])
+  })
+
+  it('attaches the link of a member\'s own workload (scope: user), found by user id', () => {
+    const workloads = [
+      { workload: 'ide-lea', user_id: 'u-lea', url: 'https://ide-lea.example' },
+      { workload: 'ide-max', user_id: 'u-max', url: 'https://ide-max.example' },
+      { workload: 'ide-team', user_id: null, url: 'https://ide-team.example' },
+    ] as any
+
+    const [teamA, teamB] = enrichTeams(teams, {}, undefined, null, workloads)
+
+    expect(teamA!.members.map((m) => m.workloadUrl)).toEqual(['https://ide-lea.example', 'https://ide-max.example'])
+    expect(teamB!.members[0]!.workloadUrl).toBeNull()
+  })
+
+  it('has no workload link without workloads', () => {
+    expect(enrichTeams(teams, {}, 'u-lea', own)[0]!.members.map((m) => m.workloadUrl)).toEqual([null, null])
+  })
+})
+
+describe('accessLinkFor', () => {
+  it('builds the link from ip and port of an address-style account, keeping the team url\'s path', () => {
+    expect(accessLinkFor({ ip: '10.0.0.5', port: 8080, type: 'password' }, 'https://t.example/pgadmin4', null)).toBe(
+      'http://10.0.0.5:8080/pgadmin4',
+    )
+  })
+
+  it('does not build a web link from ssh, rdp or port 22 accounts', () => {
+    expect(accessLinkFor({ ip: '10.0.0.5', port: 22 }, null, null)).toBeNull()
+    expect(accessLinkFor({ ip: '10.0.0.5', port: 2222, type: 'ssh_key' }, null, null)).toBeNull()
+    expect(accessLinkFor({ ip: '10.0.0.5', port: 3389, authtype: 'rdp' }, null, null)).toBeNull()
+    expect(accessLinkFor({ ip: '10.0.0.5', port: 2222, authtype: 'ssh' }, null, null)).toBeNull()
+  })
+
+  it('uses the account\'s own url: a pod account has no ip and port (scope: user has no team url)', () => {
+    expect(accessLinkFor({ url: 'https://ide-lea.example' }, null, null)).toBe('https://ide-lea.example')
+    expect(accessLinkFor({ url: 'https://ide-lea.example' }, 'https://team.example', null)).toBe(
+      'https://ide-lea.example',
+    )
+  })
+
+  it('falls back to the member\'s workload, then to the team url', () => {
+    expect(accessLinkFor(null, 'https://team.example', 'https://ide-lea.example')).toBe('https://ide-lea.example')
+    expect(accessLinkFor(null, 'https://team.example', null)).toBe('https://team.example')
+    expect(accessLinkFor({ username: 'lea' }, 'https://team.example', null)).toBe('https://team.example')
+  })
+
+  it('is null when nothing is known', () => {
+    expect(accessLinkFor(null, null, null)).toBeNull()
+    expect(accessLinkFor(undefined, undefined, undefined)).toBeNull()
+    expect(accessLinkFor({ url: null }, '', '')).toBeNull()
   })
 })
 

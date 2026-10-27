@@ -14,7 +14,8 @@ import {
   AlertCircle,
   type LucideIcon,
 } from 'lucide-react'
-import type { DeploymentTeam, Task } from '@/types'
+import type { DeploymentTeam, PodWorkload, Task } from '@/types'
+import { userUrlFor } from '@/utils/connection-commands'
 
 // One account entry as an app publishes it (VM apps: Terraform outputs; pods:
 // the platform's own access data). Only ever the caller's own (`/my-access`).
@@ -75,22 +76,51 @@ export function ownAccountOf(accounts: UserAccountMap | null): AccountHit | null
  * the owner view's outputs have every account redacted, and matching accounts
  * to other members by name could hand one person another's password
  * (.github#7 H). The row is found by user id, never by a name heuristic.
+ *
+ * A link is no secret: ``workloads`` (the owner view's live list) names the
+ * person a ``scope: user`` workload belongs to, so its link goes onto that
+ * member's row whoever looks.
  */
 export function enrichTeams(
   teams: DeploymentTeam[] | undefined,
   teamVms: TeamVmMap,
   ownUserId: string | null | undefined,
   ownAccount: AccountHit | null,
+  workloads: PodWorkload[] = [],
 ) {
   if (!teams) return []
+  const workloadUrlOf = (userId: string): string | null =>
+    workloads.find((w) => w.user_id && String(w.user_id) === String(userId))?.url ?? null
   return teams.map((team) => ({
     ...team,
     vm: teamVms[team.name] ?? null,
     members: team.members.map((member) => ({
       ...member,
       account: ownUserId && String(member.userId) === String(ownUserId) ? ownAccount : null,
+      workloadUrl: workloadUrlOf(member.userId),
     })),
   }))
+}
+
+/**
+ * The link a member opens their app with, most specific source first:
+ * the address of an address-style account (VM apps publish ``ip`` and
+ * ``port``; SSH, RDP and port 22 are no web app), the account's own ``url``
+ * (pod apps publish no address, and a ``scope: user`` app has no team link),
+ * the member's own workload, then the team's link.
+ */
+export function accessLinkFor(
+  data: UserAccount | null | undefined,
+  teamUrl: string | null | undefined,
+  workloadUrl?: string | null,
+): string | null {
+  if (data) {
+    const isWebAddress =
+      data.ip && data.port && data.port !== 22 && data.type !== 'ssh_key' && data.authtype !== 'ssh' && data.authtype !== 'rdp'
+    if (isWebAddress) return userUrlFor(data, teamUrl)
+    if (data.url) return data.url
+  }
+  return workloadUrl || teamUrl || null
 }
 
 /**
