@@ -36,6 +36,18 @@ export function extractErrorMessage(err: unknown, fallback = 'Unknown error'): s
 }
 
 /**
+ * The ``message`` of whatever was thrown, or undefined when it has none (not an
+ * object, no ``message``, or an empty one). Unlike :func:`extractErrorMessage`
+ * it never looks at ``response.data.detail``: for errors that do not come from
+ * an API call (Keycloak, redirects) the error's own text is the message.
+ */
+export function thrownMessage(err: unknown): string | undefined {
+  if (typeof err !== 'object' || err === null) return undefined
+  const { message } = err as { message?: unknown }
+  return typeof message === 'string' && message ? message : undefined
+}
+
+/**
  * The machine-readable reason of an API error (`detail.reason` or
  * `detail.code`), or null.
  */

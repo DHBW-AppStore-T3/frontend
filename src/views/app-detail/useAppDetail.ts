@@ -11,11 +11,23 @@ import { buildEditPayload, type EditFormValues, type EditImage } from './editPay
 const HTTP_CONFLICT = 409
 const HTTP_UNPROCESSABLE = 422
 
+/** ``detail`` of a 422 about the appstore.yaml (the backend's ``reason`` / ``errors`` / ``message``). */
+interface SpecErrorDetail {
+  reason?: string
+  message?: string
+  errors?: { loc: string; msg: string }[]
+}
+
+/** The parts of a failed API call these handlers read; ``err`` itself is ``unknown``. */
+interface ApiFailure {
+  response?: { status?: number; data?: { detail?: SpecErrorDetail | string | null } }
+}
+
 /** The lines of a 422 about the appstore.yaml: one per field problem, or the reason itself. */
-function specErrorLines(detail: any, t: (key: string) => string): string[] {
+function specErrorLines(detail: SpecErrorDetail, t: (key: string) => string): string[] {
   if (detail.reason === 'appstore_yaml_missing') return [t('AppsDetailView.submitModal.yamlMissing')]
   if (Array.isArray(detail.errors) && detail.errors.length) {
-    return detail.errors.map((e: { loc: string; msg: string }) => `${e.loc}: ${e.msg}`)
+    return detail.errors.map((e) => `${e.loc}: ${e.msg}`)
   }
   return [String(detail.message ?? detail.reason)]
 }
@@ -86,12 +98,13 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
       toast.success(t('AppsDetailView.toasts.submitSuccess'))
       await fetchApprovals()
       return true
-    } catch (err: any) {
-      const status = err?.response?.status
-      const detail = err?.response?.data?.detail
+    } catch (err) {
+      const response = (err as ApiFailure | null | undefined)?.response
+      const status = response?.status
+      const detail = response?.data?.detail
       if (status === HTTP_CONFLICT) {
         toast.warning(t('AppsDetailView.toasts.submitDuplicate'))
-      } else if (status === HTTP_UNPROCESSABLE && detail?.reason) {
+      } else if (status === HTTP_UNPROCESSABLE && typeof detail === 'object' && detail?.reason) {
         setSpecErrors(specErrorLines(detail, t))
       } else {
         toast.error(t('AppsDetailView.toasts.submitError'))
@@ -187,8 +200,8 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
       toast.success(t('AppsDetailView.deleteSuccessToast'))
       navigate(paths.apps)
       return true
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail
+    } catch (error) {
+      const detail = (error as ApiFailure | null | undefined)?.response?.data?.detail
       const reason = typeof detail === 'object' ? detail?.message || detail?.reason : detail
       toast.error(`${t('AppsDetailView.deleteErrorToast')}${reason ? ': ' + reason : ''}`)
       return false

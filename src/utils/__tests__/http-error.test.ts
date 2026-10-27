@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { extractErrorMessage, errorReason, localizedError } from '@/utils/http-error'
+import { extractErrorMessage, errorReason, localizedError, thrownMessage } from '@/utils/http-error'
 
 describe('extractErrorMessage', () => {
   it('returns a string detail verbatim', () => {
@@ -78,5 +78,28 @@ describe('localizedError', () => {
 
   it('falls back to the given default when there is nothing usable', () => {
     expect(localizedError({}, t, () => true, 'Failed to deploy')).toBe('Failed to deploy')
+  })
+})
+
+describe('thrownMessage', () => {
+  it('returns the message of an Error or of any object with a message', () => {
+    expect(thrownMessage(new Error('boom'))).toBe('boom')
+    expect(thrownMessage({ message: 'denied' })).toBe('denied')
+  })
+
+  it('ignores response.data.detail, unlike extractErrorMessage', () => {
+    const err = { message: 'Request failed', response: { data: { detail: 'quota exceeded' } } }
+    expect(thrownMessage(err)).toBe('Request failed')
+    expect(extractErrorMessage(err)).toBe('quota exceeded')
+  })
+
+  it.each([[''], [null], [undefined], [0], ['text']])('is undefined for %j', (value) => {
+    expect(thrownMessage(value)).toBeUndefined()
+  })
+
+  it('is undefined when there is no usable message', () => {
+    expect(thrownMessage({})).toBeUndefined()
+    expect(thrownMessage({ message: '' })).toBeUndefined()
+    expect(thrownMessage({ message: 42 })).toBeUndefined()
   })
 })
