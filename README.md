@@ -36,18 +36,22 @@ Die Tests in `tests/unit/infra/docker-entrypoint.spec.ts` führen `docker-entryp
 
 `src/types/api.generated.ts` wird aus `src/types/openapi.json` erzeugt und **nicht von Hand bearbeitet**. Die Datei `openapi.json` ist eine committete Kopie des Backend-Schemas — FastAPI ist laut HARNESS.md die Single Source of Truth für den API-Contract.
 
-Bei einer Backend-API-Änderung:
+Bei einer Backend-API-Änderung (nur lesend am Backend, ohne Datenbank, Broker und Netzwerk; `make openapi` gibt es nicht):
 
 ```bash
-# 1. im backend-Repo: Schema exportieren
-poetry run python scripts/export_openapi.py        # oder: make openapi aus deployment/
-# 2. Ergebnis nach frontend/src/types/openapi.json kopieren
-# 3. im frontend-Repo:
+# 1. im backend-Repo, Stand origin/dev (einmalig: poetry install):
+poetry run python scripts/export_openapi.py ../frontend/src/types/openapi.json
+#    Ohne Argument schreibt das Skript backend/openapi.json (nicht committen).
+#    Den Backend-Commit (git rev-parse origin/dev) im PR nennen.
+# 2. im frontend-Repo: Typen erzeugen und prüfen
 npm run gen:api-types
-npx tsc -b --noEmit
+npx tsc -b
+# 3. ein zweiter Lauf von `npm run gen:api-types` darf keinen weiteren Diff erzeugen
 ```
 
-Schritt 3 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die User-Typen bereits aus dem generierten Schema ab; die übrigen Blöcke sind noch handgepflegt und sollten bei Gelegenheit nachgezogen werden.
+Neue oder geänderte Endpunkte, die das Frontend aufruft, gehören in `REQUIRED_OPERATIONS` in `tests/unit/contract/openapi.spec.ts`.
+
+Schritt 2 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die User-Typen bereits aus dem generierten Schema ab; die übrigen Blöcke sind noch handgepflegt und sollten bei Gelegenheit nachgezogen werden.
 
 ## Theming
 

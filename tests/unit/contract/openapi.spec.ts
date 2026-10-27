@@ -15,6 +15,9 @@ const REQUIRED_OPERATIONS: Array<[method: string, path: string]> = [
   ['post', '/deployments/{deployment_id}/workloads/{workload}/restart'],
   ['post', '/deployments/{deployment_id}/workloads/{workload}/reset'],
   ['get', '/deployments/{deployment_id}/my-access'],
+  // Admin store settings (frontend#55, #43/#44).
+  ['put', '/admin/apps/{app_id}/recommended'],
+  ['put', '/admin/apps/{app_id}/deploy-version'],
 ]
 
 // The OpenStack VM path is gone (.github#12).
