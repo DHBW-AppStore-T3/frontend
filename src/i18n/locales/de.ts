@@ -774,6 +774,40 @@ export default {
       vcpu: '{count} vCPU',
       range: 'Erlaubt {min} – {max} · empfohlen {default}',
     },
+    // Variablen-Schritt der Windows-VM-App (runtime kubevirt-vm): Desktops statt Pods.
+    vm: {
+      internet: {
+        label: 'Internetzugriff',
+        help: 'Die Windows-Desktops Ihrer Studierenden können Server im Internet erreichen. Interne Netze bleiben gesperrt.',
+        stateOn: 'Erlaubt',
+        stateOff: 'Gesperrt',
+        noteOn: 'Studierende können Server im Internet erreichen.',
+        noteOff: 'Studierende arbeiten ohne Internetzugriff.',
+      },
+      pods: {
+        label: 'Vernetzte Desktops',
+        help: 'Erlaubt den Desktops dieses Deployments, sich gegenseitig zu erreichen. Andere Deployments bleiben getrennt.',
+      },
+      expert: {
+        recommended: 'Empfohlen',
+        changed: 'Angepasst',
+        reset: 'Auf Empfehlung zurücksetzen',
+        cpuUnit: 'vCPU',
+        ramUnit: 'GB RAM',
+      },
+      resources: {
+        desc: 'Wählen Sie, wie viel Rechenleistung jeder Windows-Desktop erhält. Die empfohlenen Werte sind vorausgewählt.',
+        cpu: 'Prozessorkerne (vCPU)',
+        cpuUnit: 'vCPU',
+        memoryUnit: 'GB',
+        cpuValue: '{count} vCPU',
+        memoryValue: '{count} GB',
+        recommendedTick: 'empfohlen',
+        recommendedValue: '{value}, empfohlen',
+        totalLabel_one: 'Insgesamt für {count} Person',
+        totalLabel_other: 'Insgesamt für {count} Personen',
+      },
+    },
     variables: {
       title: 'Nutzerspezifische Variablen',
       description: 'Optionale Parameter für das Deployment.',

@@ -234,3 +234,138 @@ describe('NewDeploymentVariableView', () => {
     })
   })
 })
+
+describe('NewDeploymentVariableView · Windows-VM-App (kubevirt-vm)', () => {
+  const vmChoice = {
+    container: 'vm',
+    cpu: { default: '4', min: '2', max: '8' },
+    memory: { default: '8Gi', min: '4Gi', max: '16Gi' },
+  }
+  const atDefault = { vm: { cpu: '4', memory: '8Gi' } }
+
+  function setVm(over: Record<string, unknown> = {}) {
+    mockDefinitions([])
+    useDeploymentStore.getState().updateDraft({
+      runtime: 'kubevirt-vm',
+      scope: 'user',
+      studentIds: ['u1', 'u2'],
+      resourceChoices: [vmChoice],
+      resources: atDefault,
+      networkChoices: { internet: { default: true }, podNetwork: { default: false } },
+      network: { internet: true, podNetwork: false },
+      ...over,
+    } as any)
+  }
+  const head = () => screen.getByRole('button', { name: /deployment\.network\.title/ })
+
+  it('zeigt den Internetzugriff ohne Aufklappen, die Regler nicht', async () => {
+    setVm()
+    renderView()
+    expect(await screen.findByTestId('vm-internet-access')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'deployment.vm.internet.label' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryAllByRole('slider')).toHaveLength(0)
+    expect(head()).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByTestId('resource-picker')).toBeNull()
+    expect(screen.queryByTestId('network-settings')).toBeNull()
+  })
+
+  it('lässt den Standard unverändert, wenn die Experteneinstellungen nie geöffnet werden', async () => {
+    setVm()
+    renderView()
+    await screen.findByTestId('vm-internet-access')
+    fireEvent.click(screen.getByRole('button', { name: /deployment\.actions\.next/ }))
+    await waitFor(() => expect(screen.getByTestId('where')).not.toHaveTextContent('/deployment/new/variables'))
+    expect(draft().resources).toEqual(atDefault)
+  })
+
+  it('zeigt aufgeklappt 4 vCPU und 8 GB und speichert Änderungen im Draft', async () => {
+    setVm()
+    renderView()
+    await screen.findByTestId('vm-internet-access')
+    fireEvent.click(head())
+    expect(screen.getByTestId('cpu-vm')).toHaveTextContent('4')
+    expect(screen.getByTestId('memory-vm')).toHaveTextContent('8')
+    fireEvent.change(screen.getAllByRole('slider')[0]!, { target: { value: '6000' } })
+    expect(draft().resources).toEqual({ vm: { cpu: '6', memory: '8Gi' } })
+  })
+
+  it('behält geänderte Werte beim Zuklappen und zeigt sie im Kopf', async () => {
+    setVm()
+    renderView()
+    await screen.findByTestId('vm-internet-access')
+    fireEvent.click(head())
+    fireEvent.change(screen.getAllByRole('slider')[0]!, { target: { value: '6000' } })
+    fireEvent.click(head())
+    expect(screen.queryAllByRole('slider')).toHaveLength(0)
+    expect(screen.getByTestId('vm-expert-chip')).toHaveTextContent('deployment.vm.expert.changed')
+    expect(screen.getByTestId('vm-expert-plate')).toHaveTextContent('6')
+    fireEvent.click(head())
+    expect(screen.getByTestId('cpu-vm')).toHaveTextContent('6')
+    expect(draft().resources).toEqual({ vm: { cpu: '6', memory: '8Gi' } })
+  })
+
+  it('schreibt den Internetzugriff in den Draft', async () => {
+    setVm()
+    renderView()
+    fireEvent.click(await screen.findByRole('switch', { name: 'deployment.vm.internet.label' }))
+    expect(draft().network).toEqual({ internet: false, podNetwork: false })
+    expect(screen.getByTestId('vm-internet-state')).toHaveTextContent('deployment.vm.internet.stateOff')
+  })
+
+  it('zeigt Vernetzte Desktops nur aufgeklappt und nur bei zwei Studierenden', async () => {
+    setVm()
+    renderView()
+    await screen.findByTestId('vm-internet-access')
+    expect(screen.queryByRole('switch', { name: 'deployment.vm.pods.label' })).toBeNull()
+    fireEvent.click(head())
+    fireEvent.click(screen.getByRole('switch', { name: 'deployment.vm.pods.label' }))
+    expect(draft().network).toEqual({ internet: true, podNetwork: true })
+  })
+
+  it('lässt Vernetzte Desktops bei einer Person weg', async () => {
+    setVm({ studentIds: ['u1'] })
+    renderView()
+    await screen.findByTestId('vm-internet-access')
+    fireEvent.click(head())
+    expect(screen.queryByRole('switch', { name: 'deployment.vm.pods.label' })).toBeNull()
+    expect(screen.getAllByRole('slider')).toHaveLength(2)
+  })
+
+  it('zeigt für eine VM ohne Auswahl (v2.0.0) den leeren Zustand', async () => {
+    setVm({ resourceChoices: [], resources: {}, networkChoices: {}, network: {} })
+    renderView()
+    expect(await screen.findByText('deployment.variables.noVariables')).toBeInTheDocument()
+    expect(screen.queryByTestId('vm-internet-access')).toBeNull()
+    expect(screen.queryByTestId('vm-expert-settings')).toBeNull()
+  })
+
+  describe('andere Apps bleiben unverändert', () => {
+    it('Pod-App mit Auswahl: ResourcePicker oben, Akkordeon mit Internetzugriff und Vernetzten Pods', async () => {
+      setVm({
+        runtime: 'kubernetes',
+        scope: null,
+        groupNames: ['A', 'B'],
+        groupCount: 2,
+        resourceChoices: [{ container: 'web', cpu: { default: '1', min: '500m', max: '2' }, memory: { default: '1Gi', min: '512Mi', max: '2Gi' } }],
+        resources: { web: { cpu: '1', memory: '1Gi' } },
+        networkChoices: { internet: { default: false }, podNetwork: { default: false } },
+        network: { internet: false, podNetwork: false },
+      })
+      renderView()
+      expect(await screen.findByTestId('resource-picker')).toBeInTheDocument()
+      expect(screen.getByTestId('network-settings')).toBeInTheDocument()
+      expect(screen.queryByTestId('vm-internet-access')).toBeNull()
+      expect(screen.queryByTestId('vm-expert-settings')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /deployment\.network\.title/ }))
+      expect(screen.getByRole('switch', { name: 'deployment.network.internet.label' })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: 'deployment.network.podNetwork.label' })).toBeInTheDocument()
+    })
+
+    it('Pod-App ohne Auswahl zeigt den leeren Zustand', async () => {
+      setVm({ runtime: 'kubernetes', resourceChoices: [], resources: {}, networkChoices: {}, network: {} })
+      renderView()
+      expect(await screen.findByText('deployment.variables.noVariables')).toBeInTheDocument()
+      expect(screen.queryByTestId('vm-internet-access')).toBeNull()
+    })
+  })
+})

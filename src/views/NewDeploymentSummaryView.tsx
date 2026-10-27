@@ -173,7 +173,12 @@ export default function NewDeploymentSummaryView() {
                 </p>
                 {networkChanges.map(({ key, value }) => (
                   <p key={key} className="text-sm text-textHeading" data-testid={`summary-network-${key}`}>
-                    <span className="font-semibold">{t(`deployment.network.${key}.label`)}</span>:{' '}
+                    <span className="font-semibold">
+                      {draft.runtime === 'kubevirt-vm' && key === 'podNetwork'
+                        ? t('deployment.vm.pods.label')
+                        : t(`deployment.network.${key}.label`)}
+                    </span>
+                    :{' '}
                     {value ? t('deployment.network.summaryOn') : t('deployment.network.summaryOff')}
                   </p>
                 ))}

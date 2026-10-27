@@ -53,6 +53,22 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-27 (Windows-VM-App: Internetzugriff sichtbar, Ressourcen in den Experteneinstellungen, frontend#109):** Variablen-Schritt
+  (`NewDeploymentVariableView`) hat für `draft.runtime === 'kubevirt-vm'` ein eigenes Layout; **Pod-Apps (`kubernetes`) bleiben
+  unverändert** (`NetworkSettings` und `ResourcePicker` nicht angefasst), die Weiche steht in der View. Neue Dateien unter
+  `src/views/new-deployment/`: `VmInternetAccess` (Karte: Status „Erlaubt/Gesperrt", Schalter, Folgezeile, bei „Erlaubt"
+  bernsteinfarben), `VmExpertSettings` (Akkordeon, zugeklappt; Kopf zeigt Chip „Empfohlen/Angepasst" und das Typenschild
+  „4 vCPU | 8 GB RAM"; Inhalt ist zugeklappt `inert` + `aria-hidden`, bleibt aber im DOM, damit das Auf-/Zuklappen animiert
+  (`grid-template-rows`)), `VmResourceSliders` (natives `<input type="range">`, Ablesefeld, Kerben, Markierung „empfohlen",
+  „Auf Empfehlung zurücksetzen", Gesamtzeile nur bei `scope: user`), `NetworkSwitchRow` (Zeile „Vernetzte Desktops") und
+  `VmSettings.css` (nur Tokens). `src/utils/resources.ts`: `formatMemoryGb`, `isDefaultSelection`, `totalResources`.
+  Neue Texte unter `deployment.vm.*` (de/en, Test `vm-messages.test.ts`); die Übersicht (`NewDeploymentSummaryView`) nennt die
+  Zeile bei VMs „Vernetzte Desktops". **Der Standard kommt unverändert aus `draft.resources`** (`defaultSelection`), gesendet wird
+  weiter `userInputVar.resources`; geändert hat sich nur, wo und wie die Bedienelemente stehen. 8 GiB werden als „8 GB" angezeigt,
+  die Nutzlast bleibt `8Gi`. **Fallstricke:** (1) `rerender` aus `renderWithProviders` verliert den i18n-Provider, deshalb in den
+  Tests neu rendern; (2) die Lint-Regel `react-hooks/refs` meldet jede Prop eines Props-Objekts, das eine `*Ref` enthält, als
+  Ref-Zugriff beim Rendern: Props destrukturieren. **Offen (Team):** was für Pod-Apps gelten soll (siehe Issue, „Offene Punkte").
+  Design: `issue-drafts/14-internetzugriff-sichtbar/` (Mockup und `design-plan.md`, außerhalb dieses Repos).
 - **2026-10-26 (Vitest 4 und happy-dom 21, frontend#83, Teil von Epic #77):** `vitest` und `@vitest/coverage-istanbul` 3.2.7 → **4.1.12**, `happy-dom` 20.14.5 →
   **21.0.4**, in zwei einzeln lauffähigen Commits. `npm audit` von 7 auf **2** Funde (nur noch Tailwind/PostCSS), `--omit=dev` weiter 0. Baseline und Ergebnis
   identisch: 126 Dateien, 1283 Tests, Zeilen 91,33 % → 91,35 % (Statements 90,01 → 90,03; Funktionen 90,79; Branches 82,69), Gate 85 % hält. **Kein Test musste geändert werden.**

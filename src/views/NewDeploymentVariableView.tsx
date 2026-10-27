@@ -8,6 +8,8 @@ import { useVariableForm } from './new-deployment/useVariableForm'
 import VariableCard, { type Accent } from './new-deployment/VariableCard'
 import ResourcePicker from './new-deployment/ResourcePicker'
 import NetworkSettings from './new-deployment/NetworkSettings'
+import VmInternetAccess from './new-deployment/VmInternetAccess'
+import VmExpertSettings from './new-deployment/VmExpertSettings'
 import { visibleNetworkKeys } from '@/utils/network'
 import { useDeploymentStore } from '@/stores/deployment.store'
 
@@ -45,6 +47,11 @@ export default function NewDeploymentVariableView() {
   const chosen = useDeploymentStore((s) => s.draft.resources) ?? {}
   const draft = useDeploymentStore((s) => s.draft)
   const hasNetwork = visibleNetworkKeys(draft).length > 0
+  // A Windows VM gets its own layout (internet access up front, resources behind "expert settings");
+  // pod apps keep theirs until the team has decided what applies to them.
+  const isVm = draft.runtime === 'kubevirt-vm'
+  const setResources = (resources: typeof chosen) => useDeploymentStore.getState().updateDraft({ resources })
+  const setNetwork = (network: NonNullable<typeof draft.network>) => useDeploymentStore.getState().updateDraft({ network })
 
   const card = (variable: AppVariable, accent: Accent, expert = false) => {
     const key = formKeyOf(variable)
@@ -73,21 +80,26 @@ export default function NewDeploymentVariableView() {
 
   const renderBody = (f: Form) => (
     <div className="grid grid-cols-1 gap-6">
-      {choices.length > 0 ? (
-        <ResourcePicker
-          choices={choices}
-          value={chosen}
-          vm={draft.runtime === 'kubevirt-vm'}
-          onChange={(resources) => useDeploymentStore.getState().updateDraft({ resources })}
-        />
-      ) : null}
+      {isVm ? (
+        <div className="mx-auto grid w-full max-w-3xl gap-4 empty:hidden">
+          <VmInternetAccess draft={draft} onChange={setNetwork} />
+          <VmExpertSettings
+            draft={draft}
+            choices={choices}
+            resources={chosen}
+            onResourcesChange={setResources}
+            onNetworkChange={setNetwork}
+          />
+        </div>
+      ) : (
+        <>
+          {choices.length > 0 ? (
+            <ResourcePicker choices={choices} value={chosen} onChange={setResources} />
+          ) : null}
 
-      {hasNetwork ? (
-        <NetworkSettings
-          draft={draft}
-          onChange={(network) => useDeploymentStore.getState().updateDraft({ network })}
-        />
-      ) : null}
+          {hasNetwork ? <NetworkSettings draft={draft} onChange={setNetwork} /> : null}
+        </>
+      )}
 
       {/* The app's own settings, declared in its appstore.yaml */}
       {f.terraformVariables.length === 0 && (choices.length > 0 || hasNetwork) ? null : (
