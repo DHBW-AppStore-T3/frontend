@@ -181,8 +181,8 @@ function createStreamController(initialDeploymentId: string | null) {
 
     if (eventName === 'log') {
       // Worker logs ship the human-readable ISO time as ``iso_timestamp``
-      // (the wire-level ``timestamp`` is reserved for Celery's
-      // Unix-time float). Re-key to ``timestamp`` for downstream
+      // (once because Celery reserved ``timestamp`` for a Unix-time
+      // float; the name stayed). Re-key to ``timestamp`` for downstream
       // consumers that don't need to know that detail.
       const raw = data as Record<string, any>
       const entry: LogEntry = {

@@ -174,12 +174,6 @@ export default function TaskHistoryCard({
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Celery Task ID</div>
-                    <div className="text-xs font-mono text-gray-700 bg-white px-2 py-1 rounded">
-                      {selectedTask.celeryTaskId}
-                    </div>
-                  </div>
-                  <div>
                     <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Created At</div>
                     <div className="text-sm text-gray-700">{formatDateTime(selectedTask.created_at)}</div>
                   </div>
