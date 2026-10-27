@@ -2,13 +2,15 @@
 // Backend Model Types
 // ================================================================
 //
-// The types in the USER block below are DERIVED from the backend's
-// OpenAPI schema (`api.generated.ts`, regenerate with
-// `npm run gen:api-types`). They are not hand-written and must not be
-// edited here.
+// The types in the USER, DEPLOYMENT, POD WORKLOAD and TASK blocks below
+// are DERIVED from the backend's OpenAPI schema (`api.generated.ts`,
+// regenerate with `npm run gen:api-types`). They are not hand-written and
+// must not be edited here. Where one differs from the schema on purpose
+// (a narrower literal type, a field the UI still reads that the schema
+// lacks), the reason is written next to it.
 //
-// Everything else in this file is still hand-maintained, which is a
-// known source of drift. Before this change the whole file was, and it
+// Everything else in this file (courses, apps, wizard state) is still
+// hand-maintained, which is a known source of drift. Before this change the whole file was, and it
 // had drifted in both directions: `UserUpdate` offered `email` and
 // `username` that the backend stopped accepting when profile fields
 // moved to Keycloak, while `User` was missing `keycloak_id`,
@@ -42,9 +44,9 @@ export type DeploymentRuntime = 'kubernetes' | 'kubevirt-vm'
 /** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
 export type DeploymentAction = 'destroy' | 'delete' | 'pause' | 'resume' | 'cancel' | 'redeploy'
 
-export type TaskType = 'deploy' | 'destroy' | 'update' | 'pause' | 'resume' | 'redeploy'
+export type TaskType = Schemas['TaskType']
 
-export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled'
+export type TaskStatus = Schemas['TaskStatus']
 
 // ----------------------------------------------------------------
 // USER TYPES
@@ -212,60 +214,32 @@ export interface AppVersionApprovalWithApp extends AppVersionApproval {
 // ----------------------------------------------------------------
 // DEPLOYMENT TYPES
 // ----------------------------------------------------------------
-export interface Deployment {
-  deploymentId: string
-  name: string
-  appId: string
-  userId: string
+// Derived from ``DeploymentResponse`` (frontend#86). On purpose narrower than
+// the schema: ``status`` and ``runtime`` are ``string`` there, the UI relies on
+// the known values. The schema also has ``userInputVar`` as an object (the
+// hand-written type said ``string | null``) and ``releaseTag`` / ``created_at``
+// as optional.
+export type Deployment = Omit<Schemas['DeploymentResponse'], 'status' | 'runtime'> & {
   status: DeploymentStatus
-  userInputVar: string | null
-  releaseTag: string
-  // The commit every job of the deployment runs.
-  commit_sha?: string | null
   runtime?: DeploymentRuntime
-  created_at: string
 }
 
 /** What the caller may do with a deployment, decided by the API. */
-export interface DeploymentPermissions {
-  // Tasks, logs, live stream, infrastructure, redacted outputs.
-  owner_view: boolean
-  // Pause, resume, destroy, redeploy, cancel.
-  operate: boolean
-  // In one of its teams: own access via ``my-access``.
-  member: boolean
-}
+export type DeploymentPermissions = Schemas['DeploymentPermissions']
 
-export interface DeploymentTeamMember {
-  userId: string
-  email: string
-  username: string
-}
+export type DeploymentTeamMember = Schemas['DeploymentTeamMember']
 
-export interface DeploymentTeam {
-  teamId: string
-  name: string
-  members: DeploymentTeamMember[]
-}
+export type DeploymentTeam = Schemas['DeploymentTeamResponse']
 
-export interface DeploymentWithRelations extends Deployment {
-  user: User
+// Derived from ``DeploymentDetail``. ``status``, ``runtime`` and ``actions`` are
+// narrowed to the known values like in ``Deployment``; ``app`` stays the
+// hand-written ``App`` until the app types are derived (frontend#87). ``outputs``
+// is the schema's ``DeploymentOutputs`` (``raw``) instead of ``any``.
+export type DeploymentWithRelations = Omit<Schemas['DeploymentDetail'], 'status' | 'runtime' | 'app' | 'actions'> & {
+  status: DeploymentStatus
+  runtime?: DeploymentRuntime
   app: App
-  latest_task?: {
-    taskId: string;
-    type: string;
-    status: string;
-    started_at: string | null;
-    finished_at: string | null;
-    created_at: string;
-  } | null;
-  // Teams + members from the DeploymentDetail backend response. Used
-  // by the Teams card on the deployment detail page.
-  teams?: DeploymentTeam[];
-  outputs?: any;
-  logs?: string | null;
-  permissions?: DeploymentPermissions;
-  actions?: DeploymentAction[];
+  actions: DeploymentAction[]
 }
 
 // One member's access credentials, mirroring the raw terraform
@@ -291,19 +265,17 @@ export interface DeploymentUserAccount {
 // same shape as ``outputs.user_accounts.value`` so the detail view's
 // existing account-matching pipeline consumes it unchanged. Empty maps
 // mean "no credentials yet".
+// The schema types both maps loosely (``unknown`` values) and has a third map,
+// ``team_endpoints``, that this type does not list (``useDeploymentDetail`` reads
+// it next to ``team_vms``); kept hand-written until the account shapes are
+// pinned down in the schema.
 export interface MyAccessResponse {
   user_accounts: Record<string, DeploymentUserAccount>;
   team_vms: Record<string, { url?: string | null; floating_ip?: string; fixed_ip?: string; workloads?: string[] }>;
 }
 
-export interface DeploymentCreate {
-  name: string
-  appId: string
-  commitHash?: string | null
-  commitInfo?: string | null
-  userInputVar?: Record<string, any> | null
-  releaseTag: string
-  teams?: Array<{ name: string; userIds: string[] }>
+// Derived from ``DeploymentCreate``; ``files`` is a loose ``object`` in the schema.
+export type DeploymentCreate = Omit<Schemas['DeploymentCreate'], 'files'> & {
   // Files-map keyed by the name of a ``file`` variable. Inner key:
   //   * scope = all  → exactly one inner key (conventionally "all")
   //   * scope = team → one entry per team name
@@ -318,13 +290,10 @@ export interface DeploymentCreate {
  * → backend persistence → the workload's files. ``content_b64`` is the
  * raw base64 payload (no ``data:...,`` wrapper).
  */
-export interface DeploymentFile {
-  name: string
-  content_b64: string
-  size: number
-  content_type?: string
-}
+export type DeploymentFile = Schemas['DeploymentFileUpload']
 
+// No schema: the backend has no ``DeploymentUpdate`` and nothing in the frontend
+// uses this type. Kept (exported name) until it is removed on purpose.
 export interface DeploymentUpdate {
   name?: string
   status?: DeploymentStatus
@@ -338,34 +307,11 @@ export interface DeploymentUpdate {
 // ----------------------------------------------------------------
 
 /** One workload (team or person) of a pod deployment, read live from the cluster. */
-export interface PodWorkload {
-  workload: string
-  team: string | null
-  /** ``scope: user``: whose workload it is. */
-  user_id: string | null
-  ready: boolean
-  restarts: number
-  /** Running, Pending, Stopped, CrashLoopBackOff, ImagePullBackOff, Unschedulable, ... */
-  phase: string
-  url: string | null
-  lastEvent: string | null
-  /** An app that sets itself up after it started (an installer) reports how far it is; null otherwise. */
-  setup?: PodSetupProgress | null
-}
+export type PodWorkload = Schemas['PodWorkloadSchema']
 
-export interface PodSetupProgress {
-  percent: number
-  step?: string | null
-  /** Seconds the app expects to need still; null when it cannot tell yet. */
-  etaSeconds?: number | null
-}
+export type PodSetupProgress = Schemas['PodSetupProgress']
 
-export interface DeploymentResourceListResponse {
-  /** ``true`` when the backend could ask the cluster. */
-  live: boolean
-  runtime?: DeploymentRuntime
-  workloads?: PodWorkload[]
-}
+export type DeploymentResourceListResponse = Schemas['DeploymentResourceListResponse']
 
 // ----------------------------------------------------------------
 // TASK TYPES
@@ -375,33 +321,23 @@ export interface TaskLogEntry {
   level: string
   category?: string
   message: string
-  [key: string]: any // Allow additional fields like operation, resource_type, etc.
+  [key: string]: unknown // Allow additional fields like operation, resource_type, etc.
 }
 
 export interface TaskLogsObject {
   error?: string
   deployment_id?: string
   logs?: TaskLogEntry[]
-  tf_state?: any
-  commit_info?: any
-  terraform_outputs?: any
+  tf_state?: unknown
+  commit_info?: unknown
+  terraform_outputs?: unknown
 }
 
-export interface Task {
-  taskId: string
-  deploymentId: string
-  celeryTaskId: string
-  type: TaskType
-  status: TaskStatus
-  started_at: string | null
-  finished_at: string | null
+// Derived from ``TaskResponse``. ``logs`` is ``string | null`` in the schema; the
+// frontend also reads structured logs (``logEntryCount``, ``splitTaskLogs`` and the
+// test fixtures handle an object), so the object form stays accepted.
+export type Task = Omit<Schemas['TaskResponse'], 'logs'> & {
   logs: string | TaskLogsObject | null
-  // Live-progress fields. Backend persists them while the worker is
-  // running so a page reload mid-deploy shows the last known phase
-  // and percent without waiting for the next SSE event.
-  current_phase: string | null
-  progress_pct: number | null
-  created_at: string
 }
 
 // ----------------------------------------------------------------

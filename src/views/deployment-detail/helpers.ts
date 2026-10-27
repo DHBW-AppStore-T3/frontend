@@ -311,10 +311,17 @@ export function statusIconColor(status?: string): string {
   return 'text-yellow-600'
 }
 
-function userInputObject(raw: unknown): Record<string, any> | null {
+/** What the wizard stored in ``userInputVar``; read back as parsed JSON, not validated. */
+interface StoredUserInput {
+  groupNames?: string[]
+  assignments?: Record<string, string[]>
+  variables?: Record<string, string>
+}
+
+function userInputObject(raw: unknown): StoredUserInput | null {
   if (!raw) return null
   try {
-    return typeof raw === 'string' ? JSON.parse(raw) : (raw as Record<string, any>)
+    return typeof raw === 'string' ? JSON.parse(raw) : (raw as StoredUserInput)
   } catch (e) {
     console.error('Error parsing userInputVar:', e)
     return null
@@ -341,7 +348,7 @@ export function parseGroups(userInputVar: unknown): DeploymentGroup[] {
 
 export function parseVariables(userInputVar: unknown): Record<string, string> {
   const data = userInputObject(userInputVar)
-  return (data?.variables as Record<string, string>) || {}
+  return data?.variables || {}
 }
 
 /** Variable values may carry HCL-style trailing comments and quotes. */
