@@ -3,7 +3,7 @@ import { deploymentApi } from '@/api/deployment.api'
 import { useAppStore } from './app.store'
 import { useAuthStore } from './auth.store'
 import { runRequest } from './_request'
-import { networkPayload } from '@/utils/network'
+import { buildDeploymentPayload, DRAFT_REQUIRED_ERROR } from '@/utils/deployment-payload'
 
 import type {
   App,
@@ -206,141 +206,14 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
     async submitDraft() {
       const draft = get().draft
       /**
-       * Prepare and submit the current draft as a DeploymentCreate payload.
-       * - Normalizes `releaseTag` which may come as string or object from UI
-       * - Packs wizard selections (courses, groups, variables) into `userInputVar`
-       * - Delegates creation to the API and returns the created deployment
+       * Build the DeploymentCreate payload from the current draft
+       * (``buildDeploymentPayload``) and submit it through ``createDeployment``.
        */
       if (!draft.appId || !draft.name) {
-        throw new Error("App und Name sind Pflichtfelder")
+        throw new Error(DRAFT_REQUIRED_ERROR)
       }
 
-      const rawTag: any = draft.releaseTag
-      let finalVersion = 'latest'
-
-      if (rawTag && typeof rawTag === 'object') {
-        finalVersion = rawTag.version || rawTag.name || 'latest'
-      } else if (typeof rawTag === 'string' && rawTag.trim() !== '') {
-        finalVersion = rawTag
-      }
-
-      // Teams: Array<{ name: string, userIds: string[] }>
-      let teams: Array<{ name: string; userIds: string[] }> = []
-      if (Array.isArray(draft.groupNames) && Array.isArray(draft.assignments)) {
-        // assignments: Record<number, string[]>; groupNames: string[]
-        teams = draft.groupNames.map((name: string, idx: number) => ({
-          name,
-          userIds: Array.isArray((draft.assignments as any)[idx]) ? (draft.assignments as any)[idx] : []
-        }))
-      }
-
-      // Fallback: if no teams are defined, auto-create teams based on studentIds.
-      if (teams.length === 0 && draft.studentIds.length > 0) {
-        // Create teams based on groupCount.
-        const groupCount = draft.groupCount
-        const studentsPerGroup = Math.floor(draft.studentIds.length / groupCount)
-        const remainder = draft.studentIds.length % groupCount
-        
-        teams = []
-        let currentIndex = 0
-        for (let i = 0; i < groupCount; i++) {
-          const groupSize = studentsPerGroup + (i < remainder ? 1 : 0)
-          const groupStudents = draft.studentIds.slice(currentIndex, currentIndex + groupSize)
-          teams.push({
-            name: draft.groupNames[i] || `Team-${i + 1}`,
-            userIds: groupStudents
-          })
-          currentIndex += groupSize
-        }
-      }
-
-      // Ensure all userIds are formatted as UUID strings.
-      teams = teams.map(team => ({
-        name: team.name,
-        userIds: team.userIds.map(id => typeof id === 'string' ? id : String(id))
-      }))
-
-      // userInputVar: { terraform: {...} } (the key is historical: the app's own variables)
-      const userInputVarObj: any = { terraform: {} }
-      if (draft.variables && typeof draft.variables === 'object') {
-        const draftVars = draft.variables as Record<string, any>
-        const resolveValue = (def: AppVariable): any => draftVars[def.name]
-
-        if (Array.isArray(draft.variableDefinitions)) {
-          for (const def of draft.variableDefinitions) {
-            // File-typed variables travel through ``files`` instead of
-            // ``userInputVar``. Skipping them here keeps the variables
-            // dict free of accidental ``undefined`` entries that would
-            // confuse the backend's terraform encoder.
-            if (def.osType === 'file') continue
-            const val = resolveValue(def)
-            // Skip empty / undefined values — they would otherwise be
-            // forwarded to Terraform as ``-var=name=null`` and bypass
-            // the variable's HCL ``default = ...``. Critical for any
-            // variable whose default is structurally non-trivial
-            // (e.g. ``map(object(...))``) — the user not touching it
-            // must mean "use the default", not "set to null". An
-            // empty string is also treated as "no input".
-            if (val === undefined || val === null) continue
-            if (typeof val === 'string' && val.trim() === '') continue
-            // Scoped variables (``varScope = team|user``) arrive as a
-            // map. An empty map means no slot was filled — same logic
-            // applies: ship nothing so the HCL default wins.
-            if (
-              typeof val === 'object'
-              && !Array.isArray(val)
-              && (def.varScope === 'team' || def.varScope === 'user')
-              && Object.keys(val).length === 0
-            ) {
-              continue
-            }
-            userInputVarObj.terraform[def.name] = val
-          }
-        } else {
-          // Fallback: alles in terraform
-          userInputVarObj.terraform = { ...draft.variables }
-        }
-      }
-
-      // Drop empty file-variable entries — the wizard may have rendered
-      // a slot that the user never filled (optional file with default
-      // ``{}``). Sending it would still hit the backend's ``file_var_empty``
-      // guard with a confusing error.
-      const fileUploads: Record<string, Record<string, any>> = {}
-      if (draft.fileUploads) {
-        for (const [varName, slotMap] of Object.entries(draft.fileUploads)) {
-          const filledSlots: Record<string, any> = {}
-          for (const [slotKey, file] of Object.entries(slotMap || {})) {
-            if (file && file.content_b64) {
-              filledSlots[slotKey] = file
-            }
-          }
-          if (Object.keys(filledSlots).length > 0) {
-            fileUploads[varName] = filledSlots
-          }
-        }
-      }
-
-      // cpu/memory the person chose for the containers the app lets them size.
-      if (draft.resources && Object.keys(draft.resources).length > 0) {
-        userInputVarObj.resources = draft.resources
-      }
-      // Internet / networked pods: only what the app allows, and pod networking
-      // only with two or more workloads (otherwise there is nobody to reach).
-      const network = networkPayload(draft)
-      if (network) userInputVarObj.network = network
-      const payload: any = {
-        name: draft.name,
-        appId: draft.appId,
-        releaseTag: finalVersion,
-        userInputVar: userInputVarObj,
-        teams
-      }
-      if (Object.keys(fileUploads).length > 0) {
-        payload.files = fileUploads
-      }
-
-      const response = await get().createDeployment(payload as DeploymentCreate)
+      const response = await get().createDeployment(buildDeploymentPayload(draft))
       return response
     }
 }))
