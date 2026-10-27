@@ -1,24 +1,19 @@
-import type { AppVersionApproval } from '@/types'
+import type { App, AppVersionApproval } from '@/types'
 
-/** The app detail response carries loosely typed ``versions`` (strings or objects). */
-export interface AppDetail {
-  appId: string
-  id?: string
-  _id?: string
-  name: string
-  description?: string | null
-  image?: string | null
-  git_link?: string | null
-  is_private?: boolean
-  /** An admin deactivated the app; only an admin can make it public again. */
-  hidden_by_admin?: boolean
-  userId?: string
-  created_at?: string
-  user?: { username?: string }
-  versions?: unknown[]
-  /** The version teachers deploy, set by an admin; null/absent means none set. */
-  deploy_version?: string | null
-}
+/**
+ * The app detail response: the schema's ``AppResponse`` (frontend#87) with every
+ * field but ``appId`` / ``name`` optional, because the view also gets partial
+ * objects (after an edit, in tests). UI-side additions: ``versions``, loosely typed
+ * (strings or objects, see ``versionDetailsOf``), ``user`` reduced to what the view
+ * shows, and the legacy ``id`` / ``_id`` that ``deleteApp`` still falls back to.
+ */
+export type AppDetail = Pick<App, 'appId' | 'name'> &
+  Partial<Omit<App, 'appId' | 'name'>> & {
+    id?: string
+    _id?: string
+    user?: { username?: string }
+    versions?: unknown[]
+  }
 
 type VersionRecord = Record<string, unknown>
 

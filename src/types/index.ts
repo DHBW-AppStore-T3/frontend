@@ -2,16 +2,17 @@
 // Backend Model Types
 // ================================================================
 //
-// The types in the USER, DEPLOYMENT, POD WORKLOAD and TASK blocks below
+// The types in the USER, COURSE, APP, APP VERSION APPROVAL, DEPLOYMENT, POD WORKLOAD
+// and TASK blocks below
 // are DERIVED from the backend's OpenAPI schema (`api.generated.ts`,
 // regenerate with `npm run gen:api-types`). They are not hand-written and
 // must not be edited here. Where one differs from the schema on purpose
 // (a narrower literal type, a field the UI still reads that the schema
 // lacks), the reason is written next to it.
 //
-// Everything else in this file (courses, apps, wizard state) is still
-// hand-maintained, which is a known source of drift. Before this change the whole file was, and it
-// had drifted in both directions: `UserUpdate` offered `email` and
+// What is still hand-written (AppRuntime and its resource/network helpers, the
+// wizard state, variables, filters) says why next to it. Before the migration the
+// whole file was hand-written, and it had drifted in both directions: `UserUpdate` offered `email` and
 // `username` that the backend stopped accepting when profile fields
 // moved to Keycloak, while `User` was missing `keycloak_id`,
 // `firstName` and `lastName` that the backend does return -- so the
@@ -71,48 +72,33 @@ export type UserUpdate = Schemas['UserUpdate']
 // ----------------------------------------------------------------
 // COURSE TYPES
 // ----------------------------------------------------------------
-export interface Course {
-  courseId: string
-  name: string
-}
+export type Course = Schemas['CourseResponse']
 
-export interface CourseWithUsers extends Course {
-  users: User[]
-}
+// ``users`` is optional in the schema (it defaults to an empty list).
+export type CourseWithUsers = Schemas['CourseWithUsers']
 
-export interface CourseCreate {
-  name: string
-}
+export type CourseCreate = Schemas['CourseCreate']
 
-export interface CourseUpdate {
-  name?: string
-}
+export type CourseUpdate = Schemas['CourseUpdate']
 
 // ----------------------------------------------------------------
 // APP TYPES
 // ----------------------------------------------------------------
-export interface App {
-  appId: string
-  name: string
-  description: string | null
-  git_link: string | null
-  userId: string
-  created_at: string
-  releaseTag: string
-  is_private: boolean
-  // Data-URL ("data:image/png;base64,...") or null when the app
-  // has no logo. Goes straight into ``<img :src=...>``.
-  image?: string | null
-  // An admin deactivated the app; only an admin can make it public again.
-  hidden_by_admin?: boolean
-  // An admin recommends the app; the catalog opens on the "recommended" filter.
-  recommended?: boolean
-  // Version tag teachers deploy; set by an admin, null/absent means none set.
-  deploy_version?: string | null
-}
+// Derived from ``AppResponse`` (frontend#87). The hand-written type also had a
+// required ``releaseTag``; the API never returns one on an app (it is a field of
+// deployments and of the entries in ``AppDetail.versions``) and nothing read it.
+// Beware: ``image`` is a Data-URL ("data:image/png;base64,...") or null.
+export type App = Schemas['AppResponse']
 
 /**
- * ``GET /apps/{id}/runtime?version=``: how one version runs. ``scope`` is
+ * ``GET /apps/{id}/runtime?version=``: how one version runs.
+ *
+ * Stays hand-written on purpose: ``AppRuntimeResponse`` types ``runtime``, ``scope`` and
+ * ``egress`` as plain strings and ``access`` / ``resources`` / ``network`` as open
+ * records, while the UI relies on the known values and on the shapes of the
+ * ``ResourceChoice`` / ``NetworkChoices`` helpers below (they describe the
+ * ``appstore.yaml`` contents, which the OpenAPI schema does not model).
+ * ``scope`` is
  * ``team`` (one workload per team) or ``user`` (one per person).
  */
 export interface AppRuntime {
@@ -156,60 +142,36 @@ export interface ResourceChoice {
   memory: ResourceRange
 }
 
-export interface AppWithUser extends App {
-  user: User
-}
+/** ``App`` plus its owner, as ``GET /apps/{id}`` returns it (minus ``versions``, see ``AppDetail``). */
+export type AppWithUser = App & { user: User }
 
-export interface AppCreate {
-  name: string
-  description?: string | null
-  git_link?: string | null
-  releaseTag?: string
-  is_private?: boolean
-  submit_all_versions?: boolean
-  // Data-URL of the logo. Use the FileReader.readAsDataURL output.
-  // Omit / null = no logo.
-  image?: string | null
-}
+// ``releaseTag`` was offered by the hand-written type but is not part of
+// ``AppCreate`` and the form never sent it. The schema lists ``is_private`` and
+// ``submit_all_versions`` as required (they have backend defaults; the generator
+// treats defaults as required) while the hand-written type had them optional --
+// the only caller, ``buildCreatePayload``, always sends both.
+// ``image``: Data-URL of the logo (FileReader.readAsDataURL output); omit / null = no logo.
+export type AppCreate = Schemas['AppCreate']
 
-export interface AppUpdate {
-  name?: string
-  description?: string | null
-  is_private?: boolean
-  // Data-URL ("data:image/...;base64,..."), empty string to clear
-  // the existing image, or undefined to leave unchanged.
-  image?: string | null
-}
+// ``image``: Data-URL, an empty string clears the existing image, undefined leaves it unchanged.
+export type AppUpdate = Schemas['AppUpdate']
 
 // ----------------------------------------------------------------
 // APP VERSION APPROVAL TYPES
 // ----------------------------------------------------------------
-export type AppVersionApprovalStatus = 'pending' | 'approved' | 'rejected'
+export type AppVersionApprovalStatus = Schemas['AppVersionApprovalStatus']
 
 export type AppVersionBadgeStatus = 'new' | 'pending' | 'approved' | 'published' | 'rejected' | 'private'
 
-export interface AppVersionApproval {
-  approvalId: string
-  appId: string
-  version_tag: string
-  // What the review covers: the commit the tag pointed to at submission and,
-  // for pod apps, the SHA-256 of its appstore.yaml and its image digests.
-  commit_sha?: string | null
-  runtime?: DeploymentRuntime
-  spec_sha256?: string | null
-  image_digests?: string[] | null
-  status: AppVersionApprovalStatus
-  diff_url: string | null
-  notes: string | null
-  rejection_reason: string | null
-  reviewed_by: string | null
-  reviewed_at: string | null
-  created_at: string
+// Derived from ``AppVersionApprovalResponse`` (frontend#87). ``runtime`` is narrowed
+// from ``string`` to the known values like in ``Deployment``. What the review covers:
+// the commit the tag pointed to at submission and, for pod apps, the SHA-256 of its
+// appstore.yaml and its image digests.
+export type AppVersionApproval = Omit<Schemas['AppVersionApprovalResponse'], 'runtime'> & {
+  runtime: DeploymentRuntime
 }
 
-export interface AppVersionApprovalWithApp extends AppVersionApproval {
-  app: App
-}
+export type AppVersionApprovalWithApp = AppVersionApproval & { app: App }
 
 // ----------------------------------------------------------------
 // DEPLOYMENT TYPES
@@ -232,13 +194,12 @@ export type DeploymentTeamMember = Schemas['DeploymentTeamMember']
 export type DeploymentTeam = Schemas['DeploymentTeamResponse']
 
 // Derived from ``DeploymentDetail``. ``status``, ``runtime`` and ``actions`` are
-// narrowed to the known values like in ``Deployment``; ``app`` stays the
-// hand-written ``App`` until the app types are derived (frontend#87). ``outputs``
+// narrowed to the known values like in ``Deployment``; ``app`` is the schema's
+// ``AppResponse``, i.e. ``App`` (frontend#87). ``outputs``
 // is the schema's ``DeploymentOutputs`` (``raw``) instead of ``any``.
-export type DeploymentWithRelations = Omit<Schemas['DeploymentDetail'], 'status' | 'runtime' | 'app' | 'actions'> & {
+export type DeploymentWithRelations = Omit<Schemas['DeploymentDetail'], 'status' | 'runtime' | 'actions'> & {
   status: DeploymentStatus
   runtime?: DeploymentRuntime
-  app: App
   actions: DeploymentAction[]
 }
 

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { AuthService } from '@/services/auth.service'
 import { keycloak } from '@/services/keycloak.service'
 import type { User, UserRole } from '@/types'
+import { thrownMessage } from '@/utils/http-error'
 
 // In-flight promises to dedupe concurrent calls. The router guard,
 // App mount, and view mounts can all trigger initialize/fetchMe at the
@@ -89,8 +90,8 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       set({ error: null })
       try {
         await keycloak.login(returnUrl)
-      } catch (err: any) {
-        set({ error: err.message || 'Login failed' })
+      } catch (err) {
+        set({ error: thrownMessage(err) || 'Login failed' })
         throw err
       }
     },
@@ -109,8 +110,8 @@ export const useAuthStore = create<AuthState>()((set, get) => {
         await get().fetchMe()
 
         return returnUrl
-      } catch (err: any) {
-        set({ error: err.message || 'Callback handling failed' })
+      } catch (err) {
+        set({ error: thrownMessage(err) || 'Callback handling failed' })
         throw err
       } finally {
         set({ isLoading: false })

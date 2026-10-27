@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
+import { thrownMessage } from '@/utils/http-error'
 
 export default function CallbackView() {
   const navigate = useNavigate()
@@ -18,10 +19,10 @@ export default function CallbackView() {
         if (cancelled) return
         // Redirect to original destination or dashboard
         navigate(returnUrl || '/dashboard')
-      } catch (err: any) {
+      } catch (err) {
         if (cancelled) return
         console.error('Callback error:', err)
-        setError(err.message || 'Authentication failed')
+        setError(thrownMessage(err) || 'Authentication failed')
         // Redirect to login after short delay
         redirectTimer = window.setTimeout(() => navigate('/login'), 3000)
       }

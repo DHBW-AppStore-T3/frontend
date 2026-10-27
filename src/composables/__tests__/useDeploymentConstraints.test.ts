@@ -11,7 +11,8 @@ const makeApp = (name: string): App => ({
   description: null,
   git_link: null,
   created_at: '2026-01-01T00:00:00Z',
-  releaseTag: '1.0.0',
+  hidden_by_admin: false,
+  recommended: false,
 })
 
 const withVersion = (app: App, version: VersionShape) =>
