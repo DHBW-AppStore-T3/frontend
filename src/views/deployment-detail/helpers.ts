@@ -158,7 +158,7 @@ const FAILURE_DETAIL_DIVIDER = '--- Technische Details ---'
 
 /**
  * Split a task-logs string into a friendly headline + a collapsible technical
- * body. The backend's celery_event_listener emits infrastructure failures in a
+ * body. Infrastructure failures (e.g. a job the worker does not know) come in a
  * stable two-section format separated by ``--- Technische Details ---``.
  */
 export function splitTaskLogs(raw: string | Record<string, unknown> | null | undefined) {
