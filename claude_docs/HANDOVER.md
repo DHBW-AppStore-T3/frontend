@@ -35,10 +35,9 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 2. **Coverage Gate:** Der Job `🧪 Test` in `ci.yml` verlangt auf **jedem** Branch und PR mindestens 85,0 % Zeilen (`MIN_COVERAGE`,
    Metrik `total.lines.pct`). Die Linux-CI misst ca. 91,3 %. Wert immer mindestens 2 Punkte unter dem CI-Ist-Wert halten und
    `CLAUDE.md` mit anpassen.
-3. **Security-Audit:** `npm audit --omit=dev` ist 0 und blockiert in der CI. `npm audit` (mit Dev) meldet 7 bewusst akzeptierte Dev-Tooling-Funde
-   (vitest, tinypool, @vitest/mocker, happy-dom, coverage-istanbul, postcss-selector-parser, typography); Begründung je Fund in
-   `claude_docs/decisions/2026-dev-dependency-audit.md`. Behebung für die Vitest-/happy-dom-Funde nur über #83 (vitest und
-   coverage-istanbul ≥ 4.1.12, happy-dom ≥ 21.0.4).
+3. **Security-Audit:** `npm audit --omit=dev` ist 0 und blockiert in der CI. `npm audit` (mit Dev) meldet 2 bewusst akzeptierte Funde
+   (`postcss-selector-parser`, `@tailwindcss/typography`, beide moderate; Tailwind 3). Begründung je Fund und Stand nach den Upgrades in
+   `claude_docs/decisions/2026-dev-dependency-audit.md`.
 4. **Netzwerk-Guard:** Jeder ungemockte `fetch`/XHR lässt den Test fehlschlagen. Neue Views brauchen ihre API-Module als Mock
    (oder `allowRealNetwork()` mit Begründung). `NETWORK_GUARD=warn` listet alle Verursacher.
 5. **Windows:** `docker-entrypoint.spec.ts` braucht `sh` und `envsubst` (Git for Windows im `PATH`). Die Tests laufen auf Windows und
@@ -70,6 +69,19 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   Tests neu rendern; (2) die Lint-Regel `react-hooks/refs` meldet jede Prop eines Props-Objekts, das eine `*Ref` enthält, als
   Ref-Zugriff beim Rendern: Props destrukturieren. **Offen (Team):** was für Pod-Apps gelten soll (siehe Issue, „Offene Punkte").
   Design: `issue-drafts/14-internetzugriff-sichtbar/` (Mockup und `design-plan.md`, außerhalb dieses Repos).
+- **2026-10-26 (Vitest 4 und happy-dom 21, frontend#83, Teil von Epic #77):** `vitest` und `@vitest/coverage-istanbul` 3.2.7 → **4.1.12**, `happy-dom` 20.14.5 →
+  **21.0.4**, in zwei einzeln lauffähigen Commits. `npm audit` von 7 auf **2** Funde (nur noch Tailwind/PostCSS), `--omit=dev` weiter 0. Baseline und Ergebnis
+  identisch: 126 Dateien, 1283 Tests, Zeilen 91,33 % → 91,35 % (Statements 90,01 → 90,03; Funktionen 90,79; Branches 82,69), Gate 85 % hält. **Kein Test musste geändert werden.**
+  **Einzige Code-Änderung:** `vitest.config.ts`, weil Vitest 4 `poolOptions` entfernt hat: `execArgv: ['--no-experimental-webstorage']` steht jetzt oben auf `test`
+  (im Worker per `process.execArgv` bestätigt). Geprüfte Breaking Changes beider Majors mit Beleg: `claude_docs/decisions/2026-dev-dependency-audit.md`, Abschnitt "Stand nach #83".
+  Bei happy-dom 21 betrifft nur "CSS und Iframes laden standardmäßig nicht mehr" die API; nichts im Repo nutzt es. **Lehren:**
+  1. **npm 10.9.3 scheitert an Vitest 4** (Arborist: `Cannot read properties of null (reading 'edgesOut')` im Peer-Set). `npx npm@11 install ...` (11.21.1) funktioniert, der
+     Lockfile-Diff enthielt nur die Vitest-Kette und behielt die `libc`-Felder. Nach dem happy-dom-Install mit npm 10 fehlten die `libc`-Felder wieder (Skript, das sie aus `HEAD`
+     zurückholt, siehe #82). Lockfile-Diff nach jedem npm-Befehl auf Paketebene prüfen.
+  2. Die `--no-experimental-webstorage`-Option ist unter Node 22.20 wirkungslos (`localStorage` ist dort ohne Flag aus) und schützt erst ab Node 25; sie wurde trotzdem migriert.
+  3. Ein einzeln stehender Peer (`@vitest/coverage-istanbul` auf der alten Version) blockiert `npm install vitest@4`; beide Pakete im selben Befehl anheben.
+  4. Ein Vitest-4-Blocker ist nicht aufgetreten; wäre einer aufgetreten, hätte er dokumentiert und die Tests nicht geschwächt werden dürfen.
+  5. Nach dem Merge von `dev` (#111): 131 Dateien, 1335 Tests grün, Zeilen 91,56 % (Statements 90,25; Funktionen 91,14; Branches 83,11), `npm audit` 2 Funde, `--omit=dev` 0.
 
 - **2026-10-26 (Dev-Abhängigkeiten und Security-Audit, frontend#82, Teil von Epic #77):** `npm audit` von 10 auf 7 Funde (alle Dev-Tooling),
   `npm audit --omit=dev` weiter 0. **Geändert:** `vite` 7.3.6 → 7.3.7 (5 Funde zu Vite/launch-editor), `undici` 7.30.0 → 7.30.1 (nur Lockfile, innerhalb

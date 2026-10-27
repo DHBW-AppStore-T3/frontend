@@ -1,6 +1,6 @@
 # Dev-Abhängigkeiten und Security-Audit (frontend#82, Teil von Epic #77)
 
-**Status:** umgesetzt (Stand 2026-10-26, `origin/dev` @ `18e3fef`). Kennzeichnung der Aussagen: **[belegt]** = am Repo, an der
+**Status:** umgesetzt mit #82 (`origin/dev` @ `18e3fef`), fortgeschrieben mit #83 (Vitest 4, happy-dom 21; siehe Abschnitt "Stand nach #83"). Kennzeichnung der Aussagen: **[belegt]** = am Repo, an der
 installierten Version, an der npm-Registry oder am Advisory-Text geprüft; **[Annahme]** = nicht geprüft, begründete
 Einschätzung, die bei der Wiedervorlage zu bestätigen ist.
 
@@ -31,7 +31,50 @@ Das sind die Tests des XSS-Schutzes für das Markdown-Rendering. Ein Wechsel der
 verändern, das gehört nicht in eine Aufräum-Änderung. Deshalb: **`jsdom` bleibt**, `undici` (dessen Abhängigkeit) wird stattdessen
 im Lockfile angehoben. Ein Wegfall von `jsdom` wäre ein eigenes Thema (DOMPurify-Tests auf happy-dom neu bewerten).
 
-## Verbleibende Funde (7 Einträge im Audit, 6 Advisories)
+## Stand nach #83 (Vitest 4, happy-dom 21)
+**Ergebnis:** `npm audit` **7 → 2 Funde** (beide moderate, Tailwind/PostCSS), `npm audit --omit=dev` weiter **0**. [belegt: Audit vor und nach dem Upgrade]
+Verschwunden sind `vitest`, `tinypool`, `@vitest/mocker`, `@vitest/coverage-istanbul` und `happy-dom`; die in #83 verlangten Pakete tauchen nicht mehr auf.
+
+| Paket | vorher | nachher |
+|---|---|---|
+| `vitest` | 3.2.7 | **4.1.12** |
+| `@vitest/coverage-istanbul` | 3.2.7 | **4.1.12** |
+| `@vitest/mocker` (Abhängigkeit) | 3.2.7 | 4.1.12 |
+| `tinypool` (Abhängigkeit) | 1.1.1 | entfällt (Vitest 4 nutzt es nicht mehr) |
+| `happy-dom` | 20.14.5 | **21.0.4** |
+
+Lockfile: Der Vitest-Commit ändert 15 und entfernt 49 Pakete (Vitest-Kette inkl. `vite-node`, `tinypool`, alte `test-exclude`-Abhängigkeiten) und fügt 3 hinzu
+(`@standard-schema/spec`, `estree-walker`, `obug`); der happy-dom-Commit ändert nur `happy-dom`. `vite`, `jsdom`, `undici` blieben unverändert. [belegt: Lockfile-Diff je Commit]
+npm 10.9.3 bricht beim Peer-Set von Vitest 4 mit einem Arborist-Fehler ab (`Cannot read properties of null (reading 'edgesOut')`); der Install lief mit npm 11.21.1
+über `npx`. npm 10 entfernt unter Windows außerdem die `libc`-Felder, sie wurden wiederhergestellt (14 Einträge, siehe unten).
+
+### Geprüfte Breaking Changes
+**Vitest 4** (Quelle: v4.vitest.dev/guide/migration; "Ergebnis" bezieht sich auf dieses Repo):
+| Änderung | Betrifft uns? | Ergebnis |
+|---|---|---|
+| Node ≥ 20, Vite ≥ 6 | lokal Node 22.20, CI Node 24, `vite` 7.3.7 | erfüllt [belegt] |
+| `poolOptions` entfernt, Optionen auf oberster Ebene | ja (`execArgv: --no-experimental-webstorage`) | in `vitest.config.ts` auf `execArgv` migriert; im Worker per `process.execArgv` bestätigt, Deprecation-Warnung weg [belegt] |
+| `coverage.all`, `extensions`, `ignoreEmptyLines`, `experimentalAstAwareRemapping` entfernt | nein (nicht gesetzt); wir setzen `include` explizit | Coverage unverändert (Zeilen 91,35 % gegen 91,33 %) [belegt] |
+| Default-Excludes nur noch `node_modules` und `.git` | möglich (mehr Dateien könnten als Tests erkannt werden) | Anzahl unverändert: 126 Dateien [belegt] |
+| `vi.fn`/`vi.spyOn` mit `new`, `getMockName`, `restoreAllMocks`, `invocationCallOrder` ab 1 | `restoreAllMocks` (4 Stellen), `invocationCallOrder` (1 Test); kein `new` auf Mocks, keine Snapshots | alle Tests grün ohne Änderung [belegt] |
+| Test-Optionen als 3. Argument entfernt | nein (keine Fundstelle) | [belegt: Suche] |
+| `workspace`, `poolMatchGlobs`, `environmentMatchGlobs`, `deps.*`, `vite-node`, `transformMode` | nein (keine Fundstelle) | [belegt: Suche] |
+| Browser-Modus, Reporter `basic`/`verbose`, Snapshot-Shadow-Root | nein (Standard-Reporter, keine `*.snap`) | [belegt: Suche] |
+
+**happy-dom 21** (Quelle: GitHub-Releases v20.14.6 bis v21.0.4):
+| Änderung | Betrifft uns? | Ergebnis |
+|---|---|---|
+| 21.0.0: CSS-Dateien und Iframes werden standardmäßig nicht mehr geladen (`enableCSSFileLoading`, `enableIframePageLoading`, `disableCSSFileLoading` veraltet) | nein: kein Test lädt Stylesheet-Links oder Iframes; die `<iframe>`-Treffer sind Angriffs-Strings für den Sanitizer | [belegt: Suche, Testlauf] |
+| 21.0.1 bis 21.0.4, 20.14.6: Sicherheits-Patches (SSRF im Server-Renderer, Authorization-Header bei Redirect, Cookie-Scope, ESM-Compiler-Injection) | nur als Fix | keine API-Änderung genannt |
+| Events, `localStorage`, `document.hidden` (von uns genannt) | in den Release-Notes **nicht** als Änderung aufgeführt; `useDeploymentStatusPolling` (nutzt `document.hidden`), `localStorage`-Specs und Netzwerk-Guard-Tests laufen grün | [belegt: Release-Notes und Tests]. **[Annahme]** Nicht dokumentierte Verhaltensänderungen sind nicht ausgeschlossen; die Tests sind der einzige Beleg. |
+| Die fünf jsdom-Specs (DOMPurify/XSS) | unverändert auf `jsdom` | grün, keine Änderung [belegt] |
+
+**Verbleibend (2 Einträge):** `postcss-selector-parser` 6.0.10 / 6.1.4 (GHSA-rj75-hqrm-r3gf) und `@tailwindcss/typography` 0.5.20 (abgeleitet). Bewertung und
+Annahme (Build-Zeit auf eigenem CSS) unverändert wie unten; keine Tailwind-4-Migration.
+
+## Stand nach #82 (historisch): verbleibende Funde, 7 Einträge, 6 Advisories
+Die Zeilen zu `tinypool`, `@vitest/mocker`, `happy-dom`, `vitest` und `@vitest/coverage-istanbul` sind mit #83 behoben; die dort gekennzeichneten
+Annahmen zu diesen Paketen sind damit hinfällig. Bestehen bleiben die Zeilen zu `postcss-selector-parser` und `@tailwindcss/typography`.
 Alle sind Dev-Tooling. Es gibt keine Behebung innerhalb der Major-Linie, außer wo vermerkt. Entscheidung für alle: **bewusst
 akzeptiert bis #83**, kein `npm audit fix --force`.
 
@@ -66,11 +109,9 @@ akzeptiert bis #83**, kein `npm audit fix --force`.
   von Typography ändern und wurde bewusst nicht gemacht. Keine Migration auf Tailwind 4 aus Security-Gründen.
 
 ## Wiedervorlage
-- **#83 (Vitest 4, happy-dom 21):** Zielversionen laut Advisories und Registry (alle [belegt] per `npm view`):
-  `vitest` und `@vitest/coverage-istanbul` **≥ 4.1.12** (4.1.11 behebt nur den Path-Traversal, 4.1.12 auch die Code-Injection; ein Sprung auf 5.x ist
-  nicht nötig), `happy-dom` **≥ 21.0.4** (Node ≥ 20). Vitest 4.1.12 erlaubt `vite ^6 || ^7 || ^8`, passt also zu Vite 7. Danach muss `npm audit` die Einträge
-  `vitest`, `tinypool`, `@vitest/mocker`, `@vitest/coverage-istanbul` und `happy-dom` nicht mehr melden; bleiben sie, ist dieser Eintrag zu aktualisieren.
+- **#83 (Vitest 4, happy-dom 21):** erledigt, siehe "Stand nach #83". Die Zielversionen haben alle genannten Funde beseitigt.
 - **Tailwind:** erneut bewerten, wenn `tailwindcss` oder `@tailwindcss/typography` einen `postcss-selector-parser` ≥ 6.1.5 mitbringen.
 - **`jsdom`:** bleibt, solange die DOMPurify-Tests es brauchen. Beim Upgrade von `jsdom` die Abhängigkeit `undici` mitprüfen (jsdom 30 nutzt `undici ^8`).
 - **Regel:** Ein `npm install`/`npm update` unter Windows entfernt die `libc`-Felder der nativen Linux-Pakete aus `package-lock.json`. Diese Felder sind
-  in diesem PR wiederhergestellt worden; bei künftigen Lockfile-Änderungen unter Windows prüfen, dass der Diff nur die beabsichtigten Pakete zeigt.
+  in #82 und #83 wiederhergestellt worden (npm 11 behält sie, npm 10 nicht); bei künftigen Lockfile-Änderungen unter Windows prüfen, dass der Diff nur die beabsichtigten
+  Pakete zeigt. Kann npm 10 das Peer-Set nicht auflösen (Arborist-Fehler), hilft `npx npm@11 install ...`.

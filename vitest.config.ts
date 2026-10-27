@@ -12,10 +12,8 @@ export default defineConfig({
     // without `--localstorage-file` (it has no `.clear`/`.setItem` etc.) and
     // shadows happy-dom's working `window.localStorage`. Disable it so tests
     // get happy-dom's implementation instead of Node's broken stub.
-    poolOptions: {
-      forks: { execArgv: ['--no-experimental-webstorage'] },
-      threads: { execArgv: ['--no-experimental-webstorage'] },
-    },
+    // (Vitest 4 removed `poolOptions`; `execArgv` is a top-level option now.)
+    execArgv: ['--no-experimental-webstorage'],
     coverage: {
       // istanbul instruments the source directly, so a file that is never
       // rendered by any test reads as uncovered (the v8 provider can report
