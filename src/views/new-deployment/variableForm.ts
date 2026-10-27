@@ -9,7 +9,45 @@ import type { AppVariable, User } from '@/types'
 import { isBool, isList, isNumber } from '@/utils/variable-types'
 
 export type Scope = 'all' | 'team' | 'user'
-export type FormValues = Record<string, any>
+
+// ------------------------------------------------------------------ values
+/** A single value: what a text, number or checkbox input holds. */
+export type ScalarValue = string | number | boolean
+
+/**
+ * What a variable can hold, as the author's default (``AppVariable.default``) and
+ * ``draft.variables`` carry it. List entries and map entries are the author's and
+ * are not validated here, hence ``unknown``.
+ */
+export type VariableValue = ScalarValue | unknown[] | Record<string, unknown>
+
+/**
+ * Value of one slot of a team- or user-scoped variable (key: team name, or
+ * ``Team-username``). A slot holds what the widgets write (text, number, boolean,
+ * list as comma text) or what an earlier draft stored (a list as array); a
+ * draft is not validated on the way back in, so null and undefined can show up too.
+ */
+export type SlotValue = VariableValue | null | undefined
+
+/** Slot key -> value of a scoped variable. */
+export type SlotMap = Record<string, SlotValue>
+
+/**
+ * What the form holds per variable, keyed by ``formKeyOf``: a scalar, a map for
+ * map-typed variables, a ``SlotMap`` for scoped ones, and for list variables the
+ * comma-separated TEXT the textarea shows (``restoreFromDraft`` and
+ * ``initialFromFetch`` join arrays; an array can still survive inside a slot).
+ * Like a slot it is not validated, so null and undefined are possible.
+ */
+export type FormValues = Record<string, SlotValue>
+
+/**
+ * A value as it is saved in the draft (``draft.variables`` / ``userInputVar``):
+ * lists as arrays, numbers as numbers. ``undefined`` is a form field that was never
+ * set, ``null`` can only come from an unvalidated slot or earlier draft.
+ */
+export type StoredValue = VariableValue | null | undefined
+export type StoredValues = Record<string, StoredValue>
 
 export interface WizardTeamMember {
   userId: string
@@ -35,8 +73,7 @@ export const effectiveScope = (v: AppVariable): Scope => (v.varScope || v.osScop
 
 export const isScoped = (v: AppVariable): boolean => effectiveScope(v) !== 'all'
 
-const isPlainObject = (x: unknown): x is Record<string, any> =>
-  !!x && typeof x === 'object' && !Array.isArray(x)
+const isSlotMap = (x: unknown): x is SlotMap => !!x && typeof x === 'object' && !Array.isArray(x)
 
 const isEmptyValue = (val: unknown): boolean =>
   val === undefined ||
@@ -103,10 +140,10 @@ export function formatSlotLabel(v: AppVariable, slotKey: string, teams: WizardTe
  */
 export function seedScopedDefault(
   v: AppVariable,
-  existing: Record<string, any> | undefined,
+  existing: SlotMap | undefined,
   teams: WizardTeam[],
-): Record<string, any> {
-  const map: Record<string, any> = isPlainObject(existing) ? { ...existing } : {}
+): SlotMap {
+  const map: SlotMap = isSlotMap(existing) ? { ...existing } : {}
   const def = v.default
   const seedable =
     def !== undefined &&
@@ -138,7 +175,8 @@ export function dedupeVariables(defs: AppVariable[]): AppVariable[] {
 
 // -------------------------------------------------------------- restoring
 const listAsText = (key: string, type: string, values: FormValues) => {
-  if (isList(type) && Array.isArray(values[key])) values[key] = values[key].join(', ')
+  const current = values[key]
+  if (isList(type) && Array.isArray(current)) values[key] = current.join(', ')
 }
 
 /**
@@ -147,7 +185,7 @@ const listAsText = (key: string, type: string, values: FormValues) => {
  */
 export function restoreFromDraft(
   defs: AppVariable[],
-  stored: Record<string, any>,
+  stored: Record<string, StoredValue>,
   teams: WizardTeam[],
 ): FormValues {
   const values: FormValues = {}
@@ -155,10 +193,10 @@ export function restoreFromDraft(
     if (isFileVar(v)) continue // files travel through draft.fileUploads
     const key = formKeyOf(v)
 
-    const storedValue: any = stored[v.name]
+    const storedValue = stored[v.name]
 
     if (isScoped(v)) {
-      values[key] = seedScopedDefault(v, isPlainObject(storedValue) ? storedValue : undefined, teams)
+      values[key] = seedScopedDefault(v, isSlotMap(storedValue) ? storedValue : undefined, teams)
       continue
     }
 
@@ -174,19 +212,19 @@ export function restoreFromDraft(
 /** Initial form values after a fresh load: saved user input, then defaults. */
 export function initialFromFetch(
   defs: AppVariable[],
-  saved: Record<string, any>,
+  saved: Record<string, StoredValue>,
   teams: WizardTeam[],
 ): FormValues {
   const values: FormValues = {}
   for (const v of defs) {
     const key = formKeyOf(v)
-    let value: any = ''
+    let value: StoredValue = ''
     if (saved[key] !== undefined) value = saved[key]
     else if (saved[v.name] !== undefined) value = saved[v.name]
     else if (v.default !== undefined && v.default !== null) value = v.default
 
     if (isScoped(v) && !isFileVar(v)) {
-      values[key] = seedScopedDefault(v, isPlainObject(value) ? value : undefined, teams)
+      values[key] = seedScopedDefault(v, isSlotMap(value) ? value : undefined, teams)
       continue
     }
     if (isList(v.type) && Array.isArray(value)) value = value.join(', ')
@@ -198,14 +236,14 @@ export function initialFromFetch(
 
 // --------------------------------------------------------------- comparing
 /** Canonical form for "differs from default" comparisons. */
-export function normalizeValue(val: any, type: string): unknown {
+export function normalizeValue(val: unknown, type: string): string | number | boolean | null | unknown[] {
   if (val === null || val === undefined) {
     if (isList(type)) return []
     if (isBool(type)) return false
     return ''
   }
   if (isList(type)) {
-    const arr = Array.isArray(val)
+    const arr: unknown[] = Array.isArray(val)
       ? val
       : typeof val === 'string'
         ? val.split(',').map((s) => s.trim()).filter((s) => s !== '')
@@ -220,15 +258,15 @@ export function normalizeValue(val: any, type: string): unknown {
 const splitList = (raw: string) => raw.split(',').map((s) => s.trim()).filter((s) => s !== '')
 
 /** Value as it is stored in the draft: lists as arrays, numbers as numbers. */
-function toStoredValue(raw: any, type: string): any {
+function toStoredValue(raw: StoredValue, type: string): StoredValue {
   if (isList(type) && typeof raw === 'string') return splitList(raw)
   if (isNumber(type) && raw !== '') return Number(raw)
   return raw
 }
 
-function cleanScopedMap(map: unknown, type: string): Record<string, any> {
-  const clean: Record<string, any> = {}
-  if (!isPlainObject(map)) return clean
+function cleanScopedMap(map: unknown, type: string): SlotMap {
+  const clean: SlotMap = {}
+  if (!isSlotMap(map)) return clean
   for (const [slot, raw] of Object.entries(map)) {
     if (raw === undefined || raw === null) continue
     if (typeof raw === 'string' && raw.trim() === '') continue
@@ -244,15 +282,15 @@ function cleanScopedMap(map: unknown, type: string): Record<string, any> {
 export function buildDraftValues(
   defs: AppVariable[],
   form: FormValues,
-): { changed: Record<string, any>; all: Record<string, any> } {
-  const changed: Record<string, any> = {}
-  const all: Record<string, any> = {}
+): { changed: StoredValues; all: StoredValues } {
+  const changed: StoredValues = {}
+  const all: StoredValues = {}
 
   for (const v of defs) {
     if (isFileVar(v)) continue
     const key = formKeyOf(v)
 
-    let value: any
+    let value: StoredValue
     let hasChanged: boolean
     if (isScoped(v)) {
       value = cleanScopedMap(form[key], v.type)
@@ -272,7 +310,7 @@ export function buildDraftValues(
 /** Names of required variables (or ``name (slot)``) that are still empty. */
 export function findMissingRequired(
   defs: AppVariable[],
-  form: FormValues,
+  form: Record<string, unknown>,
   teams: WizardTeam[],
 ): string[] {
   const missing: string[] = []
@@ -280,7 +318,8 @@ export function findMissingRequired(
     if (!v.required || isFileVar(v)) continue
     const key = formKeyOf(v)
     if (isScoped(v)) {
-      const map = (form[key] ?? {}) as Record<string, any>
+      // A value that is no map (or missing) reads every slot as undefined, as before.
+      const map = (form[key] ?? {}) as SlotMap
       const slots = slotKeysFor(v, teams)
       if (slots.length === 0) missing.push(v.name)
       for (const slot of slots) if (isEmptyValue(map[slot])) missing.push(`${v.name} (${slot})`)
@@ -303,7 +342,7 @@ export function dropStaleSlots(
     if (!isScoped(v) || isFileVar(v)) continue
     const key = formKeyOf(v)
     const map = form[key]
-    if (!isPlainObject(map)) continue
+    if (!isSlotMap(map)) continue
     const valid = new Set(slotKeysFor(v, teams))
     const stale = Object.keys(map).filter((slot) => !valid.has(slot))
     if (stale.length === 0) continue
