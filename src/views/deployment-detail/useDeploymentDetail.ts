@@ -163,15 +163,16 @@ export function useDeploymentDetail(deploymentId: string) {
         const response = await deploymentApi.listResources(deploymentId)
         setWorkloads(response.data.workloads ?? [])
         setWorkloadsLive(response.data.live)
-      } catch (err: any) {
-        const status = err?.response?.status
+      } catch (err) {
+        const e = err as { response?: { status?: number }; message?: string } | null | undefined
+        const status = e?.response?.status
         const reason = errorReason(err)
         if (reason && te(`errors.${reason}`)) setResourcesError(localizedError(err, t, te))
         else if (status === 404) {
           // Soft-deleted upstream (e.g. right after a destroy): the workloads
           // are gone; the stream watcher handles the ``gone`` path.
           setWorkloads([])
-        } else setResourcesError(err?.message || t('pods.loadFailed'))
+        } else setResourcesError(e?.message || t('pods.loadFailed'))
       } finally {
         setResourcesLoading(false)
       }
@@ -424,7 +425,7 @@ export function useDeploymentDetail(deploymentId: string) {
         toasts.addToast({ type: 'success', message: t('DeploymentDetailView.deleteSuccessToast') })
         navigate(paths.deployments)
       }
-    } catch (err: any) {
+    } catch (err) {
       toasts.addToast({
         type: 'error',
         message: `${t('DeploymentDetailView.deleteErrorToast')}: ` + extractErrorMessage(err),
@@ -494,7 +495,7 @@ export function useDeploymentDetail(deploymentId: string) {
       })
       await useDeploymentStore.getState().fetchDeploymentById(deploymentId)
       await loadTasks()
-    } catch (err: any) {
+    } catch (err) {
       toasts.addToast({
         type: 'error',
         message:
