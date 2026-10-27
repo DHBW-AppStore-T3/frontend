@@ -417,6 +417,8 @@ export default function DeploymentDetailView() {
               teams={d.enrichedTeams}
               copiedKey={copiedKey}
               onCopy={(text, key) => void copy(text, key)}
+              canReveal={d.permissions.operate}
+              onReveal={d.revealMemberAccess}
             />
           ) : null}
 

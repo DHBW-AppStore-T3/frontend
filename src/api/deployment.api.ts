@@ -102,6 +102,17 @@ export const deploymentApi = {
   },
 
   /**
+   * Fetch ONE MEMBER'S access credentials, e.g. to answer their question.
+   *
+   * Operate right only (the deploying teacher, an admin): 403 otherwise.
+   * Same shape as ``getMyAccess``; call it on request, never preload it
+   * for every member. 200 with empty maps means the member has none.
+   */
+  getMemberAccess: (deploymentId: string, userId: string) => {
+    return api.get<MyAccessResponse>(`/deployments/${deploymentId}/members/${userId}/access`)
+  },
+
+  /**
    * The workloads of a pod deployment, read live from its namespace.
    * Owner view only.
    */

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Users, User, Copy, Check, Eye, EyeOff } from 'lucide-react'
-import { sshCommandFor, rdpCommandFor, userUrlFor } from '@/utils/connection-commands'
+import { Users, User, Copy, Check, Eye, EyeOff, KeyRound } from 'lucide-react'
+import { sshCommandFor, rdpCommandFor } from '@/utils/connection-commands'
 import { safeHttpUrl } from '@/utils/safe-url'
-import type { enrichTeams } from './helpers'
+import { accessLinkFor, type AccountHit, type enrichTeams } from './helpers'
 
 type EnrichedTeam = ReturnType<typeof enrichTeams>[number]
 
@@ -12,6 +12,10 @@ export interface TeamsCardProps {
   teams: EnrichedTeam[]
   copiedKey: string | null
   onCopy: (text: string, key: string) => void
+  /** The caller may fetch other members' credentials (the operate right). */
+  canReveal: boolean
+  /** One member's credentials, fetched on request; null when they have none. */
+  onReveal: (userId: string) => Promise<AccountHit | null>
 }
 
 const PILL = 'flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100'
@@ -19,16 +23,43 @@ const PILL_LABEL = 'text-gray-400 font-sans text-[10px] uppercase tracking-wider
 const COPY_BTN =
   'text-gray-400 hover:text-amber-600 p-0.5 rounded hover:bg-gray-200 transition-colors flex-shrink-0'
 
-/** Teams & members with per-member credentials. */
+/**
+ * Teams & members with per-member credentials.
+ *
+ * A row reads link, login, password, so the login and the password that
+ * belong together sit next to each other. Only the caller's own row carries
+ * credentials; with the operate right, any other member's are fetched on a
+ * click and kept in this card's state only.
+ */
 export default function TeamsCard({
   teamCount,
   teams,
   copiedKey,
   onCopy,
+  canReveal,
+  onReveal,
 }: TeamsCardProps) {
   const { t } = useTranslation()
   // Password visibility, keyed by account key.
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({})
+  // Credentials fetched on request, keyed by user id (null: the member has none).
+  const [revealed, setRevealed] = useState<Record<string, AccountHit | null>>({})
+  const [revealStatus, setRevealStatus] = useState<Record<string, 'loading' | 'error'>>({})
+
+  const reveal = async (userId: string) => {
+    setRevealStatus((s) => ({ ...s, [userId]: 'loading' }))
+    try {
+      const hit = await onReveal(userId)
+      setRevealed((r) => ({ ...r, [userId]: hit }))
+      setRevealStatus((s) => {
+        const next = { ...s }
+        delete next[userId]
+        return next
+      })
+    } catch {
+      setRevealStatus((s) => ({ ...s, [userId]: 'error' }))
+    }
+  }
 
   const copyButton = (text: string, key: string, titleIdle: string) => (
     <button
@@ -69,10 +100,23 @@ export default function TeamsCard({
             ) : (
               <div>
                 {team.members.map((member) => {
-                  const account = member.account
+                  const revealedHit = revealed[member.userId]
+                  const account = member.account ?? revealedHit ?? null
                   const data = account?.data
                   const vmUrl = team.vm?.url
-                  const userUrl = data ? userUrlFor(data, vmUrl) : null
+                  const link = accessLinkFor(data, vmUrl, member.workloadUrl)
+                  const rowKey = account?.key ?? member.userId
+                  const status = revealStatus[member.userId]
+                  const canRevealRow = canReveal && !account
+                  const hasNothing = member.userId in revealed && revealedHit === null
+
+                  // Ready-to-use SSH command line (username, IP, non-22 port).
+                  const showSsh = Boolean(
+                    data && !vmUrl && data.ip && data.username && (!data.authtype || data.authtype === 'ssh'),
+                  )
+                  // The login belongs next to the password. Only the SSH command
+                  // carries it already; the RDP command (mstsc) does not.
+                  const showUser = Boolean(data?.username && !showSsh)
 
                   return (
                     <div
@@ -89,71 +133,53 @@ export default function TeamsCard({
                         </div>
                       </div>
 
-                      {account && data ? (
+                      {link || data || canRevealRow ? (
                         <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-gray-600 lg:justify-end">
-                          {/* Web-app URL from ``team_vms.<team>.url``, shared by
-                              every team member. When set, the SSH pill is
-                              dropped and the username shows next to it. */}
-                          {vmUrl ? (
-                            <div className={PILL}>
-                              <span className={PILL_LABEL}>User:</span>
-                              <span>{data.username}</span>
-                              {copyButton(data.username ?? '', `user-${account.key}`, 'Username kopieren')}
+                          {/* 1. Link: the account's own, the member's workload or the
+                              team's (``team_vms.<team>.url``), see ``accessLinkFor``. */}
+                          {link ? (
+                            <div className={`${PILL} max-w-[280px]`}>
+                              <span className={PILL_LABEL}>URL:</span>
+                              <a
+                                href={safeHttpUrl(link)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline truncate"
+                              >
+                                {link.replace(/^https?:\/\//, '')}
+                              </a>
+                              {copyButton(link, `vmurl-${rowKey}`, 'URL kopieren')}
                             </div>
                           ) : null}
 
                           {/* Ready-to-use RDP command line (opt-in via authtype "rdp"). */}
-                          {data.authtype === 'rdp' && data.ip ? (
+                          {data && data.authtype === 'rdp' && data.ip ? (
                             <div className={`${PILL} max-w-full`}>
                               <span className={PILL_LABEL}>RDP:</span>
                               <span className="truncate">{rdpCommandFor(data)}</span>
-                              {copyButton(rdpCommandFor(data), `rdp-${account.key}`, 'RDP-Befehl kopieren')}
+                              {copyButton(rdpCommandFor(data), `rdp-${rowKey}`, 'RDP-Befehl kopieren')}
                             </div>
                           ) : null}
 
-                          {data.ip &&
-                          data.port &&
-                          data.type !== 'ssh_key' &&
-                          data.authtype !== 'ssh' &&
-                          data.authtype !== 'rdp' &&
-                          data.port !== 22 ? (
-                            <div className={`${PILL} max-w-[280px]`}>
-                              <span className={PILL_LABEL}>URL:</span>
-                              <a
-                                href={safeHttpUrl(userUrl)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline truncate"
-                              >
-                                {userUrl?.replace(/^https?:\/\//, '')}
-                              </a>
-                              {copyButton(userUrl ?? '', `vmurl-${account.key}`, 'URL kopieren')}
-                            </div>
-                          ) : vmUrl ? (
-                            <div className={`${PILL} max-w-[280px]`}>
-                              <span className={PILL_LABEL}>URL:</span>
-                              <a
-                                href={safeHttpUrl(vmUrl)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline truncate"
-                              >
-                                {vmUrl.replace(/^https?:\/\//, '')}
-                              </a>
-                              {copyButton(vmUrl, `vmurl-${account.key}`, 'URL kopieren')}
-                            </div>
-                          ) : null}
-
-                          {/* Ready-to-use SSH command line (username, IP, non-22 port). */}
-                          {!vmUrl && data.ip && data.username && (!data.authtype || data.authtype === 'ssh') ? (
+                          {data && showSsh ? (
                             <div className={`${PILL} max-w-full`}>
                               <span className={PILL_LABEL}>SSH:</span>
                               <span className="truncate">{sshCommandFor(data)}</span>
-                              {copyButton(sshCommandFor(data), `ssh-${account.key}`, 'SSH-Befehl kopieren')}
+                              {copyButton(sshCommandFor(data), `ssh-${rowKey}`, 'SSH-Befehl kopieren')}
                             </div>
                           ) : null}
 
-                          {data.auth ? (
+                          {/* 2. Login. */}
+                          {data && showUser ? (
+                            <div className={PILL}>
+                              <span className={PILL_LABEL}>User:</span>
+                              <span>{data.username}</span>
+                              {copyButton(data.username ?? '', `user-${rowKey}`, 'Username kopieren')}
+                            </div>
+                          ) : null}
+
+                          {/* 3. Password. */}
+                          {account && data?.auth ? (
                             <div className={`${PILL} min-w-[150px] justify-between`}>
                               <div className="truncate mr-1">
                                 <span className="text-gray-400 font-sans text-[10px] uppercase tracking-wider mr-1">
@@ -168,6 +194,7 @@ export default function TeamsCard({
                               <div className="flex items-center gap-0.5 flex-shrink-0">
                                 <button
                                   type="button"
+                                  title={visiblePasswords[account.key] ? 'Passwort verbergen' : 'Passwort anzeigen'}
                                   onClick={() =>
                                     setVisiblePasswords((v) => ({ ...v, [account.key]: !v[account.key] }))
                                   }
@@ -175,9 +202,32 @@ export default function TeamsCard({
                                 >
                                   {visiblePasswords[account.key] ? <EyeOff size={12} /> : <Eye size={12} />}
                                 </button>
-                                {copyButton(data.auth, `auth-${account.key}`, 'Passwort kopieren')}
+                                {copyButton(data.auth, `auth-${rowKey}`, 'Passwort kopieren')}
                               </div>
                             </div>
+                          ) : null}
+
+                          {/* Other members' credentials: on request, operate right only. */}
+                          {canRevealRow && !hasNothing ? (
+                            <button
+                              type="button"
+                              disabled={status === 'loading'}
+                              onClick={() => void reveal(member.userId)}
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-gray-200 font-sans text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                            >
+                              <KeyRound size={12} />
+                              {t('DeploymentDetailView.revealCredentials')}
+                            </button>
+                          ) : null}
+                          {canRevealRow && status === 'error' ? (
+                            <span role="alert" className="font-sans text-xs text-red-600">
+                              {t('DeploymentDetailView.revealFailed')}
+                            </span>
+                          ) : null}
+                          {canRevealRow && hasNothing ? (
+                            <span className="font-sans text-xs text-gray-500">
+                              {t('DeploymentDetailView.noCredentials')}
+                            </span>
                           ) : null}
                         </div>
                       ) : null}
