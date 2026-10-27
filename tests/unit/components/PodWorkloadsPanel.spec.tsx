@@ -4,11 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import i18next from 'i18next'
 
-import PodWorkloadsPanel, { phaseTone, type PodWorkloadsPanelProps } from '@/components/PodWorkloadsPanel'
+import PodWorkloadsPanel, { displayPhase, phaseTone, type PodWorkloadsPanelProps } from '@/components/PodWorkloadsPanel'
 import type { PodWorkload } from '@/types'
 
-// Only the "Running" phase has a translation here; others fall back to the
-// phase as Kubernetes names it.
+// Only a few phases have a translation here; others fall back to the phase
+// as Kubernetes names it.
 const i18n = i18next.createInstance()
 void i18n.init({
   lng: 'de',
@@ -16,7 +16,7 @@ void i18n.init({
     de: {
       translation: {
         pods: {
-          phase: { Running: 'Läuft' },
+          phase: { Running: 'Läuft', Starting: 'startet', NotResponding: 'antwortet nicht' },
           started: 'App erfolgreich gestartet',
           setup: {
             title: 'Einrichtung',
@@ -153,8 +153,43 @@ describe('phaseTone', () => {
     [{ ready: false, phase: 'ContainerCreating' }, 'yellow'],
     [{ ready: false, phase: 'CrashLoopBackOff' }, 'red'],
     [{ ready: false, phase: 'ImagePullBackOff' }, 'red'],
+    // Runs, its app does not answer yet: starting, not failed.
+    [{ ready: false, phase: 'Starting' }, 'yellow'],
+    [{ ready: false, phase: 'Running' }, 'yellow'],
+    [{ ready: false, phase: 'PodInitializing' }, 'yellow'],
+    // Stopped answering, or never did within the deploy's time.
+    [{ ready: false, phase: 'NotResponding' }, 'red'],
   ])('%j is %s', (workload, colour) => {
     expect(phaseTone(workload)).toContain(colour)
+  })
+
+  it('shows a running pod that is not ready as starting (older backend)', () => {
+    expect(displayPhase({ ready: false, phase: 'Running' })).toBe('Starting')
+    expect(displayPhase({ ready: true, phase: 'Running' })).toBe('Running')
+  })
+})
+
+describe('PodWorkloadsPanel: starting and not responding', () => {
+  it('labels a pod whose app does not answer yet as starting, not as running', () => {
+    renderPanel({ workloads: [workload({ ready: false, phase: 'Running', lastEvent: null })] })
+    const badge = within(screen.getByTestId('workload-team-alpha')).getByText('startet')
+    expect(badge.className).toContain('yellow')
+    expect(screen.queryByText('Läuft')).not.toBeInTheDocument()
+  })
+
+  it('labels a pod that stopped answering as not responding and shows why', () => {
+    renderPanel({
+      workloads: [
+        workload({
+          ready: false,
+          phase: 'NotResponding',
+          lastEvent: 'Unhealthy: Readiness probe failed: dial tcp 10.0.0.7:8080: connect: connection refused',
+        }),
+      ],
+    })
+    const row = screen.getByTestId('workload-team-alpha')
+    expect(within(row).getByText('antwortet nicht').className).toContain('red')
+    expect(within(row).getByText(/Readiness probe failed/)).toBeInTheDocument()
   })
 })
 

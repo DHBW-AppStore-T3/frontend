@@ -36,12 +36,24 @@ const TONE_READY = 'bg-green-100 text-green-800 border-green-300'
 const TONE_STOPPED = 'bg-slate-100 text-slate-700 border-slate-300'
 const TONE_STARTING = 'bg-yellow-100 text-yellow-800 border-yellow-300'
 const TONE_FAILED = 'bg-red-100 text-red-800 border-red-300'
-const STARTING_PHASES = ['Pending', 'ContainerCreating', 'PodInitializing']
+// On the way up: scheduled, created, or running while its app does not answer
+// yet ("Starting"; KubeVirt VMs too). "NotResponding" (an app that stopped
+// answering, or never did within the deploy's time) and the rest are red.
+const STARTING_PHASES = ['Pending', 'ContainerCreating', 'PodInitializing', 'Starting', 'Scheduling', 'Scheduled']
+
+/**
+ * The phase to show. A backend without the Starting/NotResponding distinction
+ * sends a pod that runs but is not ready as "Running": that pod is starting.
+ */
+export function displayPhase(workload: Pick<PodWorkload, 'ready' | 'phase'>): string {
+  return !workload.ready && workload.phase === 'Running' ? 'Starting' : workload.phase
+}
 
 export function phaseTone(workload: Pick<PodWorkload, 'ready' | 'phase'>): string {
   if (workload.ready) return TONE_READY
-  if (workload.phase === 'Stopped') return TONE_STOPPED
-  return STARTING_PHASES.includes(workload.phase) ? TONE_STARTING : TONE_FAILED
+  const phase = displayPhase(workload)
+  if (phase === 'Stopped') return TONE_STOPPED
+  return STARTING_PHASES.includes(phase) ? TONE_STARTING : TONE_FAILED
 }
 
 /** The second bar: what the app does after it started (an installer), with the time it expects to need. */
@@ -90,9 +102,10 @@ function WorkloadRow({
   const { t, i18n } = useTranslation()
   const name = workload.workload
   const url = safeHttpUrl(workload.url)
-  const phaseKey = `pods.phase.${workload.phase}`
+  const phase = displayPhase(workload)
+  const phaseKey = `pods.phase.${phase}`
   // Phases without a translation show as Kubernetes names them.
-  const phaseLabel = i18n.exists(phaseKey) ? t(phaseKey) : workload.phase
+  const phaseLabel = i18n.exists(phaseKey) ? t(phaseKey) : phase
 
   return (
     <tr data-testid={`workload-${name}`}>
