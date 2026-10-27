@@ -1054,7 +1054,12 @@ export default {
     confirmResetMessage: "Alle Daten von {workload} werden gelöscht, der Workload startet leer neu. Das lässt sich nicht rückgängig machen.",
     phase: {
       Running: "läuft",
+      Starting: "startet",
+      NotResponding: "antwortet nicht",
       Pending: "wartet",
+      Scheduling: "wird eingeplant",
+      Scheduled: "wird eingeplant",
+      PodInitializing: "wird vorbereitet",
       Stopped: "gestoppt",
       Unschedulable: "kein Platz im Cluster",
       CrashLoopBackOff: "stürzt wiederholt ab",
