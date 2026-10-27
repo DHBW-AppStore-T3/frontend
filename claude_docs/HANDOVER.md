@@ -81,6 +81,7 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   2. Die `--no-experimental-webstorage`-Option ist unter Node 22.20 wirkungslos (`localStorage` ist dort ohne Flag aus) und schützt erst ab Node 25; sie wurde trotzdem migriert.
   3. Ein einzeln stehender Peer (`@vitest/coverage-istanbul` auf der alten Version) blockiert `npm install vitest@4`; beide Pakete im selben Befehl anheben.
   4. Ein Vitest-4-Blocker ist nicht aufgetreten; wäre einer aufgetreten, hätte er dokumentiert und die Tests nicht geschwächt werden dürfen.
+  5. Nach dem Merge von `dev` (#111): 131 Dateien, 1335 Tests grün, Zeilen 91,56 % (Statements 90,25; Funktionen 91,14; Branches 83,11), `npm audit` 2 Funde, `--omit=dev` 0.
 
 - **2026-10-26 (Dev-Abhängigkeiten und Security-Audit, frontend#82, Teil von Epic #77):** `npm audit` von 10 auf 7 Funde (alle Dev-Tooling),
   `npm audit --omit=dev` weiter 0. **Geändert:** `vite` 7.3.6 → 7.3.7 (5 Funde zu Vite/launch-editor), `undici` 7.30.0 → 7.30.1 (nur Lockfile, innerhalb
