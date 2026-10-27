@@ -458,6 +458,8 @@ export interface WizardSummary {
 
 export interface AppVariable {
   name: string
+  // A readable title for people. The apps do not send one yet; the wizard then derives a title from ``name``.
+  label?: string
   type: string
   description?: string
   // Backend coerces the HCL default literal to its native Python type
@@ -471,18 +473,18 @@ export interface AppVariable {
   osType?: AppVariableOsType | null
   values?: string[]
   // Scope of a file variable. Set only when ``osType === 'file'``;
-  // controls whether the wizard renders one FileDropZone, one per team, or one per user.
+  // controls whether the wizard offers one file for everybody, one per team, or one per user.
   osScope?: 'all' | 'team' | 'user'
   // Per-variable scope for all variables. 'all' = one shared value, 'team' = one
   // value per team, 'user' = one value per user (slot key ``TeamName-Username``).
   varScope?: 'all' | 'team' | 'user'
-  // Allowed file extensions for file variables; used as the FileDropZone
-  // ``accept`` attribute. The backend rejects other extensions with 422.
+  // Allowed file extensions for file variables; used as the ``accept`` attribute and to check a file
+  // when it is picked. The backend rejects other extensions with 422.
   fileExtensions?: string[]
 }
 
-// ``file``: rendered as a FileDropZone widget that produces a base64 payload
-// shipped to the backend in ``DeploymentCreate.files``; ``osScope`` tells the
-// wizard whether to render one zone, one per team, or one per user.
+// ``file``: rendered as a FileVariableCard that produces base64 payloads shipped to
+// the backend in ``DeploymentCreate.files``; ``osScope`` tells the wizard whether the
+// file is for the whole deployment, per team, or per user.
 // ``enum`` (appstore.yaml): a choice among ``values``.
 export type AppVariableOsType = 'file' | 'enum'

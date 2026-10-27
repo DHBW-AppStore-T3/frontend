@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Layers } from 'lucide-react'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar'
 import type { AppVariable } from '@/types'
-import { isExpert, formKeyOf } from './new-deployment/variableForm'
+import { isExpert, isFileVar, formKeyOf } from './new-deployment/variableForm'
 import { useVariableForm } from './new-deployment/useVariableForm'
 import VariableCard, { type Accent } from './new-deployment/VariableCard'
 import ResourcePicker from './new-deployment/ResourcePicker'
 import NetworkSettings from './new-deployment/NetworkSettings'
 import VmInternetAccess from './new-deployment/VmInternetAccess'
 import VmExpertSettings from './new-deployment/VmExpertSettings'
+import FileVariableCard from './new-deployment/FileVariableCard'
+import { useStudentNames } from './new-deployment/useStudentNames'
 import { visibleNetworkKeys } from '@/utils/network'
 import { useDeploymentStore } from '@/stores/deployment.store'
 
@@ -53,6 +55,12 @@ export default function NewDeploymentVariableView() {
   const setResources = (resources: typeof chosen) => useDeploymentStore.getState().updateDraft({ resources })
   const setNetwork = (network: NonNullable<typeof draft.network>) => useDeploymentStore.getState().updateDraft({ network })
 
+  // File variables get their own card (one file for everybody, checked early); expert ones stay hidden.
+  const fileVariables = form.terraformVariables.filter((v) => isFileVar(v) && !isExpert(v))
+  const nameOf = useStudentNames(fileVariables.length > 0 ? form.teams.flatMap((team) => team.members.map((m) => m.userId)) : [])
+  const bytesOf = (name: string) => Object.values(draft.fileUploads?.[name] ?? {}).reduce((sum, f) => sum + (f?.size ?? 0), 0)
+  const allFileBytes = fileVariables.reduce((sum, v) => sum + bytesOf(v.name), 0)
+
   const card = (variable: AppVariable, accent: Accent, expert = false) => {
     const key = formKeyOf(variable)
     return (
@@ -65,18 +73,19 @@ export default function NewDeploymentVariableView() {
         value={form.formValues[key]}
         expert={expert}
         getScopedValue={(slot) => form.getScopedValue(key, slot)}
-        getFileSlot={form.getFileSlot}
         isTooltipOpen={activeTooltip === key}
         onToggleTooltip={() => setActiveTooltip((cur) => (cur === key ? null : key))}
         onChange={(v) => form.setValue(key, v)}
         onScopedChange={(slot, v) => form.setScopedValue(key, slot, v)}
-        onFileChange={form.setFileSlot}
       />
     )
   }
 
-  const terraformNormal = form.terraformVariables.filter((v) => !isExpert(v))
+  const terraformNormal = form.terraformVariables.filter((v) => !isExpert(v) && !isFileVar(v))
   const terraformExpert = form.terraformVariables.filter(isExpert)
+
+  // Anything for the purple card? File variables have their own cards above it.
+  const hasOtherSettings = terraformNormal.length + terraformExpert.length > 0
 
   const renderBody = (f: Form) => (
     <div className="grid grid-cols-1 gap-6">
@@ -101,8 +110,24 @@ export default function NewDeploymentVariableView() {
         </>
       )}
 
+      {fileVariables.length > 0 ? (
+        <div className="mx-auto grid w-full max-w-3xl gap-4">
+          {fileVariables.map((v) => (
+            <FileVariableCard
+              key={v.name}
+              variable={v}
+              teams={form.teams}
+              nameOf={nameOf}
+              otherBytes={allFileBytes - bytesOf(v.name)}
+              getFileSlot={form.getFileSlot}
+              setFileSlots={form.setFileSlots}
+            />
+          ))}
+        </div>
+      ) : null}
+
       {/* The app's own settings, declared in its appstore.yaml */}
-      {f.terraformVariables.length === 0 && (choices.length > 0 || hasNetwork) ? null : (
+      {!hasOtherSettings && (choices.length > 0 || hasNetwork || fileVariables.length > 0) ? null : (
       <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border-2 border-purple-200 overflow-hidden">
         <div className="bg-purple-600 text-white px-6 py-4 flex items-center gap-3">
           <Layers size={24} />

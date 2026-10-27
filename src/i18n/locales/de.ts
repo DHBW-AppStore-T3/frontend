@@ -811,6 +811,83 @@ export default {
         totalLabel_other: 'Insgesamt für {count} Personen',
       },
     },
+    // Datei-Variablen im Schritt "Variablen" (Web-LaTeX, Online-IDE): eine Datei für alle, früh geprüft.
+    fileVariable: {
+      optional: 'Optional',
+      descShow: 'Beschreibung anzeigen',
+      descHide: 'Beschreibung ausblenden',
+      plain: 'Eine {type}.',
+      typeNamed: '{ext}-Datei',
+      typeAny: 'Datei',
+      audienceAll: 'alle Studierenden',
+      audiencePeople_one: 'die Person',
+      audiencePeople_other: 'alle {count} Studierenden',
+      audienceTeams_one: 'das Team',
+      audienceTeams_other: 'alle {count} Teams',
+      readError: 'Die Datei konnte nicht gelesen werden. Versuchen Sie es mit einer anderen Datei.',
+      mode: {
+        label: 'Wer welche Datei bekommt',
+        all: 'Eine Datei für alle',
+        eachPerson: 'Pro Person unterschiedlich',
+        eachTeam: 'Pro Team unterschiedlich',
+      },
+      help: {
+        allPeople_one: 'Die Person bekommt die Datei.',
+        allPeople_other: 'Alle {count} Studierenden bekommen dieselbe Datei.',
+        allTeams_one: 'Das Team bekommt die Datei.',
+        allTeams_other: 'Alle {count} Teams bekommen dieselbe Datei.',
+        eachPerson: 'Jede Person bekommt ihre eigene Datei. Zeilen ohne Datei bleiben leer.',
+        eachTeam: 'Jedes Team bekommt seine eigene Datei. Zeilen ohne Datei bleiben leer.',
+      },
+      drop: {
+        title: '{type} hier ablegen',
+        hint: 'Optional · gilt für {audience}',
+        pick: 'Datei auswählen',
+      },
+      file: {
+        meta: '{size} · gilt für {audience}',
+        replace: 'Ersetzen',
+        remove: 'Entfernen',
+        removeFor: 'Datei für {name} entfernen',
+      },
+      mixed: {
+        person: 'Die Dateien sind je Person unterschiedlich. Eine neue Datei ersetzt sie alle.',
+        team: 'Die Dateien sind je Team unterschiedlich. Eine neue Datei ersetzt sie alle.',
+      },
+      recipients: {
+        title: 'Empfänger',
+        titleEachPerson: 'Dateien je Person',
+        titleEachTeam: 'Dateien je Team',
+        none: 'Keine Datei',
+        removeAll: 'Alle entfernen',
+        morePeople_one: '{count} weitere Person anzeigen',
+        morePeople_other: '{count} weitere Personen anzeigen',
+        moreTeams_one: '{count} weiteres Team anzeigen',
+        moreTeams_other: '{count} weitere Teams anzeigen',
+        less: 'Weniger anzeigen',
+      },
+      total: {
+        uniform: 'Zusammen {count} × {size} = {total} (erlaubt: höchstens {max})',
+        mixed: 'Zusammen {files} · {total} (erlaubt: höchstens {max})',
+        files_one: '{count} Datei',
+        files_other: '{count} Dateien',
+      },
+      errors: {
+        type: '„{name}“ ist keine {type}. Wählen Sie eine Datei mit der Endung .{ext}.',
+        typeMany: '„{name}“ hat keine passende Endung. Erlaubt sind: {list}.',
+        size: '„{name}“ ist zu groß. Verkleinern Sie die Datei oder wählen Sie eine andere.',
+        totalAllPeople: '{count} Personen × {size} = {total}. Zusammen sind höchstens {max} erlaubt. Nehmen Sie eine Datei bis {fit} oder laden Sie die Datei nur für einzelne Personen hoch.',
+        totalAllTeams: '{count} Teams × {size} = {total}. Zusammen sind höchstens {max} erlaubt. Nehmen Sie eine Datei bis {fit} oder laden Sie die Datei nur für einzelne Teams hoch.',
+        totalSlot: 'Mit dieser Datei wären es zusammen {total}. Erlaubt sind höchstens {max} für alle Dateien.',
+        close: 'Meldung schließen',
+      },
+      live: {
+        all: '{name} gilt jetzt für {audience}.',
+        slot: '{name} gilt jetzt für {recipient}.',
+        removed: 'Datei entfernt.',
+        removedAll: 'Alle Dateien entfernt.',
+      },
+    },
     variables: {
       title: 'Nutzerspezifische Variablen',
       description: 'Optionale Parameter für das Deployment.',
@@ -1001,12 +1078,6 @@ export default {
 
 
 
-  fileDropZone: {
-    pick: 'Datei wählen oder hier ablegen',
-    remove: 'Entfernen',
-    tooLarge: 'Datei zu groß (max. {mb} MB).',
-    readError: 'Datei konnte nicht eingelesen werden.',
-  },
 
   variableInput: {
     on: 'Aktiviert',

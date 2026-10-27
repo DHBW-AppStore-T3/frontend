@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { Info } from 'lucide-react'
 import VariableInput from '@/components/VariableInput'
-import FileDropZone from '@/components/FileDropZone'
 import ScopeBadge from '@/components/ui/ScopeBadge'
 import { translateHtml } from '@/i18n/html'
-import type { AppVariable, DeploymentFile } from '@/types'
+import type { AppVariable } from '@/types'
 import { isList } from '@/utils/variable-types'
 import {
   displayDescription,
@@ -27,14 +26,12 @@ export interface VariableCardProps {
   teams: WizardTeam[]
   value: any
   getScopedValue: (slot: string) => any
-  getFileSlot: (varName: string, slot: string) => DeploymentFile | null
   isTooltipOpen: boolean
   /** Expert variables render compactly: the plain input only. */
   expert?: boolean
   onToggleTooltip: () => void
   onChange: (value: any) => void
   onScopedChange: (slot: string, value: any) => void
-  onFileChange: (varName: string, slot: string, file: DeploymentFile | null) => void
 }
 
 const COLORS = {
@@ -92,16 +89,6 @@ export default function VariableCard(props: VariableCardProps) {
     </div>
   )
 
-  const fileZone = (slot: string, label: string) => (
-    <FileDropZone
-      key={`${variable.name}::${slot}`}
-      value={props.getFileSlot(variable.name, slot)}
-      onChange={(file) => props.onFileChange(variable.name, slot, file)}
-      label={label}
-      accept={variable.fileExtensions?.length ? variable.fileExtensions.map((e) => `.${e}`).join(',') : '*'}
-    />
-  )
-
   const userGroups = (render: (team: WizardTeam, member: WizardTeam['members'][number]) => React.ReactNode) =>
     teams.map((team) => (
       <div key={`${variable.name}::${team.name}`} className={TEAM_GROUP}>
@@ -112,26 +99,7 @@ export default function VariableCard(props: VariableCardProps) {
     ))
 
   let body: React.ReactNode
-  if (isFileVar(variable)) {
-    const fileScope = variable.osScope || 'all'
-    body = (
-      <div className="space-y-3">
-        {fileScope === 'all' ? fileZone('all', variable.name) : null}
-        {fileScope === 'team' ? (
-          <>
-            {teams.map((team) => fileZone(team.name, team.name))}
-            {teams.length === 0 ? noTeams : null}
-          </>
-        ) : null}
-        {fileScope === 'user' ? (
-          <>
-            {userGroups((team, member) => fileZone(userSlotKey(team.name, member.username), member.username))}
-            {teams.length === 0 ? noTeams : null}
-          </>
-        ) : null}
-      </div>
-    )
-  } else if (!isScoped(variable)) {
+  if (!isScoped(variable)) {
     body = input(formKey, props.value, props.onChange)
   } else if (scope === 'user') {
     body = (
