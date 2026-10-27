@@ -224,5 +224,19 @@ describe('NewDeploymentSummaryView', () => {
       await screen.findByText('My Deployment')
       expect(screen.queryByTestId('summary-network')).toBeNull()
     })
+
+    it('nennt bei einer VM-App „Vernetzte Desktops“, bei Pods weiter „Vernetzte Pods“', async () => {
+      pods({ internet: false, podNetwork: true }, { runtime: 'kubevirt-vm' })
+      const vm = renderView()
+      const vmLine = await screen.findByTestId('summary-network-podNetwork')
+      expect(vmLine).toHaveTextContent('deployment.vm.pods.label')
+      expect(vmLine).not.toHaveTextContent('deployment.network.podNetwork.label')
+      vm.unmount()
+
+      pods({ internet: false, podNetwork: true })
+      renderView()
+      const podLine = await screen.findByTestId('summary-network-podNetwork')
+      expect(podLine).toHaveTextContent('deployment.network.podNetwork.label')
+    })
   })
 })
