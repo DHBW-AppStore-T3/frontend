@@ -1,6 +1,6 @@
 # Design-Plan: Startseite (Dashboard) je Rolle
 
-Zum Issue „Startseite je Rolle“ im Repo `DHBW-AppStore-T3/frontend` (Nummer steht im Issue-Link der README dieses Ordners, sobald es angelegt ist).
+Zu [frontend#138](https://github.com/DHBW-AppStore-T3/frontend/issues/138).
 Mockup: [`mockup/index.html`](mockup/index.html), interaktiv (Schalter „Rolle“ und „Zustand“ in der dunklen Leiste; Deep-Links siehe unten).
 
 Bilder: [`0-ist-zustand`](screenshots/0-ist-zustand.png), [`1-neu-lehrende`](screenshots/1-neu-lehrende.png), [`2-neu-lehrende-leer`](screenshots/2-neu-lehrende-leer.png), [`3-neu-admin`](screenshots/3-neu-admin.png), [`4-neu-admin-leer`](screenshots/4-neu-admin-leer.png), [`5-neu-studierende`](screenshots/5-neu-studierende.png), [`6-neu-studierende-leer`](screenshots/6-neu-studierende-leer.png), [`7-neu-mobil-lehrende`](screenshots/7-neu-mobil-lehrende.png), [`8-neu-mobil-studierende`](screenshots/8-neu-mobil-studierende.png).
