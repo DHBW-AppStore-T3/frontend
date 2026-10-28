@@ -77,6 +77,7 @@ export default function AddMembersModal(props: AddMembersModalProps) {
               onChange={(e) => setQuery(e.target.value)}
               type="text"
               placeholder={t('CourseDetailView.addModal.searchPlaceholder')}
+              aria-label={t('CourseDetailView.addModal.searchPlaceholder')}
               className="w-full pl-9 pr-3 py-2 border border-borderSubtle rounded-lg focus:ring-2 focus:ring-primary outline-none"
             />
           </div>
@@ -89,8 +90,13 @@ export default function AddMembersModal(props: AddMembersModalProps) {
                   className="flex items-center gap-1 bg-primaryFaint text-primary text-sm px-2 py-1 rounded"
                 >
                   {user.username}
-                  <button type="button" onClick={() => remove(user.userId)} className="hover:text-primaryDark">
-                    <X size={14} />
+                  <button
+                    type="button"
+                    onClick={() => remove(user.userId)}
+                    aria-label={t('CourseDetailView.addModal.removeSelected', { username: user.username })}
+                    className="hover:text-primaryDark"
+                  >
+                    <X size={14} aria-hidden="true" />
                   </button>
                 </span>
               ))}

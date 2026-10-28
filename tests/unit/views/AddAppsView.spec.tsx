@@ -53,6 +53,22 @@ beforeEach(() => {
 })
 
 describe('AddAppsView', () => {
+  it('names name, description and repo fields by their row labels (#141)', () => {
+    renderView()
+    expect(screen.getByRole('textbox', { name: 'AppsCreateView.form.nameLabel' })).toBe(nameInput())
+    expect(screen.getByRole('textbox', { name: 'AppsCreateView.form.descLabel' })).toBe(
+      screen.getByPlaceholderText('AppsCreateView.form.descPlaceholder'),
+    )
+    expect(screen.getByRole('textbox', { name: 'AppsCreateView.form.repoLabel' })).toBe(repoInput())
+  })
+
+  it('describes the description field by its Markdown hint (#141)', () => {
+    renderView()
+    expect(screen.getByRole('textbox', { name: 'AppsCreateView.form.descLabel' })).toHaveAccessibleDescription(
+      'AppsCreateView.form.descMarkdownHint',
+    )
+  })
+
   it('zeigt einen Fehler, wenn Pflichtfelder (Name, Repo) fehlen', async () => {
     renderView()
     await userEvent.click(submitButton())

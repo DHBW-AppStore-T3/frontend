@@ -39,6 +39,11 @@ export interface MarkdownEditorProps {
   minHeightPx?: number
   /** Hard cap on auto-resize. Scroll kicks in past this. */
   maxHeightPx?: number
+  /** Name of the textarea: `id` for an external `<label htmlFor>`, or one of the aria props. */
+  id?: string
+  'aria-label'?: string
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
 }
 
 type Mode = 'edit' | 'preview'
@@ -81,6 +86,10 @@ export default function MarkdownEditor({
   placeholder = '',
   minHeightPx = 96,
   maxHeightPx = 320,
+  id,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
 }: MarkdownEditorProps) {
   const { t } = useTranslation()
   const [mode, setMode] = useState<Mode>('edit')
@@ -188,6 +197,10 @@ export default function MarkdownEditor({
       <div className="p-2">
         <textarea
           ref={textareaRef}
+          id={id}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
           value={value ?? ''}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}

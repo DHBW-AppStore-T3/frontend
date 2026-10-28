@@ -57,6 +57,9 @@ export default function CourseNameEditor({ name, canEdit, onSave }: CourseNameEd
       <BaseInput
         value={draft}
         onChange={setDraft}
+        aria-label={t('CoursesView.createModal.nameLabel')}
+        // The input only exists after the user chose "edit", so moving focus into it is the expected result of that action.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         onKeyUp={(e) => {
           if (e.key === 'Enter') void save()

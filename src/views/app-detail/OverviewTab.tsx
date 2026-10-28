@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
@@ -48,6 +48,7 @@ export default function OverviewTab(props: OverviewTabProps) {
   const { app, versionOptions, selectedVersion, versionInfo, hasVersionInfo } = props
   const { t, i18n } = useTranslation()
   const deployRef = useRef<HTMLDivElement>(null)
+  const versionSelectId = useId()
 
   useEffect(() => {
     if (!props.scrollToDeployOptions) return
@@ -138,10 +139,11 @@ export default function OverviewTab(props: OverviewTabProps) {
 
         {props.showVersionSelect ? (
         <div className="mb-6">
-          <label className="block text-sm font-medium text-textMuted mb-2">
+          <label htmlFor={versionSelectId} className="block text-sm font-medium text-textMuted mb-2">
             {t('AppsDetailView.selectVersionLabel')}
           </label>
           <select
+            id={versionSelectId}
             value={selectedVersion}
             onChange={(e) => props.onSelectVersion(e.target.value)}
             disabled={versionOptions.length === 0}
