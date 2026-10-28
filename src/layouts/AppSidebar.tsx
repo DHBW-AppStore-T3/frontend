@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Drawer from '@/components/ui/Drawer'
 import SidebarNavigation from './SidebarNavigation'
 import type { NavItem } from './nav'
@@ -14,6 +15,7 @@ export interface AppSidebarProps {
 const MOBILE_BREAKPOINT = 768
 
 export default function AppSidebar({ collapsed, navItems, mobileOpen, onCloseMobile }: AppSidebarProps) {
+  const { t } = useTranslation()
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BREAKPOINT)
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function AppSidebar({ collapsed, navItems, mobileOpen, onCloseMob
 
   if (isMobile) {
     return (
-      <Drawer show={mobileOpen} side="left" onClose={onCloseMobile}>
+      <Drawer show={mobileOpen} side="left" label={t('nav.mobileMenu')} onClose={onCloseMobile}>
         <SidebarNavigation collapsed={false} navItems={navItems} onNavigate={onCloseMobile} />
       </Drawer>
     )

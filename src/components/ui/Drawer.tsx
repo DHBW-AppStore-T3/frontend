@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useOverlay } from '@/composables/useOverlay'
 import './Drawer.css'
 
@@ -6,10 +7,15 @@ export interface DrawerProps {
   show: boolean
   onClose: () => void
   side?: 'left' | 'right'
+  /** Accessible name of the dialog. Without it (and without ``labelledBy``) a generic name is used. */
+  label?: string
+  /** ID of a visible heading inside the drawer; wins over ``label``. */
+  labelledBy?: string
   children?: ReactNode
 }
 
-export default function Drawer({ show, onClose, side = 'left', children }: DrawerProps) {
+export default function Drawer({ show, onClose, side = 'left', label, labelledBy, children }: DrawerProps) {
+  const { t } = useTranslation()
   const { containerRef } = useOverlay({ show, onClose })
 
   if (!show) return null
@@ -24,8 +30,13 @@ export default function Drawer({ show, onClose, side = 'left', children }: Drawe
       <div
         ref={containerRef}
         data-drawer-panel
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        aria-label={labelledBy ? undefined : (label ?? t('dialog.panelLabel', { defaultValue: 'Side panel' }))}
+        tabIndex={-1}
         className={[
-          'absolute top-0 h-full w-full max-w-xs bg-white shadow-xl flex flex-col animate-drawer-slide',
+          'absolute top-0 h-full w-full max-w-xs bg-white shadow-xl flex flex-col animate-drawer-slide focus:outline-none',
           side === 'right' ? 'right-0' : 'left-0',
         ].join(' ')}
       >

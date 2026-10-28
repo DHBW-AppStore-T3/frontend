@@ -6,10 +6,10 @@ import Modal from '@/components/ui/Modal'
 import Drawer from '@/components/ui/Drawer'
 import { useOverlay } from '@/composables/useOverlay'
 
-// Characterisation of the overlay behaviour BEFORE the dialog semantics were
-// added (#140): focus, keyboard and the rendered title variants. These specs
-// describe what Modal, Drawer and useOverlay do today, so that the semantic
-// change cannot alter it unnoticed.
+// Characterisation of the overlay behaviour as it was BEFORE the dialog
+// semantics were added (#140): focus, keyboard and the rendered title variants.
+// It stayed green across that change except where the change is the point (no
+// ARIA before, nothing focusable); those cases moved to dialog-a11y.spec.tsx.
 
 const pressEscape = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
 
@@ -88,12 +88,6 @@ describe('Modal: focus and keyboard (characterisation)', () => {
     expect(screen.getByText('Modal')).toBeInTheDocument()
   })
 
-  it('has no ARIA dialog semantics today', () => {
-    render(<Modal show onClose={() => {}} title="T" />)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(document.querySelector('[aria-modal]')).toBeNull()
-  })
-
   it('renders nothing in the document while closed', () => {
     render(<Modal show={false} onClose={() => {}} title="T" />)
     expect(screen.queryByText('T')).not.toBeInTheDocument()
@@ -117,33 +111,26 @@ describe('Drawer: focus and keyboard (characterisation)', () => {
     expect(tab().defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(a)
   })
-
-  it('has no ARIA dialog semantics today', () => {
-    render(<Drawer show onClose={() => {}}>x</Drawer>)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
 })
 
 describe('useOverlay: edge cases (characterisation)', () => {
   function Overlay({ label, onClose }: { label: string; onClose: () => void }) {
     const { containerRef } = useOverlay({ show: true, onClose })
     return (
-      <div ref={containerRef} data-testid={label}>
+      <div ref={containerRef} tabIndex={-1} data-testid={label}>
         {label === 'with-button' ? <button>inside</button> : null}
       </div>
     )
   }
 
-  it('leaves focus where it was when the overlay has nothing focusable', () => {
-    const trigger = document.createElement('button')
-    document.body.appendChild(trigger)
-    trigger.focus()
-
+  // Before #140 focus stayed on the opener and Tab left the overlay; that is
+  // fixed, the new behaviour is pinned here and in dialog-a11y.spec.tsx.
+  it('keeps focus on the panel and traps Tab when the overlay has nothing focusable', () => {
     render(<Overlay label="empty" onClose={() => {}} />)
-    expect(document.activeElement).toBe(trigger)
-    // Tab is not intercepted either, so it would leave the overlay.
-    expect(tab().defaultPrevented).toBe(false)
-    trigger.remove()
+    const panel = screen.getByTestId('empty')
+    expect(document.activeElement).toBe(panel)
+    expect(tab().defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(panel)
   })
 
   it('lets every open overlay handle Escape (stacked overlays all close)', () => {
