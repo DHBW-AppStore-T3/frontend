@@ -3,21 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/stores/app.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
-import type { AppVariable } from '@/types'
+import type { AppVariable, StoredValues } from '@/types'
+import { parseStoredInput } from './variableForm'
 import { versionLabelOf } from './summary'
-
-function parseUserOverrides(raw: unknown, onInvalid: () => void): Record<string, any> {
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, any>
-  if (typeof raw === 'string' && raw.trim() !== '') {
-    try {
-      return JSON.parse(raw)
-    } catch (e) {
-      console.warn('Invalid JSON in userInputVar', e)
-      onInvalid()
-    }
-  }
-  return {}
-}
 
 /**
  * The variable definitions shown by the summary.
@@ -60,10 +48,10 @@ export function useSummaryVariables() {
           (await useAppStore.getState().fetchAppVariables(app.appId, versionLabelOf(drafts.draft.releaseTag))) ?? []
         if (cancelled) return
 
-        const overrides = parseUserOverrides(drafts.draft.userInputVar, () =>
+        const overrides = parseStoredInput(drafts.draft.userInputVar, () =>
           toast.error(t('deployment.summary.invalidJson')),
         )
-        const merged: Record<string, any> = { ...(drafts.draft.variables ?? {}) }
+        const merged: StoredValues = { ...(drafts.draft.variables ?? {}) }
         for (const v of variables) {
           if (merged[v.name] === undefined && v.default !== undefined) merged[v.name] = v.default
         }
@@ -71,11 +59,11 @@ export function useSummaryVariables() {
 
         useDeploymentStore.getState().updateDraft({ variableDefinitions: variables, variables: merged })
         setDefs(variables)
-      } catch (error: any) {
+      } catch (error) {
         console.error(error)
         if (cancelled) return
         toast.error(
-          error?.response?.status === 500
+          (error as { response?: { status?: number } } | null | undefined)?.response?.status === 500
             ? t('deployment.summary.fetchVarsError500')
             : t('deployment.summary.fetchVarsError'),
         )

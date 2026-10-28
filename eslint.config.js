@@ -45,11 +45,12 @@ export default tseslint.config(
         ignoreRestSiblings: true,
       }],
 
-      // There are ~100 `any`s in this codebase, most of them forced by the
-      // hand-maintained API types in src/types. Warn rather than error so the
-      // gate lands when those types are generated from the OpenAPI schema
-      // instead, not before.
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // An explicit `any` switches the type checker off for whatever flows
+      // through it. The API types come from the OpenAPI schema now, so production
+      // code has no reason left for one: use a real type, or `unknown` and narrow
+      // it. A line that truly needs `any` gets an `eslint-disable-next-line` with
+      // the reason, like the `no-restricted-syntax` exceptions below.
+      '@typescript-eslint/no-explicit-any': 'error',
 
       ...reactHooks.configs.recommended.rules,
 
@@ -67,7 +68,10 @@ export default tseslint.config(
     },
   },
 
-  // Tests run in a vitest environment with its globals enabled.
+  // Tests run in a vitest environment with its globals enabled. They keep `any`
+  // allowed on purpose: specs build partial fixtures, stores and mocks and feed
+  // the code deliberately malformed values, which would need a cast per line.
+  // The rule protects production code only.
   {
     files: ['tests/**/*.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
     languageOptions: {
