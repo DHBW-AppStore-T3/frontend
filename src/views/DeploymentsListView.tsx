@@ -6,6 +6,7 @@ import BaseButton from '@/components/ui/BaseButton'
 import Card from '@/components/ui/Card'
 import PageHeader from '@/components/ui/PageHeader'
 import EntityListState from '@/components/ui/EntityListState'
+import RoleGate from '@/components/RoleGate'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
 import { formatDateTime } from '@/utils/format'
@@ -78,7 +79,7 @@ export default function DeploymentsListView() {
         emptyMessage={t('DeploymentsView.deploymentsMissingMessage')}
         emptyAction={newDeploymentButton}
       >
-        {/* One card per deployment (name, app, status pill, release tag, date). */}
+        {/* One card per deployment (name, app, status pill, date). Release tag and runtime only in the admin view. */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {visible.map((deployment) => (
             <Link key={deployment.deploymentId} to={paths.deployment(deployment.deploymentId)} className="block">
@@ -106,19 +107,21 @@ export default function DeploymentsListView() {
                 </div>
 
                 <div className="mt-auto pt-3 border-t border-borderSubtle flex items-center justify-between text-xs text-textMuted">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
-                      <GitBranch size={11} />
-                      {deployment.releaseTag}
+                  <RoleGate adminView>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
+                        <GitBranch size={11} />
+                        {deployment.releaseTag}
+                      </span>
+                      <span
+                        className="px-1.5 py-0.5 rounded border border-borderSubtle text-[10px] uppercase tracking-wide"
+                        data-testid="runtime-badge"
+                      >
+                        {t(runtimeLabelKey(deployment.runtime, 'short'))}
+                      </span>
                     </span>
-                    <span
-                      className="px-1.5 py-0.5 rounded border border-borderSubtle text-[10px] uppercase tracking-wide"
-                      data-testid="runtime-badge"
-                    >
-                      {t(runtimeLabelKey(deployment.runtime, 'short'))}
-                    </span>
-                  </span>
-                  <span className="inline-flex items-center gap-1">
+                  </RoleGate>
+                  <span className="inline-flex items-center gap-1 ml-auto">
                     <Clock size={11} />
                     {formatDateTime(deployment.created_at, DATE_NO_SECONDS)}
                   </span>
