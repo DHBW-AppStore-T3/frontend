@@ -39,6 +39,9 @@ import { permissionsOf, lifecycleGates } from './access'
 import { useDeploymentStatusPolling, shouldPollDeploymentStatus } from './useDeploymentStatusPolling'
 import { isClusterRuntime } from '@/utils/runtime'
 
+/** Minimum gap between two REST resyncs triggered by invalid SSE events. */
+const RESYNC_MIN_INTERVAL_MS = 15_000
+
 export function useDeploymentDetail(deploymentId: string) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -341,6 +344,63 @@ export function useDeploymentDetail(deploymentId: string) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState])
+
+  // ---------------------------------------------- resync on invalid SSE events
+  // A live stream that keeps sending events the validation rejects would leave
+  // the page stale until the stream ends. While it is live, an invalid event
+  // reloads deployment + tasks over REST (same calls as the ended reload),
+  // at most once per RESYNC_MIN_INTERVAL_MS. The stream is owner-only, and
+  // ``loadTasks`` skips members, so no owner endpoint is called for them.
+  const invalidEvents = stream.invalidEvents
+  const resync = useRef({
+    mounted: true,
+    live: false,
+    deploymentId,
+    handled: invalidEvents,
+    lastAt: null as number | null,
+    inFlight: false,
+  })
+  useEffect(() => {
+    const r = resync.current
+    r.mounted = true
+    r.live = isStreamRelevant && connectionState === 'live'
+    if (r.deploymentId !== deploymentId) {
+      // Another deployment: events counted so far belong to the old one.
+      r.deploymentId = deploymentId
+      r.handled = invalidEvents
+      r.lastAt = null
+    }
+    return () => {
+      r.mounted = false
+    }
+  })
+  useEffect(() => {
+    const r = resync.current
+    // A new stream starts counting from zero again.
+    if (invalidEvents < r.handled) r.handled = invalidEvents
+    if (invalidEvents === r.handled) return
+    r.handled = invalidEvents
+    if (!r.live || r.inFlight) return
+    const now = Date.now()
+    if (r.lastAt !== null && now - r.lastAt < RESYNC_MIN_INTERVAL_MS) return
+    r.lastAt = now
+    r.inFlight = true
+
+    // The answer may arrive after the stream ended, the view unmounted or the
+    // deployment changed: then it is dropped instead of loading more.
+    const stillCurrent = () => r.mounted && r.live && r.deploymentId === deploymentId
+    void (async () => {
+      try {
+        await useDeploymentStore.getState().fetchDeploymentById(deploymentId)
+        if (!stillCurrent()) return
+        if (useDeploymentStore.getState().currentDeployment?.deploymentId !== deploymentId) return
+        await loadTasks()
+      } finally {
+        r.inFlight = false
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invalidEvents])
 
   // ------------------------------------------------------------ initial load
   useEffect(() => {
