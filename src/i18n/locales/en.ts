@@ -871,6 +871,9 @@ export default {
         fileB64Invalid: 'File "{filename}" could not be decoded — please try uploading again.',
         fileSizeMismatch: 'File "{filename}" size check failed — please try uploading again.',
         upload_scan_unavailable: 'The virus scanner is not reachable right now. Please try again later.',
+        upload_storage_full: 'The file storage of the platform is full right now. Please try again later or contact an administrator.',
+        ownerStorageQuotaExceeded: 'Your deployments already store {usedMb} MB of files, and these files need {neededMb} MB more. The limit is {limitMb} MB: delete deployments you no longer need or upload smaller files.',
+        request_body_too_large: 'The upload is too large. Please remove or shrink files.',
         fileContentRejected: 'File "{filename}" was rejected: {reason}',
         fileContent: {
           zip_invalid: 'This is not a readable ZIP archive.',

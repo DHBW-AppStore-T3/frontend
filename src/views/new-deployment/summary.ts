@@ -93,6 +93,7 @@ const CODE_MESSAGES: Record<string, string> = {
   version_not_approved: 'deployment.summary.errors.version_not_approved',
   app_deactivated: 'deployment.summary.errors.app_deactivated',
   role_required: 'deployment.summary.errors.role_required',
+  request_body_too_large: 'deployment.summary.errors.request_body_too_large',
 }
 
 // Errors the API names with `detail.reason` that need no more than a text
@@ -112,6 +113,7 @@ const REASONS_WITH_MESSAGE = new Set([
   'git_unreachable',
   'git_host_not_allowed',
   'upload_scan_unavailable',
+  'upload_storage_full',
 ])
 
 /** Codes of ``file_content_rejected`` (backend ``app/services/upload_validation.py``) that have a translation. */
@@ -159,6 +161,8 @@ interface SubmitErrorDetail {
   variable?: string
   slot?: string
   actual_bytes?: number
+  used_bytes?: number
+  needed_bytes?: number
   limit_bytes?: number
   allowed?: string[]
   in_use?: number
@@ -202,6 +206,12 @@ export function formatSubmitError(error: unknown, t: Translate): string {
       return t('deployment.summary.errors.fileExtensionRejected', {
         filename,
         allowed: Array.isArray(detail.allowed) ? detail.allowed.join(', ') : '',
+      })
+    case 'owner_storage_quota_exceeded':
+      return t('deployment.summary.errors.ownerStorageQuotaExceeded', {
+        usedMb: toMb(detail.used_bytes),
+        neededMb: toMb(detail.needed_bytes),
+        limitMb: toMb(detail.limit_bytes),
       })
     case 'file_b64_invalid':
       return t('deployment.summary.errors.fileB64Invalid', { filename })
