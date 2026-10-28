@@ -88,7 +88,6 @@ export function useDeploymentDetail(deploymentId: string) {
     } finally {
       setLoadingTasks(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deploymentId])
 
   // Members (the owner included, when in a team) get their own access from

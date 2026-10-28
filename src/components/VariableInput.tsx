@@ -14,13 +14,15 @@
  * sections (Packer = blue, Terraform = purple) stay visually distinct.
  */
 import { useTranslation } from 'react-i18next'
-import type { AppVariable } from '@/types'
+import type { AppVariable, ScalarValue, SlotValue } from '@/types'
 import { isBool, isList, isNumber } from '@/utils/variable-types'
 
 export interface VariableInputProps {
   variable: AppVariable
-  value: any
-  onChange: (value: any) => void
+  /** What the form holds; lists arrive as comma text, anything else as typed. */
+  value: SlotValue
+  /** What the widget emits: text, a number (``valueAsNumber``, NaN when cleared) or a boolean. */
+  onChange: (value: ScalarValue) => void
   accent?: 'blue' | 'purple'
   /** DOM id of the input; scope-iterated variables pass a suffixed id per slot. */
   inputId?: string
@@ -46,6 +48,10 @@ const ACCENT = {
   },
 } as const
 
+// What a text-like field is given: React shows null and undefined as empty and
+// everything else through String(), so an array reads ``a,b``.
+const shown = (value: SlotValue): string | number => (typeof value === 'number' ? value : value == null ? '' : String(value))
+
 const FIELD_BASE =
   'w-full px-3 py-2 rounded-lg border-2 outline-none transition-all text-textHeading disabled:bg-surfaceMuted disabled:text-textMuted'
 
@@ -66,7 +72,7 @@ export default function VariableInput({
   if (isEnum(variable)) {
     return (
       <select
-        value={value ?? ''}
+        value={shown(value)}
         onChange={(e) => onChange(e.target.value)}
         id={id}
         disabled={disabled}
@@ -119,7 +125,7 @@ export default function VariableInput({
       <input
         type="number"
         id={id}
-        value={value ?? ''}
+        value={shown(value)}
         onChange={(e) => onChange(e.target.valueAsNumber)}
         disabled={disabled}
         placeholder="0"
@@ -132,7 +138,7 @@ export default function VariableInput({
     return (
       <textarea
         id={id}
-        value={value ?? ''}
+        value={shown(value)}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         rows={3}
@@ -146,7 +152,7 @@ export default function VariableInput({
     <input
       type="text"
       id={id}
-      value={value ?? ''}
+      value={shown(value)}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       placeholder={
