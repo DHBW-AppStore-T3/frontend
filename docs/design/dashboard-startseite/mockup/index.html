@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · Startseite (Dashboard) je Rolle</title>
+<style>
+  @font-face {
+    font-family: "Inter";
+    src: url("../../../../src/assets/fonts/InterVariable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+
+  /* Tokens: 1:1 aus src/theme/themes/t3.ts, src/styles/tokens.css und src/theme/workspace.css (RGB-Kanäle als Hex). */
+  :root {
+    --primary: #E2001A;
+    --primary-dark: #C3001B;
+    --primary-deep: #960015;
+    --primary-soft: #FAD6DA;
+    --primary-faint: #FDEDEE;
+    --page: #F7F8FA;
+    --surface: #FFFFFF;
+    --glass: rgb(255 255 255 / .78);
+    --ink: #0F1B30;          /* text-heading */
+    --strong: #1F2E44;       /* text-strong */
+    --meta: #5A6B85;         /* Meta-Text 12 px: 5,4:1 auf Weiß (text-muted hat nur 4,4:1) */
+    --faint: #94A1B4;        /* text-faint: nur Deko */
+    --line: #E4E9EF;         /* border-subtle */
+    --wash: #EFF2F6;         /* surface-muted */
+    --accent: #687260;       /* brand-accent */
+    --accent-soft: #DEE3DA;
+
+    /* Status: die Farben der Pillen aus deployments-list/helpers.ts */
+    --ok-tint: #D1FAE5; --ok-text: #166534; --ok-line: #86EFAC; --seg-ok: #22C55E;
+    --bad: #B91C1C; --bad-tint: #FEE2E2; --bad-text: #991B1B; --bad-line: #FCA5A5;
+    --info: #1D4ED8; --info-tint: #DBEAFE; --info-text: #1E40AF; --info-line: #93C5FD;
+    --warn-tint: #FEF3C7; --warn-text: #92400E; --warn-line: #FCD34D;
+    --seg-stop: #94A3B8;
+
+    --r-card: 12px;
+    --r-ctl: 7px;
+    --shadow-card: 0 4px 16px rgb(26 39 58 / .025);
+    --gutter: clamp(24px, 3.5vw, 72px);
+    --hero: url("../../../../src/theme/assets/login-background.jpg");
+    --ease: cubic-bezier(.2, .8, .2, 1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 14px; line-height: 1.5; color: var(--strong); background: var(--page);
+    font-feature-settings: "cv11", "ss03"; -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, p, ul { margin: 0; padding: 0; }
+  ul { list-style: none; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  b, strong { font-weight: 650; }
+  .num { font-variant-numeric: tabular-nums; }
+  .i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  [hidden] { display: none !important; }
+  :where(a, button):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+
+  /* Rolle und Zustand: Elemente mit data-role-only / data-state-only erscheinen nur dort */
+  body[data-role="dozent"]  [data-role-only]:not([data-role-only~="dozent"]),
+  body[data-role="admin"]   [data-role-only]:not([data-role-only~="admin"]),
+  body[data-role="student"] [data-role-only]:not([data-role-only~="student"]),
+  body[data-state="normal"] [data-state-only]:not([data-state-only~="normal"]),
+  body[data-state="leer"]   [data-state-only]:not([data-state-only~="leer"]) { display: none !important; }
+
+  /* ───────── Mockup-Steuerung (nicht Teil des Designs) ───────── */
+  .studio {
+    position: sticky; top: 0; z-index: 60;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
+    padding: 10px 24px; background: var(--ink); color: #fff;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; letter-spacing: .01em;
+  }
+  .studio__tag { padding: 2px 8px; border-radius: 4px; background: var(--primary); font-weight: 700; letter-spacing: .08em; }
+  .studio__title { margin-right: auto; opacity: .85; }
+  .studio__group { display: flex; align-items: center; gap: 8px; }
+  .seg { display: inline-flex; padding: 2px; border-radius: 8px; background: rgb(255 255 255 / .12); }
+  .seg button { border: 0; background: transparent; color: #fff; padding: 4px 11px; border-radius: 6px; font: inherit; }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); font-weight: 700; }
+  .seg button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  body.clean .studio { display: none; }
+
+  /* ───────── App-Rahmen (so wie heute, workspace.css) ───────── */
+  .shell { position: relative; display: flex; min-height: 100vh; }
+  .shell::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: linear-gradient(135deg, transparent 48%, rgb(227 231 236 / .18) 48%, transparent 72%); }
+  .sidebar {
+    position: sticky; top: 0; z-index: 30; flex: 0 0 208px; width: 208px; height: 100vh; display: flex; flex-direction: column;
+    background: rgb(255 255 255 / .65); border-right: 1px solid rgb(228 233 239 / .35);
+  }
+  body:not(.clean) .sidebar { top: 41px; height: calc(100vh - 41px); }
+  .brand { height: 112px; display: flex; align-items: center; padding: 24px 38px; }
+  .brand img { width: 54px; height: 50px; object-fit: contain; }
+  .nav { flex: 1; padding: 12px 16px; }
+  .nav a { position: relative; display: flex; align-items: center; gap: 14px; padding: 13px 16px; margin-bottom: 9px; border-radius: 8px; color: var(--muted-nav, #687A94); font-size: 13px; font-weight: 500; }
+  .nav a .i { width: 19px; height: 19px; stroke-width: 1.5; }
+  .nav a.is-active { color: var(--primary); background: rgb(226 0 26 / .055); }
+  .nav a.is-active::before { content: ""; position: absolute; left: 0; top: 25%; bottom: 25%; width: 2px; background: currentColor; border-radius: 2px; }
+  .sidebar__foot { padding: 28px 32px; }
+  .lang { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; font-size: 12px; }
+  .lang span { padding: 7px 12px; color: #687A94; }
+  .lang span:first-child { color: var(--primary); background: rgb(226 0 26 / .08); }
+
+  .workspace { position: relative; flex: 1; min-width: 0; isolation: isolate; }
+  .workspace::before {
+    content: ""; position: absolute; z-index: -1; inset: 0 0 auto 0; height: 400px; pointer-events: none;
+    background: linear-gradient(to bottom, transparent 65%, var(--page)), var(--hero) right 42% / cover;
+  }
+  .header { display: flex; align-items: center; justify-content: space-between; height: 76px; padding: 0 32px; }
+  .icon-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid transparent; border-radius: var(--r-ctl); background: transparent; color: var(--meta); opacity: .55; }
+  .icon-btn--menu { display: none; border-color: var(--line); background: var(--glass); opacity: 1; }
+  .user { display: flex; align-items: center; gap: 12px; padding: 6px; color: #fff; font-size: 12px; }
+  .user__avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--primary); background: rgb(255 255 255 / .9); font-weight: 600; }
+
+  .main { position: relative; padding: 0 var(--gutter) 64px; max-width: calc(1440px + 2 * var(--gutter)); margin-inline: auto; }
+  .page { display: flex; flex-direction: column; gap: 28px; }
+
+  /* ───────── Hero ───────── */
+  .hero { min-height: 230px; display: flex; align-items: center; padding-bottom: 12px; }
+  .hero__body { max-width: 520px; }
+  .hero__name { font-size: clamp(34px, 3vw, 50px); font-weight: 750; letter-spacing: -.045em; line-height: 1.2; color: var(--ink); margin-bottom: 8px; overflow-wrap: anywhere; }
+  .hero__sub { color: var(--meta); font-size: 18px; line-height: 1.5; max-width: 520px; text-wrap: balance; }
+  .hero__sub b { color: var(--ink); }
+  .hero__sub .is-bad { color: var(--bad); white-space: nowrap; }
+  .hero__chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 4px 12px 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--glass); color: var(--strong); font-size: 12px; font-weight: 600; }
+
+  /* ───────── Kacheln (wie heute: .kpi-item) ───────── */
+  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .kpi { display: flex; align-items: center; gap: 20px; padding: 24px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--glass); box-shadow: var(--shadow-card); backdrop-filter: blur(12px); transition: border-color .15s; }
+  a.kpi:hover { border-color: rgb(226 0 26 / .3); }
+  .kpi__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 9px; flex: none; }
+  .kpi__icon .i { width: 24px; height: 24px; stroke-width: 1.5; }
+  .kpi__num { font-size: 32px; font-weight: 700; line-height: 1.2; color: var(--ink); }
+  .kpi__lbl { font-size: 15px; color: #687A94; margin-top: 2px; }
+  .kpi__of { margin-left: 8px; font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--meta); }
+  .kpi__go { margin-left: auto; color: var(--faint); transition: transform .15s, color .15s; }
+  a.kpi:hover .kpi__go { color: var(--primary); transform: translateX(2px); }
+
+  /* ───────── Karten ───────── */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+  .stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+  .card { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--glass); box-shadow: var(--shadow-card); backdrop-filter: blur(12px); }
+  .card--pad { padding: 20px 24px; }
+  .card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 20px 24px 14px; }
+  .card__title { font-size: 16px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+  .card__sub { margin-top: 2px; font-size: 12px; color: var(--meta); }
+  .link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--primary-dark); white-space: nowrap; }
+  .link .i { transition: transform .15s; }
+  .link:hover .i { transform: translateX(2px); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: var(--r-ctl); font-size: 13px; font-weight: 600; border: 1px solid transparent; transition: background .15s, border-color .15s; }
+  .btn--primary { color: #fff; background: var(--primary); }
+  .btn--primary:hover { background: var(--primary-dark); }
+  .btn--secondary { color: var(--primary); background: transparent; border-color: rgb(226 0 26 / .4); }
+  .btn--secondary:hover { background: rgb(226 0 26 / .06); }
+  .btn--small { min-height: 32px; padding: 0 12px; font-size: 12px; }
+  .btn--block { width: 100%; }
+
+  /* Pillen: Farben wie in deployments-list/helpers.ts */
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid; border-radius: 8px; font-size: 12px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+  .pill--ok   { background: var(--ok-tint);   color: var(--ok-text);   border-color: var(--ok-line); }
+  .pill--bad  { background: var(--bad-tint);  color: var(--bad-text);  border-color: var(--bad-line); }
+  .pill--info { background: var(--info-tint); color: var(--info-text); border-color: var(--info-line); }
+  .pill--warn { background: var(--warn-tint); color: var(--warn-text); border-color: var(--warn-line); }
+  .pill--stop { background: var(--wash);      color: var(--meta);      border-color: var(--line); }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--info); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* ───────── Signatur: das Kurs-Band ───────── */
+  .course { padding: 18px 24px 4px; border-top: 1px solid var(--line); }
+  .course__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+  .course__name { font-size: 15px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+  .course__count { font-size: 12px; color: var(--meta); }
+  .course__sum { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-left: auto; font-size: 12px; color: var(--meta); }
+  .course__sum li { display: inline-flex; align-items: center; gap: 6px; }
+  .course__sum .is-bad { color: var(--bad); font-weight: 650; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--seg-stop); }
+  .dot--ok { background: var(--seg-ok); } .dot--info { background: var(--info); } .dot--bad { background: var(--bad); }
+
+  .band { display: flex; gap: 2px; height: 8px; margin: 10px 0 8px; }
+  .band__seg { display: block; min-width: 8px; background: var(--seg-stop); transition: filter .15s, transform .15s var(--ease); }
+  .band__seg:first-child { border-radius: 4px 0 0 4px; } .band__seg:last-child { border-radius: 0 4px 4px 0; } .band__seg:only-child { border-radius: 4px; }
+  .band__seg--ok { background: var(--seg-ok); } .band__seg--info { background: var(--info); } .band__seg--bad { background: var(--bad); }
+  .band__seg:hover { filter: brightness(.88); transform: scaleY(1.35); }
+
+  .course--none .course__name { color: var(--meta); }
+  .course--none .band__seg { background: var(--seg-ok); }
+
+  .rows li + li { margin-top: 1px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto 88px; align-items: center; gap: 16px; padding: 10px 12px; margin-inline: -12px; border-radius: 8px; transition: background .15s; }
+  .row:hover { background: rgb(15 27 48 / .03); }
+  .row--bad { background: rgb(254 226 226 / .5); box-shadow: inset 3px 0 0 var(--bad); }
+  .row--bad:hover { background: rgb(254 226 226 / .75); }
+  .row__name { font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row__meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--meta); }
+  .row__time { font-size: 12px; color: var(--meta); text-align: right; }
+  .row__when { display: none; }
+  .more { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 10px; padding: 6px 0; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--meta); }
+  .more:hover { color: var(--primary-dark); }
+  .more .i { transition: transform .2s var(--ease); }
+  .more[aria-expanded="true"] .i { transform: rotate(180deg); }
+  .rows--folded { margin-bottom: 4px; }
+  .rows--folded .row__name { color: var(--strong); font-weight: 500; }
+
+  /* Rechte Spalte */
+  .cta__text { margin: 4px 0 16px; font-size: 13px; color: var(--meta); }
+  .cta__recent { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .cta__label { margin-bottom: 8px; font-size: 12px; color: var(--meta); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 600; color: var(--strong); transition: border-color .15s, color .15s; }
+  .chip:hover { border-color: rgb(226 0 26 / .4); color: var(--primary-dark); }
+
+  .list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+  .list li:first-child { border-top: 0; padding-top: 2px; }
+  .list__name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .list__meta { font-size: 12px; color: var(--meta); }
+
+  .meter { height: 8px; border-radius: 4px; background: var(--wash); overflow: hidden; }
+  .meter i { display: block; height: 100%; border-radius: 4px; background: var(--strong); }
+  .metric { padding: 12px 0; border-top: 1px solid var(--line); }
+  .metric:first-child { border-top: 0; padding-top: 2px; }
+  .metric__row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; font-size: 13px; }
+  .metric__row span:last-child { color: var(--meta); font-size: 12px; }
+  .metric--plain .metric__row { margin-bottom: 0; }
+
+  /* Admin: Freigabe-Queue */
+  .queue li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 14px 24px; border-top: 1px solid var(--line); }
+  .app-tile { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; font-weight: 700; font-size: 15px; }
+  .app-tile--a { background: var(--primary-faint); color: var(--primary-deep); }
+  .app-tile--b { background: var(--info-tint); color: var(--info-text); }
+  .app-tile--c { background: var(--accent-soft); color: #454E3F; }
+  .queue__name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .queue__name span { font-weight: 500; color: var(--meta); font-variant-numeric: tabular-nums; }
+  .queue__meta { font-size: 12px; color: var(--meta); }
+  .fold { width: 100%; display: flex; align-items: center; gap: 14px; padding: 18px 24px; border: 0; background: none; text-align: left; }
+  .fold__sum { margin-left: auto; font-size: 12px; color: var(--meta); }
+  .fold .i--chev { transition: transform .2s var(--ease); color: var(--meta); }
+  .fold[aria-expanded="true"] .i--chev { transform: rotate(180deg); }
+  .fold-body { padding: 0 24px 4px; border-top: 1px solid var(--line); }
+
+  /* Student: Umgebungen */
+  .section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .section-head .card__title { font-size: 18px; letter-spacing: -.015em; }
+  .section-head span { font-size: 13px; color: var(--meta); }
+  .envs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  .env { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px 22px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--glass); box-shadow: var(--shadow-card); backdrop-filter: blur(12px); }
+  .env--bad { border-color: var(--bad-line); }
+  .env__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .env__time { font-size: 12px; color: var(--meta); }
+  .env__name { font-size: 19px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: var(--ink); text-wrap: balance; }
+  .env__app { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 13px; color: var(--meta); }
+  .env__hint { font-size: 13px; color: var(--strong); min-height: 40px; }
+  .env__act { margin-top: auto; }
+  .indet { position: relative; height: 4px; border-radius: 2px; background: var(--info-tint); overflow: hidden; }
+  .indet::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 38%; border-radius: 2px; background: var(--info); animation: slide 1.8s var(--ease) infinite; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(270%); } }
+  .foot-link { margin-top: 20px; }
+
+  .empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 56px 24px 60px; }
+  .empty__icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 16px; border-radius: 50%; background: var(--wash); color: var(--meta); font-size: 24px; }
+  .empty__title { font-size: 17px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+  .empty__text { max-width: 400px; margin: 6px 0 20px; font-size: 14px; color: var(--meta); text-wrap: balance; }
+
+  @media (max-width: 1100px) {
+    .sidebar { flex-basis: 176px; width: 176px; }
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .kpi { padding: 20px; gap: 14px; }
+  }
+  @media (max-width: 767px) {
+    :root { --gutter: 20px; }
+    .sidebar { display: none; }
+    .header { padding: 0 18px; }
+    .icon-btn--menu { display: grid; }
+    .icon-btn--collapse { display: none; }
+    .user { color: var(--ink); }
+    .user__avatar { background: var(--primary-faint); }
+    .user__name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+    .workspace::before { height: 320px; background-position: 65% center; opacity: .45; }
+    .hero { min-height: 190px; }
+    .hero__sub { font-size: 16px; }
+    .kpis { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .kpi { padding: 16px 20px; }
+    .card__head, .course, .card--pad { padding-inline: 18px; }
+    .row { grid-template-columns: minmax(0, 1fr) auto; }
+    .row__time { display: none; }
+    .row__when { display: inline; }
+    .queue li { grid-template-columns: 40px minmax(0, 1fr); padding-inline: 18px; row-gap: 10px; }
+    .queue li > :nth-child(3) { grid-column: 2; justify-self: start; }
+    .queue li > :nth-child(4) { grid-column: 2; justify-self: start; }
+    .course__sum { margin-left: 0; width: 100%; }
+    .envs { grid-template-columns: minmax(0, 1fr); }
+    .studio__title { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0s !important; animation-iteration-count: 1 !important; transition-duration: 0s !important; }
+  }
+</style>
+</head>
+<body data-role="dozent" data-state="normal">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  </defs>
+</svg>
+
+<!-- Mockup-Leiste -->
+<div class="studio" role="toolbar" aria-label="Mockup-Steuerung">
+  <span class="studio__tag">MOCKUP</span>
+  <span class="studio__title">Startseite je Rolle · Deep-Links: #clean-admin, #student-leer, #clean-dozent-leer</span>
+  <div class="studio__group">Rolle
+    <div class="seg" data-group="role">
+      <button type="button" data-v="dozent" aria-pressed="true">Lehrende</button>
+      <button type="button" data-v="admin" aria-pressed="false">Admin</button>
+      <button type="button" data-v="student" aria-pressed="false">Studierende</button>
+    </div>
+  </div>
+  <div class="studio__group">Zustand
+    <div class="seg" data-group="state">
+      <button type="button" data-v="normal" aria-pressed="true">Gefüllt</button>
+      <button type="button" data-v="leer" aria-pressed="false">Leer</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <a class="brand" href="#" aria-label="Startseite"><img src="../../../../src/theme/assets/t3-red.png" alt="T3 AppStore"></a>
+    <nav class="nav" aria-label="Hauptnavigation">
+      <a href="#" class="is-active" aria-current="page"><svg class="i"><use href="#i-house"/></svg>Dashboard</a>
+      <a href="#"><svg class="i"><use href="#i-layers"/></svg>Deployments</a>
+      <a href="#"><svg class="i"><use href="#i-grid"/></svg>Apps</a>
+      <a href="#" data-role-only="dozent admin"><svg class="i"><use href="#i-cap"/></svg>Kurse</a>
+      <a href="#" data-role-only="admin"><svg class="i"><use href="#i-shield"/></svg>Freigaben</a>
+      <a href="#" data-role-only="admin"><svg class="i"><use href="#i-sliders"/></svg>Admin-Einstellungen</a>
+      <a href="#"><svg class="i"><use href="#i-help"/></svg>Hilfe</a>
+    </nav>
+    <div class="sidebar__foot"><div class="lang"><span>DE</span><span>EN</span></div></div>
+  </aside>
+
+  <div class="workspace">
+    <header class="header">
+      <button type="button" class="icon-btn icon-btn--collapse" aria-label="Seitenleiste schließen"><svg class="i"><use href="#i-panel"/></svg></button>
+      <button type="button" class="icon-btn icon-btn--menu" aria-label="Menü öffnen"><svg class="i"><use href="#i-menu"/></svg></button>
+      <div class="user">
+        <span class="user__avatar" data-role-only="dozent">D</span>
+        <span class="user__avatar" data-role-only="admin">A</span>
+        <span class="user__avatar" data-role-only="student">L</span>
+        <span class="user__name" data-role-only="dozent">dozent.demo</span>
+        <span class="user__name" data-role-only="admin">admin.demo</span>
+        <span class="user__name" data-role-only="student">lena.berger</span>
+        <svg class="i" style="width:12px;height:12px"><use href="#i-chev"/></svg>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="page">
+
+        <!-- Hero: der Satz sagt, was heute zählt -->
+        <section class="hero" aria-labelledby="hero-name">
+          <div class="hero__body">
+            <h1 class="hero__name" id="hero-name">
+              <span data-role-only="dozent">Hallo Dozentin</span>
+              <span data-role-only="admin">Hallo Admin</span>
+              <span data-role-only="student">Hallo Lena</span>
+            </h1>
+            <p class="hero__sub" data-role-only="dozent" data-state-only="normal"><b class="num">6 Deployments</b> laufen, 1 wird bereitgestellt, <b class="is-bad num">2 sind fehlgeschlagen</b>.</p>
+            <p class="hero__sub" data-role-only="dozent" data-state-only="leer">Sie haben noch kein Deployment. Wählen Sie eine App, um zu starten.</p>
+            <p class="hero__sub" data-role-only="admin" data-state-only="normal"><b class="num">3 Versionen</b> warten auf Ihre Freigabe. Plattformweit sind <b class="is-bad num">4 Deployments fehlgeschlagen</b>.</p>
+            <p class="hero__sub" data-role-only="admin" data-state-only="leer">Keine Version wartet auf Freigabe. Plattformweit sind <b class="is-bad num">4 Deployments fehlgeschlagen</b>.</p>
+            <p class="hero__sub" data-role-only="student" data-state-only="normal"><b>Eine Umgebung ist bereit</b>, eine wird bereitgestellt, eine ist nicht gestartet.</p>
+            <p class="hero__sub" data-role-only="student" data-state-only="leer">Hier erscheinen Ihre Umgebungen für den Kurs.</p>
+            <span class="hero__chip" data-role-only="student"><svg class="i"><use href="#i-cap"/></svg>Web-Engineering WWI23</span>
+          </div>
+        </section>
+
+        <!-- Kacheln -->
+        <div class="kpis" data-role-only="dozent">
+          <a class="kpi" href="#">
+            <span class="kpi__icon" style="background:rgb(226 0 26 / .10)"><svg class="i" style="color:var(--primary)"><use href="#i-chart"/></svg></span>
+            <div><p class="kpi__num num"><span data-state-only="normal">6<small class="kpi__of">von 11</small></span><span data-state-only="leer">0</span></p><p class="kpi__lbl">Aktive Deployments</p></div>
+            <svg class="i kpi__go"><use href="#i-arrow"/></svg>
+          </a>
+          <a class="kpi" href="#">
+            <span class="kpi__icon" style="background:rgb(104 114 96 / .10)"><svg class="i" style="color:var(--accent)"><use href="#i-layers"/></svg></span>
+            <div><p class="kpi__num num">8</p><p class="kpi__lbl">Apps</p></div>
+            <svg class="i kpi__go"><use href="#i-arrow"/></svg>
+          </a>
+          <a class="kpi" href="#">
+            <span class="kpi__icon" style="background:rgb(29 78 216 / .08)"><svg class="i" style="color:var(--info)"><use href="#i-cap"/></svg></span>
+            <div><p class="kpi__num num">3</p><p class="kpi__lbl">Meine Kurse</p></div>
+            <svg class="i kpi__go"><use href="#i-arrow"/></svg>
+          </a>
+        </div>
+
+        <div class="kpis" data-role-only="admin">
+          <a class="kpi" href="#">
+            <span class="kpi__icon" style="background:rgb(226 0 26 / .10)"><svg class="i" style="color:var(--primary)"><use href="#i-shield"/></svg></span>
+            <div><p class="kpi__num num"><span data-state-only="normal">3</span><span data-state-only="leer">0</span></p><p class="kpi__lbl">Freigaben offen</p></div>
+            <svg class="i kpi__go"><use href="#i-arrow"/></svg>
+          </a>
+          <div class="kpi">
+            <span class="kpi__icon" style="background:rgb(185 28 28 / .08)"><svg class="i" style="color:var(--bad)"><use href="#i-alert"/></svg></span>
+            <div><p class="kpi__num num">4<small class="kpi__of">plattformweit</small></p><p class="kpi__lbl">Fehlgeschlagen</p></div>
+          </div>
+          <a class="kpi" href="#">
+            <span class="kpi__icon" style="background:rgb(104 114 96 / .10)"><svg class="i" style="color:var(--accent)"><use href="#i-layers"/></svg></span>
+            <div><p class="kpi__num num">21</p><p class="kpi__lbl">Apps</p></div>
+            <svg class="i kpi__go"><use href="#i-arrow"/></svg>
+          </a>
+        </div>
+
+        <!-- ═════ Lehrende ═════ -->
+        <div class="layout" data-role-only="dozent">
+          <section class="card" aria-labelledby="h-courses">
+            <div class="card__head">
+              <div><h2 class="card__title" id="h-courses">Deployments nach Kurs</h2><p class="card__sub" data-state-only="normal">Kurse mit Problemen stehen oben.</p></div>
+              <a class="link" href="#" data-state-only="normal">Alle Deployments<svg class="i"><use href="#i-arrow"/></svg></a>
+            </div>
+
+            <div class="empty" data-state-only="leer" style="border-top:1px solid var(--line)">
+              <span class="empty__icon"><svg class="i"><use href="#i-inbox"/></svg></span>
+              <h3 class="empty__title">Noch kein Deployment</h3>
+              <p class="empty__text">Wählen Sie eine App, legen Sie die Teams fest und starten Sie. Ihre Deployments erscheinen hier nach Kurs sortiert.</p>
+              <a class="btn btn--primary" href="#"><svg class="i"><use href="#i-plus"/></svg>Neues Deployment</a>
+            </div>
+
+            <div data-state-only="normal">
+              <!-- Kurs 1: Problem -->
+              <section class="course" aria-labelledby="c1">
+                <div class="course__head">
+                  <h3 class="course__name" id="c1">Datenbanken WI24</h3><span class="course__count num">2 Deployments</span>
+                  <ul class="course__sum"><li class="is-bad"><span class="dot dot--bad"></span>1 fehlgeschlagen</li><li><span class="dot dot--ok"></span>1 aktiv</li></ul>
+                </div>
+                <div class="band" role="group" aria-label="Zustand: 1 fehlgeschlagen, 1 aktiv">
+                  <a class="band__seg band__seg--bad" href="#" style="flex:1" title="1 fehlgeschlagen" aria-label="1 fehlgeschlagen anzeigen"></a>
+                  <a class="band__seg band__seg--ok" href="#" style="flex:1" title="1 aktiv" aria-label="1 aktiv anzeigen"></a>
+                </div>
+                <ul class="rows">
+                  <li><a class="row row--bad" href="#"><div style="min-width:0"><p class="row__name">SQL-Labor Gruppe A–D</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>pgAdmin<span class="row__when">· gestern</span></p></div><span class="pill pill--bad">Fehlgeschlagen</span><span class="row__time num">gestern</span></a></li>
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">SQL-Labor Demo</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>pgAdmin<span class="row__when">· Mo</span></p></div><span class="pill pill--ok">Aktiv</span><span class="row__time num">Mo</span></a></li>
+                </ul>
+              </section>
+
+              <!-- Kurs 2: Bereitstellung -->
+              <section class="course" aria-labelledby="c2">
+                <div class="course__head">
+                  <h3 class="course__name" id="c2">Web-Engineering WWI23</h3><span class="course__count num">5 Deployments</span>
+                  <ul class="course__sum"><li><span class="dot dot--ok"></span>3 aktiv</li><li><span class="dot dot--info"></span>1 in Bereitstellung</li><li><span class="dot"></span>1 gestoppt</li></ul>
+                </div>
+                <div class="band" role="group" aria-label="Zustand: 3 aktiv, 1 in Bereitstellung, 1 gestoppt">
+                  <a class="band__seg band__seg--ok" href="#" style="flex:3" title="3 aktiv" aria-label="3 aktiv anzeigen"></a>
+                  <a class="band__seg band__seg--info" href="#" style="flex:1" title="1 in Bereitstellung" aria-label="1 in Bereitstellung anzeigen"></a>
+                  <a class="band__seg" href="#" style="flex:1" title="1 gestoppt" aria-label="1 gestoppt anzeigen"></a>
+                </div>
+                <ul class="rows">
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">Klausur-Übung</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Jupyter<span class="row__when">· 12:04</span></p></div><span class="pill pill--info"><span class="pulse"></span>In Bereitstellung</span><span class="row__time num">12:04</span></a></li>
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">Praktikum 3: React</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Online-IDE<span class="row__when">· 08:15</span></p></div><span class="pill pill--ok">Aktiv</span><span class="row__time num">08:15</span></a></li>
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">Praktikum 2: REST-API</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Online-IDE<span class="row__when">· 21. Okt.</span></p></div><span class="pill pill--ok">Aktiv</span><span class="row__time num">21. Okt.</span></a></li>
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">LaTeX-Workshop</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Web-LaTeX<span class="row__when">· 14. Okt.</span></p></div><span class="pill pill--ok">Aktiv</span><span class="row__time num">14. Okt.</span></a></li>
+                </ul>
+                <button type="button" class="more" aria-expanded="false" aria-controls="f2"><svg class="i"><use href="#i-chev"/></svg>1 gestopptes Deployment anzeigen</button>
+                <ul class="rows rows--folded" id="f2" hidden>
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">Praktikum 1: Git</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Online-IDE<span class="row__when">· 07. Okt.</span></p></div><span class="pill pill--stop">Gestoppt</span><span class="row__time num">07. Okt.</span></a></li>
+                </ul>
+              </section>
+
+              <!-- Kurs 3 -->
+              <section class="course" aria-labelledby="c3">
+                <div class="course__head">
+                  <h3 class="course__name" id="c3">Software-Qualität WI23</h3><span class="course__count num">3 Deployments</span>
+                  <ul class="course__sum"><li class="is-bad"><span class="dot dot--bad"></span>1 fehlgeschlagen</li><li><span class="dot dot--ok"></span>1 aktiv</li><li><span class="dot"></span>1 gestoppt</li></ul>
+                </div>
+                <div class="band" role="group" aria-label="Zustand: 1 fehlgeschlagen, 1 aktiv, 1 gestoppt">
+                  <a class="band__seg band__seg--bad" href="#" style="flex:1" title="1 fehlgeschlagen" aria-label="1 fehlgeschlagen anzeigen"></a>
+                  <a class="band__seg band__seg--ok" href="#" style="flex:1" title="1 aktiv" aria-label="1 aktiv anzeigen"></a>
+                  <a class="band__seg" href="#" style="flex:1" title="1 gestoppt" aria-label="1 gestoppt anzeigen"></a>
+                </div>
+                <ul class="rows">
+                  <li><a class="row row--bad" href="#"><div style="min-width:0"><p class="row__name">Refactoring-Kata</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Online-IDE<span class="row__when">· Di</span></p></div><span class="pill pill--bad">Fehlgeschlagen</span><span class="row__time num">Di</span></a></li>
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">Testing-Workshop</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Jupyter<span class="row__when">· 20. Okt.</span></p></div><span class="pill pill--ok">Aktiv</span><span class="row__time num">20. Okt.</span></a></li>
+                </ul>
+                <button type="button" class="more" aria-expanded="false" aria-controls="f3"><svg class="i"><use href="#i-chev"/></svg>1 gestopptes Deployment anzeigen</button>
+                <ul class="rows rows--folded" id="f3" hidden>
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">Code-Review-Übung</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>Online-IDE<span class="row__when">· 02. Okt.</span></p></div><span class="pill pill--stop">Gestoppt</span><span class="row__time num">02. Okt.</span></a></li>
+                </ul>
+              </section>
+
+              <!-- Ohne Kurs -->
+              <section class="course course--none" aria-labelledby="c4">
+                <div class="course__head">
+                  <h3 class="course__name" id="c4">Ohne Kurs</h3><span class="course__count num">1 Deployment</span>
+                  <ul class="course__sum"><li><span class="dot dot--ok"></span>1 aktiv</li></ul>
+                </div>
+                <div class="band" role="group" aria-label="Zustand: 1 aktiv"><a class="band__seg band__seg--ok" href="#" style="flex:1" title="1 aktiv" aria-label="1 aktiv anzeigen"></a></div>
+                <ul class="rows" style="padding-bottom:10px">
+                  <li><a class="row" href="#"><div style="min-width:0"><p class="row__name">Test mit pgAdmin</p><p class="row__meta"><svg class="i"><use href="#i-box"/></svg>pgAdmin<span class="row__when">· 09. Okt.</span></p></div><span class="pill pill--ok">Aktiv</span><span class="row__time num">09. Okt.</span></a></li>
+                </ul>
+              </section>
+            </div>
+          </section>
+
+          <div class="stack">
+            <section class="card card--pad" aria-labelledby="h-new">
+              <h2 class="card__title" id="h-new">Neues Deployment</h2>
+              <p class="cta__text">Wählen Sie eine App, legen Sie die Teams fest und starten Sie.</p>
+              <a class="btn btn--primary btn--block" href="#"><svg class="i"><use href="#i-plus"/></svg>Neues Deployment</a>
+              <div class="cta__recent" data-state-only="normal">
+                <p class="cta__label">Zuletzt genutzt</p>
+                <div class="chips"><a class="chip" href="#">Online-IDE</a><a class="chip" href="#">pgAdmin</a><a class="chip" href="#">Jupyter</a></div>
+              </div>
+            </section>
+
+            <section class="card card--pad" aria-labelledby="h-apps">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px">
+                <h2 class="card__title" id="h-apps">Ihre Apps</h2><a class="link" href="#">Alle Apps<svg class="i"><use href="#i-arrow"/></svg></a>
+              </div>
+              <ul class="list">
+                <li><div><p class="list__name">Jupyter</p><p class="list__meta num">Version 1.4.0 eingereicht</p></div><span class="pill pill--warn"><svg class="i"><use href="#i-clock"/></svg>In Prüfung</span></li>
+                <li><div><p class="list__name">Online-IDE</p><p class="list__meta num">Version 2.0.1</p></div><span class="pill pill--bad">Abgelehnt</span></li>
+                <li><div><p class="list__name">Web-LaTeX</p><p class="list__meta num">Version 1.2.0</p></div><span class="pill pill--ok">Freigegeben</span></li>
+              </ul>
+            </section>
+
+            <section class="card card--pad" aria-labelledby="h-quota">
+              <h2 class="card__title" id="h-quota" style="margin-bottom:12px">Kontingent</h2>
+              <div class="metric" style="padding-top:0;border-top:0">
+                <div class="metric__row"><span>Workloads</span><span class="num">38 von 60 belegt</span></div>
+                <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="60" aria-valuenow="38" aria-label="38 von 60 Workloads belegt"><i style="width:63%"></i></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- ═════ Admin ═════ -->
+        <div class="layout" data-role-only="admin">
+          <section class="card" aria-labelledby="h-queue">
+            <div class="card__head">
+              <div><h2 class="card__title" id="h-queue">Zur Freigabe</h2><p class="card__sub">Älteste Einreichung zuerst.</p></div>
+              <a class="link" href="#" data-state-only="normal">Alle Freigaben<svg class="i"><use href="#i-arrow"/></svg></a>
+            </div>
+            <ul class="queue" data-state-only="normal">
+              <li><span class="app-tile app-tile--a" aria-hidden="true">J</span><div><p class="queue__name">Jupyter <span>1.4.0</span></p><p class="queue__meta">Dr. Weiß · Pods</p></div><span class="pill pill--warn"><svg class="i"><use href="#i-clock"/></svg>seit 2 Tagen</span><a class="btn btn--secondary btn--small" href="#">Prüfen</a></li>
+              <li><span class="app-tile app-tile--b" aria-hidden="true">O</span><div><p class="queue__name">Online-IDE <span>2.1.0</span></p><p class="queue__meta">Prof. Brandt · Pods</p></div><span class="pill pill--stop"><svg class="i"><use href="#i-clock"/></svg>seit 1 Tag</span><a class="btn btn--secondary btn--small" href="#">Prüfen</a></li>
+              <li><span class="app-tile app-tile--c" aria-hidden="true">P</span><div><p class="queue__name">pgAdmin <span>16.2</span></p><p class="queue__meta">Dr. Weiß · Pods</p></div><span class="pill pill--stop"><svg class="i"><use href="#i-clock"/></svg>seit 3 Std.</span><a class="btn btn--secondary btn--small" href="#">Prüfen</a></li>
+            </ul>
+            <div class="empty" data-state-only="leer" style="border-top:1px solid var(--line)">
+              <span class="empty__icon"><svg class="i"><use href="#i-check"/></svg></span>
+              <h3 class="empty__title">Keine Versionen zur Prüfung</h3>
+              <p class="empty__text">Neue Einreichungen von Lehrenden erscheinen hier, die älteste zuerst.</p>
+              <a class="btn btn--secondary" href="#">Alle Apps ansehen</a>
+            </div>
+          </section>
+
+          <div class="stack">
+            <section class="card card--pad" aria-labelledby="h-plat">
+              <h2 class="card__title" id="h-plat" style="margin-bottom:12px">Plattform</h2>
+              <div class="metric metric--plain"><div class="metric__row"><span>In Bereitstellung</span><span class="pill pill--info"><span class="pulse"></span>2</span></div></div>
+              <div class="metric">
+                <div class="metric__row"><span>Workloads</span><span class="num">38 von 60 belegt</span></div>
+                <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="60" aria-valuenow="38" aria-label="38 von 60 Workloads belegt"><i style="width:63%"></i></div>
+              </div>
+              <div class="metric">
+                <div class="metric__row"><span>Speicher für Dateien</span><span class="num">1,2 von 5 GB</span></div>
+                <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1.2" aria-label="1,2 von 5 GB Speicher belegt"><i style="width:24%"></i></div>
+              </div>
+            </section>
+          </div>
+
+          <section class="card" style="grid-column:1 / -1" aria-labelledby="h-own">
+            <button type="button" class="fold" aria-expanded="false" aria-controls="own-body">
+              <h2 class="card__title" id="h-own">Ihre Deployments</h2>
+              <span class="fold__sum num">5 Deployments · 3 aktiv · 1 in Bereitstellung · 1 fehlgeschlagen</span>
+              <svg class="i i--chev"><use href="#i-chev"/></svg>
+            </button>
+            <div class="fold-body" id="own-body" hidden>
+              <section class="course course--none" style="padding-inline:0;border-top:0">
+                <div class="course__head"><h3 class="course__name">Ohne Kurs</h3><span class="course__count num">5 Deployments</span></div>
+                <div class="band" role="group" aria-label="Zustand: 3 aktiv, 1 in Bereitstellung, 1 fehlgeschlagen">
+                  <a class="band__seg band__seg--ok" href="#" style="flex:3"></a><a class="band__seg band__seg--info" href="#" style="flex:1"></a><a class="band__seg band__seg--bad" href="#" style="flex:1"></a>
+                </div>
+                <p class="card__sub" style="padding-bottom:14px">Gruppiert wie bei den Lehrenden, sobald Ihre Deployments Kursen zugeordnet sind.</p>
+              </section>
+            </div>
+          </section>
+        </div>
+
+        <!-- ═════ Studierende ═════ -->
+        <div data-role-only="student">
+          <div class="section-head"><h2 class="card__title">Ihre Umgebungen</h2><span class="num" data-state-only="normal">3</span></div>
+
+          <div class="envs" data-state-only="normal">
+            <article class="env">
+              <div class="env__top"><span class="pill pill--ok">Aktiv</span><span class="env__time num">seit heute 08:15</span></div>
+              <div><h3 class="env__name">Praktikum 3: React</h3><p class="env__app"><svg class="i"><use href="#i-box"/></svg>Online-IDE</p></div>
+              <p class="env__hint">Ihre Umgebung ist bereit. Adresse und Zugangsdaten stehen in den Details.</p>
+              <div class="env__act"><a class="btn btn--secondary" href="#">Zugang öffnen<svg class="i"><use href="#i-up-right"/></svg></a></div>
+            </article>
+            <article class="env">
+              <div class="env__top"><span class="pill pill--info"><span class="pulse"></span>In Bereitstellung</span><span class="env__time num">seit 12:04</span></div>
+              <div><h3 class="env__name">Klausur-Übung</h3><p class="env__app"><svg class="i"><use href="#i-box"/></svg>Jupyter</p></div>
+              <div class="env__hint"><p style="margin-bottom:10px">Wird gerade bereitgestellt. Diese Seite aktualisiert sich selbst.</p><div class="indet" role="progressbar" aria-label="Wird bereitgestellt"></div></div>
+              <div class="env__act"><a class="link" href="#">Details ansehen<svg class="i"><use href="#i-arrow"/></svg></a></div>
+            </article>
+            <article class="env env--bad">
+              <div class="env__top"><span class="pill pill--bad">Fehlgeschlagen</span><span class="env__time num">seit Di</span></div>
+              <div><h3 class="env__name">Praktikum 2: REST-API</h3><p class="env__app"><svg class="i"><use href="#i-box"/></svg>Online-IDE</p></div>
+              <p class="env__hint">Die Umgebung ist nicht gestartet. Informieren Sie Ihre Lehrenden.</p>
+              <div class="env__act"><a class="link" href="#">Details ansehen<svg class="i"><use href="#i-arrow"/></svg></a></div>
+            </article>
+          </div>
+
+          <div class="card empty" data-state-only="leer">
+            <span class="empty__icon"><svg class="i"><use href="#i-inbox"/></svg></span>
+            <h3 class="empty__title">Noch keine Umgebung</h3>
+            <p class="empty__text">Sobald Ihre Lehrenden ein Deployment für Ihren Kurs anlegen, erscheint es hier. Dort finden Sie auch Ihren Zugang.</p>
+            <a class="btn btn--secondary" href="#">Apps ansehen</a>
+          </div>
+
+          <div class="foot-link" data-state-only="normal"><a class="link" href="#">12 Apps im Katalog ansehen<svg class="i"><use href="#i-arrow"/></svg></a></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  var body = document.body;
+  var ROLES = ['dozent', 'admin', 'student'];
+
+  function read() {
+    var t = location.hash.replace('#', '').split('-');
+    return {
+      role: ROLES.filter(function (r) { return t.indexOf(r) > -1; })[0] || 'dozent',
+      state: t.indexOf('leer') > -1 ? 'leer' : 'normal',
+      clean: t.indexOf('clean') > -1
+    };
+  }
+  function apply() {
+    var s = read();
+    body.setAttribute('data-role', s.role);
+    body.setAttribute('data-state', s.state);
+    body.classList.toggle('clean', s.clean);
+    document.querySelectorAll('.seg[data-group="role"] button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === s.role)); });
+    document.querySelectorAll('.seg[data-group="state"] button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === s.state)); });
+  }
+  function write(patch) {
+    var s = Object.assign(read(), patch);
+    var t = [];
+    if (s.clean) t.push('clean');
+    if (s.role !== 'dozent') t.push(s.role);
+    if (s.state === 'leer') t.push('leer');
+    location.hash = t.join('-');
+  }
+  document.querySelectorAll('.seg[data-group="role"] button').forEach(function (b) { b.addEventListener('click', function () { write({ role: b.dataset.v }); }); });
+  document.querySelectorAll('.seg[data-group="state"] button').forEach(function (b) { b.addEventListener('click', function () { write({ state: b.dataset.v }); }); });
+  window.addEventListener('hashchange', apply);
+  apply();
+
+  document.querySelectorAll('.more, .fold').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!open));
+      var target = document.getElementById(btn.getAttribute('aria-controls'));
+      if (target) target.hidden = open;
+    });
+  });
+  document.querySelectorAll('a[href="#"]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); }); });
+})();
+</script>
+</body>
+</html>
