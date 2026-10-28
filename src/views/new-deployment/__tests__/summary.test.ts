@@ -113,6 +113,22 @@ describe('formatSubmitError', () => {
     )
   })
 
+  it('names the owner storage quota with used, needed and limit in MB', () => {
+    const detail = { reason: 'owner_storage_quota_exceeded', used_bytes: 200 * 1048576, needed_bytes: 80 * 1048576, limit_bytes: 256 * 1048576 }
+    const message = formatSubmitError(err(detail), t)
+    expect(message).toContain('deployment.summary.errors.ownerStorageQuotaExceeded')
+    expect(message).toContain('"usedMb":"200.0"')
+    expect(message).toContain('"neededMb":"80.0"')
+    expect(message).toContain('"limitMb":"256.0"')
+  })
+
+  it('has a text for a full platform storage and for a body over the limit', () => {
+    expect(formatSubmitError(err({ reason: 'upload_storage_full' }), t)).toContain('deployment.summary.errors.upload_storage_full')
+    expect(formatSubmitError(err({ code: 'request_body_too_large', limit_bytes: 16777216 }), t)).toBe(
+      'deployment.summary.errors.request_body_too_large',
+    )
+  })
+
   it('falls back to a string detail, the error message, then the generic key', () => {
     expect(formatSubmitError(err('plain detail'), t)).toBe('plain detail')
     expect(formatSubmitError({ message: 'boom' }, t)).toBe('boom')

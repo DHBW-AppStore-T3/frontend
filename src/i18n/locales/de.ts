@@ -951,6 +951,9 @@ export default {
         fileB64Invalid: 'Datei "{filename}" konnte nicht dekodiert werden — bitte erneut hochladen.',
         fileSizeMismatch: 'Größenprüfung für Datei "{filename}" fehlgeschlagen — bitte erneut hochladen.',
         upload_scan_unavailable: 'Der Virenscanner ist gerade nicht erreichbar. Bitte später erneut versuchen.',
+        upload_storage_full: 'Der Dateispeicher der Plattform ist gerade voll. Bitte später erneut versuchen oder die Administration kontaktieren.',
+        ownerStorageQuotaExceeded: 'Ihre Deployments speichern bereits {usedMb} MB an Dateien, und diese Dateien brauchen weitere {neededMb} MB. Das Limit liegt bei {limitMb} MB: Löschen Sie nicht mehr benötigte Deployments oder laden Sie kleinere Dateien hoch.',
+        request_body_too_large: 'Der Upload ist zu groß. Bitte Dateien entfernen oder verkleinern.',
         fileContentRejected: 'Datei "{filename}" wurde abgelehnt: {reason}',
         fileContent: {
           zip_invalid: 'Das ist kein lesbares ZIP-Archiv.',
