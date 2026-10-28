@@ -250,6 +250,7 @@ export default function FileVariableCard({ variable, teams, nameOf, getFileSlot,
           <>
             {kind !== 'all' ? (
               <>
+                {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the group only delegates arrow keys (roving tabindex); the radios inside are the focus stops */}
                 <div
                   role="radiogroup"
                   aria-label={t('deployment.fileVariable.mode.label')}
