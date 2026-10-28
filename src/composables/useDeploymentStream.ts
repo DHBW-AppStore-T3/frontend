@@ -20,46 +20,17 @@
  * * ``connectionState`` — high-level state machine surface for the
  *   detail view to show "connecting" / "live" / "reconnecting" /
  *   "ended" badges.
+ * * ``invalidEvents`` — snapshot/progress/log events of this stream that
+ *   failed validation and were ignored (see ``deploymentStreamEvents``).
  */
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createStore } from 'zustand/vanilla'
 import { keycloak } from '@/services/keycloak.service'
 import { env } from '@/env'
+import { parseLog, parseProgress, parseSnapshot, type LogEntry } from './deploymentStreamEvents'
 
-export interface LogEntry {
-  timestamp: string
-  level: string
-  category?: string
-  message: string
-  tool?: string
-  streaming?: boolean
-  phase?: string
-  progress_pct?: number
-  // TODO #90: SSE events are validated there; until then the open index signature stays.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any
-}
-
-export interface ProgressEvent {
-  phase: string
-  phase_index: number
-  total_phases: number
-  progress_pct: number
-  message?: string
-  // Full ordered phase-name sequence for the active task. The worker
-  // ships the authoritative list with every event; the UI only falls
-  // back to its static phase tables before the first event.
-  phase_names?: string[]
-}
-
-export interface SnapshotEvent {
-  task_id: string | null
-  status: string | null
-  current_phase: string | null
-  progress_pct: number | null
-  type: string | null
-}
+export type { LogEntry, ProgressEvent, SnapshotEvent } from './deploymentStreamEvents'
 
 export type ConnectionState = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'ended' | 'error'
 
@@ -91,6 +62,8 @@ interface StreamState {
   totalLogCount: number
   connectionState: ConnectionState
   lastError: string | null
+  // Events dropped by validation since ``start()``; never decreases within a run.
+  invalidEvents: number
 }
 
 const initialState = (): StreamState => ({
@@ -106,6 +79,7 @@ const initialState = (): StreamState => ({
   totalLogCount: 0,
   connectionState: 'idle',
   lastError: null,
+  invalidEvents: 0,
 })
 
 /**
@@ -121,6 +95,8 @@ function createStreamController(initialDeploymentId: string | null) {
   let abortController: AbortController | null = null
   let reconnectAttempt = 0
   let reconnectTimer: number | null = null
+  // Event types already warned about on the current connection.
+  let warnedEvents = new Set<string>()
 
   const reset = () => {
     // Keep ``connectionState``: it is driven by connect()/stop().
@@ -139,12 +115,21 @@ function createStreamController(initialDeploymentId: string | null) {
     set({ liveLogs: next, totalLogCount: get().totalLogCount + 1 })
   }
 
-  // TODO #90: type the event payload together with the SSE validation.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleEvent = (eventName: string, data: any) => {
+  // Ignore an event that failed validation: state stays as it is, it is counted,
+  // and the first one per type and connection is warned about. The warning names
+  // the event type only, never payload content.
+  const rejectEvent = (eventName: string) => {
+    set({ invalidEvents: get().invalidEvents + 1 })
+    if (warnedEvents.has(eventName)) return
+    warnedEvents.add(eventName)
+    console.warn(`[deployment-stream] ignored invalid "${eventName}" event`)
+  }
+
+  const handleEvent = (eventName: string, data: unknown) => {
     if (eventName === 'snapshot') {
-      const snap = data as SnapshotEvent
-      const status = (snap.status || '').toUpperCase()
+      const snap = parseSnapshot(data)
+      if (!snap) return rejectEvent(eventName)
+      const status = (snap.status ?? '').toUpperCase()
       const isActive = status === 'PENDING' || status === 'RUNNING'
       // Only adopt the snapshot's progress/phase when the latest task
       // is actually live. After a successful deploy the snapshot still
@@ -167,7 +152,8 @@ function createStreamController(initialDeploymentId: string | null) {
     }
 
     if (eventName === 'progress') {
-      const ev = data as ProgressEvent
+      const ev = parseProgress(data)
+      if (!ev) return rejectEvent(eventName)
       set({
         progress: ev.progress_pct,
         currentPhase: ev.phase,
@@ -184,17 +170,8 @@ function createStreamController(initialDeploymentId: string | null) {
     }
 
     if (eventName === 'log') {
-      // Worker logs ship the human-readable ISO time as ``iso_timestamp``
-      // (once because Celery reserved ``timestamp`` for a Unix-time
-      // float; the name stayed). Re-key to ``timestamp`` for downstream
-      // consumers that don't need to know that detail.
-      // TODO #90: replaced by the validated event type.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = data as Record<string, any>
-      const entry: LogEntry = {
-        ...(raw as object),
-        timestamp: raw.iso_timestamp || raw.timestamp || new Date().toISOString(),
-      } as LogEntry
+      const entry = parseLog(data)
+      if (!entry) return rejectEvent(eventName)
       pushLog(entry)
       return
     }
@@ -235,6 +212,7 @@ function createStreamController(initialDeploymentId: string | null) {
 
     abortController?.abort()
     abortController = new AbortController()
+    warnedEvents = new Set()
     set({ connectionState: reconnectAttempt === 0 ? 'connecting' : 'reconnecting' })
 
     const token = await keycloak.getAccessToken()
@@ -357,9 +335,7 @@ export function useDeploymentStream(deploymentId: string | null) {
  * with ``\\n``) and arbitrary ``event:`` names. Comment lines start
  * with ``:`` and are silently ignored — used here for keepalives.
  */
-// TODO #90: the parsed frame is validated before dispatch.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseFrame(rawFrame: string, dispatch: (eventName: string, data: any) => void) {
+function parseFrame(rawFrame: string, dispatch: (eventName: string, data: unknown) => void) {
   if (!rawFrame.trim() || rawFrame.startsWith(':')) return
   let eventName = 'message'
   const dataLines: string[] = []
