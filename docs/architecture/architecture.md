@@ -2,15 +2,16 @@
 
 > **Stand:** 2026-10-26 · beschrieben ist der Stand von `dev`, der auf **Staging** ausgerollt ist:
 > **Frontend** `dev` @ `0005672` · **self-service-ui** `dev` @ `54130c3`. Prod läuft auf älteren Ständen (Abschnitt 1.1).
+> **Nachgeführt am 2026-10-27** auf Frontend `dev` @ `3779c08`: Datei- und Importzahlen (2.3), Node-Version (2.4) und die Bezeichnung „Eigentümer-Ansicht“ (3.7). Seit `0005672` kamen u. a. die VM-Einstellungen im Wizard (#109, #111) und neu generierte API-Typen (#92) dazu. An den geänderten Importen bleiben Schichten und Kanten gleich; nur `views/` → `utils/` und `views/` → `stores/` wachsen um 4 bzw. 1. Die Ablaufbeschreibungen (Abschnitt 3) wurden dabei **nicht** erneut gegen den Code gelesen, alles andere beschreibt weiter `0005672`. Befund B7 ist überholt: `openapi.json` und `api.generated.ts` kennen `/recommended` und `/deploy-version` inzwischen; der Befund ist noch nicht überarbeitet.
 > **Quellen:** Code beider Repos, Importanalyse, `nginx.conf`, `Caddyfile`, Docker- und CI-Dateien, das Kubernetes-README, die Workflows, Skripte und das Helm-Chart im deployment-Repo, `claude_docs/` beider Repos, die Image-Pins in `k8s/images/`. Dazu die laufenden Workloads und Pods beider Namespaces sowie der Argo-CD-Stand (appstore-MCP, geprüft am 2026-10-26 um 14:14 UTC).
 > **Modell:** [`workspace.dsl`](workspace.dsl) (Structurizr DSL, C4). Die Diagramme sind aus diesem Modell erzeugt, über den Structurizr MCP Server (v2026.04.20, lokal; Tools `validate`, `parse`, `inspect`, `export-mermaid`).
 
 ## Kurzfassung
 
-- Der AppStore hat **zwei Oberflächen für dieselbe Backend-API**: das **Frontend** (eigene React-SPA, TypeScript, 162 Quelldateien) und **self-service-ui** (Fork von `pfisterer/self-service-ui`, nur zu Demozwecken, eigener Anteil `web/app-store/` mit 23 Quelldateien, rund 14 % des Codes).
+- Der AppStore hat **zwei Oberflächen für dieselbe Backend-API**: das **Frontend** (eigene React-SPA, TypeScript, 166 Quelldateien) und **self-service-ui** (Fork von `pfisterer/self-service-ui`, nur zu Demozwecken, eigener Anteil `web/app-store/` mit 23 Quelldateien, rund 14 % des Codes).
 - **Frontend:** Die SPA macht die OIDC-Anmeldung selbst (Code + PKCE, Tokens nur im Speicher). Ausgeliefert wird sie von nginx, das in Kubernetes zugleich das Gateway für `/api` ist. Zweiter Zugang ist Moodle per LTI 1.3.
 - **self-service-ui:** Ein **oauth2-proxy** (BFF) meldet bei Keycloak an. Der Browser hält nur ein Cookie, der Proxy setzt den Access-Token als Bearer, Caddy reicht `/api/app-store/*` an die API. Keine LTI-Anbindung.
-- **Live-Status:** Beide Oberflächen zeigen den Fortschritt per **SSE** (nur Eigentümer) und **Polling** (Frontend: 10 s für Mitglieder, self-service-ui: 5 s, solange der Status in Bewegung ist).
+- **Live-Status:** Beide Oberflächen zeigen den Fortschritt per **SSE** (nur in der Eigentümer-Ansicht) und **Polling** (Frontend: 10 s für Mitglieder, self-service-ui: 5 s, solange der Status in Bewegung ist).
 - **Unterschied im Funktionsumfang:** Das Frontend hat seinen **OpenStack-VM-Pfad entfernt** (nur Pods und KubeVirt), self-service-ui bietet **weiterhin OpenStack-Zugangsdaten** an. Lifecycle-Aktionen, App-Verwaltung und Kurse gibt es nur im Frontend; self-service-ui verlinkt dorthin.
 - **Prod hängt hinterher:** Das Frontend ist dort 47 Commits, self-service-ui 13 Commits hinter `dev`. Dieses Dokument beschreibt `dev`/Staging.
 - **Auffälligkeiten** (Abschnitt 4): direkte API-Aufrufe aus 14 Frontend-Dateien, kein Retry nach 401, zwei kopierte Wizard- und Katalog-Logiken, Doku-Drift.
@@ -27,7 +28,7 @@
 | **Außerhalb** | Innenleben von Backend-API und Worker. Sie stehen als graue Container im Modell, weil beide Oberflächen ihren Vertrag nutzen. |
 | **Nur der Ist-Stand** | Beschrieben ist, was im Code von `dev` steht und auf Staging läuft. Geplantes, Idealtypisches und Entwürfe aus Issues kommen nicht vor. Wo Doku und Code auseinanderlaufen, gilt der Code, und die Abweichung steht in Abschnitt 4. |
 | **Methode** | Statisch: Verzeichnis- und Importanalyse (nur Nicht-Test-Code), Konfigurationsdateien, Helm-Chart. Dynamisch: Code-Lektüre der beteiligten Module. Die **deklarierten** Image-Pins wurden aus dem deployment-Repo gelesen und mit den **laufenden** Digests beider Namespaces verglichen (appstore-MCP: `deployments`, `pods`, `staging_verdict`, `argocd_apps`). **Das Verhalten selbst wurde nicht zur Laufzeit beobachtet.** Wo eine Aussage nur aus dem Code abgeleitet ist, steht „abgeleitet“. |
-| **Basis des Frontends** | Beschrieben ist `team/dev` @ `0005672`, exportiert per `git archive`; auf diesem Stand setzt auch der PR auf. Das Dokument zitiert keine Zeilennummern, weil sie mit jedem `dev`-Commit driften. |
+| **Basis des Frontends** | Beschrieben ist `team/dev` @ `0005672`, exportiert per `git archive`; auf diesem Stand setzt auch der PR auf. Zahlen, Node-Version und der Wortlaut in 3.7 sind auf `3779c08` nachgeführt (Hinweis oben). Das Dokument zitiert keine Zeilennummern, weil sie mit jedem `dev`-Commit driften. |
 | **Modellprüfung** | `validate`: OK. `inspect`: 42 Hinweise, davon 38 „Beziehung ohne Technologie“ (bewusst: prozessinterne Aufrufe zwischen Komponenten haben keine eigene Technologie, sonst trägt jede Kante dasselbe Label), 2 für fehlende `!docs`/`!adrs` (der zustandslose MCP-Server sieht das Dateisystem nicht) und 2 zu Keycloak und Moodle („nicht in einer Sicht“). Letztere sind ein Artefakt: Ich blende ihre Instanzen im Deployment-View bewusst aus, damit er lesbar bleibt; beide Systeme stehen in mehreren anderen Sichten. |
 
 ### 1.1 Stand je Umgebung
@@ -131,9 +132,9 @@ graph LR
     end
 
     10-. "<div>Login, Token, UserInfo,<br />Logout</div><div style='font-size: 70%'>[HTTPS, OIDC]</div>" .->4
-    10-. "<div>REST, Bearer-Token</div><div style='font-size: 70%'>[HTTPS, JSON (in K8s über das Gateway)]</div>" .->35
+    10-. "<div>REST, Bearer-Token</div><div style='font-size: 70%'>[HTTPS, JSON]</div>" .->35
     27-. "<div>Übergabe per Link: Apps und<br />Versionen verwalten</div><div style='font-size: 70%'>[Browser-Link]</div>" .->10
-    27-. "<div>fetch /api/app-store/<br />(Cookie)</div><div style='font-size: 70%'>[HTTPS, JSON]</div>" .->25
+    27-. "<div>fetch /api/app-store/<br /></div><div style='font-size: 70%'>[HTTPS, JSON]</div>" .->25
     35-. "<div>SSE-Events</div><div style='font-size: 70%'>[SSE]</div>" .->27
     5-. "<div>LTI-1.3-Launch</div><div style='font-size: 70%'>[HTTPS, LTI 1.3]</div>" .->35
     5-. "<div>Bettet per iframe ein</div><div style='font-size: 70%'>[HTTPS]</div>" .->10
@@ -142,11 +143,11 @@ graph LR
     4-. "<div>Leitet zurück auf<br />/oauth2/callback</div><div style='font-size: 70%'>[HTTP-Redirect]</div>" .->25
     35-. "<div>Reiht Deployment-Jobs ein</div><div style='font-size: 70%'>[Postgres-Queue]</div>" .->36
     9-. "<div>Liefert HTML, JS, CSS,<br />env-config.js</div><div style='font-size: 70%'>[HTTPS]</div>" .->10
-    9-. "<div>Reverse-Proxy /api/ (Präfix<br />entfernt)</div><div style='font-size: 70%'>[HTTP]</div>" .->35
+    9-. "<div>Reverse-Proxy /api/ </div><div style='font-size: 70%'>[HTTP]</div>" .->35
     25-. "<div>Login-Redirect, Code<br />einlösen, Token erneuern</div><div style='font-size: 70%'>[OIDC, PKCE S256]</div>" .->4
     25-. "<div>Leitet weiter, setzt<br />Authorization: Bearer</div><div style='font-size: 70%'>[HTTP]</div>" .->26
     26-. "<div>Liefert SPA und config.js</div><div style='font-size: 70%'>[HTTP]</div>" .->27
-    26-. "<div>Reverse-Proxy /api/app-store/<br />(Präfix entfernt)</div><div style='font-size: 70%'>[HTTP]</div>" .->35
+    26-. "<div>Reverse-Proxy /api/app-store/<br /></div><div style='font-size: 70%'>[HTTP]</div>" .->35
 
   end
 ```
@@ -245,19 +246,19 @@ graph TB
 | **Bootstrap** | `main.tsx`, `bootstrap.tsx`, `App.tsx`, `env.ts` | 4 | Boot-Reihenfolge *Theme → LTI-Fragment → Auth → Render*. Auth ist entschieden, **bevor** die erste Route rendert. `env.ts` liest `window.__ENV__` (aus `/env-config.js`), dann `import.meta.env`, dann Defaults für localhost. |
 | **Router & Guards** | `router/`, `components/RouteError.tsx` | 3 / 274 | Datenrouter mit `lazy()` je View. Guards laufen als **Loader**: Login nötig, nur Gäste, Rolle, Wizard-Schritt vollständig. **Error Boundaries** (`RouteError`) auf der Root-Route und auf einer pfadlosen Wrapper-Route um die Kindrouten jedes Layouts: ein Seitenfehler ersetzt nur die Seite, nicht Sidebar und Header. Unbekannte Pfade leiten auf `/`. |
 | **Layouts** | `layouts/` | 7 / 408 | `AuthLayout`, `AppLayout` (Sidebar, Header), `UserLayout`. |
-| **Views & Feature-Hooks** | `views/` | 72 / 10 213 | 20 Seiten. Zu jeder gehören `use*`-Hooks für Daten und Zustand (z. B. `useDeploymentDetail`, `useAppDetail`), reine Logikmodule und Teilkomponenten. **Größte Schicht, hier liegt die Fachlogik.** |
-| **UI-Komponenten** | `components/` | 22 / 1 667 | `ui/` (Button, Modal, Drawer, Toast, Badge …), Variablen-Eingabe, Dropzone, Markdown-Editor und -Renderer, `RouteError`. |
+| **Views & Feature-Hooks** | `views/` | 76 / 10 708 | 20 Seiten. Zu jeder gehören `use*`-Hooks für Daten und Zustand (z. B. `useDeploymentDetail`, `useAppDetail`), reine Logikmodule und Teilkomponenten. **Größte Schicht, hier liegt die Fachlogik.** |
+| **UI-Komponenten** | `components/` | 22 / 1 673 | `ui/` (Button, Modal, Drawer, Toast, Badge …), Variablen-Eingabe, Dropzone, Markdown-Editor und -Renderer, `RouteError`. |
 | **Composables** | `composables/` | 9 / 831 | `useRole`, `useToast`, `useOverlay`, `useDashboard`, `useDeploymentPhases` u. a. |
 | **Live-Stream-Client** | `composables/useDeploymentStream.ts` | 1 | SSE-Client mit eigenem Zustandsautomaten (3.7). |
 | **Stores** | `stores/` | 7 / 878 | Zustand: `auth`, `app`, `course`, `deployment` (inkl. Wizard-Draft und Caches), `admin-view` (persistiert unter `appstore.adminView`), `toast`. `_request.ts` kapselt das Muster *loading → Fehler → finally*. |
 | **API-Layer** | `api/` | 7 / 448 | Eine axios-Instanz (30 s Timeout) mit Token-Interceptor und 401-Behandlung, dazu je Ressource ein `*.api.ts`. |
 | **Auth-Services** | `services/` | 3 / 398 | `keycloak.service` (OIDC, Tokens nur im Speicher, Single-Flight-Refresh), `auth.service` (`/users/me`, Nutzer-Cache in `localStorage`), `lti-launch` (Einmal-Code einlösen). |
 | **Silent-Refresh-Seite** | `silent-refresh.html`, `silent-refresh.ts` | 2 | Callback des versteckten Iframes. Wird mitgebündelt, weil die CSP nur Skripte von `self` erlaubt. |
-| **i18n** | `i18n/` | 7 / 2 229 | DE/EN, Rollenlabels, `BoldSlot` für Nutzernamen in Texten (Text statt HTML). |
+| **i18n** | `i18n/` | 7 / 2 305 | DE/EN, Rollenlabels, `BoldSlot` für Nutzernamen in Texten (Text statt HTML). |
 | **Theming** | `theme/` | 5 / 176 | White-Label: Registry (Standard `t3`), Farbkanäle als CSS-Variablen, Titel, Favicon. Auswahl über `VITE_THEME`. |
-| **Utils, Config & Types** | `utils/`, `config/`, `types/` | 15 / 5 151 | Reine Helfer, App-/Fachbereichs-Katalog (`department-catalog.ts`), API-Typen. 3 965 Zeilen sind generiert (`api.generated.ts`). |
+| **Utils, Config & Types** | `utils/`, `config/`, `types/` | 15 / 5 485 | Reine Helfer, App-/Fachbereichs-Katalog (`department-catalog.ts`), API-Typen. 4 252 Zeilen sind generiert (`api.generated.ts`). |
 
-Zusammen **162** Quelldateien und **123** Testdateien.
+Zusammen **166** Quelldateien und **131** Testdateien.
 
 **Wer nutzt die Querschnittsmodule?** (aus den Importen)
 
@@ -271,7 +272,7 @@ Zusammen **162** Quelldateien und **123** Testdateien.
 
 | Von | Nach (Anzahl) |
 |---|---|
-| `views/` | components 64, utils 38, stores 30, composables 28, router 16, api **15**, i18n 10 |
+| `views/` | components 64, utils 42, stores 31, composables 28, router 16, api **15**, i18n 10 |
 | `components/` | utils 5, composables 3, i18n 1, stores 1, router 1 |
 | `composables/` | stores 4, api **1**, services 1 |
 | `stores/` | utils 3, api 3, services 2 |
@@ -342,7 +343,7 @@ graph LR
 
 ### 2.4 Build, Konfiguration und Auslieferung des Frontends
 
-- **Build:** `tsc -b && vite build` im Multi-Stage-Dockerfile (Node 20 Alpine), danach nginx-unprivileged. Zwei Rollup-Einstiege: App und `silent-refresh`.
+- **Build:** `tsc -b && vite build` im Multi-Stage-Dockerfile (Node 24 Alpine), danach nginx-unprivileged. Zwei Rollup-Einstiege: App und `silent-refresh`.
 - **Konfiguration zur Laufzeit, nicht zur Buildzeit:** `index.html` lädt `/env-config.js` vor der App. Der Entrypoint (`docker-entrypoint.sh`) ersetzt per `envsubst` die Variablen `VITE_KEYCLOAK_URL`, `…_REALM`, `…_CLIENT_ID`, `VITE_APP_URL`, `VITE_API_URL`, `VITE_THEME`. Sonderzeichen, die ein JS-Literal oder einen Header aufbrechen könnten, lassen den Container **nicht starten** (Fail-Fast).
 - **Abgeleitete Header:** Die CSP entsteht aus den Origins von Keycloak und API (`connect-src`, `frame-src`). `frame-ancestors` kommt aus `FRAME_ANCESTORS` (Standard: niemand; für Moodle muss der Moodle-Origin gesetzt werden). `silent-refresh.html` darf zusätzlich von der App selbst gerahmt werden.
 - **Gateway:** Mit `API_UPSTREAM` (host:port) schreibt der Entrypoint die `/api`-Locations. Der Body ist auf **16 MB** begrenzt: Die API akzeptiert höchstens 10 MiB Dateien, das sind rund 13,4 MiB als base64 (Kommentar im Entrypoint, `.github#13`).
@@ -380,8 +381,7 @@ graph TB
         style 32 fill:#85bbf0,stroke:#5d82a8,color:#0b2540
         33["<div style='font-weight: bold'>App-Store-API-Client</div><div style='font-size: 70%; margin-top: 0px'>[Component: fetch]</div>"]
         style 33 fill:#85bbf0,stroke:#5d82a8,color:#0b2540
-        34["<div style='font-weight: bold'>Upstream-Bereiche (aus)</div><div style='font-size: 70%; margin-top: 0px'>[Component: React, Upstream-Clients]</div>"]
-        style 34 fill:#d9d9d9,stroke:#979797,color:#555555
+
       end
 
       10["<div style='font-weight: bold'>Frontend-SPA</div><div style='font-size: 70%; margin-top: 0px'>[Container: React 19, TypeScript, Vite]</div>"]
@@ -391,12 +391,11 @@ graph TB
     end
 
     28-. "<div>AuthProvider, SessionProvider</div><div style='font-size: 70%'></div>" .->29
-    28-. "<div>lädt /app-store lazy</div><div style='font-size: 70%'></div>" .->30
-    28-. "<div>Routen nur mit Feature-Flag<br />(aus)</div><div style='font-size: 70%'></div>" .->34
+    28-. "<div>lädt /app-store </div><div style='font-size: 70%'></div>" .->30
     30-. "<div>nutzt Hooks</div><div style='font-size: 70%'></div>" .->32
     30-. "<div>Route /apps/:id/deploy</div><div style='font-size: 70%'></div>" .->31
-    30-. "<div>Übergabe per Link: Apps und<br />Versionen verwalten</div><div style='font-size: 70%'>[Browser-Link]</div>" .->10
-    31-. "<div>Runtime, Variablen, Anlegen</div><div style='font-size: 70%'></div>" .->32
+    30-. "<div>Übergabe per Link<br /></div><div style='font-size: 70%'>[Browser-Link]</div>" .->10
+    31-. "<div>Runtime, Variablen</div><div style='font-size: 70%'></div>" .->32
     32-. "<div>ruft</div><div style='font-size: 70%'></div>" .->33
     32-. "<div>useSession</div><div style='font-size: 70%'></div>" .->29
     33-. "<div>401: expire()</div><div style='font-size: 70%'></div>" .->29
@@ -583,7 +582,7 @@ In beiden Oberflächen ist die Rollenprüfung **kosmetisch** (Sichtbarkeit, Weit
 | Token ans Backend | die SPA setzt den Bearer | der Proxy setzt den Bearer |
 | Auslieferung | nginx, zugleich Gateway für `/api` | Caddy hinter dem Proxy, `/api/app-store/` |
 | Moodle, LTI | ja | nein |
-| Live-Fortschritt | SSE per `fetch` mit Reconnect (Eigentümer), Polling 10 s (Mitglieder) | SSE per `EventSource`, **kein** Reconnect (Eigentümer), Polling 5 s bei laufendem Status (alle) |
+| Live-Fortschritt | SSE per `fetch` mit Reconnect (Eigentümer-Ansicht), Polling 10 s (Mitglieder) | SSE per `EventSource`, **kein** Reconnect (Eigentümer-Ansicht), Polling 5 s bei laufendem Status (alle) |
 | Wizard | Konfiguration → Teams → Variablen → Zusammenfassung | gleiche Schritte, Logik kopiert |
 | Lifecycle-Aktionen, App-Verwaltung, Kurse | ja | nein, verlinkt ins Frontend |
 | OpenStack-VM-Pfad | **entfernt** (nur Pods und KubeVirt) | Zugangsdaten-Seite und Credential-Wahl im Wizard noch vorhanden |
@@ -807,7 +806,7 @@ sequenceDiagram
 - Es gibt **keine Credential-Wahl mehr**: Das Frontend kennt nur noch die Laufzeiten `kubernetes` und `kubevirt-vm`, beide im Cluster. Der Typwert `openstack-vm` ist entfernt (#93, #96); eine unbekannte Laufzeit wird wie `kubernetes` beschriftet.
 - Bei Fehlern bleibt der Draft erhalten. Bei Erfolg: `resetDraft`, Toast, Weiterleitung auf `/deployments`. Die **Ausführung ist asynchron** (Worker); den Fortschritt zeigt 3.7 bzw. 3.8.
 
-#### 3.7 Live-Fortschritt für Eigentümer und Dozierende (SSE)
+#### 3.7 Live-Fortschritt in der Eigentümer-Ansicht (SSE)
 
 ```mermaid
 ---
@@ -860,6 +859,7 @@ stateDiagram-v2
 
 **Beobachtungen**
 - **Warum `fetch` statt `EventSource`:** `EventSource` kann keinen `Authorization`-Header senden. Die Konsequenz ist ein eigener Parser (Frames bei `\n\n`, Kommentarzeilen als Keepalive) und eigener Reconnect.
+- **Wer die Eigentümer-Ansicht hat, entscheidet die API**, nicht die Rolle: `permissions.owner_view` in der Detailantwort. Ein anderer Dozent ist nicht Eigentümer jedes Deployments, und ein Admin sieht eine VM, kann sie aber nicht bedienen (Kommentar in `access.ts`).
 - Der Stream wird nur gestartet, wenn die **Owner-Ansicht** gilt **und** die aktive Task `PENDING` oder `RUNNING` ist. Er endet mit der Task: Dann lädt die Seite Deployment, Tasks, Zugangsdaten und Ressourcen neu.
 - **Soft-Delete-Erkennung:** Nach einem erfolgreichen Destroy liefert der Refetch kein Deployment mehr. Die Seite zeigt Erfolg und springt zur Liste. Existiert die Zeile noch, war der Destroy fehlgeschlagen.
 - **Puffer:** Der Client hält höchstens 100 Logzeilen, zählt aber alle. Ein `overflow`-Event schreibt einen Warnhinweis in den Log. Der Snapshot übernimmt Fortschritt und Phase nur bei **aktiver** Task, damit der alte 100 %-Stand nicht kurz aufblitzt.
@@ -911,7 +911,7 @@ stateDiagram-v2
 ```
 
 **Beobachtungen**
-- Studierende bekommen den Stream **nicht**, weil er rohe Worker-Logs enthält und Eigentümern vorbehalten ist. Deshalb dieser zweite Mechanismus.
+- Studierende bekommen den Stream **nicht**, weil er rohe Worker-Logs enthält und der Eigentümer-Ansicht vorbehalten ist. Deshalb dieser zweite Mechanismus.
 - **Verkettete `setTimeout`s** statt `setInterval`: Es können sich keine Requests überlappen. Der Store wird nur bei **inhaltlicher** Änderung beschrieben (`JSON.stringify`-Vergleich) und nur für die eigene `deploymentId`.
 - Bewusst **nicht gepollt** werden `pausing`, `resuming`, `destroying` (zentral über `isLiveStatus`).
 - Die Zugangsdaten gibt es nur unter `/my-access`. Sie werden nachgeladen, sobald das Polling endet.
