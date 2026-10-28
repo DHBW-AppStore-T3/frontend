@@ -10,6 +10,7 @@ Mockups und Design-Pläne zu UI-Issues. Jeder Ordner gehört zu einem Issue und 
 |---|---|---|
 | [`109-windows-vm-variablen/`](109-windows-vm-variablen/) | [#109](https://github.com/DHBW-AppStore-T3/frontend/issues/109) | Variablen-Schritt der Windows-VM-App: Internetzugriff immer sichtbar, Rechenressourcen in den Experteneinstellungen |
 | [`113-datei-variablen/`](113-datei-variablen/) | [#113](https://github.com/DHBW-AppStore-T3/frontend/issues/113) | Datei-Variablen (Web-LaTeX, Online-IDE): eine Datei für alle, früh geprüft |
+| [`136-zusammenfassung/`](136-zusammenfassung/) | [#136](https://github.com/DHBW-AppStore-T3/frontend/issues/136) | Zusammenfassung (Schritt 4): ein Satz, ruhige Karten, „Variablen-Konfiguration“ nur, wenn die App etwas einzustellen hat |
 
 ## Mockups ansehen
 
@@ -24,6 +25,7 @@ Für Bildschirmfotos gibt es Deep-Links (Anker an der URL, mehrere mit `-` verbi
 | `#clean` | blendet Mockup-Leiste, Navigation und Notizen aus |
 | `#open`, `#changed`, `#off`, `#one`, `#old` | (109) Experteneinstellungen auf, Werte angepasst, Internet gesperrt, eine Person, Ansicht „Heute“ |
 | `#filled`, `#partial`, `#errtotal`, `#each`, `#open`, `#ide`, `#12`, `#team`, `#nodesc` | (113) Datei für alle, eine Datei pro Person, Fehler „zusammen zu groß“, Modus „pro Person“, Beschreibung auf, Online-IDE, 12 Studierende, Teams, ohne Beschreibung der App |
+| `#pgadmin`, `#latex`, `#vm`, `#text`, `#one`, `#custom`, `#changed`, `#old`, `#loading` | (136) App (ohne Variablen, Datei, Windows-VM, Text-Variablen), Zuordnung „Eine Gruppe“ und „Teams“, angepasste Werte, Ansicht „Heute“, Ladezustand |
 
 Beispiel: `mockup/index.html#clean-filled`.
 
