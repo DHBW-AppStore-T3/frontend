@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --max-warnings=48",
+    "lint": "eslint . --max-warnings=28",
     "lint:fix": "eslint . --fix",
     "gen:api-types": "openapi-typescript src/types/openapi.json -o src/types/api.generated.ts",
     "test": "vitest --run",

@@ -64,6 +64,17 @@ export default function FileVariableCard({ variable, teams, nameOf, getFileSlot,
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState('')
   const [popIds, setPopIds] = useState<string[]>([])
+  // After a file was removed the focus goes back to "pick a file" of that row (``null``: the drop area).
+  const [refocus, setRefocus] = useState<{ slot: string | null; count: number }>({ slot: null, count: 0 })
+
+  useEffect(() => {
+    if (refocus.count === 0) return
+    const button =
+      refocus.slot === null
+        ? dropPickRef.current
+        : Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-pick]') ?? []).find((el) => el.dataset.pick === refocus.slot)
+    button?.focus()
+  }, [refocus])
 
   useEffect(() => {
     if (popIds.length === 0) return
@@ -140,21 +151,17 @@ export default function FileVariableCard({ variable, teams, nameOf, getFileSlot,
     inputRef.current?.click()
   }
 
-  const focusLater = (find: () => HTMLElement | null | undefined) => {
-    window.setTimeout(() => find()?.focus(), 0)
-  }
-
   const removeEverywhere = () => {
     setFileSlots(variable.name, Object.fromEntries(rows.map((r) => [r.id, null])))
     setError(null)
     say(t('deployment.fileVariable.live.removedAll'))
-    focusLater(() => dropPickRef.current)
+    setRefocus((r) => ({ slot: null, count: r.count + 1 }))
   }
   const removeRow = (id: string) => {
     setFileSlots(variable.name, { [id]: null })
     setError(null)
     say(t('deployment.fileVariable.live.removed'))
-    focusLater(() => Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-pick]') ?? []).find((el) => el.dataset.pick === id))
+    setRefocus((r) => ({ slot: id, count: r.count + 1 }))
   }
 
   const choose = (next: Mode) => {
