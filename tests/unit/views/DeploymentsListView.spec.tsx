@@ -11,6 +11,8 @@ vi.mock('@/services/keycloak.service', () => ({
 import DeploymentsListView from '@/views/DeploymentsListView'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAppStore } from '@/stores/app.store'
+import { useAuthStore } from '@/stores/auth.store'
+import { useAdminViewStore } from '@/stores/admin-view.store'
 import { renderWithProviders } from '../../helpers/render'
 
 const deployment = (over: Record<string, unknown> = {}) => ({
@@ -30,8 +32,17 @@ const setState = (deployments: unknown[], apps: unknown[] = [], isLoading = fals
 
 const renderView = () => renderWithProviders(<DeploymentsListView />)
 
+const setUser = (userId: string, role: string) => useAuthStore.setState({ user: { userId, role } as any })
+// Admin with the admin view switched on (version and runtime are visible).
+const setAdminView = (userId = 'admin-1') => {
+  setUser(userId, 'admin')
+  useAdminViewStore.setState({ enabledByAccount: { [userId]: true } })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  useAdminViewStore.setState({ enabledByAccount: {} })
+  setUser('teacher-1', 'teacher')
   setState([])
 })
 
@@ -108,6 +119,7 @@ describe('DeploymentsListView', () => {
   })
 
   it('nennt je Deployment die Laufzeit als Pods', () => {
+    setAdminView()
     setState([
       deployment({ deploymentId: '1', name: 'Pods A', runtime: 'kubernetes' }),
       deployment({ deploymentId: '2', name: 'Pods B', runtime: 'kubernetes' }),
@@ -118,6 +130,50 @@ describe('DeploymentsListView', () => {
       'runtime.kubernetesShort',
       'runtime.kubernetesShort',
     ])
+  })
+
+  describe('Version und Laufzeit', () => {
+    const card = () =>
+      setState([deployment({ name: 'Mein Deployment', releaseTag: 'v2.1.0', runtime: 'kubernetes' })], [
+        { appId: 'app-123', name: 'Mein Backend' },
+      ])
+
+    const expectOnlyBasics = () => {
+      expect(screen.queryByText('v2.1.0')).not.toBeInTheDocument()
+      expect(screen.queryAllByTestId('runtime-badge')).toHaveLength(0)
+      expect(screen.getByText('Mein Deployment')).toBeInTheDocument()
+      expect(screen.getByText('Mein Backend')).toBeInTheDocument()
+      expect(screen.getByText('success')).toBeInTheDocument()
+      expect(screen.getByText(/08\.06\.2026/)).toBeInTheDocument()
+    }
+
+    it.each(['teacher', 'student'])('blendet beides für die Rolle %s aus', (role) => {
+      setUser('user-1', role)
+      card()
+      renderView()
+      expectOnlyBasics()
+    })
+
+    it('blendet beides für einen Admin ohne Admin-Ansicht aus', () => {
+      setUser('admin-1', 'admin')
+      card()
+      renderView()
+      expectOnlyBasics()
+    })
+
+    it('zeigt beides für einen Admin mit Admin-Ansicht', () => {
+      setAdminView()
+      card()
+      renderView()
+      expect(screen.getByText('v2.1.0')).toBeInTheDocument()
+      expect(screen.getByTestId('runtime-badge')).toHaveTextContent('runtime.kubernetesShort')
+    })
+
+    it('hält das Datum rechts, auch wenn Version und Laufzeit fehlen', () => {
+      card()
+      renderView()
+      expect(screen.getByText(/08\.06\.2026/).closest('span')).toHaveClass('ml-auto')
+    })
   })
 
   it('zeigt ein Deployment mit fehlgeschlagenem Redeploy unter "aktiv", eines mit laufendem unter "in Arbeit"', async () => {
