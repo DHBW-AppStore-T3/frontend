@@ -150,7 +150,7 @@ export default function AppsDetailView() {
       <div className="mb-6">
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(paths.apps)}
           className="flex items-center text-textMuted hover:text-textHeading transition-colors"
         >
           <ArrowLeft size={20} className="mr-2" /> {t('AppsDetailView.backToOverview')}
