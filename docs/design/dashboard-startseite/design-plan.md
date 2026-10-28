@@ -28,7 +28,8 @@ Der erste Gedanke: ein roter Banner „2 Deployments sind fehlgeschlagen“ übe
 
 | Verworfen | Warum | Stattdessen |
 |---|---|---|
-| Roter Alarm-Banner | Doppelt zu Hero-Satz und Zeilen; Marken-Rot (`primary`) und Fehler-Rot (`danger`) verschwimmen | **Hero-Satz** nennt die Zahl; die betroffene Zeile ist getönt |
+| Roter Alarm-Banner | Doppelt zu Zeilen und Band; Marken-Rot (`primary`) und Fehler-Rot (`danger`) verschwimmen | **Eine Zeile** unter dem Kartentitel nennt die Zahlen; die betroffene Zeile ist getönt |
+| Hero-Satz mit Zahlen („6 Deployments laufen …“) anstelle des Standardtexts | Vorgabe: Unter der Begrüßung bleibt „Willkommen zurück in Ihrer Deployment-Umgebung.“ | Der Hero bleibt wie heute; die Zusammenfassung wandert in die Karte |
 | Zwei Listen „Aktuell“ und „Zuletzt“ je Kurs | Doppelte Länge, Deployments springen zwischen den Listen | **Eine Liste je Kurs**: aktive zuerst, gestoppte eingeklappt |
 | Aktivitätsfeed („Letzte Aktivitäten“) | Das Backend hat kein Ereignisprotokoll; Status und Datum sagen dasselbe | Status-Pille und Datum je Zeile |
 | Donut oder Kreisdiagramm je Kurs | Braucht Legende, ist bei 1–5 Deployments leer | **Kurs-Band**: eine Leiste, ein Segment je Deployment-Zustand |
@@ -56,7 +57,7 @@ Dieselben Tokens wie in den anderen Mockups (`src/theme/themes/t3.ts`), nichts N
 Die Pillen-Farben sind die aus `deployments-list/helpers.ts` (`statusPillClass`); das Dashboard erfindet keine neuen.
 
 **Kontrast:** `textMuted` hat 4,37:1 und taugt nur für große Schrift. Für Meta-Texte mit 12 px nimmt das Mockup einen dunkleren Schiefer (`#5A6B85`, 5,4:1). Im Code: `text-textStrong/75` (ergibt ca. 6,2:1 auf Weiß), kein neues Token.
-**Typografie:** Inter, `tabular-nums` für Zahlen. Hero-Name wie heute (`clamp(34px, 3vw, 50px)`, 750, −.045em); der Satz darunter 18 px mit fetten Zahlen. Kartentitel 16 px/650, Kurs-Name 15 px/650, Zeilenname 14 px/600, Meta 12 px.
+**Typografie:** Inter, `tabular-nums` für Zahlen. Hero-Name wie heute (`clamp(34px, 3vw, 50px)`, 750, −.045em); der Text darunter wie heute (19 px, `textMuted`). Kartentitel 16 px/650, Kurs-Name 15 px/650, Zeilenname 14 px/600, Meta 12 px.
 **Form:** Karten 12 px (`--workspace-card-radius`, wie `.kpi-item` und `.ui-card`), Pillen `rounded-md` (8 px, wie heute), Band 8 px hoch mit 4 px Rundung an den Enden, 2 px Abstand zwischen den Segmenten.
 
 ## 5. Layout und Regeln
@@ -65,16 +66,18 @@ Die Pillen-Farben sind die aus `deployments-list/helpers.ts` (`statusPillClass`)
 Lehrende / Admin (Desktop, 1440 px)                          Studierende
 ┌─────────────────────────────────────────────┐              ┌────────────────────────────────────┐
 │ Hallo Dozentin                              │  Hero-Foto   │ Hallo Lena                         │
-│ 6 Deployments laufen, 1 wird bereitgestellt,│              │ Eine Umgebung ist bereit, …        │
-│ 2 sind fehlgeschlagen.                      │              │ [🎓 Web-Engineering WWI23]          │
+│ Willkommen zurück in Ihrer Deployment-Umge- │              │ Willkommen zurück in Ihrer …       │
+│ bung.                                       │              │ [🎓 Web-Engineering WWI23]          │
 ├──────────────┬──────────────┬───────────────┤              │ Ihre Umgebungen  3                 │
 │ 6 von 11     │ 8            │ 3             │  Kacheln     │ ┌────────┐ ┌────────┐ ┌────────┐   │
 │ Aktive Depl. │ Apps         │ Meine Kurse   │              │ │ Aktiv  │ │ In Ber.│ │ Fehlg. │   │
 ├──────────────┴──────────────┴─┬─────────────┤              │ │ Name   │ │ Name   │ │ Name   │   │
 │ Deployments nach Kurs         │ Neues Depl. │              │ │ [Zugang│ │ Details│ │ Details│   │
-│ Datenbanken WI24 ──────────── │ [+ Neues…]  │              │ └────────┘ └────────┘ └────────┘   │
-│ ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ │ Ihre Apps   │              │ 12 Apps im Katalog ansehen →      │
-│  ▌ SQL-Labor A–D [Fehlgeschl.]│ Kontingent  │              └────────────────────────────────────┘
+│ 6 laufen, 1 wird bereitgest…, │ [+ Neues…]  │              │ └────────┘ └────────┘ └────────┘   │
+│ 2 sind fehlgeschlagen.        │ Ihre Apps   │              │ 12 Apps im Katalog ansehen →      │
+│ Datenbanken WI24 ──────────── │ Kontingent  │              └────────────────────────────────────┘
+│ ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ │             │
+│  ▌ SQL-Labor A–D [Fehlgeschl.]│             │
 │    SQL-Labor Demo [Aktiv]     │             │
 │ Web-Engineering WWI23 ─────── │             │
 │ …                             │             │
@@ -87,7 +90,7 @@ Lehrende / Admin (Desktop, 1440 px)                          Studierende
 | Reihenfolge in einem Kurs | Fehlgeschlagen, In Bereitstellung, Aktiv; jeweils neueste zuerst. Gestoppte sind eingeklappt („1 gestopptes Deployment anzeigen“) |
 | Länge | höchstens 5 sichtbare Zeilen je Kurs, der Rest hinter „n weitere anzeigen“ |
 | Band | Segmente in der Reihenfolge Fehlgeschlagen, Aktiv, In Bereitstellung, Gestoppt; Breite proportional, mindestens 8 px |
-| Mehrere Kurse | Ein Deployment mit Studierenden aus zwei Kursen steht unter beiden; Hero-Satz und Kacheln zählen es einmal |
+| Mehrere Kurse | Ein Deployment mit Studierenden aus zwei Kursen steht unter beiden; die Zusammenfassungszeile und die Kacheln zählen es einmal |
 | Ohne Kurs | Deployments, deren Mitglieder keinem Kurs angehören (und alle, solange das Backend `courses` nicht liefert: dann eine Gruppe ohne Kopf) |
 | Problemzeile | Hintergrund `dangerTint` (50 %), 3 px Rand links in `danger`, Pille „Fehlgeschlagen“ |
 | Admin | Queue links (älteste Einreichung zuerst, ab 2 Tagen amber), Karte „Plattform“ rechts, „Ihre Deployments“ eingeklappt darunter |
@@ -98,9 +101,8 @@ Gefüllt, leer (je Rolle), Laden (wie die Deployments-Liste), Fehler beim Laden 
 Mockup-Deep-Links (Anker mit `-` verbinden): `#clean` blendet die Mockup-Leiste aus; `#admin`, `#student` wechseln die Rolle; `#leer` zeigt den Leerzustand. Beispiel: `mockup/index.html#clean-student-leer`.
 
 ## 7. Texte (Sie-Form, sachlich, kein Ausrufezeichen)
-- Hero Lehrende: „**6 Deployments** laufen, 1 wird bereitgestellt, **2 sind fehlgeschlagen**.“ Teile mit 0 entfallen. Ohne Deployments: „Sie haben noch kein Deployment. Wählen Sie eine App, um zu starten.“
-- Hero Admin: „**3 Versionen** warten auf Ihre Freigabe. Plattformweit sind **4 Deployments fehlgeschlagen**.“
-- Hero Studierende: „**Eine Umgebung ist bereit**, eine wird bereitgestellt, eine ist nicht gestartet.“
+- Hero (alle Rollen und Zustände): Begrüßung und „Willkommen zurück in Ihrer Deployment-Umgebung.“ wie heute.
+- Zusammenfassungszeile der Karte „Deployments nach Kurs“ (nur Lehrende): „**6** laufen, 1 wird bereitgestellt, **2 sind fehlgeschlagen**.“ Teile mit 0 entfallen; ohne Deployments entfällt die Zeile. Admin und Studierende haben keine solche Zeile: Kacheln und Karten sagen es schon.
 - Leerzustände nennen den Raum und was dort entsteht: „Noch kein Deployment“, „Keine Versionen zur Prüfung“, „Noch keine Umgebung“. Dazu eine Zeile, die sagt, was als Nächstes passiert, und eine Schaltfläche mit Verb.
 - Bei Fehlern sagt die Karte, was zu tun ist: „Die Umgebung ist nicht gestartet. Informieren Sie Ihre Lehrenden.“
 
@@ -110,7 +112,7 @@ Mockup-Deep-Links (Anker mit `-` verbinden): `#clean` blendet die Mockup-Leiste 
 - Die Pulspunkte und die laufende Leiste stehen still bei `prefers-reduced-motion`.
 - Die Karten der Studierenden liegen in einer Region mit `aria-live="polite"`, damit ein Wechsel auf „Aktiv“ angesagt wird.
 - Mobil (390 px) gibt es kein horizontales Scrollen; die Datumsspalte rutscht in die Meta-Zeile.
-- Der Hero-Satz liegt mobil über dem Foto (Deckkraft 45 % wie heute); der Kontrast dort ist beim Umsetzen mit dem Browser zu prüfen.
+- Begrüßung und Text liegen mobil über dem Foto wie heute (Deckkraft 45 %); der Kontrast dort ist beim Umsetzen mit dem Browser zu prüfen.
 
 ## 9. Umsetzung
 Siehe das Issue (Komponenten, Datenquellen, Stufen, Tests). Das Mockup ist ein Entwurf und wird nicht gebaut oder ausgeliefert.

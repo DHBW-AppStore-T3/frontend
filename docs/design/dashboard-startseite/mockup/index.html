@@ -124,11 +124,9 @@
 
   /* ───────── Hero ───────── */
   .hero { min-height: 230px; display: flex; align-items: center; padding-bottom: 12px; }
-  .hero__body { max-width: 520px; }
+  .hero__body { max-width: 440px; }
   .hero__name { font-size: clamp(34px, 3vw, 50px); font-weight: 750; letter-spacing: -.045em; line-height: 1.2; color: var(--ink); margin-bottom: 8px; overflow-wrap: anywhere; }
-  .hero__sub { color: var(--meta); font-size: 18px; line-height: 1.5; max-width: 520px; text-wrap: balance; }
-  .hero__sub b { color: var(--ink); }
-  .hero__sub .is-bad { color: var(--bad); white-space: nowrap; }
+  .hero__sub { color: #687A94; font-size: 19px; line-height: 1.5; max-width: 380px; }
   .hero__chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 4px 12px 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--glass); color: var(--strong); font-size: 12px; font-weight: 600; }
 
   /* ───────── Kacheln (wie heute: .kpi-item) ───────── */
@@ -151,6 +149,8 @@
   .card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 20px 24px 14px; }
   .card__title { font-size: 16px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
   .card__sub { margin-top: 2px; font-size: 12px; color: var(--meta); }
+  .card__sub b { color: var(--ink); }
+  .card__sub .is-bad { color: var(--bad); font-weight: 650; }
   .link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--primary-dark); white-space: nowrap; }
   .link .i { transition: transform .15s; }
   .link:hover .i { transform: translateX(2px); }
@@ -272,6 +272,8 @@
     .sidebar { flex-basis: 176px; width: 176px; }
     .layout { grid-template-columns: minmax(0, 1fr); }
     .kpi { padding: 20px; gap: 14px; }
+    .hero__body { max-width: 340px; }
+    .hero__sub { font-size: 17px; }
   }
   @media (max-width: 767px) {
     :root { --gutter: 20px; }
@@ -284,7 +286,6 @@
     .user__name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
     .workspace::before { height: 320px; background-position: 65% center; opacity: .45; }
     .hero { min-height: 190px; }
-    .hero__sub { font-size: 16px; }
     .kpis { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .kpi { padding: 16px 20px; }
     .card__head, .course, .card--pad { padding-inline: 18px; }
@@ -390,12 +391,7 @@
               <span data-role-only="admin">Hallo Admin</span>
               <span data-role-only="student">Hallo Lena</span>
             </h1>
-            <p class="hero__sub" data-role-only="dozent" data-state-only="normal"><b class="num">6 Deployments</b> laufen, 1 wird bereitgestellt, <b class="is-bad num">2 sind fehlgeschlagen</b>.</p>
-            <p class="hero__sub" data-role-only="dozent" data-state-only="leer">Sie haben noch kein Deployment. Wählen Sie eine App, um zu starten.</p>
-            <p class="hero__sub" data-role-only="admin" data-state-only="normal"><b class="num">3 Versionen</b> warten auf Ihre Freigabe. Plattformweit sind <b class="is-bad num">4 Deployments fehlgeschlagen</b>.</p>
-            <p class="hero__sub" data-role-only="admin" data-state-only="leer">Keine Version wartet auf Freigabe. Plattformweit sind <b class="is-bad num">4 Deployments fehlgeschlagen</b>.</p>
-            <p class="hero__sub" data-role-only="student" data-state-only="normal"><b>Eine Umgebung ist bereit</b>, eine wird bereitgestellt, eine ist nicht gestartet.</p>
-            <p class="hero__sub" data-role-only="student" data-state-only="leer">Hier erscheinen Ihre Umgebungen für den Kurs.</p>
+            <p class="hero__sub">Willkommen zurück in Ihrer Deployment-Umgebung.</p>
             <span class="hero__chip" data-role-only="student"><svg class="i"><use href="#i-cap"/></svg>Web-Engineering WWI23</span>
           </div>
         </section>
@@ -440,7 +436,7 @@
         <div class="layout" data-role-only="dozent">
           <section class="card" aria-labelledby="h-courses">
             <div class="card__head">
-              <div><h2 class="card__title" id="h-courses">Deployments nach Kurs</h2><p class="card__sub" data-state-only="normal">Kurse mit Problemen stehen oben.</p></div>
+              <div><h2 class="card__title" id="h-courses">Deployments nach Kurs</h2><p class="card__sub" data-state-only="normal"><b class="num">6</b> laufen, 1 wird bereitgestellt, <span class="is-bad num">2 sind fehlgeschlagen</span>.</p></div>
               <a class="link" href="#" data-state-only="normal">Alle Deployments<svg class="i"><use href="#i-arrow"/></svg></a>
             </div>
 
