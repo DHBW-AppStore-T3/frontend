@@ -302,7 +302,7 @@ workspace "DHBW AppStore – Frontends" "Ist-Architektur der beiden Frontends: F
             c_views -> c_router "resetDraft, Toast, navigate(/deployments)"
         }
 
-        dynamic spa "dyn-sse" "Frontend: Live-Fortschritt für Eigentümer und Dozierende (SSE)" {
+        dynamic spa "dyn-sse" "Frontend: Live-Fortschritt in der Eigentümer-Ansicht (SSE)" {
             teacher -> c_views "Öffnet /deployments/:id"
             c_views -> c_stores "fetchDeploymentById() → GET /deployments/{id}"
             c_views -> c_api "GET /tasks/deployment/{id}, /my-access, /resources"
