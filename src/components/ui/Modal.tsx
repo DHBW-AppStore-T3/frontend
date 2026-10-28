@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useOverlay } from '@/composables/useOverlay'
 import './Modal.css'
 
@@ -16,7 +17,9 @@ export interface ModalProps {
 }
 
 export default function Modal({ show, onClose, header, title, body, children, footer }: ModalProps) {
+  const { t } = useTranslation()
   const { containerRef } = useOverlay({ show, onClose })
+  const titleId = useId()
 
   if (!show) return null
 
@@ -29,19 +32,23 @@ export default function Modal({ show, onClose, header, title, body, children, fo
     >
       <div
         ref={containerRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-[520px] animate-fade-in flex flex-col max-h-[90vh]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-[520px] animate-fade-in flex flex-col max-h-[90vh] focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-5 border-b border-gray-100">
-          <div className="text-xl font-semibold text-gray-900 leading-tight pr-4">
-            {header ?? title ?? 'Modal'}
+          <div id={titleId} className="text-xl font-semibold text-gray-900 leading-tight pr-4">
+            {header ?? title ?? t('dialog.fallbackTitle', { defaultValue: 'Modal' })}
           </div>
           <button
             type="button"
             onClick={onClose}
             className="p-2 -mr-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
-            aria-label="Close"
+            aria-label={t('dialog.close', { defaultValue: 'Close' })}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

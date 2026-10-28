@@ -100,6 +100,13 @@ export default {
     config: "Configuration",
     approvals: "Approvals",
     adminSettings: "Admin settings",
+    mobileMenu: "Navigation menu",
+  },
+
+  dialog: {
+    close: "Close",
+    fallbackTitle: "Modal",
+    panelLabel: "Side panel",
   },
 
   action: {

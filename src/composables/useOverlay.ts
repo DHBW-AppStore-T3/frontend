@@ -39,7 +39,12 @@ export function useOverlay<T extends HTMLElement = HTMLDivElement>(options: {
       const container = containerRef.current
       if (event.key === 'Tab' && container) {
         const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-        if (focusable.length === 0) return
+        if (focusable.length === 0) {
+          // Nothing to tab to: keep focus on the panel instead of leaving the overlay.
+          event.preventDefault()
+          container.focus()
+          return
+        }
         const first = focusable[0]!
         const last = focusable[focusable.length - 1]!
         if (event.shiftKey && document.activeElement === first) {
@@ -53,7 +58,8 @@ export function useOverlay<T extends HTMLElement = HTMLDivElement>(options: {
     }
 
     document.addEventListener('keydown', handleKeydown)
-    containerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus()
+    const container = containerRef.current
+    ;(container?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ?? container)?.focus()
 
     return () => {
       document.body.style.overflow = ''
