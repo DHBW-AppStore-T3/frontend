@@ -71,10 +71,15 @@ export default tseslint.config(
 
   // Accessibility (#141). The plugin's `recommended` set, minus the three
   // rules about click handlers on non-interactive elements: those match the
-  // backdrop, drag-and-drop and select-row patterns (Modal, Drawer, Toast,
-  // LogoPicker, NewDeploymentConfigView, ...) that need a keyboard design of
-  // their own, not a lint comment. They are tracked in the epic (#139) and get
-  // switched on once the hits are fixed.
+  // backdrop and clickable card/row patterns (Modal, Drawer, Toast, LogoPicker,
+  // NewDeploymentConfigView, ...) that need a keyboard design of their own, not
+  // a lint comment (23 hits, #154). They get switched on there.
+  //
+  // eslint-plugin-jsx-a11y 6.10 lists ESLint up to ^9 as a peer, so package.json
+  // carries an `overrides` entry to let `npm ci` resolve it next to ESLint 10.
+  // It runs (tests/unit/infra/eslint-a11y.spec.ts lints fixtures and expects the
+  // rules to fire), but this combination is not covered by the plugin's own
+  // tests: re-check on every ESLint or plugin upgrade.
   //
   // `label-has-associated-control` only sees literal label text: it stays
   // silent on `<label>{t('key')}</label>`, which is every label here. The
