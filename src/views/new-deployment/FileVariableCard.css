@@ -1,0 +1,192 @@
+/* Datei-Variablen im Schritt "Variablen": Beschreibung, Ablagefläche, Empfänger-Leiste, Summe.
+   Nur Tokens (rgb(var(--color-…)), var(--radius-…)), keine Farbliterale. */
+
+/* ───── Beschreibung der App: auf- und zuklappbar ───── */
+.fv-desc {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fv-desc[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+.fv-desc__clip {
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition: visibility 0s linear 0.3s;
+}
+.fv-desc[data-open='true'] .fv-desc__clip {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.fv-desc__chev {
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+[aria-expanded='true'] > .fv-desc__chev {
+  transform: rotate(180deg);
+}
+
+/* ───── Ablegefläche ───── */
+.fv-drop {
+  border: 2px dashed rgb(var(--color-border-strong));
+  background: rgb(var(--color-surface-page));
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.fv-drop:hover {
+  border-color: rgb(var(--color-primary-light));
+}
+.fv-drop[data-dragging='true'] {
+  border-color: rgb(var(--color-primary));
+  background: rgb(var(--color-primary-faint));
+}
+.fv-drop__icon {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fv-drop[data-dragging='true'] .fv-drop__icon {
+  transform: translateY(-3px) scale(1.06);
+  background: rgb(var(--color-primary-soft));
+}
+
+/* Datei ist da: eine Karte statt der Ablegefläche */
+@keyframes fv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fv-file {
+  animation: fv-rise 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ───── Empfänger: eine Leiste, ein Punkt je Empfänger ───── */
+.fv-row {
+  --ny: 50%;
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 48px;
+  padding: 6px 8px 6px 0;
+  border-radius: var(--radius-md);
+}
+.fv-row::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgb(var(--color-border-subtle));
+}
+.fv-row:first-child::before {
+  top: var(--ny);
+}
+.fv-row:last-child::before {
+  bottom: auto;
+  height: var(--ny);
+}
+.fv-row:only-child::before {
+  display: none;
+}
+.fv-row[data-has='true']::before {
+  background: rgb(var(--color-primary-soft));
+}
+.fv-row[data-dragging='true'] {
+  background: rgb(var(--color-primary-faint));
+  outline: 2px dashed rgb(var(--color-primary));
+  outline-offset: -2px;
+}
+.fv-node {
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  border: 2px solid rgb(var(--color-border-strong));
+  background: rgb(var(--color-surface));
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.fv-row[data-has='true'] .fv-node {
+  background: rgb(var(--color-primary));
+  border-color: rgb(var(--color-primary));
+}
+@keyframes fv-node-fill {
+  0% {
+    transform: scale(0.4);
+    background: rgb(var(--color-surface));
+  }
+  60% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.fv-row[data-pop='true'] .fv-node {
+  animation: fv-node-fill 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* ───── Summe ───── */
+.fv-total__bar {
+  flex: none;
+  width: 72px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: rgb(var(--color-border-strong) / 0.35);
+  overflow: hidden;
+}
+.fv-total__bar > i {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: rgb(var(--color-primary));
+  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (max-width: 640px) {
+  .fv-row {
+    --ny: 16px;
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+  .fv-row .fv-node {
+    align-self: start;
+    margin-top: 9px;
+  }
+  .fv-row > .fv-row__right {
+    grid-column: 2;
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .fv-total__bar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fv-desc,
+  .fv-desc__clip,
+  .fv-desc__chev,
+  .fv-drop,
+  .fv-drop__icon,
+  .fv-node,
+  .fv-total__bar > i {
+    transition-duration: 0.01ms;
+    transition-delay: 0s;
+  }
+  .fv-file,
+  .fv-row[data-pop='true'] .fv-node {
+    animation: none;
+  }
+}

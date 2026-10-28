@@ -151,11 +151,14 @@ export function useVariableForm() {
     return isSlotMap(bag) ? (bag[slot] ?? '') : ''
   }
 
-  const setFileSlot = (varName: string, slot: string, file: import('@/types').DeploymentFile | null) => {
+  /** Several slots of one file variable in a single store update (``null`` removes a slot). */
+  const setFileSlots = (varName: string, updates: Record<string, import('@/types').DeploymentFile | null>) => {
     const uploads = useDeploymentStore.getState().draft.fileUploads ?? {}
     const bag = { ...(uploads[varName] ?? {}) }
-    if (file === null) delete bag[slot]
-    else bag[slot] = file
+    for (const [slot, file] of Object.entries(updates)) {
+      if (file === null) delete bag[slot]
+      else bag[slot] = file
+    }
     useDeploymentStore.getState().updateDraft({ fileUploads: { ...uploads, [varName]: bag } })
   }
 
@@ -190,7 +193,7 @@ export function useVariableForm() {
     setScopedValue,
     getScopedValue,
     getFileSlot,
-    setFileSlot,
+    setFileSlots,
     next,
     back: () => navigate(paths.deploymentTeams),
   }

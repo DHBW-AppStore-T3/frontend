@@ -6,8 +6,8 @@
  *  * picks the right widget for the variable's HCL type
  *  * binds to a single ``value``/``onChange`` pair
  *
- * File-typed variables are NOT handled here — the wizard renders
- * ``FileDropZone`` separately because files travel through a different draft
+ * File-typed variables are NOT handled here — the wizard renders a
+ * ``FileVariableCard`` separately because files travel through a different draft
  * channel (``fileUploads``) than scalar inputs.
  *
  * Border/focus colours come from the ``accent`` prop so the wizard's two

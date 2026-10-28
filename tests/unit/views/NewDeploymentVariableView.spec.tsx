@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
@@ -198,19 +198,94 @@ describe('NewDeploymentVariableView', () => {
   })
 
   describe('Datei-Variablen', () => {
-    it('rendert pro Team eine Drop-Zone und speichert Uploads im Draft', async () => {
-      mockDefinitions([variable({ name: 'task', osType: 'file', osScope: 'team', fileExtensions: ['pdf'] })])
-      renderView()
-      await screen.findByText('task')
+    const fileVar = (over: Record<string, unknown> = {}) =>
+      variable({ name: 'task', osType: 'file', osScope: 'team', varScope: 'team', fileExtensions: ['pdf'], ...over })
+    const input = () => document.querySelector<HTMLInputElement>('input[type="file"]')!
 
-      const inputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]')
-      expect(inputs).toHaveLength(2)
-      expect(inputs[0]).toHaveAttribute('accept', '.pdf')
+    it('zeigt eine Datei-Variable als eigene Karte mit einem Dateidialog und speichert Uploads für alle Teams im Draft', async () => {
+      mockDefinitions([fileVar()])
+      renderView()
+      await screen.findByTestId('file-variable-card')
+
+      expect(document.querySelectorAll('input[type="file"]')).toHaveLength(1)
+      expect(input()).toHaveAttribute('accept', '.pdf')
 
       const file = new File(['hello'], 'a.pdf', { type: 'application/pdf' })
-      fireEvent.change(inputs[0]!, { target: { files: [file] } })
+      fireEvent.change(input(), { target: { files: [file] } })
 
       await waitFor(() => expect(draft().fileUploads?.task?.Alpha?.name).toBe('a.pdf'))
+      expect(draft().fileUploads?.task?.Beta?.name).toBe('a.pdf')
+      expect(draft().fileUploads?.task?.Alpha?.content_b64).toBe(draft().fileUploads?.task?.Beta?.content_b64)
+    })
+
+    it('zeigt keine lila Karte, wenn die App nur Datei-Variablen hat', async () => {
+      mockDefinitions([fileVar()])
+      renderView()
+      await screen.findByTestId('file-variable-card')
+      expect(screen.queryByText('deployment.summary.appSettings')).toBeNull()
+    })
+
+    it('zeigt bei gemischten Variablen die Datei-Karte über der lila Karte mit dem Rest', async () => {
+      mockDefinitions([fileVar(), variable({ name: 'region', default: 'eu' })])
+      renderView()
+      const card = await screen.findByTestId('file-variable-card')
+      const purple = await screen.findByText('deployment.summary.appSettings')
+      expect(card.compareDocumentPosition(purple) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.getByLabelText('region')).toBeInTheDocument()
+      // the file variable is not repeated inside the purple card
+      expect(screen.getAllByText('Task')).toHaveLength(1)
+    })
+
+    it('nennt die Personen beim Namen und nicht „Team #1“', async () => {
+      useDeploymentStore.getState().updateDraft({ groupNames: ['Team #1', 'Team #2'] })
+      mockDefinitions([fileVar()])
+      renderView()
+      await screen.findByTestId('file-variable-card')
+      expect(screen.getAllByTestId('file-row').map((r) => r.textContent)).toEqual([
+        expect.stringContaining('ann'),
+        expect.stringContaining('bob'),
+      ])
+    })
+
+    it('prüft beim Ablegen die Endung und schreibt bei einer falschen nichts in den Draft', async () => {
+      mockDefinitions([fileVar()])
+      renderView()
+      await screen.findByTestId('file-variable-card')
+      fireEvent.drop(screen.getByTestId('file-drop'), { dataTransfer: { files: [new File(['x'], 'a.zip')] } })
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      expect(draft().fileUploads?.task).toBeUndefined()
+    })
+
+    it('behält eine Datei, wenn man zurückkommt und den Schritt neu betritt', async () => {
+      useDeploymentStore.getState().updateDraft({
+        fileUploads: {
+          task: {
+            Alpha: { name: 'a.pdf', size: 5, content_b64: 'aGVsbG8=', content_type: 'application/pdf' },
+            Beta: { name: 'a.pdf', size: 5, content_b64: 'aGVsbG8=', content_type: 'application/pdf' },
+          },
+        },
+      })
+      mockDefinitions([fileVar()])
+      renderView()
+      expect(await screen.findByTestId('file-card')).toHaveTextContent('a.pdf')
+    })
+
+    it('zählt Dateien anderer Datei-Variablen zur Gesamtgröße', async () => {
+      useDeploymentStore.getState().updateDraft({
+        fileUploads: {
+          other: { Alpha: { name: 'big.pdf', size: 9 * 1024 * 1024, content_b64: 'x', content_type: 'application/pdf' } },
+        },
+      })
+      mockDefinitions([fileVar(), fileVar({ name: 'other' })])
+      renderView()
+      const cards = await screen.findAllByTestId('file-variable-card')
+      expect(cards).toHaveLength(2)
+      // 2 teams × 600 KB = 1,2 MB on top of 9 MB are more than 10 MB together
+      const file = new File(['x'], 'b.pdf')
+      Object.defineProperty(file, 'size', { value: 600 * 1024 })
+      fireEvent.drop(within(cards[0]!).getByTestId('file-drop'), { dataTransfer: { files: [file] } })
+      expect(await within(cards[0]!).findByRole('alert')).toBeInTheDocument()
+      expect(draft().fileUploads?.task).toBeUndefined()
     })
   })
 

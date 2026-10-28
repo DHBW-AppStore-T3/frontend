@@ -808,6 +808,83 @@ export default {
         totalLabel_other: 'In total for {count} people',
       },
     },
+    // File variables in the "Variables" step (Web-LaTeX, Online-IDE): one file for everybody, checked early.
+    fileVariable: {
+      optional: 'Optional',
+      descShow: 'Show description',
+      descHide: 'Hide description',
+      plain: 'A {type}.',
+      typeNamed: '{ext} file',
+      typeAny: 'file',
+      audienceAll: 'all students',
+      audiencePeople_one: 'the person',
+      audiencePeople_other: 'all {count} students',
+      audienceTeams_one: 'the team',
+      audienceTeams_other: 'all {count} teams',
+      readError: 'The file could not be read. Try another file.',
+      mode: {
+        label: 'Who gets which file',
+        all: 'One file for everybody',
+        eachPerson: 'Different for each person',
+        eachTeam: 'Different for each team',
+      },
+      help: {
+        allPeople_one: 'The person gets the file.',
+        allPeople_other: 'All {count} students get the same file.',
+        allTeams_one: 'The team gets the file.',
+        allTeams_other: 'All {count} teams get the same file.',
+        eachPerson: 'Each person gets their own file. Rows without a file stay empty.',
+        eachTeam: 'Each team gets its own file. Rows without a file stay empty.',
+      },
+      drop: {
+        title: 'Drop the {type} here',
+        hint: 'Optional · applies to {audience}',
+        pick: 'Choose file',
+      },
+      file: {
+        meta: '{size} · applies to {audience}',
+        replace: 'Replace',
+        remove: 'Remove',
+        removeFor: 'Remove the file for {name}',
+      },
+      mixed: {
+        person: 'The files differ from person to person. A new file replaces them all.',
+        team: 'The files differ from team to team. A new file replaces them all.',
+      },
+      recipients: {
+        title: 'Recipients',
+        titleEachPerson: 'Files per person',
+        titleEachTeam: 'Files per team',
+        none: 'No file',
+        removeAll: 'Remove all',
+        morePeople_one: 'Show {count} more person',
+        morePeople_other: 'Show {count} more people',
+        moreTeams_one: 'Show {count} more team',
+        moreTeams_other: 'Show {count} more teams',
+        less: 'Show less',
+      },
+      total: {
+        uniform: 'Together {count} × {size} = {total} (allowed: at most {max})',
+        mixed: 'Together {files} · {total} (allowed: at most {max})',
+        files_one: '{count} file',
+        files_other: '{count} files',
+      },
+      errors: {
+        type: '“{name}” is not a {type}. Choose a file with the extension .{ext}.',
+        typeMany: '“{name}” does not have a suitable extension. Allowed: {list}.',
+        size: '“{name}” is too large. Make the file smaller or choose another one.',
+        totalAllPeople: '{count} people × {size} = {total}. Together at most {max} are allowed. Use a file up to {fit}, or upload the file only for individual people.',
+        totalAllTeams: '{count} teams × {size} = {total}. Together at most {max} are allowed. Use a file up to {fit}, or upload the file only for individual teams.',
+        totalSlot: 'With this file it would be {total} together. At most {max} are allowed for all files.',
+        close: 'Close message',
+      },
+      live: {
+        all: '{name} now applies to {audience}.',
+        slot: '{name} now applies to {recipient}.',
+        removed: 'File removed.',
+        removedAll: 'All files removed.',
+      },
+    },
     variables: {
       title: 'User-specific Variables',
       description: 'Optional parameters for the deployment.',
@@ -1002,12 +1079,6 @@ export default {
 
 
 
-  fileDropZone: {
-    pick: 'Pick a file or drop one here',
-    remove: 'Remove',
-    tooLarge: 'File too large (max. {mb} MB).',
-    readError: 'File could not be read.',
-  },
 
   variableInput: {
     on: 'Enabled',
