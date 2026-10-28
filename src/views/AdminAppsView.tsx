@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Inbox } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
@@ -15,6 +15,7 @@ interface ModalTarget {
 
 export default function AdminAppsView() {
   const { t } = useTranslation()
+  const filterLabelId = useId()
   const toast = useToast()
   const queue = useApprovalQueue({ onLoadError: () => toast.error(t('AdminAppsView.loadError')) })
 
@@ -77,10 +78,13 @@ export default function AdminAppsView() {
         subtitle={t('AdminAppsView.subtitle')}
         actions={
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-textMuted">{t('AdminAppsView.filterLabel')}</span>
+            <span id={filterLabelId} className="text-textMuted">
+              {t('AdminAppsView.filterLabel')}
+            </span>
             <button
               type="button"
               role="switch"
+              aria-labelledby={filterLabelId}
               aria-checked={onlyWithSubmissions}
               onClick={() => setOnlyWithSubmissions((v) => !v)}
               className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Search, Check, Users, BookOpen, UserPlus } from 'lucide-react'
@@ -32,6 +32,7 @@ function Checkbox({ checked }: { checked: boolean }) {
 
 export default function NewDeploymentConfigView() {
   const { t } = useTranslation()
+  const nameId = useId()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -109,10 +110,11 @@ export default function NewDeploymentConfigView() {
         <DeploymentProgressBar currentStep={1} />
 
         <div className="mb-8">
-          <label className="block text-xl font-bold text-textHeading mb-3">
+          <label htmlFor={nameId} className="block text-xl font-bold text-textHeading mb-3">
             {t('deployment.config.nameLabel')}
           </label>
           <input
+            id={nameId}
             value={draft.name}
             onChange={(e) => updateDraft({ name: e.target.value })}
             type="text"
@@ -190,6 +192,7 @@ export default function NewDeploymentConfigView() {
                       onChange={(e) => directory.setQuery(e.target.value)}
                       type="text"
                       placeholder={t('deployment.config.searchPlaceholder')}
+                      aria-label={t('deployment.config.searchPlaceholder')}
                       data-testid="student-search"
                       className="w-full pl-12 pr-4 py-3 rounded-full border-2 border-borderSubtle focus:border-primary outline-none transition-all"
                     />

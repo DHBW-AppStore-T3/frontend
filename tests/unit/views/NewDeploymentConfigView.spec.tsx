@@ -51,6 +51,22 @@ beforeEach(() => {
 })
 
 describe('NewDeploymentConfigView', () => {
+  it('names the deployment name field by its label (#141)', async () => {
+    renderView()
+    expect(await screen.findByRole('textbox', { name: 'deployment.config.nameLabel' })).toBe(
+      screen.getByTestId('deployment-name'),
+    )
+  })
+
+  it('names the student search field (#141)', async () => {
+    renderView()
+    await screen.findByText('Web Dev')
+    await userEvent.click(screen.getByRole('button', { name: /deployment\.config\.studentsLabel/ }))
+    expect(screen.getByRole('textbox', { name: 'deployment.config.searchPlaceholder' })).toBe(
+      screen.getByTestId('student-search'),
+    )
+  })
+
   it('lädt Kurse und Studierende und zeigt die Teilnehmerzahl je Kurs', async () => {
     renderView()
 

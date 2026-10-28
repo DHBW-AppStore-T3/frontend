@@ -212,10 +212,8 @@ export default function CoursesView() {
           <div className="space-y-5">
             <p className="text-sm text-textMuted">{t('CoursesView.createModal.intro')}</p>
             <div>
-              <label className="block text-sm font-medium text-textMuted mb-1.5">
-                {t('CoursesView.createModal.nameLabel')}
-              </label>
               <BaseInput
+                label={t('CoursesView.createModal.nameLabel')}
                 value={courseName}
                 onChange={setCourseName}
                 placeholder={t('CoursesView.createModal.namePlaceholder')}

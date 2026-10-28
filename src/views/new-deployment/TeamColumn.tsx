@@ -37,6 +37,7 @@ export default function TeamColumn(props: TeamColumnProps) {
           value={name}
           onChange={(e) => props.onRename(e.target.value)}
           placeholder={t('deployment.assignment.vmDefaultName', { index: index + 1 })}
+          aria-label={t('deployment.assignment.vmDefaultName', { index: index + 1 })}
           className="w-full bg-surfaceMuted text-textHeading placeholder-gray-400 px-3 py-2 rounded-lg border-2 border-borderSubtle focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none font-bold text-center transition-all"
         />
         <div className="mt-2 flex items-center justify-center gap-2 bg-primaryFaint rounded-lg px-3 py-1.5">

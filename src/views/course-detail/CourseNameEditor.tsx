@@ -57,6 +57,7 @@ export default function CourseNameEditor({ name, canEdit, onSave }: CourseNameEd
       <BaseInput
         value={draft}
         onChange={setDraft}
+        aria-label={t('CoursesView.createModal.nameLabel')}
         autoFocus
         onKeyUp={(e) => {
           if (e.key === 'Enter') void save()

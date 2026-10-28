@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import {
@@ -36,6 +36,10 @@ const TEXT_INPUT =
 
 export default function AddAppsView() {
   const { t } = useTranslation()
+  const nameId = useId()
+  const descId = useId()
+  const descHintId = useId()
+  const repoId = useId()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -127,8 +131,13 @@ export default function AddAppsView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-16 items-start mb-8">
         <div className="space-y-6">
-          <FormRow icon={<IdCard className="text-primary" size={28} />} label={t('AppsCreateView.form.nameLabel')}>
+          <FormRow
+            icon={<IdCard className="text-primary" size={28} />}
+            label={t('AppsCreateView.form.nameLabel')}
+            htmlFor={nameId}
+          >
             <input
+              id={nameId}
               value={form.name}
               onChange={(e) => update({ name: e.target.value })}
               type="text"
@@ -140,17 +149,22 @@ export default function AddAppsView() {
           <FormRow
             icon={<MessageSquare className="text-primary" size={28} />}
             label={t('AppsCreateView.form.descLabel')}
+            htmlFor={descId}
             align="start"
           >
             <div className="flex-1 min-w-0 mx-2">
               <MarkdownEditor
+                id={descId}
+                aria-describedby={descHintId}
                 value={form.description}
                 onChange={(description) => update({ description })}
                 placeholder={t('AppsCreateView.form.descPlaceholder')}
                 minHeightPx={80}
                 maxHeightPx={240}
               />
-              <p className="mt-1 text-xs text-textMuted">{t('AppsCreateView.form.descMarkdownHint')}</p>
+              <p id={descHintId} className="mt-1 text-xs text-textMuted">
+                {t('AppsCreateView.form.descMarkdownHint')}
+              </p>
             </div>
           </FormRow>
 
@@ -158,8 +172,13 @@ export default function AddAppsView() {
             <LogoPicker file={logo} onFile={acceptLogo} onRemove={removeLogo} />
           </FormRow>
 
-          <FormRow icon={<LinkIcon className="text-primary" size={28} />} label={t('AppsCreateView.form.repoLabel')}>
+          <FormRow
+            icon={<LinkIcon className="text-primary" size={28} />}
+            label={t('AppsCreateView.form.repoLabel')}
+            htmlFor={repoId}
+          >
             <input
+              id={repoId}
               value={form.repoUrl}
               onChange={(e) => update({ repoUrl: e.target.value })}
               type="text"

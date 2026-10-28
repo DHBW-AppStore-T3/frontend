@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image as ImageIcon } from 'lucide-react'
 import BaseButton from '@/components/ui/BaseButton'
@@ -31,6 +31,9 @@ export default function EditAppModal({ show, app, isSaving, onClose, onSave }: E
   const [preview, setPreview] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const nameId = useId()
+  const descId = useId()
+  const descHintId = useId()
 
   // Reset the form from the app each time the modal opens (render-phase).
   const [wasShown, setWasShown] = useState(show)
@@ -79,10 +82,11 @@ export default function EditAppModal({ show, app, isSaving, onClose, onSave }: E
           <p className="text-sm text-textMuted">{t('AppsDetailView.editModal.description')}</p>
 
           <div>
-            <label className="block text-sm font-medium text-textMuted mb-1.5">
+            <label htmlFor={nameId} className="block text-sm font-medium text-textMuted mb-1.5">
               {t('AppsDetailView.editModal.nameLabel')}
             </label>
             <input
+              id={nameId}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               type="text"
@@ -91,17 +95,21 @@ export default function EditAppModal({ show, app, isSaving, onClose, onSave }: E
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-textMuted mb-1.5">
+            <label htmlFor={descId} className="block text-sm font-medium text-textMuted mb-1.5">
               {t('AppsDetailView.editModal.descLabel')}
             </label>
             <MarkdownEditor
+              id={descId}
+              aria-describedby={descHintId}
               value={form.description}
               onChange={(description) => setForm({ ...form, description })}
               placeholder={t('AppsCreateView.form.descPlaceholder')}
               minHeightPx={120}
               maxHeightPx={320}
             />
-            <p className="mt-1 text-xs text-textMuted">{t('AppsCreateView.form.descMarkdownHint')}</p>
+            <p id={descHintId} className="mt-1 text-xs text-textMuted">
+              {t('AppsCreateView.form.descMarkdownHint')}
+            </p>
           </div>
 
           <div>

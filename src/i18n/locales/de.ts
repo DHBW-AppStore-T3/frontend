@@ -204,6 +204,7 @@ export default {
       noUsersFound: "Keine Benutzer gefunden.",
       alreadyMember: "bereits Mitglied",
       inOtherCourse: "In Kurs: {courseName}",
+      removeSelected: "{username} aus der Auswahl entfernen",
       cancel: "Abbrechen",
       adding: "Hinzufügen...",
       addCount: "{count} hinzufügen"
