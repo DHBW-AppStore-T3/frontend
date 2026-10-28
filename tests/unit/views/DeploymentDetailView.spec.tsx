@@ -138,7 +138,6 @@ const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): Deplo
 const baseTask = (overrides: Partial<Task> = {}): Task => ({
   taskId: 'task-1',
   deploymentId: 'dep-1',
-  celeryTaskId: 'celery-1',
   type: 'deploy',
   status: 'success',
   started_at: '2026-06-08T12:10:00Z',
@@ -283,7 +282,7 @@ describe('DeploymentDetailView', () => {
 
     expect(await screen.findByText('Task ID')).toBeInTheDocument()
     expect(mocks.getTask).toHaveBeenCalledWith('task-1')
-    expect(screen.getByText('celery-1')).toBeInTheDocument()
+    expect(screen.queryByText('Celery Task ID')).not.toBeInTheDocument()
     expect(screen.getByText(/hello from the worker/)).toBeInTheDocument()
     expect(screen.getByText('1 entries')).toBeInTheDocument()
   })

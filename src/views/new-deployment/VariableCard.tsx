@@ -3,7 +3,7 @@ import { Info } from 'lucide-react'
 import VariableInput from '@/components/VariableInput'
 import ScopeBadge from '@/components/ui/ScopeBadge'
 import { translateHtml } from '@/i18n/html'
-import type { AppVariable } from '@/types'
+import type { AppVariable, ScalarValue, SlotValue, VariableValue } from '@/types'
 import { isList } from '@/utils/variable-types'
 import {
   displayDescription,
@@ -24,14 +24,14 @@ export interface VariableCardProps {
   /** Key of the variable in the form (the variable name). */
   formKey: string
   teams: WizardTeam[]
-  value: any
-  getScopedValue: (slot: string) => any
+  value: SlotValue
+  getScopedValue: (slot: string) => VariableValue
   isTooltipOpen: boolean
   /** Expert variables render compactly: the plain input only. */
   expert?: boolean
   onToggleTooltip: () => void
-  onChange: (value: any) => void
-  onScopedChange: (slot: string, value: any) => void
+  onChange: (value: ScalarValue) => void
+  onScopedChange: (slot: string, value: ScalarValue) => void
 }
 
 const COLORS = {
@@ -70,7 +70,7 @@ export default function VariableCard(props: VariableCardProps) {
   const noTeams = <div className={EMPTY_TEAMS_HINT}>{t('deployment.variables.noTeamsConfigured')}</div>
   const noMembers = <div className="text-xs text-textMuted italic">{t('deployment.variables.noMembers')}</div>
 
-  const input = (id: string, value: any, onChange: (v: any) => void) => (
+  const input = (id: string, value: SlotValue, onChange: (v: ScalarValue) => void) => (
     <VariableInput
       variable={variable}
       value={value}

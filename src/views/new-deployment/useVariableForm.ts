@@ -5,7 +5,7 @@ import { useAppStore } from '@/stores/app.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
-import type { AppVariable } from '@/types'
+import type { AppVariable, SlotValue, VariableValue } from '@/types'
 import {
   buildDraftValues,
   buildWizardTeams,
@@ -14,23 +14,12 @@ import {
   findMissingRequired,
   hasBlockingExpert,
   initialFromFetch,
+  isSlotMap,
+  parseStoredInput,
   restoreFromDraft,
   type FormValues,
 } from './variableForm'
 import { versionLabelOf } from './summary'
-
-function parseSavedInput(raw: unknown, onInvalid: () => void): Record<string, any> {
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, any>
-  if (typeof raw === 'string' && raw.trim() !== '') {
-    try {
-      return JSON.parse(raw)
-    } catch (e) {
-      console.warn('Invalid JSON in userInputVar', e)
-      onInvalid()
-    }
-  }
-  return {}
-}
 
 /**
  * State and actions of the wizard's variables step: definitions, form values,
@@ -80,7 +69,7 @@ export function useVariableForm() {
     void (async () => {
       const cached = store.draft.variableDefinitions
       if (cached && cached.length > 0) {
-        setFormValues(restoreFromDraft(cached, (store.draft.variables || {}) as Record<string, any>, currentTeams()))
+        setFormValues(restoreFromDraft(cached, store.draft.variables || {}, currentTeams()))
         openBlockingExperts(cached)
         return
       }
@@ -93,7 +82,7 @@ export function useVariableForm() {
         useDeploymentStore.getState().updateDraft({ variableDefinitions: defs })
         setVariables(defs)
 
-        const saved = parseSavedInput(useDeploymentStore.getState().draft.userInputVar, () =>
+        const saved = parseStoredInput(useDeploymentStore.getState().draft.userInputVar, () =>
           toast.error(t('deployment.summary.invalidJson')),
         )
         setFormValues(initialFromFetch(defs, saved, currentTeams()))
@@ -145,21 +134,21 @@ export function useVariableForm() {
   )
 
   // --------------------------------------------------------------- actions
-  const setValue = useCallback((key: string, value: any) => setFormValues((f) => ({ ...f, [key]: value })), [])
+  const setValue = useCallback((key: string, value: SlotValue) => setFormValues((f) => ({ ...f, [key]: value })), [])
 
   const setScopedValue = useCallback(
-    (key: string, slot: string, value: any) =>
+    (key: string, slot: string, value: SlotValue) =>
       setFormValues((f) => {
         const bag = f[key]
-        const map = bag && typeof bag === 'object' && !Array.isArray(bag) ? bag : {}
+        const map = isSlotMap(bag) ? bag : {}
         return { ...f, [key]: { ...map, [slot]: value } }
       }),
     [],
   )
 
-  const getScopedValue = (key: string, slot: string): any => {
+  const getScopedValue = (key: string, slot: string): VariableValue => {
     const bag = formValues[key]
-    return bag && typeof bag === 'object' && !Array.isArray(bag) ? (bag[slot] ?? '') : ''
+    return isSlotMap(bag) ? (bag[slot] ?? '') : ''
   }
 
   /** Several slots of one file variable in a single store update (``null`` removes a slot). */
@@ -179,7 +168,7 @@ export function useVariableForm() {
     try {
       const { changed, all } = buildDraftValues(variables, formValues)
       useDeploymentStore.getState().updateDraft({
-        userInputVar: JSON.stringify(changed) as any,
+        userInputVar: JSON.stringify(changed),
         variables: all,
       })
       navigate(paths.deploymentSummary)

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Backend API",
-    "description": "FastAPI Backend with Auth, Git & Celery Integration",
+    "description": "FastAPI Backend with Auth, Git & Kubernetes Integration",
     "version": "1.0.0"
   },
   "paths": {
@@ -5786,17 +5786,6 @@
             "type": "string",
             "format": "uuid",
             "title": "Deploymentid"
-          },
-          "celeryTaskId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celerytaskid"
           },
           "type": {
             "$ref": "#/components/schemas/TaskType"

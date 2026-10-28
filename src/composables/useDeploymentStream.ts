@@ -36,6 +36,8 @@ export interface LogEntry {
   streaming?: boolean
   phase?: string
   progress_pct?: number
+  // TODO #90: SSE events are validated there; until then the open index signature stays.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any
 }
 
@@ -137,6 +139,8 @@ function createStreamController(initialDeploymentId: string | null) {
     set({ liveLogs: next, totalLogCount: get().totalLogCount + 1 })
   }
 
+  // TODO #90: type the event payload together with the SSE validation.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEvent = (eventName: string, data: any) => {
     if (eventName === 'snapshot') {
       const snap = data as SnapshotEvent
@@ -181,9 +185,11 @@ function createStreamController(initialDeploymentId: string | null) {
 
     if (eventName === 'log') {
       // Worker logs ship the human-readable ISO time as ``iso_timestamp``
-      // (the wire-level ``timestamp`` is reserved for Celery's
-      // Unix-time float). Re-key to ``timestamp`` for downstream
+      // (once because Celery reserved ``timestamp`` for a Unix-time
+      // float; the name stayed). Re-key to ``timestamp`` for downstream
       // consumers that don't need to know that detail.
+      // TODO #90: replaced by the validated event type.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw = data as Record<string, any>
       const entry: LogEntry = {
         ...(raw as object),
@@ -351,6 +357,8 @@ export function useDeploymentStream(deploymentId: string | null) {
  * with ``\\n``) and arbitrary ``event:`` names. Comment lines start
  * with ``:`` and are silently ignored — used here for keepalives.
  */
+// TODO #90: the parsed frame is validated before dispatch.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseFrame(rawFrame: string, dispatch: (eventName: string, data: any) => void) {
   if (!rawFrame.trim() || rawFrame.startsWith(':')) return
   let eventName = 'message'

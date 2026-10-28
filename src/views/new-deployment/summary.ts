@@ -2,7 +2,7 @@
  * Pure presentation logic of the wizard's summary step: turning draft values
  * and variable definitions into display rows, and backend errors into messages.
  */
-import type { AppVariable, DeploymentFile } from '@/types'
+import type { AppVariable, DeploymentFile, StoredValues } from '@/types'
 import { formatBytes } from '@/utils/format'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
@@ -46,7 +46,7 @@ export function toSummaryEntry(def: AppVariable, val: unknown, ctx: SummaryConte
 
 export function buildTerraformEntries(
   defs: AppVariable[],
-  variables: Record<string, any> | null | undefined,
+  variables: StoredValues | null | undefined,
   ctx: SummaryContext,
 ): SummaryEntry[] {
   const current = variables || {}
@@ -146,7 +146,36 @@ const FILE_CONTENT_CODES = new Set([
   'malware_detected',
 ])
 
-export function formatSubmitError(err: any, t: Translate): string {
+/**
+ * The structured ``detail`` of a 413/422 on submit. The fields are what the backend
+ * sends for the reasons handled below; they are not validated, each read behaves as
+ * it did on untyped data.
+ */
+interface SubmitErrorDetail {
+  code?: string
+  reason?: string
+  message?: string
+  filename?: string
+  variable?: string
+  slot?: string
+  actual_bytes?: number
+  limit_bytes?: number
+  allowed?: string[]
+  in_use?: number
+  requested?: number
+  budget?: number
+  limit?: number
+  workloads?: number
+}
+
+/** The parts of a failed submit this message reads; the thrown value itself is ``unknown``. */
+interface SubmitFailure {
+  message?: string
+  response?: { data?: { detail?: SubmitErrorDetail | string | null } }
+}
+
+export function formatSubmitError(error: unknown, t: Translate): string {
+  const err = error as SubmitFailure | null | undefined
   const detail = err?.response?.data?.detail
   const fallback =
     (typeof detail === 'string' ? detail : null) ?? err?.message ?? t('deployment.summary.submitError')

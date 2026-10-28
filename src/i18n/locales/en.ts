@@ -1123,7 +1123,12 @@ export default {
     confirmResetMessage: "All data of {workload} is deleted and the workload starts from scratch. This cannot be undone.",
     phase: {
       Running: "running",
+      Starting: "starting",
+      NotResponding: "not responding",
       Pending: "pending",
+      Scheduling: "being scheduled",
+      Scheduled: "being scheduled",
+      PodInitializing: "being prepared",
       Stopped: "stopped",
       Unschedulable: "no room in the cluster",
       CrashLoopBackOff: "keeps crashing",

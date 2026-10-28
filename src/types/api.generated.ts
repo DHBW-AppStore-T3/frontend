@@ -2011,8 +2011,6 @@ export interface components {
              * Format: uuid
              */
             deploymentId: string;
-            /** Celerytaskid */
-            celeryTaskId?: string | null;
             type: components["schemas"]["TaskType"];
             status: components["schemas"]["TaskStatus"];
             /** Started At */

@@ -5,32 +5,24 @@
  *
  * Form values are keyed by ``formKeyOf``, i.e. the variable name.
  */
-import type { AppVariable, User } from '@/types'
+import type {
+  AppVariable,
+  ScalarValue,
+  SlotMap,
+  SlotValue,
+  StoredValue,
+  StoredValues,
+  User,
+  VariableValue,
+} from '@/types'
 import { isBool, isList, isNumber } from '@/utils/variable-types'
 
 export type Scope = 'all' | 'team' | 'user'
 
 // ------------------------------------------------------------------ values
-/** A single value: what a text, number or checkbox input holds. */
-export type ScalarValue = string | number | boolean
-
-/**
- * What a variable can hold, as the author's default (``AppVariable.default``) and
- * ``draft.variables`` carry it. List entries and map entries are the author's and
- * are not validated here, hence ``unknown``.
- */
-export type VariableValue = ScalarValue | unknown[] | Record<string, unknown>
-
-/**
- * Value of one slot of a team- or user-scoped variable (key: team name, or
- * ``Team-username``). A slot holds what the widgets write (text, number, boolean,
- * list as comma text) or what an earlier draft stored (a list as array); a
- * draft is not validated on the way back in, so null and undefined can show up too.
- */
-export type SlotValue = VariableValue | null | undefined
-
-/** Slot key -> value of a scoped variable. */
-export type SlotMap = Record<string, SlotValue>
+// The value types live in ``@/types`` because ``DeploymentDraft`` is built from them;
+// they are re-exported here, where the form logic uses them.
+export type { ScalarValue, SlotMap, SlotValue, StoredValue, StoredValues, VariableValue }
 
 /**
  * What the form holds per variable, keyed by ``formKeyOf``: a scalar, a map for
@@ -40,14 +32,6 @@ export type SlotMap = Record<string, SlotValue>
  * Like a slot it is not validated, so null and undefined are possible.
  */
 export type FormValues = Record<string, SlotValue>
-
-/**
- * A value as it is saved in the draft (``draft.variables`` / ``userInputVar``):
- * lists as arrays, numbers as numbers. ``undefined`` is a form field that was never
- * set, ``null`` can only come from an unvalidated slot or earlier draft.
- */
-export type StoredValue = VariableValue | null | undefined
-export type StoredValues = Record<string, StoredValue>
 
 export interface WizardTeamMember {
   userId: string
@@ -73,7 +57,11 @@ export const effectiveScope = (v: AppVariable): Scope => (v.varScope || v.osScop
 
 export const isScoped = (v: AppVariable): boolean => effectiveScope(v) !== 'all'
 
-const isSlotMap = (x: unknown): x is SlotMap => !!x && typeof x === 'object' && !Array.isArray(x)
+/**
+ * ``true`` for an object that is not an array: the only test the slot maps get, as
+ * before. The entries are not checked.
+ */
+export const isSlotMap = (x: unknown): x is SlotMap => !!x && typeof x === 'object' && !Array.isArray(x)
 
 const isEmptyValue = (val: unknown): boolean =>
   val === undefined ||
@@ -157,6 +145,26 @@ export function seedScopedDefault(
     if (current === undefined || current === null || current === '') map[slot] = seed
   }
   return map
+}
+
+/**
+ * Reads a saved ``userInputVar`` (the draft keeps it as a JSON string, or as an
+ * object once parsed). Text that is empty or not an object/JSON text gives ``{}``;
+ * broken JSON also calls ``onInvalid``. The parsed JSON is not validated, as before,
+ * so a JSON text like ``null`` or ``5`` comes back as it is.
+ */
+export function parseStoredInput(raw: unknown, onInvalid: () => void): StoredValues {
+  if (isSlotMap(raw)) return raw
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    try {
+      const parsed: StoredValues = JSON.parse(raw)
+      return parsed
+    } catch (e) {
+      console.warn('Invalid JSON in userInputVar', e)
+      onInvalid()
+    }
+  }
+  return {}
 }
 
 // ------------------------------------------------------ definitions/layout

@@ -365,6 +365,37 @@ export interface AppDefinition extends App {
   iconStr?: string
 }
 
+// Values of the wizard's variables (frontend#89). Form-side details live in
+// ``views/new-deployment/variableForm.ts``.
+/** A single value: what a text, number or checkbox input holds. */
+export type ScalarValue = string | number | boolean
+
+/**
+ * What a variable can hold, as the author's default (``AppVariable.default``) and
+ * ``draft.variables`` carry it. List entries and map entries are the author's and
+ * are not validated, hence ``unknown``.
+ */
+export type VariableValue = ScalarValue | unknown[] | Record<string, unknown>
+
+/**
+ * Value of one slot of a team- or user-scoped variable (key: team name, or
+ * ``Team-username``). A slot holds what the widgets write (text, number, boolean,
+ * list as comma text) or what an earlier draft stored (a list as array); a
+ * draft is not validated on the way back in, so null and undefined can show up too.
+ */
+export type SlotValue = VariableValue | null | undefined
+
+/** Slot key -> value of a scoped variable. */
+export type SlotMap = Record<string, SlotValue>
+
+/**
+ * A value as it is saved in the draft (``draft.variables`` / ``userInputVar``):
+ * lists as arrays, numbers as numbers. ``undefined`` is a form field that was never
+ * set, ``null`` can only come from an unvalidated slot or earlier draft.
+ */
+export type StoredValue = VariableValue | null | undefined
+export type StoredValues = Record<string, StoredValue>
+
 // Wizard state (the "cart" before submission).
 export type GroupMode = 'one' | 'eachUser' | 'custom'
 
@@ -380,13 +411,15 @@ export interface DeploymentDraft {
   // Step 3: group count
   groupMode: GroupMode
   groupCount: number,
-  userInputVar: Record<string, any> | string // object or JSON string
+  // The variables step saves the JSON text of the changed values; a parsed object
+  // (the initial ``{}``, or one set by hand) is read back as well.
+  userInputVar: StoredValues | string
 
   // Step 4: assignment (which user is in which group).
   // Key = group index (0, 1, 2...), value = array of user IDs.
   assignments: Record<number, string[]>
   releaseTag: string
-  variables: Record<string, any> // parsed/merged variables
+  variables: StoredValues // parsed/merged variables
   version: string
   groupNames: string[]
   variableDefinitions?: AppVariable[] // API definitions for the variables
