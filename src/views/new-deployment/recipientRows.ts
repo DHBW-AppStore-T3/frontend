@@ -1,4 +1,4 @@
-import type { AppVariable } from '@/types'
+import type { AppVariable, DeploymentFile } from '@/types'
 import { effectiveScope, userSlotKey, type WizardTeam } from './variableForm'
 
 export interface Recipient {
@@ -13,6 +13,10 @@ export interface Recipient {
 export type RecipientKind = 'all' | 'person' | 'team'
 
 type NameOf = (userId: string) => string
+
+/** The same file: name, size and content (what "one file for everybody" means). */
+export const sameFile = (a: DeploymentFile | null, b: DeploymentFile | null): boolean =>
+  !!a && !!b && a.name === b.name && a.size === b.size && a.content_b64 === b.content_b64
 
 /** The name of a person as in the earlier steps; the username when nothing better is known. */
 function personName(member: WizardTeam['members'][number], nameOf: NameOf): string {
