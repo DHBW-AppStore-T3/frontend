@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { screen, act, within } from '@testing-library/react'
+import { screen, act, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Toast from '@/components/ui/Toast'
 import { useToastStore } from '@/stores/toast.store'
@@ -197,5 +197,124 @@ describe('Toast: lifetime and click behaviour stay', () => {
     post((s) => s.info('Click me', LONG))
     await userEvent.click(visible('Click me')!)
     expect(visible('Click me')).not.toBeInTheDocument()
+  })
+})
+
+describe('Toast: time limit and focus (WCAG 2.2.1, #154)', () => {
+  const card = (text: string) => screen.getByText(text, { selector: '.toast-message' }).closest('.toast') as HTMLElement
+
+  it('keeps a toast while the pointer is over it and lets it go after the pointer leaves', async () => {
+    vi.useFakeTimers()
+    show()
+    post((s) => s.info('Read me', 3000))
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    fireEvent.mouseEnter(card('Read me'))
+    act(() => {
+      vi.advanceTimersByTime(30_000)
+    })
+    expect(visible('Read me')).toBeInTheDocument()
+
+    fireEvent.mouseLeave(card('Read me'))
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(visible('Read me')).not.toBeInTheDocument()
+  })
+
+  it('keeps a toast while its close button has focus', () => {
+    vi.useFakeTimers()
+    show()
+    post((s) => s.error('Focused', 1000))
+
+    act(() => closeButtons()[0]!.focus())
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+
+    expect(visible('Focused')).toBeInTheDocument()
+  })
+
+  it('lets the toast go again once focus has left it', () => {
+    vi.useFakeTimers()
+    show()
+    post((s) => s.error('Focused', 1000))
+    const outside = document.createElement('button')
+    document.body.append(outside)
+
+    act(() => closeButtons()[0]!.focus())
+    act(() => outside.focus())
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    expect(visible('Focused')).not.toBeInTheDocument()
+    outside.remove()
+  })
+
+  it('moves focus to the next toast when one is closed by keyboard', async () => {
+    show()
+    post((s) => {
+      s.info('First', LONG)
+      s.info('Second', LONG)
+    })
+
+    const [first, second] = closeButtons()
+    first!.focus()
+    await userEvent.keyboard('{Enter}')
+
+    expect(visible('First')).not.toBeInTheDocument()
+    expect(second).toHaveFocus()
+  })
+
+  it('moves focus to the previous toast when the last one is closed', async () => {
+    show()
+    post((s) => {
+      s.info('First', LONG)
+      s.info('Second', LONG)
+    })
+
+    const [first, second] = closeButtons()
+    second!.focus()
+    await userEvent.keyboard(' ')
+
+    expect(first).toHaveFocus()
+  })
+
+  it('returns focus to where it came from when the only toast is closed', async () => {
+    const trigger = document.createElement('button')
+    trigger.textContent = 'trigger'
+    document.body.append(trigger)
+    show()
+    post((s) => s.success('Alone', LONG))
+
+    trigger.focus()
+    await userEvent.tab() // into the toast
+    expect(closeButtons()[0]).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+
+    expect(visible('Alone')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    trigger.remove()
+  })
+
+  it('does not move focus when a toast goes away that did not have it', async () => {
+    const other = document.createElement('button')
+    document.body.append(other)
+    show()
+    post((s) => {
+      s.info('First', LONG)
+      s.info('Second', LONG)
+    })
+
+    other.focus()
+    const [, second] = useToastStore.getState().toasts
+    act(() => useToastStore.getState().removeToast(second!.id))
+
+    expect(visible('Second')).not.toBeInTheDocument()
+    expect(other).toHaveFocus()
+    other.remove()
   })
 })

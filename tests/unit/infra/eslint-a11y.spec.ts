@@ -66,11 +66,18 @@ describe('known limits and staged rules', () => {
     'click-events-have-key-events',
     'no-static-element-interactions',
     'no-noninteractive-element-interactions',
-  ])('keeps %s off until the keyboard design lands (#139)', async (rule) => {
+  ])('reports %s (switched on in #154)', async (rule) => {
     const rules = await rulesFor(
       'export const X = () => <><div onClick={() => {}} /><p onClick={() => {}} /></>\n',
     )
-    expect(rules).not.toContain(`jsx-a11y/${rule}`)
+    expect(rules).toContain(`jsx-a11y/${rule}`)
+  })
+
+  it('accepts a button and a focusable role="checkbox" with a key handler', async () => {
+    const rules = await rulesFor(
+      'export const X = () => <><button type="button" onClick={() => {}}>a</button><div role="checkbox" aria-checked={false} tabIndex={0} onClick={() => {}} onKeyDown={() => {}} /></>\n',
+    )
+    expect(rules.filter((r) => r?.startsWith('jsx-a11y/'))).toEqual([])
   })
 
   it('applies to src only, not to specs', async () => {
