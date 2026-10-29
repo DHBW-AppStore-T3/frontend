@@ -41,3 +41,5 @@ coverage/
 .claude/skills/
 test-results
 playwright-report
+playwright.config.d.ts
+e2e/*.d.ts
