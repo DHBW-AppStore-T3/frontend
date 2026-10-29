@@ -6,7 +6,7 @@ Framework: **Playwright** (`@playwright/test`, Chromium über den installierten 
 
 | Modus | Befehl | Was läuft | Voraussetzung |
 |---|---|---|---|
-| **Hermetisch** (Standard) | `npm run e2e` | `smoke.spec.ts`: Anmelden über die Dev-Brücke (`?sso_handoff=`), Liste, Detail, Tastaturbedienung. Startet den Vite-Dev-Server selbst. Jede API-Antwort kommt aus dem Test. | Chrome (oder `E2E_CHANNEL=chromium` nach `npx playwright install chromium`) |
+| **Hermetisch** (Standard) | `npm run e2e` | `smoke.spec.ts` (Anmelden über die Dev-Brücke `?sso_handoff=`, Liste, Detail, Tastatur) und `a11y.spec.ts` (Checkbox-Zeilen per Leertaste/Enter, Toast: Ansage in der Live-Region, Timer steht bei Fokus, Fokusrückgabe, Auto-Ende). Startet den Vite-Dev-Server selbst. Jede API-Antwort kommt aus dem Test. | Chrome (oder `E2E_CHANNEL=chromium` nach `npx playwright install chromium`) |
 | **Gegen eine Umgebung** | `E2E_BASE_URL=https://<host> npm run e2e` | `staging.spec.ts`: Anmeldeseite, Sprachwechsel, Reload, Übergabe an den Identity Provider mit fremder `returnUrl`. | erreichbare URL |
 
 ## Sicherheitsregeln
@@ -16,3 +16,5 @@ Framework: **Playwright** (`@playwright/test`, Chromium über den installierten 
 
 ## Grenzen
 Echter Login, Token-Refresh und alles hinter der Anmeldung sind **nicht** abgedeckt. Dafür bräuchte es ein Testkonto (Staging, Student-Rolle, nur lesende Strecke) als Secret: Entscheidung bei den Verantwortlichen, siehe `claude_docs/decisions/2026-testkonvention-e2e.md`.
+
+`a11y.spec.ts` belegt Rollen, Tastaturbedienung, Fokus und Zeitverhalten im echten Browser. **Was ein Screenreader sagt, belegt es nicht**: das bleibt eine Handprüfung (NVDA / JAWS / VoiceOver, Issue 154).
