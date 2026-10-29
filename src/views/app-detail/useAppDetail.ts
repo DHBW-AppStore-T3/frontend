@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { appApi } from '@/api/app.api'
@@ -63,6 +63,15 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
     }
   }, [appId])
 
+  // Reads the current toast, translation and router; the load below must not restart for them.
+  const reportLoadError = useEffectEvent(() => {
+    toast.error(t('AppsDetailView.toasts.loadError'))
+    navigate(paths.apps)
+  })
+
+  // The caller passes a fresh function on every render; it is read when the app has arrived.
+  const needsApprovals = useEffectEvent((loaded: AppDetail) => loadsApprovals(loaded))
+
   // Initial load: the app, then (for owners/admins) its approvals.
   useEffect(() => {
     if (!appId) return
@@ -74,11 +83,10 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
         if (cancelled) return
         const loaded = response.data as unknown as AppDetail
         setApp(loaded)
-        if (loadsApprovals(loaded)) await fetchApprovals()
+        if (needsApprovals(loaded)) await fetchApprovals()
       } catch {
         if (cancelled) return
-        toast.error(t('AppsDetailView.toasts.loadError'))
-        navigate(paths.apps)
+        reportLoadError()
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -86,9 +94,8 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
     return () => {
       cancelled = true
     }
-    // Reload only when the route param changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appId])
+    // Reload only when the app changes (``fetchApprovals`` changes with ``appId`` only).
+  }, [appId, fetchApprovals])
 
   const submitVersion = async (versionTag: string, notes: string): Promise<boolean> => {
     setIsSubmitting(true)
