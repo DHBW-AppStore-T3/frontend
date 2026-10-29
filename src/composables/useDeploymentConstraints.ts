@@ -1,19 +1,39 @@
-import { computed } from 'vue'
-import type { ComputedRef, MaybeRefOrGetter } from 'vue'
-import { toValue } from 'vue'
-import type { App } from '@/types'
+import { useMemo } from 'react'
+import type { DeploymentRuntime } from '@/types'
 
-export function useDeploymentConstraints(app: MaybeRefOrGetter<App | null>): {
-  forcedGroupMode: ComputedRef<'eachUser' | null>
-  groupModeReason: ComputedRef<string | null>
-} {
-  const forcedGroupMode = computed<'eachUser' | null>(() =>
-    toValue(app)?.name.toLowerCase().includes('windows') ? 'eachUser' : null
-  )
+export interface VersionShape {
+  runtime?: DeploymentRuntime | null
+  // From the version's appstore.yaml (`GET /apps/{id}/runtime`).
+  scope?: 'team' | 'user' | null
+}
 
-  const groupModeReason = computed<string | null>(() =>
-    forcedGroupMode.value !== null ? 'deployment.assignment.windowsConstraintText' : null
-  )
+export interface GroupConstraints {
+  forcedGroupMode: 'eachUser' | null
+  groupModeReason: string | null
+  /** Heading of the notice. */
+  groupModeTitle: string | null
+}
 
-  return { forcedGroupMode, groupModeReason }
+const PER_PERSON_REASON = 'deployment.assignment.perPersonConstraintText'
+const PER_PERSON_TITLE = 'deployment.assignment.perPersonConstraintTitle'
+
+/**
+ * Group-mode constraints of the version being deployed.
+ *
+ * `scope: user` forces one deployment per person (one team per person).
+ * The scope comes from the appstore.yaml via the API.
+ */
+export function groupConstraints(version?: VersionShape | null): GroupConstraints {
+  if (version?.scope !== 'user') return { forcedGroupMode: null, groupModeReason: null, groupModeTitle: null }
+  return {
+    forcedGroupMode: 'eachUser',
+    groupModeReason: PER_PERSON_REASON,
+    groupModeTitle: PER_PERSON_TITLE,
+  }
+}
+
+export function useDeploymentConstraints(_app: unknown, version?: VersionShape | null): GroupConstraints {
+  const runtime = version?.runtime
+  const scope = version?.scope
+  return useMemo(() => groupConstraints({ runtime, scope }), [runtime, scope])
 }

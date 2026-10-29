@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · Zusammenfassung (Schritt 4)</title>
+<style>
+  @font-face {
+    font-family: "Inter";
+    src: url("../../../../src/assets/fonts/InterVariable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+
+  /* Tokens: 1:1 aus src/theme/themes/t3.ts und src/styles/tokens.css (RGB-Kanäle als Hex). */
+  :root {
+    --primary: #E2001A;
+    --primary-dark: #C3001B;
+    --primary-deep: #960015;
+    --primary-soft: #FAD6DA;
+    --primary-faint: #FDEDEE;
+    --page: #F9FAFB;
+    --surface: #FFFFFF;
+    --ink: #0F1B30;        /* text-heading */
+    --strong: #1F2E44;     /* text-strong */
+    --muted: #687A94;      /* text-muted: nur Deko und große Schrift (4,37:1) */
+    --faint: #94A1B4;      /* text-faint: nur Deko (2,62:1) */
+    --line: #E4E9EF;       /* border-subtle */
+    --wash: #EFF2F6;       /* surface-muted */
+    --warn: #B45309;
+    --warn-tint: #FEF3C7;
+    --ok: #047857;
+
+    --r-md: .5rem;
+    --r-lg: .75rem;
+    --r-xl: 1rem;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --shadow-card: 0 1px 2px rgb(15 27 48 / .05), 0 10px 28px -16px rgb(15 27 48 / .18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 16px; line-height: 1.5; color: var(--ink); background: var(--page);
+    font-feature-settings: "cv11", "ss03"; -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  h1, h2, h3, p, dl, dd { margin: 0; }
+  ol, ul { margin: 0; padding: 0; list-style: none; }
+  .i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  [hidden] { display: none !important; }
+
+  /* ───────── Mockup-Steuerung (nicht Teil des Designs) ───────── */
+  .studio {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
+    padding: 10px 24px; background: var(--ink); color: #fff;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; letter-spacing: .01em;
+  }
+  .studio__tag { padding: 2px 8px; border-radius: 4px; background: var(--primary); font-weight: 700; letter-spacing: .08em; }
+  .studio__title { margin-right: auto; opacity: .85; }
+  .studio__group { display: flex; align-items: center; gap: 8px; }
+  .seg { display: inline-flex; padding: 2px; border-radius: 8px; background: rgb(255 255 255 / .12); }
+  .seg button { border: 0; background: transparent; color: #fff; padding: 4px 11px; border-radius: 6px; font: inherit; }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); font-weight: 700; }
+  .seg button:focus-visible, .studio__reset:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .studio__reset { border: 1px solid rgb(255 255 255 / .35); background: transparent; color: #fff; padding: 4px 10px; border-radius: 6px; font: inherit; }
+
+  /* ───────── Wizard-Rahmen (so wie heute) ───────── */
+  .stage { max-width: 1040px; margin: 0 auto; padding: 36px 24px 72px; }
+  .stepper { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 auto 36px; max-width: 880px; list-style: none; }
+  .step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .step::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--line); }
+  .step:first-child::before { display: none; }
+  .step[data-state="done"]::before, .step[data-state="current"]::before { background: var(--primary); }
+  .step__dot { position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font-size: 12px; font-weight: 700; background: var(--surface); border: 2px solid var(--line); color: var(--faint); }
+  .step[data-state="done"] .step__dot { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .step[data-state="current"] .step__dot { border-color: var(--primary); color: var(--primary); }
+  .step__label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--strong); }
+  .step[data-state="done"] .step__label, .step[data-state="current"] .step__label { color: var(--primary-dark); }
+  .head { text-align: center; margin-bottom: 32px; }
+  .head__title { font-size: 30px; line-height: 36px; font-weight: 800; letter-spacing: -.025em; }
+  .head__sub { margin-top: 6px; font-size: 16px; color: var(--strong); }
+  .column { max-width: 720px; margin: 0 auto; display: grid; gap: 16px; }
+
+  .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 720px; margin: 40px auto 0; padding-top: 24px; border-top: 1px solid var(--line); }
+  .btn-back { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 10px 20px; border-radius: 999px; font-weight: 600; color: var(--muted); }
+  .btn-back:hover { background: var(--wash); color: var(--ink); }
+  .btn-go { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 150px; border: 0; padding: 11px 32px; border-radius: 999px; font-weight: 700; color: #fff; background: var(--primary); box-shadow: 0 10px 20px -10px rgb(226 0 26 / .7); transition: background .15s; }
+  .btn-go:hover { background: var(--primary-dark); }
+  .btn-go:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+  .btn-go[disabled] { opacity: .7; cursor: progress; }
+  .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgb(255 255 255 / .45); border-top-color: #fff; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ───────── Karten ───────── */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-card); }
+  .icon-badge { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--primary-faint); color: var(--primary-deep); font-size: 20px; }
+  .micro { font-size: 11px; line-height: 16px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--strong); }
+  .edit { display: inline-flex; align-items: center; gap: 6px; flex: none; border: 0; background: transparent; padding: 6px 10px; margin: -4px -10px -4px 0; border-radius: var(--r-md); font-size: 14px; font-weight: 600; color: var(--primary-dark); }
+  .edit:hover { background: var(--primary-faint); }
+  .edit:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .edit .i { font-size: 14px; }
+  .edit__t { white-space: nowrap; }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; background: var(--wash); color: var(--strong); white-space: nowrap; }
+  .chip[data-tone="changed"] { background: var(--primary-faint); color: var(--primary-deep); }
+  .chip[data-tone="changed"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; background: var(--wash); color: var(--strong); }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill[data-on="true"] { background: var(--primary-faint); color: var(--primary-deep); }
+
+  /* ───────── Karte 1: Das wird gestartet (Thesis der Seite) ───────── */
+  .hero { padding: 24px; }
+  .hero__top { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 16px; row-gap: 2px; align-items: start; }
+  .hero__top > .icon-badge { grid-row: 1 / span 3; }
+  .hero__eyebrow { grid-column: 2; grid-row: 1; align-self: center; }
+  .hero__top > .edit { grid-column: 3; grid-row: 1; }
+  .hero__title { grid-column: 2 / -1; grid-row: 2; text-wrap: balance; font-size: 26px; line-height: 32px; font-weight: 800; letter-spacing: -.025em; overflow-wrap: anywhere; }
+  .hero__name { grid-column: 2 / -1; grid-row: 3; font-size: 15px; color: var(--strong); }
+  .hero__name b { color: var(--ink); font-weight: 700; }
+  .plate { display: grid; grid-template-columns: repeat(2, auto); justify-content: start; margin-top: 20px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--page); }
+  .plate__cell { padding: 8px 16px; min-width: 0; }
+  .plate__cell + .plate__cell { border-left: 1px solid var(--line); }
+  .plate__label { display: block; }
+  .plate__value { display: block; margin-top: 1px; font-size: 15px; line-height: 22px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+  /* ───────── Karte 2: Teilnehmende ───────── */
+  .who { padding: 20px 24px 12px; }
+  .who__top { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 16px; row-gap: 2px; align-items: start; }
+  .who__top > .icon-badge { grid-row: 1 / span 2; }
+  .who__title { grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 40px; font-size: 16px; line-height: 24px; font-weight: 700; }
+  .who__top > .edit { grid-column: 3; grid-row: 1; }
+  .who__sub { grid-column: 2 / -1; grid-row: 2; font-size: 14px; line-height: 21px; color: var(--strong); max-width: 54ch; }
+  .rail { margin-top: 12px; padding-bottom: 8px; }
+  .row { --ny: 50%; position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; min-height: 46px; padding: 5px 4px 5px 0; }
+  .row::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: var(--primary-soft); }
+  .row:first-child::before { top: var(--ny); }
+  .row:last-child::before { bottom: auto; height: var(--ny); }
+  .row:only-child::before { display: none; }
+  .node { position: relative; z-index: 1; justify-self: center; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 2px solid var(--primary); }
+  .row__name { min-width: 0; }
+  .row__name b { display: block; font-size: 14px; line-height: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row__name small { display: block; font-size: 12px; line-height: 16px; color: var(--strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row__meta { font-size: 13px; line-height: 18px; color: var(--strong); font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ───────── Karte 3: Variablen-Konfiguration (nur, wenn es etwas zu konfigurieren gab) ───────── */
+  .cfg { padding: 20px 24px 8px; }
+  .cfg__top { display: flex; align-items: center; gap: 16px; }
+  .cfg__title { flex: 1; min-width: 0; font-size: 16px; line-height: 24px; font-weight: 700; }
+  .ledger { margin-top: 12px; }
+  .ledger__row { display: grid; grid-template-columns: 11.5rem minmax(0, 1fr); gap: 4px 20px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .ledger__label { font-size: 14px; line-height: 22px; font-weight: 600; }
+  .ledger__value { display: grid; gap: 6px; justify-items: start; min-width: 0; font-size: 14px; line-height: 21px; color: var(--strong); }
+  .ledger__value b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ledger__line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .mini-plate { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--page); font-variant-numeric: tabular-nums; }
+  .mini-plate span { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 11px; }
+  .mini-plate span + span { border-left: 1px solid var(--line); }
+  .mini-plate b { font-size: 15px; line-height: 22px; font-weight: 800; letter-spacing: -.01em; color: var(--ink); }
+  .mini-plate[data-changed="true"] b { color: var(--primary-dark); }
+  .mini-plate i { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--strong); }
+  .note { display: inline-flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 19px; color: var(--strong); }
+  .note .i { margin-top: 2px; font-size: 15px; }
+  .file { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--primary-soft); border-radius: var(--r-lg); background: var(--primary-faint); }
+  .file .i { font-size: 20px; color: var(--primary-deep); }
+  .file b { display: block; font-size: 14px; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file small { display: block; font-size: 13px; line-height: 18px; color: var(--strong); font-variant-numeric: tabular-nums; }
+  .file__text { min-width: 0; }
+  .none { color: var(--strong); }
+  .values li { display: flex; gap: 8px; }
+  .values li span { color: var(--strong); }
+
+  /* ───────── Laden (Skelett) ───────── */
+  .skel { padding: 24px; display: grid; gap: 14px; }
+  .skel i { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--wash), #F6F8FA, var(--wash)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+  /* ───────── Toast (Mockup) ───────── */
+  .toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; max-width: 340px; padding: 12px 16px; border-radius: var(--r-lg); background: var(--ink); color: #fff; font-size: 14px; box-shadow: 0 16px 32px -12px rgb(15 27 48 / .5); animation: rise .25s var(--ease); }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ───────── Notizen ───────── */
+  .notes { max-width: 720px; margin: 56px auto 0; padding-top: 28px; border-top: 1px dashed #C4CCD8; }
+  .notes h2 { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--strong); }
+  .notes ol { margin: 14px 0 0; display: grid; gap: 14px; counter-reset: n; }
+  .notes li { position: relative; padding-left: 30px; font-size: 14px; line-height: 21px; color: var(--strong); }
+  .notes li::before { counter-increment: n; content: counter(n); position: absolute; left: 0; top: 1px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--primary-faint); color: var(--primary-deep); font-size: 11px; font-weight: 700; }
+  .notes b { color: var(--ink); }
+
+  /* ───────── „Heute“ (Ist-Zustand nachgebaut) ───────── */
+  .old { display: grid; gap: 22px; }
+  .old__box { border-radius: var(--r-xl); padding: 24px; border: 2px solid; }
+  .old__box--g { background: linear-gradient(90deg, #ECFDF5, #F0FDFA); border-color: #A7F3D0; }
+  .old__box--b { background: linear-gradient(90deg, #EFF6FF, #ECFEFF); border-color: rgb(29 78 216 / .3); }
+  .old__box--p { background: linear-gradient(90deg, #FAF5FF, #FDF2F8); border-color: #E9D5FF; }
+  .old__h { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .old__h .btn-old { margin-left: auto; padding: 8px 16px; border: 1px solid #D8B4FE; border-radius: 8px; background: #F3E8FF; color: #7E22CE; font-size: 14px; font-weight: 600; }
+  .old__n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #fff; font-size: 14px; font-weight: 700; }
+  .old__h h3 { font-size: 20px; font-weight: 700; }
+  .old__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .old__cell { background: #fff; border-radius: 8px; padding: 16px; border: 1px solid #D1FAE5; }
+  .old__cell--b { border-color: #DBEAFE; }
+  .old__cell p:first-child { margin-bottom: 4px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .old__cell p:last-child { font-size: 18px; font-weight: 700; }
+  .old__wide { grid-column: 1 / -1; }
+  .old__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .old__chip { padding: 4px 12px; border-radius: 999px; background: var(--primary-soft); color: #065F46; font-size: 14px; font-weight: 500; border: 1px solid #A7F3D0; }
+  .old__team { background: #fff; border: 2px solid rgb(29 78 216 / .3); border-radius: 8px; padding: 16px; }
+  .old__team b { font-size: 16px; }
+  .old__team div { margin-top: 8px; padding: 4px 8px; border-radius: 4px; background: #EFF6FF; border: 1px solid #DBEAFE; font-size: 14px; color: var(--muted); }
+  .old__sub { background: #fff; border: 2px solid #E9D5FF; border-radius: 8px; overflow: hidden; }
+  .old__sub h4 { padding: 8px 16px; background: #F3E8FF; border-bottom: 1px solid #E9D5FF; font-size: 14px; font-weight: 700; color: #581C87; }
+  .old__sub--a { border-color: #FDE68A; }
+  .old__sub--a h4 { background: #FEF3C7; border-color: #FDE68A; color: #78350F; }
+  .old__sub p, .old__sub li { padding: 12px 16px; font-size: 14px; }
+  .old__sub .empty { text-align: center; font-style: italic; color: var(--faint); padding: 24px; }
+  .old__row { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); }
+  .old__row:last-child { border: 0; }
+  .old__row span:first-child { font-weight: 600; color: var(--muted); }
+  .old__btnrow { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 24px; border-top: 2px solid var(--line); }
+  .old__btnrow span { padding: 12px 32px; border-radius: 999px; background: var(--wash); color: var(--muted); font-weight: 600; }
+  .old__btnrow span:last-child { background: linear-gradient(90deg, var(--primary), var(--primary-dark)); color: #fff; font-weight: 700; padding-inline: 40px; }
+
+  @media (max-width: 640px) {
+    .stage { padding: 24px 16px 56px; }
+    .studio { position: static; padding: 10px 16px; }
+    .head__title { font-size: 24px; line-height: 30px; }
+    .step__label { font-size: 9px; letter-spacing: .04em; }
+    .hero, .who, .cfg { padding-left: 18px; padding-right: 18px; }
+    .hero__top > .icon-badge, .who__top > .icon-badge { grid-row: 1; }
+    .hero__title { grid-column: 1 / -1; margin-top: 12px; font-size: 22px; line-height: 28px; }
+    .hero__name { grid-column: 1 / -1; }
+    .who__sub { grid-column: 1 / -1; grid-row: 2; margin-top: 10px; }
+    .who__title { align-content: center; }
+    .edit { padding: 8px; margin: -4px -8px -4px 0; }
+    .edit .i { font-size: 18px; }
+    .edit__t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .plate { grid-template-columns: 1fr; width: 100%; }
+    .plate__cell + .plate__cell { border-left: 0; border-top: 1px solid var(--line); }
+    .plate__cell { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .plate__value { text-align: right; }
+    .ledger__row { grid-template-columns: 1fr; gap: 6px; }
+    .row { --ny: 16px; grid-template-columns: 22px minmax(0, 1fr); }
+    .row .node { align-self: start; margin-top: 9px; }
+    .row__meta { grid-column: 2; text-align: left; }
+    .nav { flex-direction: row; }
+    .btn-go { min-width: 0; padding-inline: 24px; }
+    .old__grid { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24"><path d="M10 12v-1"/><path d="M10 18v-2"/><path d="M10 7V6"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h.5"/><circle cx="10" cy="20" r="2"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+</svg>
+
+<header class="studio">
+  <span class="studio__tag">MOCKUP</span>
+  <span class="studio__title">Schritt 4 · Zusammenfassung</span>
+  <div class="studio__group">Ansicht
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button type="button" data-set="view" data-v="old" aria-pressed="false">Heute</button>
+      <button type="button" data-set="view" data-v="new" aria-pressed="true">Neu</button>
+    </div>
+  </div>
+  <div class="studio__group">App
+    <div class="seg" role="group" aria-label="App">
+      <button type="button" data-set="app" data-v="pgadmin" aria-pressed="false">pgAdmin</button>
+      <button type="button" data-set="app" data-v="latex" aria-pressed="true">Web-LaTeX</button>
+      <button type="button" data-set="app" data-v="vm" aria-pressed="false">Windows-VM</button>
+      <button type="button" data-set="app" data-v="text" aria-pressed="false">Text-Variablen</button>
+    </div>
+  </div>
+  <div class="studio__group">Zuordnung
+    <div class="seg" role="group" aria-label="Zuordnung">
+      <button type="button" data-set="mode" data-v="eachUser" aria-pressed="true">Je Person</button>
+      <button type="button" data-set="mode" data-v="one" aria-pressed="false">Eine Gruppe</button>
+      <button type="button" data-set="mode" data-v="custom" aria-pressed="false">Teams</button>
+    </div>
+  </div>
+  <div class="studio__group">Werte
+    <div class="seg" role="group" aria-label="Werte">
+      <button type="button" data-set="values" data-v="default" aria-pressed="true">Standard</button>
+      <button type="button" data-set="values" data-v="changed" aria-pressed="false">Angepasst</button>
+    </div>
+  </div>
+  <div class="studio__group">Zustand
+    <div class="seg" role="group" aria-label="Zustand">
+      <button type="button" data-set="loading" data-v="no" aria-pressed="true">Fertig</button>
+      <button type="button" data-set="loading" data-v="yes" aria-pressed="false">Lädt</button>
+    </div>
+  </div>
+</header>
+
+<main class="stage">
+  <ol class="stepper" aria-label="Fortschritt">
+    <li class="step" data-state="done"><span class="step__dot"><svg class="i" style="font-size:14px"><use href="#i-check"/></svg></span><span class="step__label">Auswahl</span></li>
+    <li class="step" data-state="done"><span class="step__dot"><svg class="i" style="font-size:14px"><use href="#i-check"/></svg></span><span class="step__label">Verteilung</span></li>
+    <li class="step" data-state="done"><span class="step__dot"><svg class="i" style="font-size:14px"><use href="#i-check"/></svg></span><span class="step__label">Variablen</span></li>
+    <li class="step" data-state="current" aria-current="step"><span class="step__dot">4</span><span class="step__label">Übersicht</span></li>
+  </ol>
+
+  <div class="head">
+    <h1 class="head__title">Zusammenfassung</h1>
+    <p class="head__sub">Prüfen Sie die Angaben, bevor Sie das Deployment starten.</p>
+  </div>
+
+  <div class="column" id="view-new" aria-live="polite" aria-busy="false"></div>
+  <div class="column" id="view-old" hidden></div>
+
+  <nav class="nav" aria-label="Wizard">
+    <button type="button" class="btn-back" id="back"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg>Zurück</button>
+    <button type="button" class="btn-go" id="go">Deployen</button>
+  </nav>
+
+  <aside class="notes" aria-label="Design-Notizen">
+    <h2>Warum so</h2>
+    <ol>
+      <li><b>Oben steht, was passiert.</b> „Web-LaTeX für 3 Personen“ sagt in einem Satz, was ein Klick auf „Deployen“ auslöst. Version und Laufzeit stehen als Typenschild darunter, nicht als Kacheln; der Name des Deployments steht direkt unter dem Satz.</li>
+      <li><b>Jeder Block führt zu seinem Schritt.</b> „Bearbeiten“ sitzt an der Karte und springt zu Auswahl, Verteilung oder Variablen. Die Nummern 1 bis 3 entfallen: Sie sagten nichts, was der Fortschrittsbalken nicht schon sagt.</li>
+      <li><b>Variablen-Konfiguration erscheint nur, wenn es etwas zu konfigurieren gab.</b> pgAdmin hat nichts, Web-LaTeX eine Datei, die Windows-VM Rechenleistung und Netzwerk. Die leere Karte „Diese App hat keine Einstellungen“ entfällt.</li>
+      <li><b>Das Ergebnis der Entscheidung steht da, nicht nur die Abweichung.</b> Der Internetzugriff zeigt immer „Erlaubt“ oder „Gesperrt“ mit seiner Folge. Die gewählte Rechenleistung fehlte bisher ganz in der Übersicht.</li>
+      <li><b>Personen statt „Team #1“.</b> Dieselbe Leiste wie bei den Datei-Variablen: ein Punkt je Umgebung, die Namen wie in Schritt 2. Bei „Je Person“ gibt es keine Teamkästen mit einem einzigen Namen mehr.</li>
+      <li><b>Rot nur für Bedienung und Zustand.</b> Kein Grün, Blau, Lila und Amber mehr. „Deployen“ bleibt die einzige rote Fläche.</li>
+    </ol>
+  </aside>
+</main>
+
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const PEOPLE = ['Studentin Drei', 'Student Zwei', 'Student Vier'];
+  const APPS = {
+    pgadmin: { name: 'pgAdmin', ver: 'v2.0.3', runtime: 'Pods im Cluster', noun: 'Umgebung', nounA: 'eine eigene Umgebung', nounG: 'einer Umgebung', icon: 'db', hasFile: false, vm: false, texts: false },
+    latex:   { name: 'Web-LaTeX', ver: 'v2.0.5', runtime: 'Pods im Cluster', noun: 'Umgebung', nounA: 'eine eigene Umgebung', nounG: 'einer Umgebung', icon: 'doc', hasFile: true, fileLabel: 'Starter-Projekt', vm: false, texts: false },
+    vm:      { name: 'windows-matlab-app', ver: 'v2.1.0', runtime: 'VM im Cluster', noun: 'Desktop', nounA: 'einen eigenen Windows-Desktop', nounG: 'einem Windows-Desktop', icon: 'monitor', hasFile: false, vm: true, texts: false },
+    text:    { name: 'Beispiel-App', ver: 'v1.0.0', runtime: 'Pods im Cluster', noun: 'Umgebung', nounA: 'eine eigene Umgebung', nounG: 'einer Umgebung', icon: 'box', hasFile: false, vm: false, texts: true },
+  };
+  const MODES = { eachUser: 'Jeder Nutzer einzeln', one: 'Eine Gruppe', custom: 'Individuell' };
+  const S = { view: 'new', app: 'latex', mode: 'eachUser', values: 'default', loading: 'no', busy: false };
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const icon = (id) => `<svg class="i" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const plural = (n, one, many) => (n === 1 ? one : many);
+
+  function teams() {
+    if (S.mode === 'one') return [{ name: 'Eine Gruppe', members: PEOPLE }];
+    if (S.mode === 'custom') return [{ name: 'Team Alpha', members: PEOPLE.slice(0, 2) }, { name: 'Team Beta', members: PEOPLE.slice(2) }];
+    return PEOPLE.map((p, i) => ({ name: `Team #${i + 1}`, members: [p] }));
+  }
+
+  // ── Zeilen der Variablen-Konfiguration: nur, was die App wirklich anbietet ──
+  function settingsRows(app) {
+    const rows = [];
+    const changed = S.values === 'changed';
+    const n = PEOPLE.length;
+    if (app.vm) {
+      const cpu = changed ? 6 : 4, ram = changed ? 12 : 8;
+      rows.push({ label: 'Rechenressourcen', html:
+        `<div class="ledger__line"><span class="mini-plate" data-changed="${changed}"><span><b>${cpu}</b><i>vCPU</i></span><span><b>${ram}</b><i>GB RAM</i></span></span><span class="chip" data-tone="${changed ? 'changed' : ''}">${changed ? 'Angepasst' : 'Empfohlen'}</span></div>
+         <span>je Desktop · insgesamt für ${n} Personen: <b>${cpu * n} vCPU · ${ram * n} GB RAM</b></span>` });
+      const net = !changed;
+      rows.push({ label: 'Internetzugriff', html:
+        `<span class="pill" data-on="${net}">${net ? 'Erlaubt' : 'Gesperrt'}</span>
+         <span class="note">${icon(net ? 'alert' : 'lock')}<span>${net ? 'Studierende können Server im Internet erreichen.' : 'Studierende arbeiten ohne Internetzugriff.'}</span></span>` });
+      if (n >= 2) rows.push({ label: 'Vernetzte Desktops', html:
+        `<span class="pill" data-on="${changed}">${changed ? 'An' : 'Aus'}</span>
+         <span>${changed ? 'Die Desktops dieses Deployments können sich gegenseitig erreichen.' : 'Die Desktops arbeiten getrennt voneinander.'}</span>` });
+    }
+    if (app.hasFile) {
+      rows.push({ label: app.fileLabel, html: changed
+        ? `<span class="file">${icon('zip')}<span class="file__text"><b>starter.zip</b><small>640 KB · gilt für alle ${n} Personen</small></span></span>`
+        : `<span class="none">Keine Datei ausgewählt.</span>` });
+    }
+    if (app.texts) {
+      rows.push({ label: 'Region', html: `<b>${changed ? 'eu-west' : 'eu-central'}</b>` });
+      const t = teams();
+      rows.push({ label: 'Datenbank-Name', html: `<ul class="values">${t.map((x) => `<li><span>${esc(x.name)}</span><b>${esc(x.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))}-db</b></li>`).join('')}</ul>` });
+    }
+    return rows;
+  }
+
+  function newView() {
+    const app = APPS[S.app];
+    const t = teams();
+    const n = PEOPLE.length;
+    const envs = t.length;
+    const rows = settingsRows(app);
+
+    // Teilnehmende: bei „Je Person“ zeigt die Leiste die Personen, sonst die Teams mit ihren Mitgliedern
+    const rail = (S.mode === 'eachUser'
+      ? PEOPLE.map((p) => `<li class="row"><span class="node" aria-hidden="true"></span><div class="row__name"><b>${esc(p)}</b></div></li>`)
+      : t.map((x) => `<li class="row"><span class="node" aria-hidden="true"></span><div class="row__name"><b>${esc(x.name)}</b><small>${esc(x.members.join(', '))}</small></div><span class="row__meta">${x.members.length} ${plural(x.members.length, 'Person', 'Personen')}</span></li>`)
+    ).join('');
+    const modeText = S.mode === 'eachUser' ? `Jede Person bekommt ${app.nounA}.`
+      : S.mode === 'one' ? `Alle arbeiten gemeinsam in ${app.nounG}.`
+      : `Jedes Team bekommt ${app.nounA}.`;
+
+    return `
+      <section class="card hero" aria-labelledby="h-title">
+        <div class="hero__top">
+          <span class="icon-badge" aria-hidden="true">${icon(app.icon)}</span>
+          <span class="micro hero__eyebrow">Das wird gestartet</span>
+          <button type="button" class="edit" data-edit="Auswahl" aria-label="Name und Auswahl bearbeiten">${icon('pencil')}<span class="edit__t">Bearbeiten</span></button>
+          <h2 class="hero__title" id="h-title">${esc(app.name)} für ${n} ${plural(n, 'Person', 'Personen')}</h2>
+          <p class="hero__name">Deployment „<b>test</b>“</p>
+        </div>
+        <div class="plate" role="group" aria-label="Eckdaten">
+          <div class="plate__cell"><span class="micro plate__label">Version</span><span class="plate__value">${esc(app.ver)}</span></div>
+          <div class="plate__cell"><span class="micro plate__label">Laufzeit</span><span class="plate__value">${esc(app.runtime)}</span></div>
+        </div>
+      </section>
+
+      <section class="card who" aria-labelledby="w-title">
+        <div class="who__top">
+          <span class="icon-badge" aria-hidden="true">${icon('users')}</span>
+          <h2 class="who__title" id="w-title">Teilnehmende <span class="chip">${esc(MODES[S.mode])}</span></h2>
+          <button type="button" class="edit" data-edit="Verteilung" aria-label="Verteilung bearbeiten">${icon('pencil')}<span class="edit__t">Bearbeiten</span></button>
+          <p class="who__sub">${modeText}${S.mode === 'custom' ? ` Das sind ${envs} ${plural(envs, app.noun, app.noun === 'Desktop' ? 'Desktops' : 'Umgebungen')} für ${n} ${plural(n, 'Person', 'Personen')}.` : ''}</p>
+        </div>
+        <ol class="rail" aria-label="Teilnehmende">${rail}</ol>
+      </section>
+
+      ${rows.length ? `
+      <section class="card cfg" aria-labelledby="c-title" data-testid="cfg">
+        <div class="cfg__top">
+          <span class="icon-badge" aria-hidden="true">${icon('sliders')}</span>
+          <h2 class="cfg__title" id="c-title">Variablen-Konfiguration</h2>
+          <button type="button" class="edit" data-edit="Variablen" aria-label="Variablen bearbeiten">${icon('pencil')}<span class="edit__t">Bearbeiten</span></button>
+        </div>
+        <dl class="ledger">${rows.map((r) => `<div class="ledger__row"><dt class="ledger__label">${esc(r.label)}</dt><dd class="ledger__value">${r.html}</dd></div>`).join('')}</dl>
+      </section>` : ''}`;
+  }
+
+  function skeleton() {
+    const block = (w) => `<div class="card skel"><i style="width:${w}%"></i><i style="width:${w - 25}%"></i><i style="width:${w - 10}%"></i></div>`;
+    return `<span class="sr-only">Lade Konfiguration …</span>${block(60)}${block(80)}${S.app === 'pgadmin' ? '' : block(70)}`;
+  }
+
+  // ── „Heute“: der Ist-Zustand, mit denselben Daten nachgebaut ──
+  function oldView() {
+    const app = APPS[S.app];
+    const t = teams();
+    const changed = S.values === 'changed';
+    const net = app.vm && !changed ? null : app.vm ? [['Internetzugriff', 'Aus'], ['Vernetzte Pods', 'An']] : null;
+    const terraform = app.texts ? [['region', changed ? 'eu-west' : 'eu-central'], ['db_name', t.map((x) => `${x.name}: ${x.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-db`).join(' · ')]] : [];
+    const files = app.hasFile;
+    return `<div class="old">
+      <div class="old__box old__box--g">
+        <div class="old__h"><span class="old__n" style="background:var(--primary)">1</span><h3>Basis-Konfiguration</h3></div>
+        <div class="old__grid">
+          <div class="old__cell"><p>Deployment Name</p><p>test</p></div>
+          <div class="old__cell"><p>App</p><p style="color:var(--primary-dark)">${esc(app.name)}</p></div>
+          <div class="old__cell"><p>Version</p><p>${esc(app.ver)}</p></div>
+          <div class="old__cell old__wide"><p>Laufzeit</p><p>${esc(app.runtime)}</p></div>
+          ${net ? `<div class="old__cell old__wide"><p>Experteneinstellungen</p>${net.map((x) => `<p style="font-size:14px"><b>${x[0]}</b>: ${x[1]}</p>`).join('')}</div>` : ''}
+          <div class="old__cell old__wide"><p>Ausgewählte Studenten (${PEOPLE.length})</p><div class="old__chips">${PEOPLE.map((p) => `<span class="old__chip">${esc(p)}</span>`).join('')}</div></div>
+        </div>
+      </div>
+      <div class="old__box old__box--b">
+        <div class="old__h"><span class="old__n" style="background:#2563EB">2</span><h3>Team-Zuweisung</h3></div>
+        <div class="old__grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px"><div class="old__cell old__cell--b"><p>Anzahl Teams</p><p style="color:#1D4ED8;font-size:24px">${t.length}</p></div><div class="old__cell old__cell--b"><p>Modus</p><p>${esc(MODES[S.mode])}</p></div></div>
+        <div class="old__grid">${t.map((x) => `<div class="old__team"><b>${esc(x.name)}</b>${x.members.map((m) => `<div>${esc(m)}</div>`).join('')}</div>`).join('')}</div>
+      </div>
+      <div class="old__box old__box--p">
+        <div class="old__h"><span class="old__n" style="background:#9333EA">3</span><h3>Variablen-Konfiguration</h3><span class="btn-old">→ Bearbeiten</span></div>
+        <div style="display:grid;gap:16px">
+          <div class="old__sub"><h4>App-Einstellungen <span style="float:right">${terraform.length}</span></h4>${terraform.length ? terraform.map((r) => `<div class="old__row" style="padding:12px 16px"><span>${r[0]}</span><span>${esc(r[1])}</span></div>`).join('') : `<p class="empty">Diese App hat keine Einstellungen.</p>`}</div>
+          ${files ? `<div class="old__sub old__sub--a"><h4>Hochgeladene Dateien <span style="float:right">${changed ? 3 : 0}</span></h4><p style="font-size:12px"><b>starter</b> (Bereich: team)<br><i style="color:var(--faint)">${changed ? 'starter.zip · 640 KB (×3)' : 'Keine Datei hochgeladen'}</i></p></div>` : ''}
+        </div>
+      </div>
+      <div class="old__btnrow"><span>← Zurück</span><span>Deployen</span></div>
+    </div>`;
+  }
+
+  function toast(text) {
+    const el = $('#toast'); el.textContent = text; el.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600);
+  }
+
+  function render() {
+    document.querySelectorAll('[data-set]').forEach((b) => b.setAttribute('aria-pressed', String(S[b.dataset.set]) === b.dataset.v));
+    $('#view-new').hidden = S.view !== 'new';
+    $('#view-old').hidden = S.view !== 'old';
+    $('.head').hidden = S.view === 'old';
+    $('.notes').hidden = S.view === 'old';
+    $('#view-new').setAttribute('aria-busy', S.loading === 'yes');
+    $('#view-new').innerHTML = S.loading === 'yes' ? skeleton() : newView();
+    $('#view-old').innerHTML = S.view === 'old' ? oldView() : '';
+    $('.nav').hidden = S.view === 'old';
+    const go = $('#go');
+    go.disabled = S.loading === 'yes' || S.busy;
+    go.innerHTML = S.busy ? '<span class="spin" aria-hidden="true"></span><span>Wird erstellt …</span>' : 'Deployen';
+  }
+
+  document.addEventListener('click', (e) => {
+    const set = e.target.closest('[data-set]');
+    if (set) { S[set.dataset.set] = set.dataset.v; render(); return; }
+    const edit = e.target.closest('[data-edit]');
+    if (edit) { toast(`→ Zurück zu Schritt „${edit.dataset.edit}“ (Mockup)`); return; }
+    if (e.target.closest('#back')) { toast('→ Zurück zu Schritt „Variablen“ (Mockup)'); return; }
+    if (e.target.closest('#go')) {
+      S.busy = true; render();
+      setTimeout(() => { S.busy = false; render(); toast('Deployment gestartet (Mockup)'); }, 1600);
+    }
+  });
+
+  // Deep-Links für Screenshots: #latex #pgadmin #vm #text #one #custom #changed #old #loading #clean
+  const h = location.hash;
+  ['pgadmin', 'latex', 'vm', 'text'].forEach((a) => { if (h.includes(a)) S.app = a; });
+  if (h.includes('one')) S.mode = 'one';
+  if (h.includes('custom')) S.mode = 'custom';
+  if (h.includes('changed')) S.values = 'changed';
+  if (h.includes('old')) S.view = 'old';
+  if (h.includes('loading')) S.loading = 'yes';
+  if (h.includes('clean')) ['.studio', '.notes'].forEach((s) => { document.querySelector(s).style.display = 'none'; });
+  render();
+})();
+</script>
+</body>
+</html>

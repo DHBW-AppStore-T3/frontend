@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { extractErrorMessage } from '@/utils/http-error'
+import { extractErrorMessage, errorReason, localizedError, thrownMessage } from '@/utils/http-error'
 
 describe('extractErrorMessage', () => {
   it('returns a string detail verbatim', () => {
@@ -46,5 +46,60 @@ describe('extractErrorMessage', () => {
   it('ignores an empty string detail and falls through', () => {
     const err = { response: { data: { detail: '' } }, message: 'Network Error' }
     expect(extractErrorMessage(err, 'Fallback')).toBe('Network Error')
+  })
+})
+
+describe('errorReason', () => {
+  const withDetail = (detail: unknown) => ({ response: { data: { detail } } })
+
+  it('reads reason, then code, from a structured detail', () => {
+    expect(errorReason(withDetail({ reason: 'version_not_approved' }))).toBe('version_not_approved')
+    expect(errorReason(withDetail({ code: 'workload_not_found' }))).toBe('workload_not_found')
+  })
+
+  it('is null for a plain string detail or no response', () => {
+    expect(errorReason(withDetail('nope'))).toBeNull()
+    expect(errorReason(new Error('x'))).toBeNull()
+    expect(errorReason(undefined)).toBeNull()
+  })
+})
+
+describe('localizedError', () => {
+  const t = (key: string, params?: Record<string, unknown>) => `${key}|${JSON.stringify(params)}`
+  const err = { response: { data: { detail: { reason: 'workload_budget', limit: 5 } } } }
+
+  it('uses the translation errors.<reason> with the detail fields as parameters', () => {
+    expect(localizedError(err, t, () => true)).toBe('errors.workload_budget|{"reason":"workload_budget","limit":5}')
+  })
+
+  it('falls back to the extracted message when the UI has no text for the reason', () => {
+    expect(localizedError(err, t, () => false)).toBe('workload_budget')
+  })
+
+  it('falls back to the given default when there is nothing usable', () => {
+    expect(localizedError({}, t, () => true, 'Failed to deploy')).toBe('Failed to deploy')
+  })
+})
+
+describe('thrownMessage', () => {
+  it('returns the message of an Error or of any object with a message', () => {
+    expect(thrownMessage(new Error('boom'))).toBe('boom')
+    expect(thrownMessage({ message: 'denied' })).toBe('denied')
+  })
+
+  it('ignores response.data.detail, unlike extractErrorMessage', () => {
+    const err = { message: 'Request failed', response: { data: { detail: 'quota exceeded' } } }
+    expect(thrownMessage(err)).toBe('Request failed')
+    expect(extractErrorMessage(err)).toBe('quota exceeded')
+  })
+
+  it.each([[''], [null], [undefined], [0], ['text']])('is undefined for %j', (value) => {
+    expect(thrownMessage(value)).toBeUndefined()
+  })
+
+  it('is undefined when there is no usable message', () => {
+    expect(thrownMessage({})).toBeUndefined()
+    expect(thrownMessage({ message: '' })).toBeUndefined()
+    expect(thrownMessage({ message: 42 })).toBeUndefined()
   })
 })

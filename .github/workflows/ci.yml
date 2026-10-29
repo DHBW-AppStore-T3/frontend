@@ -6,6 +6,9 @@ on:
     tags: ['v*.*.*']
   pull_request:
     branches: [main, dev]
+  # Runs the pipeline again for a branch (on dev and main it also publishes
+  # and rolls out, as a push does).
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -26,23 +29,22 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run type check
-        run: npx vue-tsc -b --noEmit
+        run: npx tsc -b --noEmit
 
   # ================================================================
   # 🧹 LINT
   # ================================================================
-  # vue-tsc above covers types. ESLint covers what a type-checker
-  # cannot see: a template referencing something <script setup> never
-  # declared, a v-for without :key, a mutated prop, an unused import
-  # left behind by a refactor. Warnings are not fatal (there are ~157,
-  # mostly `any`s forced by the hand-maintained API types); errors are.
+  # tsc above covers types. ESLint covers what a type-checker
+  # cannot see: the rules of hooks, effect dependency arrays, an unused
+  # import left behind by a refactor. `--max-warnings=0` (npm run lint): a warning
+  # fails the job like an error, so there is no backlog of tolerated warnings.
   lint:
     name: "🧹 Lint"
     runs-on: ubuntu-latest
@@ -54,7 +56,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Install dependencies
@@ -77,7 +79,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Install dependencies
@@ -97,13 +99,18 @@ jobs:
       - name: Test Coverage Gate
         if: always()
         run: |
-          # Raised 2026-10 after dedicated test sprint brought istanbul
-          # line coverage to 71.96 %. Gate applies to every branch so
-          # coverage regressions are caught before they reach dev/main.
-          MIN_COVERAGE=65.0
+          # Line AND branch coverage (two separate minimums, both must hold),
+          # on every git branch, so regressions are caught before they reach
+          # dev/main. Both minimums are 80 % (lines went from 40 to 85 % in frontend#80,
+          # then both were set to 80 %). Keep each minimum at least 2
+          # points below the CI value (a flaky drop must not block merges) and
+          # update CLAUDE.md and claude_docs/HANDOVER.md with them.
+          MIN_COVERAGE=80.0
+          MIN_BRANCH_COVERAGE=80.0
           PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
-          echo "Current frontend coverage: ${PCT}%, required minimum: ${MIN_COVERAGE}%"
-          node -e "const p = Number(require('./coverage/coverage-summary.json').total.lines.pct); if (p < $MIN_COVERAGE) { console.error('❌ Coverage Gate Failed: ' + p + '% < $MIN_COVERAGE%'); process.exit(1); } else { console.log('✅ Coverage Gate Passed: ' + p + '% >= $MIN_COVERAGE%'); }"
+          BRANCH_PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
+          echo "Current frontend coverage: lines ${PCT}% (minimum ${MIN_COVERAGE}%), branches ${BRANCH_PCT}% (minimum ${MIN_BRANCH_COVERAGE}%)"
+          node -e "const t = require('./coverage/coverage-summary.json').total; let ok = true; for (const [metric, min] of [['lines', $MIN_COVERAGE], ['branches', $MIN_BRANCH_COVERAGE]]) { const p = Number(t[metric].pct); if (p < min) { console.error('❌ Coverage Gate Failed: ' + metric + ' ' + p + '% < ' + min + '%'); ok = false; } else { console.log('✅ ' + metric + ' ' + p + '% >= ' + min + '%'); } } process.exit(ok ? 0 : 1)"
 
       - name: Upload coverage report
         if: always()
@@ -140,7 +147,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Install dependencies
@@ -232,6 +239,8 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
+          # New per run: the upgrade step (Dockerfile, ARG SECURITY_REFRESH) never comes from the build cache.
+          build-args: SECURITY_REFRESH=${{ github.run_id }}
           context: .
           file: ./Dockerfile
           push: false
@@ -271,6 +280,8 @@ jobs:
       - name: Build local image (amd64, --load)
         uses: docker/build-push-action@v5
         with:
+          # New per run: the upgrade step (Dockerfile, ARG SECURITY_REFRESH) never comes from the build cache.
+          build-args: SECURITY_REFRESH=${{ github.run_id }}
           context: .
           file: ./Dockerfile
           push: false
@@ -307,17 +318,23 @@ jobs:
           category: trivy-image
 
   # ================================================================
-  # 📦 PUSH — only on main
+  # 📦 PUSH — on main and dev
   # ================================================================
   push:
     name: "📦 Push"
     runs-on: ubuntu-latest
     needs: [build, image-scan]
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
+    if: >-
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     timeout-minutes: 20
     permissions:
       contents: read
       packages: write
+      id-token: write       # sign the image's origin (Sigstore, keyless)
+      attestations: write   # store that signature with GitHub
+    outputs:
+      digest: ${{ steps.push-image.outputs.digest }}
 
     steps:
       - name: Checkout repository
@@ -349,8 +366,11 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push Docker image
+        id: push-image
         uses: docker/build-push-action@v5
         with:
+          # New per run: the upgrade step (Dockerfile, ARG SECURITY_REFRESH) never comes from the build cache.
+          build-args: SECURITY_REFRESH=${{ github.run_id }}
           context: .
           file: ./Dockerfile
           push: true
@@ -362,39 +382,47 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # Signs which repository, workflow, branch and commit built this digest (SLSA
+      # build provenance, keyless); the deployment repo rolls out only images that
+      # have it (.github/scripts/verify-image.sh there).
+      - name: Attest the image's origin
+        if: steps.push-image.outputs.digest != ''
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/dhbw-appstore-t3/frontend
+          subject-digest: ${{ steps.push-image.outputs.digest }}
 
   # ================================================================
-  # 🚀 TRIGGER STAGING DEPLOY
+  # ☸️ ROLL OUT ON KUBERNETES — dev -> staging, main -> prod
   # ================================================================
-  trigger-staging:
-    name: "🚀 Trigger Staging Deploy"
+  # The deployment repo pins the image just pushed (tag sha-<commit>) by its
+  # digest in k8s/images/<staging|prod>.yaml; Argo CD of that environment
+  # follows (see k8s-bump.yml there: a self-merging PR on dev,
+  # a PR on main that a person approves).
+  k8s-rollout:
+    name: "☸️ Roll out on k8s"
     runs-on: ubuntu-latest
     needs: [push]
-    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    if: >-
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
     steps:
-      - name: Trigger staging deployment
+      # A one-hour token of the GitHub App "DHBW AppStore deploy" (installed only
+      # on the deployment repository, Actions: write), not a personal token.
+      - name: Token for the deployment repository
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DEPLOY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+          owner: DHBW-AppStore-T3
+          repositories: deployment
+          permission-actions: write
+      - name: Pin the new image in the deployment repo
         run: |
-          gh workflow run staging.yml \
-            --repo DHBW-AppStore-T3/deployment \
-            --ref dev
+          gh workflow run k8s-bump.yml --repo DHBW-AppStore-T3/deployment --ref "$GITHUB_REF_NAME" \
+            -f component=frontend -f tag="sha-${GITHUB_SHA::7}" -f digest="$DIGEST"
         env:
-          GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
-
-  # ================================================================
-  # 🚀 TRIGGER PRODUCTION DEPLOY
-  # ================================================================
-  trigger-production:
-    name: "🚀 Trigger Production Deploy"
-    runs-on: ubuntu-latest
-    needs: [push]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Trigger production deployment
-        run: |
-          gh workflow run production.yml \
-            --repo DHBW-AppStore-T3/deployment \
-            --ref main
-        env:
-          GH_TOKEN: ${{ secrets.DEPLOYMENT_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DIGEST: ${{ needs.push.outputs.digest }}

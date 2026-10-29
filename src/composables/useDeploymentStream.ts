@@ -8,60 +8,29 @@
  * Bearer token the rest of the API uses and gives us explicit control
  * over reconnect behaviour.
  *
- * Returns reactive state:
+ * Returns state (re-rendered on change):
  *
  * * ``progress`` — 0..100, ``null`` while no progress event has
  *   arrived (the snapshot frame seeds it from the DB).
  * * ``currentPhase`` — name of the active phase (e.g.
  *   ``TERRAFORM_APPLY``), or null pre-snapshot.
- * * ``totalPhases`` — last seen total (8 or 11 depending on whether
- *   the deployment includes a Packer build).
+ * * ``totalPhases`` — last seen total (the worker's phase count for the task).
  * * ``liveLogs`` — bounded array of the most recent log entries
  *   (default 100). Auto-scroll consumers should render the tail.
  * * ``connectionState`` — high-level state machine surface for the
  *   detail view to show "connecting" / "live" / "reconnecting" /
  *   "ended" badges.
+ * * ``invalidEvents`` — snapshot/progress/log events of this stream that
+ *   failed validation and were ignored (see ``deploymentStreamEvents``).
  */
 
-import { ref, type Ref } from 'vue'
-import { useKeycloak } from '@/composables/useKeycloak'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { createStore } from 'zustand/vanilla'
+import { keycloak } from '@/services/keycloak.service'
 import { env } from '@/env'
+import { parseLog, parseProgress, parseSnapshot, type LogEntry } from './deploymentStreamEvents'
 
-export interface LogEntry {
-  timestamp: string
-  level: string
-  category?: string
-  message: string
-  tool?: string
-  streaming?: boolean
-  phase?: string
-  progress_pct?: number
-  [key: string]: any
-}
-
-export interface ProgressEvent {
-  phase: string
-  phase_index: number
-  total_phases: number
-  progress_pct: number
-  message?: string
-  // Full ordered phase-name sequence for the active task. Multi-image
-  // deploys produce a dynamic sequence (N×3 Packer phases for N
-  // templates) whose template keys cannot be guessed from
-  // observation order — the worker ships the authoritative list with
-  // every event. Single-image / non-deploy tasks omit this and the
-  // UI falls back to the static phase tables it bundles for the
-  // legacy shape.
-  phase_names?: string[]
-}
-
-export interface SnapshotEvent {
-  task_id: string | null
-  status: string | null
-  current_phase: string | null
-  progress_pct: number | null
-  type: string | null
-}
+export type { LogEntry, ProgressEvent, SnapshotEvent } from './deploymentStreamEvents'
 
 export type ConnectionState = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'ended' | 'error'
 
@@ -69,68 +38,98 @@ const MAX_LOG_BUFFER = 100
 const RECONNECT_BASE_MS = 1000
 const RECONNECT_MAX_MS = 30000
 
-export function useDeploymentStream(deploymentId: Ref<string | null>) {
-  const progress = ref<number | null>(null)
-  const currentPhase = ref<string | null>(null)
+interface StreamState {
+  progress: number | null
+  currentPhase: string | null
   // 1-based phase index from the worker's progress event. Lets the
   // detail view highlight the right dot in the stepper without
   // reconstructing it from ``progress_pct`` (which is rounded and
   // collides on consecutive phases when total is small).
-  const currentPhaseIndex = ref<number | null>(null)
-  const totalPhases = ref<number>(11)
+  currentPhaseIndex: number | null
+  totalPhases: number
   // Authoritative phase-name list from the worker. ``[]`` means no
   // event with ``phase_names`` has been received yet (or the task
   // doesn't ship it, like the legacy single-image deploy where the
   // UI's static table already covers the shape). Consumers should
   // prefer this list over their own predictions when non-empty.
-  const phaseNames = ref<string[]>([])
-  const liveLogs = ref<LogEntry[]>([])
+  phaseNames: string[]
+  liveLogs: LogEntry[]
   // Running count of every log line we've received this stream —
   // independent of ``liveLogs.length``, which is capped by the ring
   // buffer (``MAX_LOG_BUFFER``). The detail view shows this in the
   // tail header so the number keeps growing past 100 as the worker
   // produces output, instead of plateauing at the buffer cap.
-  const totalLogCount = ref<number>(0)
-  const connectionState = ref<ConnectionState>('idle')
-  const lastError = ref<string | null>(null)
+  totalLogCount: number
+  connectionState: ConnectionState
+  lastError: string | null
+  // Events dropped by validation since ``start()``; never decreases within a run.
+  invalidEvents: number
+}
+
+const initialState = (): StreamState => ({
+  progress: null,
+  currentPhase: null,
+  currentPhaseIndex: null,
+  // Default dot count so a previous run's total (e.g. 11 for deploy)
+  // doesn't briefly bleed into the next run's stepper (e.g. 7 for
+  // destroy) before its first progress event arrives.
+  totalPhases: 11,
+  phaseNames: [],
+  liveLogs: [],
+  totalLogCount: 0,
+  connectionState: 'idle',
+  lastError: null,
+  invalidEvents: 0,
+})
+
+/**
+ * Framework-free stream controller: owns the fetch loop, reconnect timer and
+ * state. The hook below wires one instance per component to React.
+ */
+function createStreamController(initialDeploymentId: string | null) {
+  let deploymentIdValue = initialDeploymentId
+  const store = createStore<StreamState>()(initialState)
+  const set = store.setState
+  const get = store.getState
 
   let abortController: AbortController | null = null
   let reconnectAttempt = 0
   let reconnectTimer: number | null = null
+  // Event types already warned about on the current connection.
+  let warnedEvents = new Set<string>()
 
   const reset = () => {
-    progress.value = null
-    currentPhase.value = null
-    currentPhaseIndex.value = null
-    // Reset the dot count back to the default so a previous run's
-    // total (e.g. 11 for deploy) doesn't briefly bleed into the next
-    // run's stepper (e.g. 7 for destroy) before its first progress
-    // event arrives.
-    totalPhases.value = 11
-    phaseNames.value = []
-    liveLogs.value = []
-    totalLogCount.value = 0
-    lastError.value = null
+    // Keep ``connectionState``: it is driven by connect()/stop().
+    const { connectionState } = get()
+    set({ ...initialState(), connectionState })
   }
 
   const pushLog = (entry: LogEntry) => {
-    // Bounded ring buffer — older entries fall off the head. Vue's
-    // reactivity needs an array reassignment for the splice case to
-    // be tracked across all consumers reliably.
-    const next = [...liveLogs.value, entry]
+    // Bounded ring buffer — older entries fall off the head.
+    const next = [...get().liveLogs, entry]
     if (next.length > MAX_LOG_BUFFER) {
       next.splice(0, next.length - MAX_LOG_BUFFER)
     }
-    liveLogs.value = next
     // The visible buffer is capped, but the total counter isn't —
     // it reflects every line the worker produced this run.
-    totalLogCount.value += 1
+    set({ liveLogs: next, totalLogCount: get().totalLogCount + 1 })
   }
 
-  const handleEvent = (eventName: string, data: any) => {
+  // Ignore an event that failed validation: state stays as it is, it is counted,
+  // and the first one per type and connection is warned about. The warning names
+  // the event type only, never payload content.
+  const rejectEvent = (eventName: string) => {
+    set({ invalidEvents: get().invalidEvents + 1 })
+    if (warnedEvents.has(eventName)) return
+    warnedEvents.add(eventName)
+    console.warn(`[deployment-stream] ignored invalid "${eventName}" event`)
+  }
+
+  const handleEvent = (eventName: string, data: unknown) => {
     if (eventName === 'snapshot') {
-      const snap = data as SnapshotEvent
-      const status = (snap.status || '').toUpperCase()
+      const snap = parseSnapshot(data)
+      if (!snap) return rejectEvent(eventName)
+      const status = (snap.status ?? '').toUpperCase()
       const isActive = status === 'PENDING' || status === 'RUNNING'
       // Only adopt the snapshot's progress/phase when the latest task
       // is actually live. After a successful deploy the snapshot still
@@ -141,43 +140,38 @@ export function useDeploymentStream(deploymentId: Ref<string | null>) {
       // deploy stepper at 100% before the destroy's first progress
       // event arrives. Skip adoption for terminal-status snapshots.
       if (isActive) {
-        if (snap.progress_pct !== null) progress.value = snap.progress_pct
-        if (snap.current_phase !== null) currentPhase.value = snap.current_phase
+        if (snap.progress_pct !== null) set({ progress: snap.progress_pct })
+        if (snap.current_phase !== null) set({ currentPhase: snap.current_phase })
       }
       // Snapshot doesn't carry total_phases; the first progress event
       // will fill it in. We keep the conservative default (11).
       if (status === 'SUCCESS' || status === 'FAILED' || status === 'CANCELLED') {
-        connectionState.value = 'ended'
+        set({ connectionState: 'ended' })
       }
       return
     }
 
     if (eventName === 'progress') {
-      const ev = data as ProgressEvent
-      progress.value = ev.progress_pct
-      currentPhase.value = ev.phase
-      currentPhaseIndex.value = ev.phase_index
-      totalPhases.value = ev.total_phases
+      const ev = parseProgress(data)
+      if (!ev) return rejectEvent(eventName)
+      set({
+        progress: ev.progress_pct,
+        currentPhase: ev.phase,
+        currentPhaseIndex: ev.phase_index,
+        totalPhases: ev.total_phases,
+      })
       // The worker sends the full phase sequence with every progress event once
       // the task has a ``_PhaseTracker`` (all real deploy/destroy/pause/resume/
-      // redeploy paths). This is the authoritative source for the stepper,
-      // especially for multi-image deploys where template keys aren't guessable.
+      // redeploy paths). This is the authoritative source for the stepper.
       if (Array.isArray(ev.phase_names) && ev.phase_names.length > 0) {
-        phaseNames.value = ev.phase_names
+        set({ phaseNames: ev.phase_names })
       }
       return
     }
 
     if (eventName === 'log') {
-      // Worker logs ship the human-readable ISO time as ``iso_timestamp``
-      // (the wire-level ``timestamp`` is reserved for Celery's
-      // Unix-time float). Re-key to ``timestamp`` for downstream
-      // consumers that don't need to know that detail.
-      const raw = data as Record<string, any>
-      const entry: LogEntry = {
-        ...(raw as object),
-        timestamp: raw.iso_timestamp || raw.timestamp || new Date().toISOString(),
-      } as LogEntry
+      const entry = parseLog(data)
+      if (!entry) return rejectEvent(eventName)
       pushLog(entry)
       return
     }
@@ -193,24 +187,39 @@ export function useDeploymentStream(deploymentId: Ref<string | null>) {
     }
 
     if (eventName === 'succeeded' || eventName === 'failed' || eventName === 'revoked') {
-      connectionState.value = 'ended'
+      set({ connectionState: 'ended' })
       return
     }
   }
 
+  const scheduleReconnect = () => {
+    if (get().connectionState === 'ended') return
+    reconnectAttempt += 1
+    const delay = Math.min(RECONNECT_BASE_MS * 2 ** (reconnectAttempt - 1), RECONNECT_MAX_MS)
+    set({ connectionState: 'reconnecting' })
+    if (reconnectTimer !== null) {
+      window.clearTimeout(reconnectTimer)
+    }
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null
+      void connect()
+    }, delay)
+  }
+
   const connect = async () => {
-    if (!deploymentId.value) return
+    const deploymentId = deploymentIdValue
+    if (!deploymentId) return
 
     abortController?.abort()
     abortController = new AbortController()
-    connectionState.value = reconnectAttempt === 0 ? 'connecting' : 'reconnecting'
+    warnedEvents = new Set()
+    set({ connectionState: reconnectAttempt === 0 ? 'connecting' : 'reconnecting' })
 
-    const keycloak = useKeycloak()
     const token = await keycloak.getAccessToken()
 
     let response: Response
     try {
-      response = await fetch(`${env.API_URL}/deployments/${deploymentId.value}/stream`, {
+      response = await fetch(`${env.API_URL}/deployments/${deploymentId}/stream`, {
         signal: abortController.signal,
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
@@ -222,24 +231,24 @@ export function useDeploymentStream(deploymentId: Ref<string | null>) {
       // closing the page also lands here as ``AbortError``; we ignore
       // those.
       if ((err as DOMException)?.name !== 'AbortError') {
-        lastError.value = (err as Error).message
+        set({ lastError: (err as Error).message })
         scheduleReconnect()
       }
       return
     }
 
     if (!response.ok || !response.body) {
-      lastError.value = `HTTP ${response.status}`
+      set({ lastError: `HTTP ${response.status}` })
       // Don't reconnect on 401/403/404 — those won't fix themselves.
       if (response.status >= 400 && response.status < 500) {
-        connectionState.value = 'error'
+        set({ connectionState: 'error' })
         return
       }
       scheduleReconnect()
       return
     }
 
-    connectionState.value = 'live'
+    set({ connectionState: 'live' })
     reconnectAttempt = 0
 
     const reader = response.body.getReader()
@@ -270,54 +279,53 @@ export function useDeploymentStream(deploymentId: Ref<string | null>) {
     }
 
     // Stream closed cleanly by the server (terminal task state).
-    if ((connectionState.value as ConnectionState) !== 'ended') {
-      connectionState.value = 'ended'
+    if (get().connectionState !== 'ended') {
+      set({ connectionState: 'ended' })
     }
   }
 
-  const scheduleReconnect = () => {
-    if (connectionState.value === 'ended') return
-    reconnectAttempt += 1
-    const delay = Math.min(RECONNECT_BASE_MS * 2 ** (reconnectAttempt - 1), RECONNECT_MAX_MS)
-    connectionState.value = 'reconnecting'
-    if (reconnectTimer !== null) {
-      window.clearTimeout(reconnectTimer)
-    }
-    reconnectTimer = window.setTimeout(() => {
-      reconnectTimer = null
-      connect()
-    }, delay)
-  }
-
-  const start = () => {
-    reset()
-    reconnectAttempt = 0
-    connect()
-  }
-
-  const stop = () => {
+  const halt = () => {
     abortController?.abort()
     abortController = null
     if (reconnectTimer !== null) {
       window.clearTimeout(reconnectTimer)
       reconnectTimer = null
     }
-    connectionState.value = 'ended'
   }
 
   return {
-    progress,
-    currentPhase,
-    currentPhaseIndex,
-    totalPhases,
-    phaseNames,
-    liveLogs,
-    totalLogCount,
-    connectionState,
-    lastError,
-    start,
-    stop,
+    getState: get,
+    subscribe: store.subscribe,
+    setDeploymentId(id: string | null) {
+      deploymentIdValue = id
+    },
+    start() {
+      reset()
+      reconnectAttempt = 0
+      void connect()
+    },
+    stop() {
+      halt()
+      set({ connectionState: 'ended' })
+    },
+    /** Tear down network/timers without touching state (component unmount). */
+    dispose: halt,
   }
+}
+
+export function useDeploymentStream(deploymentId: string | null) {
+  const [controller] = useState(() => createStreamController(deploymentId))
+  const state = useSyncExternalStore(controller.subscribe, controller.getState)
+
+  // Always connect to the latest id when `start()` is called.
+  useEffect(() => {
+    controller.setDeploymentId(deploymentId)
+  }, [controller, deploymentId])
+
+  // Abort the fetch loop and pending reconnect when the component goes away.
+  useEffect(() => controller.dispose, [controller])
+
+  return { ...state, start: controller.start, stop: controller.stop }
 }
 
 /**
@@ -327,7 +335,7 @@ export function useDeploymentStream(deploymentId: Ref<string | null>) {
  * with ``\\n``) and arbitrary ``event:`` names. Comment lines start
  * with ``:`` and are silently ignored — used here for keepalives.
  */
-function parseFrame(rawFrame: string, dispatch: (eventName: string, data: any) => void) {
+function parseFrame(rawFrame: string, dispatch: (eventName: string, data: unknown) => void) {
   if (!rawFrame.trim() || rawFrame.startsWith(':')) return
   let eventName = 'message'
   const dataLines: string[] = []

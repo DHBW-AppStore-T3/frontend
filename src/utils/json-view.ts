@@ -2,7 +2,7 @@
  * Rendering helpers for the raw JSON panes (task logs, Terraform state and
  * outputs) on the deployment detail page.
  *
- * Extracted from DeploymentDetailView.vue. Both are pure string functions, so
+ * Extracted from DeploymentDetailView. Both are pure string functions, so
  * they are testable on their own rather than only through a mounted 2000-line
  * view.
  */

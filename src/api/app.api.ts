@@ -5,6 +5,7 @@ import type {
   AppCreate,
   AppUpdate,
   AppQueryParams,
+  AppRuntime,
   AppVariable,
   AppVersionApproval,
   AppVersionApprovalWithApp,
@@ -38,6 +39,16 @@ export const appApi = {
 
   getVariables: (appId: string, version: string) => {
     return api.get<AppVariable[]>(`/apps/${appId}/variables`, {
+      params: { version }
+    })
+  },
+
+  /**
+   * How ``version`` runs: runtime and group mode (``scope``).
+   * 422 with field paths for an invalid or missing appstore.yaml.
+   */
+  getRuntime: (appId: string, version: string) => {
+    return api.get<AppRuntime>(`/apps/${appId}/runtime`, {
       params: { version }
     })
   },
@@ -79,6 +90,14 @@ export const appApi = {
         `/admin/apps/${appId}/versions/${encodeURIComponent(versionTag)}/reject`,
         { rejection_reason: rejectionReason }
       )
+    },
+
+    setRecommended: (appId: string, recommended: boolean) => {
+      return api.put<App>(`/admin/apps/${appId}/recommended`, { recommended })
+    },
+
+    setDeployVersion: (appId: string, versionTag: string) => {
+      return api.put<App>(`/admin/apps/${appId}/deploy-version`, { version_tag: versionTag })
     },
 
     revokeVersion: (appId: string, versionTag: string, rejectionReason: string) => {

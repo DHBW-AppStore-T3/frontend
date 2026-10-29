@@ -1,0 +1,104 @@
+/* Datei-Variablen im Schritt "Variablen": Beschreibung, Ablagefläche, Summe (die Empfänger-Leiste steht in RecipientRail.css).
+   Nur Tokens (rgb(var(--color-…)), var(--radius-…)), keine Farbliterale. */
+
+/* ───── Beschreibung der App: auf- und zuklappbar ───── */
+.fv-desc {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fv-desc[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+.fv-desc__clip {
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition: visibility 0s linear 0.3s;
+}
+.fv-desc[data-open='true'] .fv-desc__clip {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.fv-desc__chev {
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+[aria-expanded='true'] > .fv-desc__chev {
+  transform: rotate(180deg);
+}
+
+/* ───── Ablegefläche ───── */
+.fv-drop {
+  border: 2px dashed rgb(var(--color-border-strong));
+  background: rgb(var(--color-surface-page));
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.fv-drop:hover {
+  border-color: rgb(var(--color-primary-light));
+}
+.fv-drop[data-dragging='true'] {
+  border-color: rgb(var(--color-primary));
+  background: rgb(var(--color-primary-faint));
+}
+.fv-drop__icon {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fv-drop[data-dragging='true'] .fv-drop__icon {
+  transform: translateY(-3px) scale(1.06);
+  background: rgb(var(--color-primary-soft));
+}
+
+/* Datei ist da: eine Karte statt der Ablegefläche */
+@keyframes fv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fv-file {
+  animation: fv-rise 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ───── Summe ───── */
+.fv-total__bar {
+  flex: none;
+  width: 72px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: rgb(var(--color-border-strong) / 0.35);
+  overflow: hidden;
+}
+.fv-total__bar > i {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: rgb(var(--color-primary));
+  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (max-width: 640px) {
+  .fv-total__bar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fv-desc,
+  .fv-desc__clip,
+  .fv-desc__chev,
+  .fv-drop,
+  .fv-drop__icon,
+  .fv-total__bar > i {
+    transition-duration: 0.01ms;
+    transition-delay: 0s;
+  }
+  .fv-file {
+    animation: none;
+  }
+}

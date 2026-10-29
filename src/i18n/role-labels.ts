@@ -16,18 +16,4 @@ export function roleLabelKey(role: string | undefined | null): string {
   }
 }
 
-/** Variant name for the ``<Badge>`` UI component. */
-export function roleBadgeVariant(role: string | undefined | null): 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'brand' {
-  switch (role) {
-    case "admin":
-      return "brand"
-    case "teacher":
-      return "info"
-    case "student":
-      return "success"
-    default:
-      return "neutral"
-  }
-}
-
 export type { UserRole }

@@ -3,15 +3,8 @@
 # Format: one CVE / misconfig ID per line. Anything after `#` is a
 # comment. Document *why* a finding is suppressed so reviewers can
 # revisit when the upstream advisory changes.
-
-CVE-2026-93990 # libexpat in the nginx-unprivileged:alpine base image (Dockerfile
-               # stage 2). Unrelated to any application code change — surfaced
-               # 2026-09-24 on frontend#9's PR (#11), which touches no Dockerfile
-               # lines. Base-image OS package, not a Node/npm dependency; revisit
-               # once nginxinc publishes an alpine tag built against a patched
-               # expat, or Alpine's own repo ships the fix.
-
-CVE-2026-103111 # pcre2 in the nginx-unprivileged:alpine base image (Dockerfile
-                # stage 2). OS package, not an application dependency. Fix requires
-                # pcre2 ≥ 10.49-r0 in Alpine; revisit once nginxinc ships an alpine
-                # tag built against a patched pcre2.
+#
+# Empty on purpose. The two entries that were here (CVE-2026-93990 libexpat,
+# CVE-2026-103111 pcre2, both in the nginx-unprivileged:alpine base image) are
+# gone: the image's `apk upgrade` step (ARG SECURITY_REFRESH) brings the fixed
+# packages, and the scan of the image is clean without them (2026-10-26).

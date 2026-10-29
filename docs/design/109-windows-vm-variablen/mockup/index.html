@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · Variablen-Schritt der Windows-VM-App</title>
+<style>
+  @font-face {
+    font-family: "Inter";
+    src: url("../../../../src/assets/fonts/InterVariable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+
+  /* Tokens: 1:1 aus src/theme/themes/t3.ts und src/styles/tokens.css (RGB-Kanäle als Hex). */
+  :root {
+    --primary: #E2001A;
+    --primary-dark: #C3001B;
+    --primary-deep: #960015;
+    --primary-soft: #FAD6DA;
+    --primary-faint: #FDEDEE;
+    --page: #F9FAFB;
+    --surface: #FFFFFF;
+    --ink: #0F1B30;        /* text-heading */
+    --strong: #1F2E44;     /* text-strong */
+    --muted: #687A94;      /* text-muted: nur für Dekoration und große Schrift (4,37:1) */
+    --faint: #94A1B4;      /* text-faint: nur Dekoration (2,62:1) */
+    --line: #E4E9EF;       /* border-subtle */
+    --wash: #EFF2F6;       /* surface-muted */
+    --warn: #B45309;
+    --warn-tint: #FEF3C7;
+    --ok: #047857;
+    --ok-dark: #065F46;
+
+    --r-md: .5rem;
+    --r-lg: .75rem;
+    --r-xl: 1rem;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --shadow-card: 0 1px 2px rgb(15 27 48 / .05), 0 10px 28px -16px rgb(15 27 48 / .18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--page);
+    font-feature-settings: "cv11", "ss03";
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  h1, h2, h3, p { margin: 0; }
+  .i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ───────── Mockup-Steuerung (nicht Teil des Designs) ───────── */
+  .studio {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;
+    padding: 10px 24px;
+    background: var(--ink); color: #fff;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; letter-spacing: .01em;
+  }
+  .studio__tag { padding: 2px 8px; border-radius: 4px; background: var(--primary); font-weight: 700; letter-spacing: .08em; }
+  .studio__title { margin-right: auto; opacity: .85; }
+  .studio__group { display: flex; align-items: center; gap: 8px; }
+  .seg { display: inline-flex; padding: 2px; border-radius: 8px; background: rgb(255 255 255 / .12); }
+  .seg button { border: 0; background: transparent; color: #fff; padding: 4px 12px; border-radius: 6px; font: inherit; }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); font-weight: 700; }
+  .seg button:focus-visible, .studio__reset:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .studio__reset { border: 1px solid rgb(255 255 255 / .35); background: transparent; color: #fff; padding: 4px 10px; border-radius: 6px; font: inherit; }
+
+  /* ───────── Wizard-Rahmen (so wie heute) ───────── */
+  .stage { max-width: 1040px; margin: 0 auto; padding: 36px 24px 72px; }
+
+  .stepper { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 auto 36px; max-width: 880px; padding: 0; list-style: none; }
+  .step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .step::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--line); }
+  .step:first-child::before { display: none; }
+  .step[data-state="done"]::before, .step[data-state="current"]::before { background: var(--primary); }
+  .step__dot { position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font-size: 12px; font-weight: 700; background: var(--surface); border: 2px solid var(--line); color: var(--faint); }
+  .step[data-state="done"] .step__dot { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .step[data-state="current"] .step__dot { border-color: var(--primary); color: var(--primary); }
+  .step__label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--strong); }
+  .step[data-state="pending"] .step__label { color: var(--muted); }
+  .step[data-state="done"] .step__label, .step[data-state="current"] .step__label { color: var(--primary-dark); }
+
+  .head { text-align: center; margin-bottom: 36px; }
+  .head__title { font-size: 30px; line-height: 36px; font-weight: 800; letter-spacing: -.025em; }
+  .head__app { margin-top: 6px; font-size: 18px; font-weight: 600; color: var(--primary); }
+
+  .column { max-width: 720px; margin: 0 auto; display: grid; gap: 16px; }
+
+  .nav { display: flex; align-items: center; justify-content: space-between; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .btn-back { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 10px 20px; border-radius: 999px; font-weight: 600; color: var(--muted); }
+  .btn-back:hover { background: var(--wash); color: var(--ink); }
+  .btn-next { display: inline-flex; align-items: center; gap: 8px; border: 0; padding: 10px 32px; border-radius: 999px; font-weight: 700; color: #fff; background: var(--ok); box-shadow: 0 8px 18px -8px rgb(4 120 87 / .6); }
+  .btn-next:hover { background: var(--ok-dark); }
+
+  /* ───────── Karte (gemeinsame Basis) ───────── */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-card); }
+  .icon-badge { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--primary-faint); color: var(--primary-deep); font-size: 20px; }
+
+  /* ───────── Schalter ───────── */
+  .switch { position: relative; flex: none; width: 46px; height: 28px; padding: 0; border: 0; border-radius: 999px; background: #CBD3DE; transition: background .2s var(--ease); }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(15 27 48 / .3); transition: transform .22s var(--ease); }
+  .switch[aria-checked="true"] { background: var(--primary); }
+  .switch[aria-checked="true"]::after { transform: translateX(18px); }
+  .switch:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+  /* ───────── Karte 1: Internetzugriff ───────── */
+  .inet { padding: 20px 24px; }
+  .inet__row { display: flex; align-items: flex-start; gap: 16px; }
+  .inet__text { flex: 1; min-width: 0; }
+  .inet__title { font-size: 16px; line-height: 24px; font-weight: 700; }
+  .inet__desc { margin-top: 2px; font-size: 14px; line-height: 21px; color: var(--strong); max-width: 52ch; }
+  .inet__control { display: flex; align-items: center; gap: 12px; padding-top: 6px; }
+
+  .state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; background: var(--wash); color: var(--strong); transition: background .2s, color .2s; }
+  .state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .state[data-on="true"] { background: var(--primary-faint); color: var(--primary-deep); }
+
+  .consequence { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; padding: 10px 12px; border-radius: var(--r-md); font-size: 13px; line-height: 19px; font-weight: 500; }
+  .consequence .i { margin-top: 2px; font-size: 15px; }
+  .consequence[data-tone="warn"] { background: var(--warn-tint); color: var(--warn); box-shadow: inset 0 0 0 1px rgb(180 83 9 / .22); }
+  .consequence[data-tone="calm"] { background: var(--wash); color: var(--strong); }
+
+  /* ───────── Karte 2: Experteneinstellungen ───────── */
+  .expert__head { display: flex; align-items: center; gap: 16px; width: 100%; padding: 18px 24px; border: 0; border-radius: var(--r-xl); background: transparent; text-align: left; }
+  .expert__head:hover { background: rgb(15 27 48 / .02); }
+  .expert__head:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  .expert__title { flex: 1; min-width: 0; display: grid; gap: 8px; }
+  .expert__name { font-size: 16px; line-height: 24px; font-weight: 700; }
+  .expert__summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .expert__chev { font-size: 20px; color: var(--strong); transition: transform .28s var(--ease); }
+  .expert[data-open="true"] .expert__chev { transform: rotate(180deg); }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; background: var(--wash); color: var(--strong); }
+  .chip[data-changed="true"] { background: var(--primary-faint); color: var(--primary-deep); }
+  .chip[data-changed="true"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+
+  /* Signatur: das Typenschild. Dieselbe Anzeige zugeklappt und als Ablesefeld aufgeklappt. */
+  .plate { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--page); font-variant-numeric: tabular-nums; }
+  .plate__seg { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 11px; }
+  .plate__seg + .plate__seg { border-left: 1px solid var(--line); }
+  .plate b { font-size: 15px; line-height: 22px; font-weight: 800; letter-spacing: -.01em; }
+  .plate span { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--strong); }
+  .expert[data-changed="true"] .plate b { color: var(--primary-dark); }
+
+  .expert__panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s var(--ease); }
+  .expert[data-open="true"] .expert__panel { grid-template-rows: 1fr; }
+  .expert__clip { min-height: 0; overflow: hidden; }
+  .expert__inner { padding: 4px 24px 24px; border-top: 1px solid var(--line); margin: 0; }
+  .expert__inner > * + * { margin-top: 24px; }
+  .expert:not([data-open="true"]) .expert__inner { visibility: hidden; }
+
+  .spec__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-top: 20px; }
+  .spec__title { font-size: 14px; line-height: 20px; font-weight: 700; letter-spacing: .01em; }
+  .spec__help { margin-top: 2px; font-size: 14px; line-height: 21px; color: var(--strong); max-width: 50ch; }
+  .reset { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 6px 10px; margin: -4px -10px 0 0; border: 0; border-radius: var(--r-md); background: transparent; font-size: 13px; font-weight: 600; color: var(--primary-dark); }
+  .reset:hover { background: var(--primary-faint); }
+  .reset:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .reset[hidden] { display: none; }
+
+  .dials { display: grid; gap: 28px; margin-top: 22px; }
+  .dial__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .dial__label { font-size: 14px; line-height: 20px; font-weight: 600; padding-bottom: 6px; }
+  .dial__read { display: inline-flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+  .dial__read b { font-size: 40px; line-height: 40px; font-weight: 800; letter-spacing: -.04em; color: var(--ink); transition: color .2s; }
+  .dial__read span { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--strong); }
+  .dial[data-changed="true"] .dial__read b { color: var(--primary); }
+
+  /* Regler: natives <input type="range"> (Tastatur, Screenreader, bestehende Tests), nur gestaltet */
+  .slider { --thumb: 26px; --p: 0; margin-top: 6px; }
+  .slider input { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 34px; margin: 0; background: transparent; cursor: pointer; }
+  .slider input::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(to right, var(--primary) calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--p)), var(--wash) 0); box-shadow: inset 0 0 0 1px rgb(15 27 48 / .06); }
+  .slider input::-webkit-slider-thumb { -webkit-appearance: none; width: var(--thumb); height: var(--thumb); margin-top: -9px; border-radius: 50%; background: #fff; border: 4px solid var(--primary); box-shadow: 0 2px 8px rgb(15 27 48 / .28); transition: transform .15s var(--ease), box-shadow .15s; }
+  .slider input:hover::-webkit-slider-thumb { transform: scale(1.06); }
+  .slider input:active::-webkit-slider-thumb { transform: scale(1.12); }
+  .slider input:focus-visible { outline: none; }
+  .slider input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--primary-soft), 0 2px 8px rgb(15 27 48 / .28); }
+  .slider input::-moz-range-track { height: 8px; border-radius: 999px; background: var(--wash); }
+  .slider input::-moz-range-progress { height: 8px; border-radius: 999px; background: var(--primary); }
+  .slider input::-moz-range-thumb { width: calc(var(--thumb) - 8px); height: calc(var(--thumb) - 8px); border-radius: 50%; background: #fff; border: 4px solid var(--primary); box-shadow: 0 2px 8px rgb(15 27 48 / .28); }
+  .slider input:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px var(--primary-soft); }
+
+  .ticks { position: relative; height: 44px; }
+  .tick { position: absolute; top: 0; left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--t)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; line-height: 16px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--strong); }
+  .tick::before { content: ""; width: 2px; height: 6px; border-radius: 1px; background: var(--faint); }
+  .tick--rec::before { height: 9px; background: var(--primary); }
+  .tick--rec { color: var(--primary-deep); }
+  .tick small { font-size: 10px; line-height: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary-deep); }
+  .tick--quiet { color: transparent; }
+  .tick--quiet:not(.tick--rec)::before { height: 4px; }
+
+  .total { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-md); background: var(--wash); font-size: 13px; line-height: 19px; color: var(--strong); }
+  .total .i { font-size: 16px; }
+  .total b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .pods { display: flex; align-items: flex-start; gap: 16px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .pods[hidden] { display: none; }
+  .pods__text { flex: 1; min-width: 0; }
+  .pods__title { font-size: 14px; line-height: 20px; font-weight: 700; }
+  .pods__desc { margin-top: 2px; font-size: 14px; line-height: 21px; color: var(--strong); max-width: 52ch; }
+
+  /* ───────── „Heute": Ist-Zustand zum Vergleich ───────── */
+  .old { display: grid; gap: 24px; }
+  .old__res { overflow: hidden; border-radius: var(--r-xl); border: 2px solid #A7F3D0; background: linear-gradient(135deg, #ECFDF5, #D1FAE5); }
+  .old__res-head { display: flex; align-items: center; gap: 12px; padding: 16px 24px; background: #059669; color: #fff; font-size: 24px; }
+  .old__res-head h2 { font-size: 20px; line-height: 24px; font-weight: 700; }
+  .old__res-head p { margin-top: 2px; font-size: 12px; line-height: 16px; color: #D1FAE5; }
+  .old__res-body { display: grid; gap: 20px; padding: 24px; }
+  .old__row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 500; }
+  .old__bar { height: 6px; margin: 6px 0 4px; border-radius: 99px; background: rgb(255 255 255 / .7); position: relative; }
+  .old__bar i { position: absolute; inset: 0 auto 0 0; width: 33%; border-radius: 99px; background: #059669; }
+  .old__range { font-size: 12px; color: var(--muted); }
+  .old__acc { border: 2px solid var(--line); border-radius: var(--r-xl); background: #fff; overflow: hidden; }
+  .old__acc-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 16px 24px; border: 0; background: transparent; font-weight: 600; text-align: left; }
+  .old__acc-body { padding: 16px 24px 24px; border-top: 1px solid var(--line); display: grid; gap: 20px; }
+  .old__acc-body[hidden] { display: none; }
+  .old__item { display: flex; justify-content: space-between; gap: 12px; }
+  .old__item b { display: block; font-size: 14px; font-weight: 500; }
+  .old__item small { display: block; font-size: 12px; color: var(--muted); }
+  .old__warn { margin-top: 8px; padding: 8px 12px; border-radius: 4px; background: #FFFBEB; border: 1px solid #FDE68A; font-size: 12px; color: #92400E; }
+
+  /* ───────── Notizen unter dem Mockup ───────── */
+  .notes { max-width: 720px; margin: 56px auto 0; padding-top: 28px; border-top: 1px dashed #C4CCD8; }
+  .notes h2 { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--strong); }
+  .notes ol { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; counter-reset: n; }
+  .notes li { position: relative; padding-left: 30px; font-size: 14px; line-height: 21px; color: var(--strong); }
+  .notes li::before { counter-increment: n; content: counter(n); position: absolute; left: 0; top: 1px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--primary-faint); color: var(--primary-deep); font-size: 11px; font-weight: 700; }
+  .notes b { color: var(--ink); }
+
+  [hidden] { display: none !important; }
+
+  @media (max-width: 640px) {
+    .stage { padding: 24px 16px 56px; }
+    .studio { position: static; padding: 10px 16px; }
+    .head__title { font-size: 24px; line-height: 30px; }
+    .step__label { font-size: 9px; letter-spacing: .04em; }
+    .inet, .expert__head { padding-left: 18px; padding-right: 18px; }
+    .inet__row { flex-wrap: wrap; }
+    .inet__control { width: 100%; justify-content: space-between; padding-top: 0; }
+    .expert__inner { padding: 4px 18px 20px; }
+    .spec__top { flex-direction: column; gap: 10px; }
+    .reset { margin: 0 0 0 -10px; }
+    .dial__read b { font-size: 34px; line-height: 34px; }
+    .nav { flex-direction: row; }
+    .btn-next { padding-inline: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+</svg>
+
+<header class="studio">
+  <span class="studio__tag">MOCKUP</span>
+  <span class="studio__title">Schritt 3 · Variablen · windows-matlab-app v2.1.0</span>
+  <div class="studio__group">Ansicht
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button type="button" data-view="old" aria-pressed="false">Heute</button>
+      <button type="button" data-view="new" aria-pressed="true">Neu</button>
+    </div>
+  </div>
+  <div class="studio__group">Studierende
+    <div class="seg" role="group" aria-label="Anzahl Studierende">
+      <button type="button" data-students="1" aria-pressed="false">1</button>
+      <button type="button" data-students="3" aria-pressed="true">3</button>
+    </div>
+  </div>
+  <button type="button" class="studio__reset" id="reset-demo">Zurücksetzen</button>
+</header>
+
+<main class="stage">
+  <ol class="stepper" aria-label="Fortschritt">
+    <li class="step" data-state="done"><span class="step__dot"><svg class="i" style="font-size:14px"><use href="#i-check"/></svg></span><span class="step__label">Auswahl</span></li>
+    <li class="step" data-state="done"><span class="step__dot"><svg class="i" style="font-size:14px"><use href="#i-check"/></svg></span><span class="step__label">Verteilung</span></li>
+    <li class="step" data-state="current" aria-current="step"><span class="step__dot">3</span><span class="step__label">Variablen</span></li>
+    <li class="step" data-state="pending"><span class="step__dot">4</span><span class="step__label">Übersicht</span></li>
+  </ol>
+
+  <div class="head">
+    <h1 class="head__title">Variablen-Konfiguration</h1>
+    <p class="head__app">App: test</p>
+  </div>
+
+  <!-- ═════════ NEU ═════════ -->
+  <div class="column" id="view-new">
+
+    <!-- Karte 1: Internetzugriff, immer sichtbar -->
+    <section class="card inet" aria-labelledby="inet-title">
+      <div class="inet__row">
+        <span class="icon-badge" aria-hidden="true"><svg class="i"><use href="#i-globe"/></svg></span>
+        <div class="inet__text">
+          <h2 class="inet__title" id="inet-title">Internetzugriff</h2>
+          <p class="inet__desc" id="inet-desc">Die Windows-Desktops Ihrer Studierenden können Server im Internet erreichen. Interne Netze bleiben gesperrt.</p>
+        </div>
+        <div class="inet__control">
+          <span class="state" id="inet-state" data-on="true">Erlaubt</span>
+          <button type="button" class="switch" id="inet-switch" role="switch" aria-checked="true" aria-labelledby="inet-title" aria-describedby="inet-desc inet-note"></button>
+        </div>
+      </div>
+      <p class="consequence" id="inet-note" role="status" data-tone="warn">
+        <svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>
+        <span id="inet-note-text">Studierende können Server im Internet erreichen.</span>
+      </p>
+    </section>
+
+    <!-- Karte 2: Experteneinstellungen, zugeklappt -->
+    <section class="card expert" id="expert" data-open="false" data-changed="false">
+      <button type="button" class="expert__head" id="expert-head" aria-expanded="false" aria-controls="expert-body">
+        <span class="icon-badge" aria-hidden="true"><svg class="i"><use href="#i-sliders"/></svg></span>
+        <span class="expert__title">
+          <span class="expert__name">Experteneinstellungen</span>
+          <span class="expert__summary">
+            <span class="chip" id="expert-chip" data-changed="false">Empfohlen</span>
+            <span class="plate" id="expert-plate"><span class="plate__seg"><b id="plate-cpu">4</b><span>vCPU</span></span><span class="plate__seg"><b id="plate-ram">8</b><span>GB RAM</span></span></span>
+          </span>
+        </span>
+        <svg class="i expert__chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+      </button>
+
+      <div class="expert__panel" id="expert-body" role="region" aria-labelledby="expert-head">
+        <div class="expert__clip">
+          <div class="expert__inner" id="expert-inner">
+
+            <section class="spec" aria-labelledby="spec-title">
+              <div class="spec__top">
+                <div>
+                  <h3 class="spec__title" id="spec-title">Rechenressourcen</h3>
+                  <p class="spec__help">Wählen Sie, wie viel Rechenleistung jeder Windows-Desktop erhält. Die empfohlenen Werte sind vorausgewählt.</p>
+                </div>
+                <button type="button" class="reset" id="spec-reset" hidden><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg>Auf Empfehlung zurücksetzen</button>
+              </div>
+
+              <div class="dials">
+                <div class="dial" id="dial-cpu" data-changed="false">
+                  <div class="dial__head">
+                    <label class="dial__label" for="cpu">Prozessorkerne (vCPU)</label>
+                    <output class="dial__read" for="cpu"><b id="read-cpu">4</b><span>vCPU</span></output>
+                  </div>
+                  <div class="slider" id="slider-cpu"><input id="cpu" type="range" min="2" max="8" step="1" value="4"><div class="ticks" aria-hidden="true"></div></div>
+                </div>
+
+                <div class="dial" id="dial-ram" data-changed="false">
+                  <div class="dial__head">
+                    <label class="dial__label" for="ram">Arbeitsspeicher (RAM)</label>
+                    <output class="dial__read" for="ram"><b id="read-ram">8</b><span>GB</span></output>
+                  </div>
+                  <div class="slider" id="slider-ram"><input id="ram" type="range" min="4" max="16" step="1" value="8"><div class="ticks" aria-hidden="true"></div></div>
+                </div>
+              </div>
+
+              <p class="total" id="total"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span id="total-text"></span></p>
+            </section>
+
+            <div class="pods" id="pods">
+              <div class="pods__text">
+                <h3 class="pods__title" id="pods-title">Vernetzte Desktops</h3>
+                <p class="pods__desc" id="pods-desc">Erlaubt den Desktops dieses Deployments, sich gegenseitig zu erreichen. Andere Deployments bleiben getrennt.</p>
+              </div>
+              <button type="button" class="switch" id="pods-switch" role="switch" aria-checked="false" aria-labelledby="pods-title" aria-describedby="pods-desc"></button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═════════ HEUTE (Ist-Zustand, nur zum Vergleich) ═════════ -->
+  <div class="column" id="view-old" hidden>
+    <div class="old">
+      <section class="old__res">
+        <div class="old__res-head"><svg class="i" aria-hidden="true"><use href="#i-cpu"/></svg><div><h2>Rechenressourcen</h2><p>Wählen Sie, wie viele vCPUs und wie viel Arbeitsspeicher Ihr Deployment erhält. Die empfohlenen Werte sind vorausgewählt.</p></div></div>
+        <div class="old__res-body">
+          <div><div class="old__row"><span>vCPU</span><span>4 vCPU</span></div><div class="old__bar"><i></i></div><div class="old__range">Erlaubt 2 – 8 · empfohlen 4</div></div>
+          <div><div class="old__row"><span>Arbeitsspeicher (RAM)</span><span>8Gi</span></div><div class="old__bar"><i></i></div><div class="old__range">Erlaubt 4Gi – 16Gi · empfohlen 8Gi</div></div>
+        </div>
+      </section>
+      <section class="old__acc">
+        <button type="button" class="old__acc-btn" id="old-acc-btn" aria-expanded="false"><span>Experteneinstellungen</span><svg class="i" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+        <div class="old__acc-body" id="old-acc-body" hidden>
+          <div>
+            <div class="old__item"><div><b>Internetzugriff</b><small>Erlaubt den Pods, Server im Internet zu erreichen. Interne Netze bleiben gesperrt.</small></div><button type="button" class="switch" id="old-inet" role="switch" aria-checked="true" aria-label="Internetzugriff"></button></div>
+            <p class="old__warn" id="old-warn">⚠ Studierende können dann Server im Internet erreichen.</p>
+          </div>
+          <div class="old__item" id="old-pods"><div><b>Vernetzte Pods</b><small>Erlaubt den Pods dieses Deployments, sich gegenseitig zu erreichen. Andere Deployments bleiben getrennt.</small></div><button type="button" class="switch" id="old-pods-switch" role="switch" aria-checked="false" aria-label="Vernetzte Pods"></button></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="nav" aria-label="Wizard">
+    <button type="button" class="btn-back"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg>Zurück</button>
+    <button type="button" class="btn-next">Weiter<svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+  </nav>
+
+  <aside class="notes" aria-label="Design-Notizen">
+    <h2>Warum so</h2>
+    <ol>
+      <li><b>Die Entscheidung trägt ihre Folge.</b> Ein Schalter allein sagt nicht, was „an“ bedeutet. Status („Erlaubt“ / „Gesperrt“) und ein Satz zur Folge stehen immer dabei und wechseln mit.</li>
+      <li><b>Nichts bleibt versteckt.</b> Auch zugeklappt zeigt die Zeile, was gilt: 4 vCPU · 8 GB RAM. Wer etwas ändert und zuklappt, sieht „Angepasst“ statt einer stillen Abweichung.</li>
+      <li><b>Die Zahl ist die Oberfläche.</b> Großes Ablesefeld, Kerben pro Schritt und eine Markierung „empfohlen“ ersetzen die Textzeile „Erlaubt 2 – 8 · empfohlen 4“.</li>
+      <li><b>Rot nur für Zustand und Bedienung.</b> Kein grüner Fremdkörper mehr. Der Hinweis zum Internet bleibt bernsteinfarben, weil er etwas anderes meint als „aktiv“.</li>
+      <li><b>Schmale Spalte.</b> 720&nbsp;px statt der vollen Seitenbreite: Hilfetexte bleiben bei etwa 55 Zeichen pro Zeile.</li>
+    </ol>
+  </aside>
+</main>
+
+<script>
+(() => {
+  const REC = { cpu: 4, ram: 8 };
+  const RANGE = { cpu: [2, 8], ram: [4, 16] };
+  const S = { view: 'new', students: 3, internet: true, pods: false, cpu: 4, ram: 8, open: false, oldOpen: false };
+  const $ = (s) => document.querySelector(s);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function buildTicks(key, labelEvery) {
+    const [min, max] = RANGE[key];
+    const box = $(`#slider-${key} .ticks`);
+    for (let v = min; v <= max; v++) {
+      const t = (v - min) / (max - min);
+      const el = document.createElement('span');
+      el.className = 'tick' + (v === REC[key] ? ' tick--rec' : '') + ((v - min) % labelEvery ? ' tick--quiet' : '');
+      el.style.setProperty('--t', t);
+      el.textContent = (v - min) % labelEvery === 0 || v === REC[key] ? v : '';
+      if (v === REC[key]) { const s = document.createElement('small'); s.textContent = 'empfohlen'; el.appendChild(s); }
+      box.appendChild(el);
+    }
+  }
+
+  function pop(el) {
+    if (reduce || !el.animate) return;
+    el.animate([{ transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 170, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  }
+
+  function render(changedKey) {
+    const changed = S.cpu !== REC.cpu || S.ram !== REC.ram;
+
+    // Ansicht
+    $('#view-new').hidden = S.view !== 'new';
+    $('#view-old').hidden = S.view !== 'old';
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === S.view));
+    document.querySelectorAll('[data-students]').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.students) === S.students));
+
+    // Karte 1
+    $('#inet-switch').setAttribute('aria-checked', S.internet);
+    const st = $('#inet-state'); st.dataset.on = S.internet; st.textContent = S.internet ? 'Erlaubt' : 'Gesperrt';
+    const note = $('#inet-note');
+    note.dataset.tone = S.internet ? 'warn' : 'calm';
+    note.querySelector('use').setAttribute('href', S.internet ? '#i-alert' : '#i-lock');
+    $('#inet-note-text').textContent = S.internet ? 'Studierende können Server im Internet erreichen.' : 'Studierende arbeiten ohne Internetzugriff.';
+
+    // Karte 2
+    const ex = $('#expert'); ex.dataset.open = S.open; ex.dataset.changed = changed;
+    $('#expert-head').setAttribute('aria-expanded', S.open);
+    $('#expert-inner').toggleAttribute('inert', !S.open);
+    const chip = $('#expert-chip'); chip.dataset.changed = changed; chip.textContent = changed ? 'Angepasst' : 'Empfohlen';
+    $('#plate-cpu').textContent = S.cpu; $('#plate-ram').textContent = S.ram;
+    $('#read-cpu').textContent = S.cpu; $('#read-ram').textContent = S.ram;
+    $('#cpu').value = S.cpu; $('#ram').value = S.ram;
+    for (const k of ['cpu', 'ram']) {
+      const [min, max] = RANGE[k];
+      $(`#slider-${k}`).style.setProperty('--p', (S[k] - min) / (max - min));
+      $(`#dial-${k}`).dataset.changed = S[k] !== REC[k];
+      $(`#${k}`).setAttribute('aria-valuetext', k === 'cpu'
+        ? `${S.cpu} vCPU${S.cpu === REC.cpu ? ', empfohlen' : ''}`
+        : `${S.ram} GB${S.ram === REC.ram ? ', empfohlen' : ''}`);
+    }
+    $('#spec-reset').hidden = !changed;
+    $('#total-text').innerHTML = `Insgesamt für ${S.students} ${S.students === 1 ? 'Person' : 'Personen'}: <b>${S.cpu * S.students} vCPU</b> · <b>${S.ram * S.students} GB RAM</b>`;
+    $('#pods').hidden = S.students < 2;
+    $('#pods-switch').setAttribute('aria-checked', S.pods);
+    if (changedKey) { pop($(`#read-${changedKey}`)); pop($(`#plate-${changedKey}`)); }
+
+    // Heute
+    $('#old-inet').setAttribute('aria-checked', S.internet);
+    $('#old-warn').hidden = !S.internet;
+    $('#old-pods').hidden = S.students < 2;
+    $('#old-pods-switch').setAttribute('aria-checked', S.pods);
+    $('#old-acc-btn').setAttribute('aria-expanded', S.oldOpen);
+    $('#old-acc-body').hidden = !S.oldOpen;
+  }
+
+  buildTicks('cpu', 1);
+  buildTicks('ram', 4);
+
+  $('#inet-switch').addEventListener('click', () => { S.internet = !S.internet; render(); });
+  $('#old-inet').addEventListener('click', () => { S.internet = !S.internet; render(); });
+  $('#pods-switch').addEventListener('click', () => { S.pods = !S.pods; render(); });
+  $('#old-pods-switch').addEventListener('click', () => { S.pods = !S.pods; render(); });
+  $('#expert-head').addEventListener('click', () => { S.open = !S.open; render(); });
+  $('#old-acc-btn').addEventListener('click', () => { S.oldOpen = !S.oldOpen; render(); });
+  $('#cpu').addEventListener('input', (e) => { S.cpu = Number(e.target.value); render('cpu'); });
+  $('#ram').addEventListener('input', (e) => { S.ram = Number(e.target.value); render('ram'); });
+  $('#spec-reset').addEventListener('click', () => { S.cpu = REC.cpu; S.ram = REC.ram; render(); $('#cpu').focus(); });
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { S.view = b.dataset.view; render(); }));
+  document.querySelectorAll('[data-students]').forEach(b => b.addEventListener('click', () => { S.students = Number(b.dataset.students); render(); }));
+  $('#reset-demo').addEventListener('click', () => { Object.assign(S, { internet: true, pods: false, cpu: REC.cpu, ram: REC.ram, open: false, oldOpen: false, students: 3 }); render(); });
+
+  // Deep-Links für Screenshots: #open, #changed, #off, #one, #old, #clean (ohne Mockup-Leiste, Navigation, Notizen)
+  const h = location.hash;
+  if (h.includes('clean')) ['.studio', '.nav', '.notes'].forEach((s) => { document.querySelector(s).style.display = 'none'; });
+  if (h.includes('open')) S.open = true;
+  if (h.includes('changed')) { S.cpu = 6; S.ram = 12; }
+  if (h.includes('off')) S.internet = false;
+  if (h.includes('one')) S.students = 1;
+  if (h.includes('old')) S.view = 'old';
+  render();
+})();
+</script>
+</body>
+</html>

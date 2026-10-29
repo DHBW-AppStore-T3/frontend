@@ -190,7 +190,11 @@ export interface paths {
         };
         /**
          * Get Course
-         * @description Get course by ID with all users
+         * @description Get course by ID with all users.
+         *
+         *     The member list is personal data (e-mail addresses): teachers and
+         *     admins may read it, students get 403 (.github#7 F, security review
+         *     M-2).
          */
         get: operations["get_course_courses__course_id__get"];
         /**
@@ -230,7 +234,7 @@ export interface paths {
          * List Course Members
          * @description List the users currently enrolled in ``course_id``.
          *
-         *     Teacher/Admin only — student rosters are management data.
+         *     Teachers and admins only — student rosters are management data.
          */
         get: operations["list_course_members_courses__course_id__users_get"];
         put?: never;
@@ -242,6 +246,11 @@ export interface paths {
          *     as the deployment-team picker, so by the time we get here the
          *     user-ids exist in our DB. Returns the post-update member list of
          *     the course so the UI can refresh without a second round trip.
+         *
+         *     Course-teachers of THIS course and admins only; moving a user out of
+         *     another course also needs that right on the other course (.github#7 F,
+         *     security review H-1/A-3): nobody pulls someone from a course they do
+         *     not manage into their own.
          */
         post: operations["add_course_members_courses__course_id__users_post"];
         delete?: never;
@@ -266,6 +275,7 @@ export interface paths {
          *
          *     Returns 404 if the user isn't actually enrolled in this course —
          *     we never silently detach somebody from a different course.
+         *     Course-teachers of THIS course and admins only (.github#7 F).
          */
         delete: operations["remove_course_member_courses__course_id__users__user_id__delete"];
         options?: never;
@@ -335,8 +345,10 @@ export interface paths {
         /**
          * Create App
          * @description Create a new app
-         *     - **All authenticated users** can create apps
-         *     - **Git repository access is verified** before creating the app
+         *     - Teachers and admins only (403 ``role_required``, .github#7 F)
+         *     - The repository must be public and on an allowed host
+         *       (``APP_GIT_ALLOWED_HOSTS``); 422 otherwise, 403 if it cannot be read
+         *     - The stored ``git_link`` is the normalised, credential-free HTTPS URL
          */
         post: operations["create_app_apps__post"];
         delete?: never;
@@ -360,6 +372,14 @@ export interface paths {
          *     that still reference them can render their app name, git link,
          *     etc. They just don't show up in the apps list / deploy wizard
          *     (those use the default-filtered ``get_apps``).
+         *
+         *     The owner and admins see every tag. Everyone else sees the approved
+         *     versions whose tag still points to the approved commit; a moved tag
+         *     disappears until it is submitted and approved again.
+         *
+         *     ``deploy_version`` is only reported while that version can still be
+         *     deployed (its tag exists and points to the approved commit). If the
+         *     repository cannot be read, the stored value is reported as it is.
          */
         get: operations["get_app_apps__app_id__get"];
         /**
@@ -369,7 +389,9 @@ export interface paths {
          *     ``git_link`` is immutable after creation — sending it in the body
          *     returns HTTP 400. Use ``is_private`` to toggle visibility.
          *
-         *     Owner OR admin only.
+         *     Owner OR admin only. An app an admin deactivated (``hidden_by_admin``)
+         *     can be made public again only by an admin (403 ``app_hidden_by_admin``
+         *     for the owner); an admin doing so lifts the deactivation (.github#7 R).
          */
         put: operations["update_app_apps__app_id__put"];
         post?: never;
@@ -399,8 +421,7 @@ export interface paths {
         };
         /**
          * Get App Variables
-         * @description Get dynamic app variables from app's Git repository
-         *     Parses variables.tf file and returns all configurable variables
+         * @description Get the variables of an app version from the appstore.yaml in its Git repository
          *
          *     Returns:
          *     - name: Variable name
@@ -408,8 +429,34 @@ export interface paths {
          *     - description: Variable description
          *     - default: Default value (if any)
          *     - required: Whether variable is required
+         *
+         *     Reads the commit ``version`` points to now; 404 for an unknown tag,
+         *     502 when the repository cannot be read.
          */
         get: operations["get_app_variables_apps__app_id__variables_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/apps/{app_id}/runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get App Runtime
+         * @description How ``version`` runs, for the deploy wizard: its scope, egress, access, resources, network.
+         *
+         *     Same visibility and errors as the variables; 422 (with field paths in
+         *     ``errors``) for a missing or invalid appstore.yaml.
+         */
+        get: operations["get_app_runtime_apps__app_id__runtime_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -429,10 +476,12 @@ export interface paths {
         put?: never;
         /**
          * Submit Version
-         * @description Submit a specific version tag for admin review.
+         * @description Submit a version tag for admin review, at the commit it points to now.
          *
-         *     Owner OR admin only. A REJECTED version can be resubmitted; PENDING
-         *     and APPROVED cannot.
+         *     Owner OR admin only. A REJECTED version, or one whose tag has moved
+         *     since its review, can be resubmitted; a PENDING or APPROVED one at the
+         *     same commit cannot (409). 422 for a missing or invalid appstore.yaml, 404
+         *     for an unknown tag, 502 when the repository cannot be read.
          */
         post: operations["submit_version_apps__app_id__versions__version_tag__submit_post"];
         /**
@@ -501,11 +550,16 @@ export interface paths {
         put?: never;
         /**
          * Approve Version
-         * @description Approve a PENDING version — makes it deployable by all users.
+         * @description Approve a submitted version at its submitted commit — makes exactly
+         *     that commit deployable by all users (.github#7 G).
          *
-         *     Validates the ``@openstack`` markers in this version's Terraform/Packer
-         *     variable files before flipping the status, using the same helper as
-         *     ``GET /apps/{id}/variables``.
+         *     - 404: the app or the version submission does not exist.
+         *     - 409 ``version_moved``: the tag no longer points to the submitted
+         *       commit; the admin would approve code that was not submitted.
+         *     - 409: the version is already approved, or was submitted before
+         *       versions were pinned to commits.
+         *     - 422: the submitted commit has no valid appstore.yaml.
+         *     - 502: the repository cannot be read; nothing is approved unchecked.
          */
         post: operations["approve_version_admin_apps__app_id__versions__version_tag__approve_post"];
         delete?: never;
@@ -564,10 +618,71 @@ export interface paths {
         get?: never;
         /**
          * Deactivate App
-         * @description Emergency deactivation: set app to private so it disappears from
+         * @description Emergency deactivation: set the app to private so it disappears from
          *     the store immediately. Does not delete the app or its deployments.
+         *
+         *     Marks it ``hidden_by_admin``: the owner can no longer make it public
+         *     again, only an admin can (``PUT /apps/{id}`` with ``is_private: false``,
+         *     .github#7 R).
          */
         put: operations["deactivate_app_admin_apps__app_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/apps/{app_id}/recommended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set App Recommended
+         * @description Mark an app as recommended or not. Admin only.
+         *
+         *     The flag only highlights the app in the catalog; it does not change who
+         *     may see or deploy it.
+         */
+        put: operations["set_app_recommended_admin_apps__app_id__recommended_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/apps/{app_id}/deploy-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Deploy Version
+         * @description Set the version teachers deploy, or clear it with ``version_tag: null``.
+         *
+         *     Only a version that is approved for the commit its tag points to now
+         *     can be set:
+         *
+         *     - 404: the app does not exist, or the version has no approval entry.
+         *     - 409 ``version_not_approved``: the entry exists but is pending,
+         *       rejected or from before versions were pinned to commits.
+         *     - 409 ``version_moved``: the tag points to another commit than the
+         *       approved one; it has to be submitted and reviewed again.
+         *     - 502: the repository cannot be read.
+         *
+         *     The setting is cleared again when the version's approval ends (revoked,
+         *     or replaced by a new submission). ``POST /deployments/`` is not bound to
+         *     it and still checks the approval of the version it is given.
+         */
+        put: operations["set_deploy_version_admin_apps__app_id__deploy_version_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -609,11 +724,11 @@ export interface paths {
          * Create Deployment
          * @description Create a new deployment
          *
-         *     Atomicity: a per-user advisory lock serializes credential mutation
-         *     with deployment dispatch. The deployment row, teams, user mappings,
+         *     Atomicity: a per-user advisory lock serializes concurrent creates of one
+         *     user (the workload budget). The deployment row, teams, user mappings,
          *     and the initial PENDING task row are all inserted in a single
          *     transaction, so the user can never end up with a deployment row
-         *     that has no matching task. Celery dispatch happens AFTER commit;
+         *     that has no matching task. The queue dispatch happens AFTER commit;
          *     if it fails, the task row is flipped to FAILED so the deployment
          *     surfaces an honest error instead of hanging in PENDING forever.
          */
@@ -637,7 +752,7 @@ export interface paths {
          *     - User and App relations
          *     - Teams with members
          *     - Latest task status
-         *     - Terraform outputs
+         *     - Task outputs (the "terraform_outputs" of the result contract)
          *     - Optionally: full logs (use include_logs=true)
          */
         get: operations["get_deployment_deployments__deployment_id__get"];
@@ -645,7 +760,7 @@ export interface paths {
         post?: never;
         /**
          * Delete Deployment
-         * @description Unified delete — destroys OpenStack resources first if needed.
+         * @description Unified delete — destroys the namespace of a pod deployment first.
          *
          *     Restricted to the owner-view (creator, teacher, admin). Members
          *     can read-access the deployment but never tear it down.
@@ -665,11 +780,9 @@ export interface paths {
         };
         /**
          * List Deployment Resources
-         * @description Stage-1 resource listing for the Infrastructure tab.
+         * @description The workloads of a pod deployment, read live from its namespace.
          *
-         *     Owner-only. ``refresh=false`` skips the live OpenStack join — use
-         *     that when polling rapidly to avoid hammering Keystone, or when
-         *     OpenStack is known unavailable and the cached state is good enough.
+         *     Owner view (owner, admin); this endpoint is read-only.
          */
         get: operations["list_deployment_resources_deployments__deployment_id__resources_get"];
         put?: never;
@@ -680,33 +793,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/deployments/{deployment_id}/resources/{address}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Deployment Resource Detail
-         * @description Stage-2 detail for one compute instance.
-         *
-         *     Uses a ``path``-converter on the address so the for_each-key
-         *     quoting (``team_ide["Team-A"]``) survives URL routing without
-         *     aggressive encoding gymnastics on the client side. The address
-         *     MUST exist in the cached state and MUST be a compute instance;
-         *     other categories get 422.
-         */
-        get: operations["get_deployment_resource_detail_deployments__deployment_id__resources__address__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/deployments/{deployment_id}/resources/{address}/redeploy": {
+    "/deployments/{deployment_id}/workloads/{workload}/restart": {
         parameters: {
             query?: never;
             header?: never;
@@ -716,20 +803,54 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Redeploy Deployment Resource
-         * @description Replace one compute instance via ``terraform apply -replace=…``.
-         *
-         *     Address-whitelisted: we re-parse the cached TF state and only
-         *     accept addresses that resolve to a compute instance. Anything else
-         *     fails with 422 — the redeploy of a network resource would tear
-         *     down all the team VMs, which is not what a one-VM "fix it" action
-         *     should do.
-         *
-         *     Concurrency: same per-user advisory lock as create/destroy/pause
-         *     so a parallel redeploy can't race a destroy. The lock is held
-         *     only for the row insert; Celery dispatch happens after commit.
+         * Restart Workload
+         * @description Restart one team's or person's workload (a new pod); its data stays.
          */
-        post: operations["redeploy_deployment_resource_deployments__deployment_id__resources__address__redeploy_post"];
+        post: operations["restart_workload_deployments__deployment_id__workloads__workload__restart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deployments/{deployment_id}/workloads/{workload}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Workload
+         * @description Reset one workload: its volume is deleted, it starts from scratch.
+         */
+        post: operations["reset_workload_deployments__deployment_id__workloads__workload__reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deployments/{deployment_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Deployment
+         * @description Stop an in-flight deployment and clean up everything it created.
+         *
+         *     Owner-only, same gate as Destroy. Returns ``202 + {task_id,
+         *     status: "destroying"}`` so the frontend can stay on the live SSE
+         *     view and watch the cleanup run.
+         */
+        post: operations["cancel_deployment_deployments__deployment_id__cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -747,7 +868,7 @@ export interface paths {
         put?: never;
         /**
          * Pause Deployment
-         * @description Pause a running deployment by stopping its compute instances.
+         * @description Pause a running deployment by scaling its workloads to zero.
          *
          *     Owner-only — same gate as Destroy, because pausing a teammate's
          *     deployment is in practice a denial-of-service against the team.
@@ -775,7 +896,7 @@ export interface paths {
         put?: never;
         /**
          * Resume Deployment
-         * @description Resume a paused deployment by starting its compute instances.
+         * @description Resume a paused deployment by starting its workloads again.
          */
         post: operations["resume_deployment_deployments__deployment_id__resume_post"];
         delete?: never;
@@ -796,7 +917,7 @@ export interface paths {
          * @description Stream the raw bytes of one wizard-uploaded file back to the owner.
          *
          *     Path components mirror how the upload was indexed:
-         *       * ``var_name`` — the ``@openstack:file:*`` variable name
+         *       * ``var_name`` — the name of the file variable (``type: file`` in appstore.yaml)
          *       * ``slot_key`` — the inner-map key (``"all"`` for scope=all,
          *         team name for scope=team, ``Team-User`` composite for scope=user)
          *
@@ -824,21 +945,18 @@ export interface paths {
          * Get My Access
          * @description Return the calling member's OWN access credentials for a deployment.
          *
-         *     The full terraform ``outputs`` are owner-view-only (they carry every
-         *     teammate's credentials in one object). This endpoint is the member
-         *     counterpart: a team member — typically a student — retrieves only
-         *     THEIR OWN account, extracted server-side from the latest successful
-         *     deploy. Teammates' credentials are never included in the response.
+         *     The only way to the credentials (no mails, .github#7 I). The full
+         *     outputs carry every teammate's credentials and are owner-view only;
+         *     a team member — typically a student — gets exactly their own account
+         *     entry, matched exactly by ``services.access`` (.github#7 H), plus their
+         *     team's VM block. Never a teammate's.
          *
-         *     Authorisation reuses :func:`ensure_resend_access` with the target set
-         *     to the caller themself, which collapses to the member-view gate
-         *     (owner, staff, team-member, or direct mapping). A caller with no
-         *     access to the deployment gets 403; the resend endpoint uses the same
-         *     gate for the self-resend button, so the two stay consistent.
+         *     Member-view gate: owner, team member or direct mapping; anyone else
+         *     gets 403.
          *
          *     Returns 200 with empty maps when there's no successful deploy yet or
-         *     the app issued no per-user credential for this user — the UI renders
-         *     a "no credentials yet" state rather than treating it as an error.
+         *     no entry belongs to the caller exactly — the UI renders a "no
+         *     credentials yet" state rather than treating it as an error.
          */
         get: operations["get_my_access_deployments__deployment_id__my_access_get"];
         put?: never;
@@ -849,38 +967,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/deployments/{deployment_id}/teams/{team_id}/users/{user_id}/resend-access": {
+    "/deployments/{deployment_id}/members/{user_id}/access": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Resend Access Credentials
-         * @description Re-send the per-user access mail for one team member.
+         * Get Member Access
+         * @description Return ONE member's access credentials, e.g. to answer their question.
          *
-         *     Reuses the original notify pipeline — same template, same
-         *     credential extraction from the latest successful DEPLOY task's
-         *     ``terraform_outputs``. Useful when the user lost their first mail
-         *     or the deploy ran before the user's email got fixed.
+         *     The only path that hands a member's credentials to somebody else: the
+         *     owner view's outputs stay redacted (.github#7 E) and ``my-access``
+         *     returns the caller's own entry only. Gated by the operate right
+         *     (owner or admin), not the wider owner view, and one member per call:
+         *     the credentials leave the server when somebody asks for them, not
+         *     with every detail response. Same entry as the member's own
+         *     ``my-access``, matched exactly by ``services.access`` (.github#7 H).
          *
-         *     Access control: caller must have access to the deployment (owner
-         *     or teacher/admin). The endpoint is intentionally idempotent —
-         *     each call sends one mail to the targeted user. There's no rate
-         *     limit at the API level; SMTP and Gmail's per-account quota are
-         *     the natural backstops.
-         *
-         *     Mapping ResendError to HTTP:
-         *       * ``deployment_not_found`` → 404
-         *       * ``team_not_in_deployment`` / ``user_not_in_team`` → 404
-         *       * ``no_successful_deploy`` → 409 (nothing to resend yet)
-         *       * ``no_credentials_for_user`` → 409 (template didn't issue
-         *         per-user creds, or matcher missed despite the fuzzy logic)
+         *     Never cached and never logged. Empty maps when the user is in none of
+         *     the deployment's teams or there is no entry for them.
          */
-        post: operations["resend_access_credentials_deployments__deployment_id__teams__team_id__users__user_id__resend_access_post"];
+        get: operations["get_member_access_deployments__deployment_id__members__user_id__access_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -898,10 +1009,9 @@ export interface paths {
          * Stream Deployment Events
          * @description Live progress + log stream for one deployment as Server-Sent Events.
          *
-         *     The connection is authenticated with the same Keycloak dependency
-         *     used elsewhere; the standard auth middleware also vets the token
-         *     before this handler runs. After auth we attach to the in-process
-         *     pubsub for this deployment and forward every event to the client.
+         *     Streams the events of the deployment's latest task and ends with its
+         *     terminal event. Starts with a ``snapshot`` event; for a task that is
+         *     already finished (or no task at all) the stream ends right after it.
          */
         get: operations["stream_deployment_events_deployments__deployment_id__stream_get"];
         put?: never;
@@ -961,17 +1071,15 @@ export interface paths {
         };
         /**
          * List Teams
-         * @description Get all teams, optionally filtered to a single deployment.
-         *
-         *     All authenticated users may list teams; per-team membership gating
-         *     happens at ``GET /teams/{team_id}``.
+         * @description The teams of ``deployment_id`` the caller may read (all of them with
+         *     the owner view, otherwise their own). 403 without access to the
+         *     deployment.
          */
         get: operations["list_teams_teams__get"];
         put?: never;
         /**
          * Create Team
-         * @description Create a new team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Create a team on a deployment the caller may operate.
          */
         post: operations["create_team_teams__post"];
         delete?: never;
@@ -989,20 +1097,18 @@ export interface paths {
         };
         /**
          * Get Team
-         * @description Get team by ID with all members
+         * @description A team with its members: owner view of the deployment or membership.
          */
         get: operations["get_team_teams__team_id__get"];
         /**
          * Update Team
-         * @description Update a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Rename a team of a deployment the caller may operate.
          */
         put: operations["update_team_teams__team_id__put"];
         post?: never;
         /**
          * Delete Team
-         * @description Delete a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Delete a team of a deployment the caller may operate.
          */
         delete: operations["delete_team_teams__team_id__delete"];
         options?: never;
@@ -1021,46 +1127,14 @@ export interface paths {
         put?: never;
         /**
          * Add User To Team
-         * @description Add a user to a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Add an existing user, who is in no other team of the deployment.
          */
         post: operations["add_user_to_team_teams__team_id__users__user_id__post"];
         /**
          * Remove User From Team
-         * @description Remove a user from a team
-         *     - **Requires**: TEACHER or ADMIN role
+         * @description Remove a user from a team of a deployment the caller may operate.
          */
         delete: operations["remove_user_from_team_teams__team_id__users__user_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/quotas/overview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Quota Overview
-         * @description Fetch the OpenStack quota overview for compute, storage and network
-         *     from the user's **personal** OpenStack project.
-         *
-         *     Declared sync (not async) on purpose: every call inside hits the
-         *     OpenStack SDK with blocking network I/O. A sync def runs in
-         *     Starlette's threadpool, so a slow OpenStack response doesn't stall
-         *     the event loop and starve other endpoints (e.g. /dashboard/stats,
-         *     /users/me) that are mounted on the same dashboard view.
-         *
-         *     Returns:
-         *         QuotaOverviewResponse with used/limit/available for all resources
-         */
-        get: operations["get_quota_overview_quotas_overview_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1077,9 +1151,7 @@ export interface paths {
          * Get Dashboard Stats
          * @description Aggregate counts for the dashboard KPI strip.
          *
-         *     Cheap DB-only aggregates — intentionally separated from the OpenStack
-         *     quota call (`GET /quotas/overview`) so the dashboard renders fast even
-         *     when the OpenStack API is slow or unavailable.
+         *     Cheap DB-only aggregates.
          *
          *     Deployments counter MUST mirror the visibility rules of
          *     ``GET /deployments`` so the KPI matches what the user actually sees
@@ -1113,7 +1185,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/openstack-credentials": {
+    "/lti13/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -1121,48 +1193,29 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get My Credentials
-         * @description Always 200 — returns has_credential=False when none configured.
-         *
-         *     Lock state is included regardless so the frontend can render the
-         *     correct guard UI without a second request.
+         * Lti13 Login Get
+         * @description Step 1 (GET): the OIDC login initiation from Moodle, parameters in the query string.
          */
-        get: operations["get_my_credentials_me_openstack_credentials_get"];
+        get: operations["lti13LoginGet"];
+        put?: never;
         /**
-         * Upsert My Credentials
-         * @description Auto-validates against Keystone before persisting.
+         * Lti13 Login Post
+         * @description Step 1 (POST): the same initiation with form-encoded parameters.
          *
-         *     On a successful authorize we record `last_validated_at`. On failure
-         *     we still persist the row (so the user can fix it via the UI) and
-         *     record the human-readable error message.
+         *     Moodle sends this as a POST (observed against a real Moodle 5.x
+         *     instance, 2026-09-25) even though the IMS spec allows either GET or
+         *     POST for the 3rd-party-initiated login, so both are accepted. Two
+         *     routes rather than one for both methods: each gets its own OpenAPI
+         *     operation id (one shared id broke the generated frontend types).
          */
-        put: operations["upsert_my_credentials_me_openstack_credentials_put"];
-        post?: never;
-        /** Delete My Credentials */
-        delete: operations["delete_my_credentials_me_openstack_credentials_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack-credentials/from-yaml": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Upsert My Credentials From Yaml */
-        put: operations["upsert_my_credentials_from_yaml_me_openstack_credentials_from_yaml_put"];
-        post?: never;
+        post: operations["lti13LoginPost"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/me/openstack-credentials/test": {
+    "/lti13/launch": {
         parameters: {
             query?: never;
             header?: never;
@@ -1172,19 +1225,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Test My Credentials
-         * @description Re-authorize the stored credential and refresh validation metadata.
-         *
-         *     Allowed even while locked — purely read-only against Keystone.
+         * Lti13 Launch
+         * @description Step 3: Moodle POSTs the id_token here after the OIDC dance.
          */
-        post: operations["test_my_credentials_me_openstack_credentials_test_post"];
+        post: operations["lti13_launch_lti13_launch_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/refresh": {
+    "/lti13/session": {
         parameters: {
             query?: never;
             header?: never;
@@ -1194,42 +1245,20 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Refresh Cache
-         * @description Cache bust for the calling user. Triggered by a click on the
-         *     "Refresh" button next to a picker — the user has just created a
-         *     new resource in Horizon and wants to see it.
-         */
-        post: operations["refresh_cache_me_openstack_resources_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/networks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Networks
-         * @description Lists all networks that the user can see in their project.
+         * Lti13 Session
+         * @description Step 6: the frontend trades the launch's code (+ the binding cookie) for a session token.
          *
-         *     ``shared`` and ``router_external`` are included so the frontend can
-         *     render "External Network" hints.
+         *     400 ``lti_code_invalid`` for an unknown, used, expired or foreign code;
+         *     the code is gone after the first attempt either way.
          */
-        get: operations["list_networks_me_openstack_resources_networks_get"];
-        put?: never;
-        post?: never;
+        post: operations["lti13_session_lti13_session_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/me/openstack/resources/subnets": {
+    "/lti13/jwks": {
         parameters: {
             query?: never;
             header?: never;
@@ -1237,178 +1266,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Subnets
-         * @description With ``network_id``: subnets of that network. Without: all subnets in
-         *     the project. Filtering happens server-side (OpenStack API), not only
-         *     after the cache — otherwise we would have a separate cache key per
-         *     network, and the unfiltered list cache would never help.
+         * Lti13 Jwks
+         * @description Expose this tool's public JWKS.
+         *
+         *     For the demo the tool does not sign messages back to the platform, so
+         *     this returns an empty key set. Replace with actual RSA keys if Assignment
+         *     & Grade Services (AGS) or deep linking is needed.
          */
-        get: operations["list_subnets_me_openstack_resources_subnets_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/flavors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Flavors
-         * @description Compute flavors with the three spec fields the user really wants
-         *     (CPU/RAM/Disk). ``is_public=False`` means private — we still emit
-         *     it, the frontend can render a note.
-         */
-        get: operations["list_flavors_me_openstack_resources_flavors_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/images": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Images
-         * @description Default ``status=active`` — we do not want to show "queued" or
-         *     "deleted" images in the picker. ``status=all`` for power users who
-         *     really want to see everything.
-         */
-        get: operations["list_images_me_openstack_resources_images_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/keypairs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Keypairs
-         * @description SSH keypairs of the user. Here the identity is always the ``name``,
-         *     never the ID — Keystone keypairs do have IDs but Terraform modules
-         *     use the name.
-         */
-        get: operations["list_keypairs_me_openstack_resources_keypairs_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/security-groups": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Security Groups */
-        get: operations["list_security_groups_me_openstack_resources_security_groups_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/floating-ip-pools": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Floating Ip Pools
-         * @description There is no dedicated ``Pool`` resource in OpenStack — pools are
-         *     networks with ``router:external = true``. Terraform modules usually
-         *     expect the **name** of the external network.
-         */
-        get: operations["list_floating_ip_pools_me_openstack_resources_floating_ip_pools_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/volumes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Volumes
-         * @description Cinder volumes. The frontend filters ``status`` itself if needed
-         *     — we emit all of them, because a user can well attach a second
-         *     instance to an ``in-use`` volume.
-         */
-        get: operations["list_volumes_me_openstack_resources_volumes_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/routers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Routers */
-        get: operations["list_routers_me_openstack_resources_routers_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/openstack/resources/availability-zones": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Availability Zones
-         * @description AZs differ per service. Default: compute (Nova), because that is
-         *     the most common use case (VM placement).
-         */
-        get: operations["list_availability_zones_me_openstack_resources_availability_zones_get"];
+        get: operations["lti13_jwks_lti13_jwks_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1459,6 +1324,16 @@ export interface components {
              */
             submit_all_versions: boolean;
         };
+        /** AppDeployVersionUpdate */
+        AppDeployVersionUpdate: {
+            /** Version Tag */
+            version_tag: string | null;
+        };
+        /** AppRecommendedUpdate */
+        AppRecommendedUpdate: {
+            /** Recommended */
+            recommended: boolean;
+        };
         /** AppResponse */
         AppResponse: {
             /** Name */
@@ -1484,8 +1359,53 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Hidden By Admin
+             * @default false
+             */
+            hidden_by_admin: boolean;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended: boolean;
+            /** Deploy Version */
+            deploy_version?: string | null;
             /** Image */
             image?: string | null;
+        };
+        /**
+         * AppRuntimeResponse
+         * @description How one version runs, for the deploy wizard.
+         */
+        AppRuntimeResponse: {
+            /** Runtime */
+            runtime: string;
+            /** Scope */
+            scope?: string | null;
+            /** Egress */
+            egress?: string | null;
+            /**
+             * Access
+             * @default []
+             */
+            access: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Resources
+             * @default []
+             */
+            resources: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Network
+             * @default {}
+             */
+            network: {
+                [key: string]: unknown;
+            };
         };
         /** AppUpdate */
         AppUpdate: {
@@ -1502,7 +1422,7 @@ export interface components {
          * AppVariableResponse
          * @description Shape of one entry in ``GET /apps/{id}/variables``.
          *
-         *     Keys match what ``_parse_one_variable`` writes to the dict exactly —
+         *     Keys match what ``app_spec.spec_variables`` writes to the dict exactly —
          *     the frontend reads ``osType``/``osMode``/``osMulti``/``osScope``/
          *     ``varScope``/``fileExtensions`` in camelCase and the rest in
          *     snake/lowercase. Keys are kept verbatim (no auto-aliasing).
@@ -1532,9 +1452,6 @@ export interface components {
             varScope?: string | null;
             /** Fileextensions */
             fileExtensions?: string[] | null;
-            markerError?: components["schemas"]["_MarkerErrorPayload"] | null;
-            /** Template Key */
-            template_key?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -1557,6 +1474,17 @@ export interface components {
             appId: string;
             /** Version Tag */
             version_tag: string;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /**
+             * Runtime
+             * @default kubernetes
+             */
+            runtime: string;
+            /** Spec Sha256 */
+            spec_sha256?: string | null;
+            /** Image Digests */
+            image_digests?: string[] | null;
             status: components["schemas"]["AppVersionApprovalStatus"];
             /** Diff Url */
             diff_url?: string | null;
@@ -1600,6 +1528,17 @@ export interface components {
             appId: string;
             /** Version Tag */
             version_tag: string;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /**
+             * Runtime
+             * @default kubernetes
+             */
+            runtime: string;
+            /** Spec Sha256 */
+            spec_sha256?: string | null;
+            /** Image Digests */
+            image_digests?: string[] | null;
             status: components["schemas"]["AppVersionApprovalStatus"];
             /** Diff Url */
             diff_url?: string | null;
@@ -1643,6 +1582,18 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Hidden By Admin
+             * @default false
+             */
+            hidden_by_admin: boolean;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended: boolean;
+            /** Deploy Version */
+            deploy_version?: string | null;
             /** Image */
             image?: string | null;
             user: components["schemas"]["UserResponse"];
@@ -1653,12 +1604,6 @@ export interface components {
             versions: {
                 [key: string]: string;
             }[];
-        };
-        /** ComputeQuotas */
-        ComputeQuotas: {
-            instances: components["schemas"]["QuotaItem"];
-            vcpus: components["schemas"]["QuotaItem"];
-            ram: components["schemas"]["QuotaItem"];
         };
         /** CourseCreate */
         CourseCreate: {
@@ -1718,11 +1663,6 @@ export interface components {
             apps: number;
             /** Courses */
             courses: number;
-            /**
-             * Coursescopedeployments
-             * @default 0
-             */
-            courseScopeDeployments: number;
         };
         /** DeploymentCreate */
         DeploymentCreate: {
@@ -1734,7 +1674,7 @@ export interface components {
              */
             appId: string;
             /** Releasetag */
-            releaseTag?: string | null;
+            releaseTag: string;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;
@@ -1775,6 +1715,13 @@ export interface components {
             userId: string;
             /** Releasetag */
             releaseTag?: string | null;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /**
+             * Runtime
+             * @default kubernetes
+             */
+            runtime: string;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;
@@ -1794,17 +1741,29 @@ export interface components {
             outputs?: components["schemas"]["DeploymentOutputs"] | null;
             /** Logs */
             logs?: string | null;
+            /**
+             * @default {
+             *       "owner_view": false,
+             *       "operate": false,
+             *       "member": false
+             *     }
+             */
+            permissions: components["schemas"]["DeploymentPermissions"];
+            /**
+             * Actions
+             * @default []
+             */
+            actions: string[];
         };
         /**
          * DeploymentFileUpload
          * @description Single file uploaded by the teacher in the deploy wizard.
          *
          *     Persisted verbatim into ``userInputVar.terraform`` keyed by the
-         *     variable name (and recipient key for team/user scope) so the worker
-         *     passes it to terraform and cloud-init decodes it into ``write_files``.
+         *     variable name (and recipient key for team/user scope); the pod
+         *     deployer puts it into the workload's files.
          *
-         *     ``content_b64`` MUST be standard (RFC 4648) base64. The value sent
-         *     to Terraform stays base64 for cloud-init's ``encoding: b64``.
+         *     ``content_b64`` MUST be standard (RFC 4648) base64.
          */
         DeploymentFileUpload: {
             /** Name */
@@ -1818,7 +1777,7 @@ export interface components {
         };
         /**
          * DeploymentOutputs
-         * @description Parsed Terraform outputs - structure depends on app
+         * @description Outputs of the deploy job - structure depends on app
          */
         DeploymentOutputs: {
             /** Raw */
@@ -1827,62 +1786,49 @@ export interface components {
             } | null;
         };
         /**
+         * DeploymentPermissions
+         * @description What the caller may do with a deployment, decided by the API.
+         *
+         *     ``owner_view``: tasks, logs, the live stream, infrastructure and the
+         *     (redacted) outputs. ``operate``: pause, resume, destroy, redeploy,
+         *     cancel and team changes. ``member``: the caller is in one of its teams
+         *     and gets their own access through ``my-access``.
+         */
+        DeploymentPermissions: {
+            /**
+             * Owner View
+             * @default false
+             */
+            owner_view: boolean;
+            /**
+             * Operate
+             * @default false
+             */
+            operate: boolean;
+            /**
+             * Member
+             * @default false
+             */
+            member: boolean;
+        };
+        /**
          * DeploymentResourceListResponse
          * @description Wrap the list in an object so we can add cursor/refresh-stamp
          *     metadata later without a breaking API change.
          */
         DeploymentResourceListResponse: {
-            /** Resources */
-            resources: components["schemas"]["DeploymentResourceSchema"][];
             /** Live */
             live: boolean;
-        };
-        /**
-         * DeploymentResourceSchema
-         * @description One row in the resource list (stage 1) or the response of the
-         *     detail endpoint (stage 2 — same shape, more fields populated).
-         *
-         *     Non-instance categories (network, subnet, etc.) only populate
-         *     ``address``, ``type``, ``category``, ``provider_id``,
-         *     ``display_name``; the instance-only fields stay ``None`` /
-         *     empty list.
-         */
-        DeploymentResourceSchema: {
-            /** Address */
-            address: string;
-            /** Type */
-            type: string;
-            /** Category */
-            category: string;
-            /** Team */
-            team?: string | null;
-            /** Provider Id */
-            provider_id: string;
-            /** Display Name */
-            display_name: string;
             /**
-             * Drift
-             * @default in_sync
-             * @enum {string}
+             * Runtime
+             * @default kubernetes
              */
-            drift: "in_sync" | "stale" | "missing";
-            lifecycle?: components["schemas"]["LifecycleStatesSchema"] | null;
-            hardware?: components["schemas"]["HardwareSpecSchema"] | null;
+            runtime: string;
             /**
-             * Addresses
+             * Workloads
              * @default []
              */
-            addresses: components["schemas"]["NetworkAddressSchema"][];
-            /** Ports */
-            ports?: components["schemas"]["NetworkPortSchema"][] | null;
-            /** Security Groups */
-            security_groups?: components["schemas"]["SecurityGroupSummarySchema"][] | null;
-            /** Volumes */
-            volumes?: components["schemas"]["VolumeAttachmentSchema"][] | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: string;
-            } | null;
+            workloads: components["schemas"]["PodWorkloadSchema"][];
         };
         /** DeploymentResponse */
         DeploymentResponse: {
@@ -1905,6 +1851,13 @@ export interface components {
             userId: string;
             /** Releasetag */
             releaseTag?: string | null;
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /**
+             * Runtime
+             * @default kubernetes
+             */
+            runtime: string;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;
@@ -1946,45 +1899,10 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** HardwareSpecSchema */
-        HardwareSpecSchema: {
-            /** Flavor Name */
-            flavor_name?: string | null;
-            /** Ram Mb */
-            ram_mb?: number | null;
-            /** Vcpus */
-            vcpus?: number | null;
-            /** Disk Gb */
-            disk_gb?: number | null;
-            /** Image Id */
-            image_id?: string | null;
-            /** Image Name */
-            image_name?: string | null;
-            /** Availability Zone */
-            availability_zone?: string | null;
-            /** Launched At */
-            launched_at?: string | null;
-        };
-        /**
-         * LifecycleStatesSchema
-         * @description Server lifecycle quad + optional fault message.
-         *
-         *     Fields are pass-through from OpenStack's Nova response (stable
-         *     strings like ``"ACTIVE"`` / ``"BUILD"`` / ``"ERROR"``). The frontend
-         *     renders a pill from ``status`` + ``task_state`` and shows
-         *     ``fault_message`` as a banner when ``status == "ERROR"``.
-         */
-        LifecycleStatesSchema: {
-            /** Status */
-            status?: string | null;
-            /** Task State */
-            task_state?: string | null;
-            /** Vm State */
-            vm_state?: string | null;
-            /** Power State */
-            power_state?: string | null;
-            /** Fault Message */
-            fault_message?: string | null;
+        /** LtiSessionRequest */
+        LtiSessionRequest: {
+            /** Code */
+            code: string;
         };
         /**
          * MyAccessResponse
@@ -1994,8 +1912,8 @@ export interface components {
          *     can see their OWN credentials without the owner-view that gates the
          *     full outputs. Only the caller's own account is ever present.
          *
-         *     Both maps mirror the raw terraform ``user_accounts`` / ``team_vms``
-         *     output shape (one key each: the member's account and their team's VM)
+         *     Both maps use the ``user_accounts`` / ``team_vms`` output shape (one key
+         *     each: the member's account and their team's workload)
          *     so the frontend's existing account-matching pipeline consumes this
          *     unchanged. Empty maps mean "no credentials yet" (no successful deploy,
          *     or the app issued no per-user account) — a valid 200, not an error.
@@ -2011,6 +1929,15 @@ export interface components {
                 };
             };
             /**
+             * Team Endpoints
+             * @default {}
+             */
+            team_endpoints: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /**
              * Team Vms
              * @default {}
              */
@@ -2020,210 +1947,70 @@ export interface components {
                 };
             };
         };
-        /** NetworkAddressSchema */
-        NetworkAddressSchema: {
-            /** Network */
-            network: string;
-            /** Fixed Ip */
-            fixed_ip?: string | null;
-            /** Floating Ip */
-            floating_ip?: string | null;
-            /** Mac */
-            mac?: string | null;
-        };
-        /** NetworkPortSchema */
-        NetworkPortSchema: {
-            /** Port Id */
-            port_id: string;
-            /** Network Id */
-            network_id?: string | null;
-            /** Status */
-            status?: string | null;
-            /** Mac */
-            mac?: string | null;
-            /** Fixed Ip */
-            fixed_ip?: string | null;
-            /**
-             * Security Group Ids
-             * @default []
-             */
-            security_group_ids: string[];
-        };
-        /** NetworkQuotas */
-        NetworkQuotas: {
-            floating_ips: components["schemas"]["QuotaItem"];
-            security_groups: components["schemas"]["QuotaItem"];
-            security_group_rules: components["schemas"]["QuotaItem"];
-            networks: components["schemas"]["QuotaItem"];
-            ports: components["schemas"]["QuotaItem"];
-            routers: components["schemas"]["QuotaItem"];
-        };
         /**
-         * OpenStackAuthType
-         * @enum {string}
+         * PodSetupProgress
+         * @description What an app reports about its first-start setup (an ``appstore-progress`` log line).
          */
-        OpenStackAuthType: "v3applicationcredential" | "password";
-        /**
-         * OpenStackCredentialFromYaml
-         * @description Convenience body: paste/upload a `clouds.yaml` and let the server pick it apart.
-         */
-        OpenStackCredentialFromYaml: {
-            /**
-             * Clouds Yaml
-             * @description raw clouds.yaml file contents
-             */
-            clouds_yaml: string;
-            /**
-             * Cloud Name
-             * @description Pick a specific cloud from the YAML; required when there is more than one
-             */
-            cloud_name?: string | null;
+        PodSetupProgress: {
+            /** Percent */
+            percent: number;
+            /** Step */
+            step?: string | null;
+            /** Etaseconds */
+            etaSeconds?: number | null;
         };
         /**
-         * OpenStackCredentialResponse
-         * @description Masked response — never returns identifier/secret material.
+         * PodWorkloadSchema
+         * @description One workload of a pod or kubevirt-vm deployment, read live from the cluster (.github#4).
          *
-         *     When `has_credential` is False, base fields are absent/empty and the
-         *     consumer should branch on `has_credential`. `is_locked` and
-         *     `active_deployments` are populated regardless so the frontend can
-         *     render the appropriate guard UI even before any credential exists.
+         *     The name is historic (pods came first); the schema serves both runtimes.
          */
-        OpenStackCredentialResponse: {
-            auth_type?: components["schemas"]["OpenStackAuthType"] | null;
-            /** Auth Url */
-            auth_url?: string | null;
-            /** Region Name */
-            region_name?: string | null;
+        PodWorkloadSchema: {
+            /** Workload */
+            workload: string;
+            /** Team */
+            team?: string | null;
+            /** User Id */
+            user_id?: string | null;
             /**
-             * Interface
-             * @default public
-             */
-            interface: string | null;
-            /**
-             * Identity Api Version
-             * @default 3
-             */
-            identity_api_version: string | null;
-            /** Project Id */
-            project_id?: string | null;
-            /** Project Name */
-            project_name?: string | null;
-            /** User Domain Name */
-            user_domain_name?: string | null;
-            /** Project Domain Name */
-            project_domain_name?: string | null;
-            /**
-             * Has Credential
-             * @default true
-             */
-            has_credential: boolean;
-            /** Last Validated At */
-            last_validated_at?: string | null;
-            /** Last Validation Error */
-            last_validation_error?: string | null;
-            /** Created At */
-            created_at?: string | null;
-            /** Updated At */
-            updated_at?: string | null;
-            /**
-             * Is Locked
+             * Ready
              * @default false
              */
-            is_locked: boolean;
+            ready: boolean;
             /**
-             * Active Deployments
+             * Restarts
              * @default 0
              */
-            active_deployments: number;
+            restarts: number;
+            /** Phase */
+            phase: string;
+            /** Url */
+            url?: string | null;
+            /** Lastevent */
+            lastEvent?: string | null;
+            setup?: components["schemas"]["PodSetupProgress"] | null;
         };
         /**
-         * OpenStackCredentialUpsert
-         * @description Body of PUT /me/openstack-credentials.
+         * TaskResponse
+         * @description A task as the task API shows it to the owner view.
          *
-         *     `identifier` is either a username (password auth) or an
-         *     application-credential ID. `secret` is the corresponding password or
-         *     application-credential secret. Both are stored encrypted at rest.
+         *     Deliberately without ``tf_state`` and ``outputs`` (.github#7 E): the
+         *     state holds every attribute of every resource, generated passwords
+         *     included, and the outputs hold every member's credentials. Members get
+         *     their own entry through ``my-access``; the owner view's outputs are
+         *     redacted (``task_results.redact_sensitive_outputs``).
          */
-        OpenStackCredentialUpsert: {
-            auth_type: components["schemas"]["OpenStackAuthType"];
-            /** Auth Url */
-            auth_url: string;
-            /** Region Name */
-            region_name?: string | null;
-            /**
-             * Interface
-             * @default public
-             */
-            interface: string | null;
-            /**
-             * Identity Api Version
-             * @default 3
-             */
-            identity_api_version: string | null;
-            /** Project Id */
-            project_id?: string | null;
-            /** Project Name */
-            project_name?: string | null;
-            /** User Domain Name */
-            user_domain_name?: string | null;
-            /** Project Domain Name */
-            project_domain_name?: string | null;
-            /**
-             * Identifier
-             * @description username OR application-credential ID
-             */
-            identifier: string;
-            /**
-             * Secret
-             * @description password OR application-credential secret
-             */
-            secret: string;
-        };
-        /** QuotaItem */
-        QuotaItem: {
-            /** Used */
-            used: number;
-            /** Limit */
-            limit: number;
-            /** Available */
-            available: number;
-            /** Unit */
-            unit?: string | null;
-        };
-        /** QuotaOverviewResponse */
-        QuotaOverviewResponse: {
-            compute: components["schemas"]["ComputeQuotas"];
-            storage: components["schemas"]["StorageQuotas"];
-            network: components["schemas"]["NetworkQuotas"];
-        };
-        /** SecurityGroupSummarySchema */
-        SecurityGroupSummarySchema: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Description */
-            description?: string | null;
-            /** Ingress Rules */
-            ingress_rules: number;
-            /** Egress Rules */
-            egress_rules: number;
-        };
-        /** StorageQuotas */
-        StorageQuotas: {
-            volumes: components["schemas"]["QuotaItem"];
-            snapshots: components["schemas"]["QuotaItem"];
-            gigabytes: components["schemas"]["QuotaItem"];
-        };
-        /** TaskResponse */
         TaskResponse: {
+            /**
+             * Taskid
+             * Format: uuid
+             */
+            taskId: string;
             /**
              * Deploymentid
              * Format: uuid
              */
             deploymentId: string;
-            /** Celerytaskid */
-            celeryTaskId: string;
             type: components["schemas"]["TaskType"];
             status: components["schemas"]["TaskStatus"];
             /** Started At */
@@ -2232,19 +2019,10 @@ export interface components {
             finished_at?: string | null;
             /** Logs */
             logs?: string | null;
-            /** Tf State */
-            tf_state?: string | null;
-            /** Outputs */
-            outputs?: string | null;
             /** Current Phase */
             current_phase?: string | null;
             /** Progress Pct */
             progress_pct?: number | null;
-            /**
-             * Taskid
-             * Format: uuid
-             */
-            taskId: string;
             /**
              * Created At
              * Format: date-time
@@ -2351,10 +2129,7 @@ export interface components {
         };
         /** UserResponse */
         UserResponse: {
-            /**
-             * Email
-             * Format: email
-             */
+            /** Email */
             email: string;
             /** Username */
             username: string;
@@ -2404,10 +2179,7 @@ export interface components {
         };
         /** UserWithCourse */
         UserWithCourse: {
-            /**
-             * Email
-             * Format: email
-             */
+            /** Email */
             email: string;
             /** Username */
             username: string;
@@ -2445,32 +2217,6 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
-        /** VolumeAttachmentSchema */
-        VolumeAttachmentSchema: {
-            /** Volume Id */
-            volume_id: string;
-            /** Device */
-            device?: string | null;
-            /** Size Gb */
-            size_gb?: number | null;
-            /** Bootable */
-            bootable?: boolean | null;
-            /** Status */
-            status?: string | null;
-            /** Name */
-            name?: string | null;
-        };
-        /** _MarkerErrorPayload */
-        _MarkerErrorPayload: {
-            /** Variable */
-            variable: string;
-            /** Message */
-            message: string;
-            /** Location */
-            location: string;
-            /** Code */
-            code?: string | null;
-        };
     };
     responses: never;
     parameters: never;
@@ -2503,7 +2249,9 @@ export interface operations {
     get_me_users_me_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2518,6 +2266,15 @@ export interface operations {
                     "application/json": components["schemas"]["UserWithCourse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_users_users__get: {
@@ -2528,7 +2285,9 @@ export interface operations {
                 role?: components["schemas"]["UserRole"] | null;
                 course_id?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2560,7 +2319,9 @@ export interface operations {
                 query: string;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2589,7 +2350,9 @@ export interface operations {
     get_user_users__user_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -2620,7 +2383,9 @@ export interface operations {
     update_user_users__user_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -2655,7 +2420,9 @@ export interface operations {
     get_user_statistics_users__user_id__statistics_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 user_id: string;
             };
@@ -2689,7 +2456,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2718,7 +2487,9 @@ export interface operations {
     create_course_courses__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2751,7 +2522,9 @@ export interface operations {
     get_course_courses__course_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2782,7 +2555,9 @@ export interface operations {
     update_course_courses__course_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2817,7 +2592,9 @@ export interface operations {
     delete_course_courses__course_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2846,7 +2623,9 @@ export interface operations {
     list_course_members_courses__course_id__users_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2877,7 +2656,9 @@ export interface operations {
     add_course_members_courses__course_id__users_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
             };
@@ -2912,7 +2693,9 @@ export interface operations {
     remove_course_member_courses__course_id__users__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -2942,7 +2725,9 @@ export interface operations {
     add_course_teacher_courses__course_id__teachers__user_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -2972,7 +2757,9 @@ export interface operations {
     remove_course_teacher_courses__course_id__teachers__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 course_id: string;
                 user_id: string;
@@ -3005,7 +2792,9 @@ export interface operations {
                 skip?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3034,7 +2823,9 @@ export interface operations {
     create_app_apps__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3067,7 +2858,9 @@ export interface operations {
     get_app_apps__app_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3098,7 +2891,9 @@ export interface operations {
     update_app_apps__app_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3133,7 +2928,9 @@ export interface operations {
     delete_app_apps__app_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3164,7 +2961,9 @@ export interface operations {
             query: {
                 version: string;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3192,10 +2991,47 @@ export interface operations {
             };
         };
     };
+    get_app_runtime_apps__app_id__runtime_get: {
+        parameters: {
+            query: {
+                version: string;
+            };
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppRuntimeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_version_apps__app_id__versions__version_tag__submit_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3231,7 +3067,9 @@ export interface operations {
     withdraw_version_apps__app_id__versions__version_tag__submit_delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3261,7 +3099,9 @@ export interface operations {
     list_version_approvals_apps__app_id__versions_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
@@ -3292,7 +3132,9 @@ export interface operations {
     list_pending_versions_admin_apps_versions_pending_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3307,12 +3149,23 @@ export interface operations {
                     "application/json": components["schemas"]["AppVersionApprovalWithApp"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     approve_version_admin_apps__app_id__versions__version_tag__approve_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3344,7 +3197,9 @@ export interface operations {
     reject_version_admin_apps__app_id__versions__version_tag__reject_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3380,7 +3235,9 @@ export interface operations {
     revoke_version_admin_apps__app_id__versions__version_tag__revoke_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
                 version_tag: string;
@@ -3416,13 +3273,89 @@ export interface operations {
     deactivate_app_admin_apps__app_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 app_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_app_recommended_admin_apps__app_id__recommended_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppRecommendedUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_deploy_version_admin_apps__app_id__deploy_version_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppDeployVersionUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3452,7 +3385,9 @@ export interface operations {
                 app_id?: string | null;
                 status_filter?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3481,7 +3416,9 @@ export interface operations {
     create_deployment_deployments__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3516,7 +3453,9 @@ export interface operations {
             query?: {
                 include_logs?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3547,7 +3486,9 @@ export interface operations {
     delete_deployment_deployments__deployment_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3577,10 +3518,10 @@ export interface operations {
     };
     list_deployment_resources_deployments__deployment_id__resources_get: {
         parameters: {
-            query?: {
-                refresh?: boolean;
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
             };
-            header?: never;
             path: {
                 deployment_id: string;
             };
@@ -3608,25 +3549,27 @@ export interface operations {
             };
         };
     };
-    get_deployment_resource_detail_deployments__deployment_id__resources__address__get: {
+    restart_workload_deployments__deployment_id__workloads__workload__restart_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
-                address: string;
+                workload: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeploymentResourceSchema"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -3640,13 +3583,48 @@ export interface operations {
             };
         };
     };
-    redeploy_deployment_resource_deployments__deployment_id__resources__address__redeploy_post: {
+    reset_workload_deployments__deployment_id__workloads__workload__reset_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
-                address: string;
+                workload: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_deployment_deployments__deployment_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
+            path: {
+                deployment_id: string;
             };
             cookie?: never;
         };
@@ -3675,7 +3653,9 @@ export interface operations {
     pause_deployment_deployments__deployment_id__pause_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3706,7 +3686,9 @@ export interface operations {
     resume_deployment_deployments__deployment_id__resume_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3737,7 +3719,9 @@ export interface operations {
     download_deployment_file_deployments__deployment_id__files__var_name___slot_key__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
                 var_name: string;
@@ -3768,7 +3752,9 @@ export interface operations {
     get_my_access_deployments__deployment_id__my_access_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3796,13 +3782,14 @@ export interface operations {
             };
         };
     };
-    resend_access_credentials_deployments__deployment_id__teams__team_id__users__user_id__resend_access_post: {
+    get_member_access_deployments__deployment_id__members__user_id__access_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
-                team_id: string;
                 user_id: string;
             };
             cookie?: never;
@@ -3810,12 +3797,12 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            202: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MyAccessResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3832,7 +3819,9 @@ export interface operations {
     stream_deployment_events_deployments__deployment_id__stream_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3863,7 +3852,9 @@ export interface operations {
     get_deployment_tasks_tasks_deployment__deployment_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 deployment_id: string;
             };
@@ -3894,7 +3885,9 @@ export interface operations {
     get_task_tasks__task_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 task_id: string;
             };
@@ -3924,12 +3917,14 @@ export interface operations {
     };
     list_teams_teams__get: {
         parameters: {
-            query?: {
+            query: {
+                deployment_id: string;
                 skip?: number;
                 limit?: number;
-                deployment_id?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3958,7 +3953,9 @@ export interface operations {
     create_team_teams__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3991,7 +3988,9 @@ export interface operations {
     get_team_teams__team_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -4022,7 +4021,9 @@ export interface operations {
     update_team_teams__team_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -4057,7 +4058,9 @@ export interface operations {
     delete_team_teams__team_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
             };
@@ -4086,7 +4089,9 @@ export interface operations {
     add_user_to_team_teams__team_id__users__user_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
                 user_id: string;
@@ -4116,7 +4121,9 @@ export interface operations {
     remove_user_from_team_teams__team_id__users__user_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path: {
                 team_id: string;
                 user_id: string;
@@ -4143,30 +4150,12 @@ export interface operations {
             };
         };
     };
-    get_quota_overview_quotas_overview_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QuotaOverviewResponse"];
-                };
-            };
-        };
-    };
     get_dashboard_stats_dashboard_stats_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Dev-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4181,9 +4170,18 @@ export interface operations {
                     "application/json": components["schemas"]["DashboardStatsResponse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
-    get_my_credentials_me_openstack_credentials_get: {
+    lti13LoginGet: {
         parameters: {
             query?: never;
             header?: never;
@@ -4198,12 +4196,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpenStackCredentialResponse"];
+                    "application/json": unknown;
                 };
             };
         };
     };
-    upsert_my_credentials_me_openstack_credentials_put: {
+    lti13LoginPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    lti13_launch_lti13_launch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    lti13_session_lti13_session_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4212,162 +4250,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["OpenStackCredentialUpsert"];
+                "application/json": components["schemas"]["LtiSessionRequest"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenStackCredentialResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_my_credentials_me_openstack_credentials_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    upsert_my_credentials_from_yaml_me_openstack_credentials_from_yaml_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OpenStackCredentialFromYaml"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenStackCredentialResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    test_my_credentials_me_openstack_credentials_test_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenStackCredentialResponse"];
-                };
-            };
-        };
-    };
-    refresh_cache_me_openstack_resources_refresh_post: {
-        parameters: {
-            query?: {
-                /** @description Optional: nur diese Resource-Art invalidieren */
-                kind?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_networks_me_openstack_resources_networks_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_subnets_me_openstack_resources_subnets_get: {
-        parameters: {
-            query?: {
-                /** @description Filter: nur Subnets in diesem Network */
-                network_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -4389,7 +4274,7 @@ export interface operations {
             };
         };
     };
-    list_flavors_me_openstack_resources_flavors_get: {
+    lti13_jwks_lti13_jwks_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -4405,170 +4290,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_images_me_openstack_resources_images_get: {
-        parameters: {
-            query?: {
-                /** @description OS Image Status (default: active). Alle Stati: 'all' */
-                status?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_keypairs_me_openstack_resources_keypairs_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_security_groups_me_openstack_resources_security_groups_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_floating_ip_pools_me_openstack_resources_floating_ip_pools_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_volumes_me_openstack_resources_volumes_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_routers_me_openstack_resources_routers_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_availability_zones_me_openstack_resources_availability_zones_get: {
-        parameters: {
-            query?: {
-                /** @description OpenStack-Service: compute (Nova), network (Neutron), volume (Cinder) */
-                service?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

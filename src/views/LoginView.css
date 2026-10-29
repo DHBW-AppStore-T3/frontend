@@ -1,0 +1,24 @@
+.login-description {
+  margin: 0 0 var(--auth-description-gap);
+  color: var(--auth-muted);
+  font-size: var(--auth-text-body);
+  line-height: var(--auth-line-body);
+}
+.login-button {
+  width: 100%;
+  min-height: var(--auth-button-height);
+  padding: var(--auth-button-padding-y) var(--auth-button-padding-x);
+  font-size: var(--auth-text-control);
+  line-height: var(--auth-line-body);
+  border-radius: var(--auth-button-radius);
+  background: var(--auth-accent);
+  box-shadow: none;
+}
+.login-button svg { width: var(--auth-icon-size); height: var(--auth-icon-size); }
+.login-button:hover { background: var(--auth-accent-hover); }
+.login-help {
+  margin: var(--auth-help-gap) 0 0;
+  color: var(--auth-muted);
+  font-size: var(--auth-text-caption);
+  line-height: var(--auth-line-body);
+}

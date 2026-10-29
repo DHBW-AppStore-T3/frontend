@@ -1,32 +1,19 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { renderHook } from '@testing-library/react'
 import { useRole } from '@/composables/useRole'
+import { useAdminViewStore } from '@/stores/admin-view.store'
 import type { App, Deployment, Course } from '@/types'
 
-// useRole calls useAuthStore() which needs a real Pinia or a mock.
-// We mock the store module so the composable gets a controlled user.
+// useRole subscribes to the auth store; mock it so the hook gets a controlled user.
 
 let mockUser: any = null
 
 vi.mock('@/stores/auth.store', () => ({
-  useAuthStore: () => ({
-    get user() { return mockUser }
-  })
+  useAuthStore: (selector: (s: { user: any }) => unknown) => selector({ user: mockUser }),
 }))
 
-// Utility: mount a throw-away component that calls useRole() and returns
-// the composable's return value. Needed because computed() requires an
-// active Vue reactive context.
 function setupRole(): ReturnType<typeof useRole> {
-  let result: ReturnType<typeof useRole>
-  mount({
-    setup() {
-      result = useRole()
-      return {}
-    },
-    template: '<div />'
-  })
-  return result!
+  return renderHook(() => useRole()).result.current
 }
 
 // Minimal fixture helpers
@@ -40,41 +27,69 @@ const makeCourse = (partial: Partial<Course & { teacherIds?: string[] }> = {}): 
   ({ courseId: 'c1', ...partial } as Course & { teacherIds?: string[] })
 
 describe('useRole', () => {
+  describe('isAdminView', () => {
+    it('is true only for an admin with the switch on', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: true } })
+      mockUser = { userId: 'u1', role: 'admin' }
+      expect(setupRole().isAdminView).toBe(true)
+    })
+
+    it('is false for an admin with the switch off or unset', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: false } })
+      mockUser = { userId: 'u1', role: 'admin' }
+      expect(setupRole().isAdminView).toBe(false)
+      useAdminViewStore.setState({ enabledByAccount: {} })
+      expect(setupRole().isAdminView).toBe(false)
+    })
+
+    it('is false for a teacher even with a stored entry', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: true } })
+      mockUser = { userId: 'u1', role: 'teacher' }
+      expect(setupRole().isAdminView).toBe(false)
+    })
+
+    it('is false without a user', () => {
+      useAdminViewStore.setState({ enabledByAccount: { u1: true } })
+      mockUser = null
+      expect(setupRole().isAdminView).toBe(false)
+    })
+  })
+
   describe('role flags', () => {
     it('isAdmin is true for "admin" role', () => {
       mockUser = { userId: 'u1', role: 'admin' }
       const { isAdmin, isTeacher, isStudent, isStaff } = setupRole()
-      expect(isAdmin.value).toBe(true)
-      expect(isTeacher.value).toBe(false)
-      expect(isStudent.value).toBe(false)
-      expect(isStaff.value).toBe(true)
+      expect(isAdmin).toBe(true)
+      expect(isTeacher).toBe(false)
+      expect(isStudent).toBe(false)
+      expect(isStaff).toBe(true)
     })
 
     it('isTeacher and isStaff are true for "teacher" role', () => {
       mockUser = { userId: 'u1', role: 'teacher' }
       const { isAdmin, isTeacher, isStudent, isStaff } = setupRole()
-      expect(isAdmin.value).toBe(false)
-      expect(isTeacher.value).toBe(true)
-      expect(isStudent.value).toBe(false)
-      expect(isStaff.value).toBe(true)
+      expect(isAdmin).toBe(false)
+      expect(isTeacher).toBe(true)
+      expect(isStudent).toBe(false)
+      expect(isStaff).toBe(true)
     })
 
     it('isStudent is true and isStaff false for "student" role', () => {
       mockUser = { userId: 'u1', role: 'student' }
       const { isAdmin, isTeacher, isStudent, isStaff } = setupRole()
-      expect(isAdmin.value).toBe(false)
-      expect(isTeacher.value).toBe(false)
-      expect(isStudent.value).toBe(true)
-      expect(isStaff.value).toBe(false)
+      expect(isAdmin).toBe(false)
+      expect(isTeacher).toBe(false)
+      expect(isStudent).toBe(true)
+      expect(isStaff).toBe(false)
     })
 
     it('all role flags are false when user is null', () => {
       mockUser = null
       const { isAdmin, isTeacher, isStudent, isStaff } = setupRole()
-      expect(isAdmin.value).toBe(false)
-      expect(isTeacher.value).toBe(false)
-      expect(isStudent.value).toBe(false)
-      expect(isStaff.value).toBe(false)
+      expect(isAdmin).toBe(false)
+      expect(isTeacher).toBe(false)
+      expect(isStudent).toBe(false)
+      expect(isStaff).toBe(false)
     })
   })
 
@@ -106,16 +121,16 @@ describe('useRole', () => {
   describe('canApproveApp / canChangeUserRole', () => {
     it('canApproveApp is true for admin, false otherwise', () => {
       mockUser = { userId: 'u1', role: 'admin' }
-      expect(setupRole().canApproveApp.value).toBe(true)
+      expect(setupRole().canApproveApp).toBe(true)
       mockUser = { userId: 'u1', role: 'teacher' }
-      expect(setupRole().canApproveApp.value).toBe(false)
+      expect(setupRole().canApproveApp).toBe(false)
     })
 
     it('canChangeUserRole is true for admin, false otherwise', () => {
       mockUser = { userId: 'u1', role: 'admin' }
-      expect(setupRole().canChangeUserRole.value).toBe(true)
+      expect(setupRole().canChangeUserRole).toBe(true)
       mockUser = { userId: 'u1', role: 'student' }
-      expect(setupRole().canChangeUserRole.value).toBe(false)
+      expect(setupRole().canChangeUserRole).toBe(false)
     })
   })
 

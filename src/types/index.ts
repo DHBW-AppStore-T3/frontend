@@ -2,14 +2,17 @@
 // Backend Model Types
 // ================================================================
 //
-// The types in the USER block below are DERIVED from the backend's
-// OpenAPI schema (`api.generated.ts`, regenerate with
-// `npm run gen:api-types`). They are not hand-written and must not be
-// edited here.
+// The types in the USER, COURSE, APP, APP VERSION APPROVAL, DEPLOYMENT, POD WORKLOAD
+// and TASK blocks below
+// are DERIVED from the backend's OpenAPI schema (`api.generated.ts`,
+// regenerate with `npm run gen:api-types`). They are not hand-written and
+// must not be edited here. Where one differs from the schema on purpose
+// (a narrower literal type, a field the UI still reads that the schema
+// lacks), the reason is written next to it.
 //
-// Everything else in this file is still hand-maintained, which is a
-// known source of drift. Before this change the whole file was, and it
-// had drifted in both directions: `UserUpdate` offered `email` and
+// What is still hand-written (AppRuntime and its resource/network helpers, the
+// wizard state, variables, filters) says why next to it. Before the migration the
+// whole file was hand-written, and it had drifted in both directions: `UserUpdate` offered `email` and
 // `username` that the backend stopped accepting when profile fields
 // moved to Keycloak, while `User` was missing `keycloak_id`,
 // `firstName` and `lastName` that the backend does return -- so the
@@ -29,11 +32,22 @@ type Schemas = components['schemas']
 // ----------------------------------------------------------------
 export type UserRole = Schemas['UserRole']
 
-export type DeploymentStatus = 'pending' | 'running' | 'success' | 'failed' | 'destroying' | 'destroyed' | 'cancelled' | 'pausing' | 'paused' | 'resuming' | 'pause_failed' | 'resume_failed'
+export type DeploymentStatus =
+  | 'pending' | 'running' | 'success' | 'failed' | 'destroying' | 'destroyed' | 'cancelled'
+  | 'pausing' | 'paused' | 'resuming' | 'pause_failed' | 'resume_failed'
+  // A redeploy of one VM (or restart/reset of one pod workload) in flight / failed;
+  // the rest of the deployment keeps running.
+  | 'redeploying' | 'redeploy_failed'
 
-export type TaskType = 'deploy' | 'destroy' | 'update' | 'pause' | 'resume' | 'redeploy'
+/** How a deployment runs: pods in the cluster, or KubeVirt VMs in the cluster. */
+export type DeploymentRuntime = 'kubernetes' | 'kubevirt-vm'
 
-export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled'
+/** Lifecycle actions the API allows right now (``DeploymentDetail.actions``). */
+export type DeploymentAction = 'destroy' | 'delete' | 'pause' | 'resume' | 'cancel' | 'redeploy'
+
+export type TaskType = Schemas['TaskType']
+
+export type TaskStatus = Schemas['TaskStatus']
 
 // ----------------------------------------------------------------
 // USER TYPES
@@ -45,10 +59,6 @@ export type User = Schemas['UserResponse']
 export type UserWithCourse = Schemas['UserWithCourse']
 export type UserStatistics = Schemas['UserStatistics']
 
-// Profile fields live in Keycloak; role and courseId are the only
-// things this API updates, and role is admin-only.
-export type UserUpdate = Schemas['UserUpdate']
-
 // `UserCreate` and `UserPasswordUpdate` used to sit here. The backend
 // has no create-user or change-password endpoint -- Keycloak owns both,
 // and the users.password column was dropped in migration
@@ -58,134 +68,133 @@ export type UserUpdate = Schemas['UserUpdate']
 // ----------------------------------------------------------------
 // COURSE TYPES
 // ----------------------------------------------------------------
-export interface Course {
-  courseId: string
-  name: string
-}
+export type Course = Schemas['CourseResponse']
 
-export interface CourseWithUsers extends Course {
-  users: User[]
-}
+// ``users`` is optional in the schema (it defaults to an empty list).
+export type CourseWithUsers = Schemas['CourseWithUsers']
 
-export interface CourseCreate {
-  name: string
-}
+export type CourseCreate = Schemas['CourseCreate']
 
-export interface CourseUpdate {
-  name?: string
-}
+export type CourseUpdate = Schemas['CourseUpdate']
 
 // ----------------------------------------------------------------
 // APP TYPES
 // ----------------------------------------------------------------
-export interface App {
-  appId: string
-  name: string
-  description: string | null
-  git_link: string | null
-  userId: string
-  created_at: string
-  releaseTag: string
-  is_private: boolean
-  // Data-URL ("data:image/png;base64,...") or null when the app
-  // has no logo. Goes straight into ``<img :src=...>``.
-  image?: string | null
+// Derived from ``AppResponse`` (frontend#87). The hand-written type also had a
+// required ``releaseTag``; the API never returns one on an app (it is a field of
+// deployments and of the entries in ``AppDetail.versions``) and nothing read it.
+// Beware: ``image`` is a Data-URL ("data:image/png;base64,...") or null.
+export type App = Schemas['AppResponse']
+
+/**
+ * ``GET /apps/{id}/runtime?version=``: how one version runs.
+ *
+ * Stays hand-written on purpose: ``AppRuntimeResponse`` types ``runtime``, ``scope`` and
+ * ``egress`` as plain strings and ``access`` / ``resources`` / ``network`` as open
+ * records, while the UI relies on the known values and on the shapes of the
+ * ``ResourceChoice`` / ``NetworkChoices`` helpers below (they describe the
+ * ``appstore.yaml`` contents, which the OpenAPI schema does not model).
+ * ``scope`` is
+ * ``team`` (one workload per team) or ``user`` (one per person).
+ */
+export interface AppRuntime {
+  runtime: DeploymentRuntime
+  scope?: 'team' | 'user' | null
+  egress?: 'none' | 'internet' | null
+  access?: Array<Record<string, unknown>>
+  // Containers whose cpu/memory a person may choose (``resourceBounds`` in appstore.yaml).
+  resources?: ResourceChoice[]
+  // Network settings the app author lets people change (``userChoices`` in appstore.yaml);
+  // only the allowed keys are present, ``default`` is the author's value.
+  network?: NetworkChoices
 }
 
-export interface AppWithUser extends App {
-  user: User
+/** One network setting an app offers; ``default`` is the start position in the wizard. */
+export interface NetworkSetting {
+  default: boolean
 }
 
-export interface AppCreate {
-  name: string
-  description?: string | null
-  git_link?: string | null
-  releaseTag?: string
-  is_private?: boolean
-  submit_all_versions?: boolean
-  // Data-URL of the logo. Use the FileReader.readAsDataURL output.
-  // Omit / null = no logo.
-  image?: string | null
+export interface NetworkChoices {
+  internet?: NetworkSetting
+  podNetwork?: NetworkSetting
 }
 
-export interface AppUpdate {
-  name?: string
-  description?: string | null
-  is_private?: boolean
-  // Data-URL ("data:image/...;base64,..."), empty string to clear
-  // the existing image, or undefined to leave unchanged.
-  image?: string | null
+/** The network settings a person chose; sent as ``userInputVar.network``. */
+export interface NetworkSelection {
+  internet?: boolean
+  podNetwork?: boolean
 }
+
+export interface ResourceRange {
+  default: string
+  min: string
+  max: string
+}
+
+/** What one container offers: default and range of its cpu and memory limits. */
+export interface ResourceChoice {
+  container: string
+  cpu: ResourceRange
+  memory: ResourceRange
+}
+
+/** ``App`` plus its owner, as ``GET /apps/{id}`` returns it (minus ``versions``, see ``AppDetail``). */
+export type AppWithUser = App & { user: User }
+
+// ``releaseTag`` was offered by the hand-written type but is not part of
+// ``AppCreate`` and the form never sent it. The schema lists ``is_private`` and
+// ``submit_all_versions`` as required (they have backend defaults; the generator
+// treats defaults as required) while the hand-written type had them optional --
+// the only caller, ``buildCreatePayload``, always sends both.
+// ``image``: Data-URL of the logo (FileReader.readAsDataURL output); omit / null = no logo.
+export type AppCreate = Schemas['AppCreate']
+
+// ``image``: Data-URL, an empty string clears the existing image, undefined leaves it unchanged.
+export type AppUpdate = Schemas['AppUpdate']
 
 // ----------------------------------------------------------------
 // APP VERSION APPROVAL TYPES
 // ----------------------------------------------------------------
-export type AppVersionApprovalStatus = 'pending' | 'approved' | 'rejected'
+export type AppVersionApprovalStatus = Schemas['AppVersionApprovalStatus']
 
 export type AppVersionBadgeStatus = 'new' | 'pending' | 'approved' | 'published' | 'rejected' | 'private'
 
-export interface AppVersionApproval {
-  approvalId: string
-  appId: string
-  version_tag: string
-  status: AppVersionApprovalStatus
-  diff_url: string | null
-  notes: string | null
-  rejection_reason: string | null
-  reviewed_by: string | null
-  reviewed_at: string | null
-  created_at: string
+// Derived from ``AppVersionApprovalResponse`` (frontend#87). ``runtime`` is narrowed
+// from ``string`` to the known values like in ``Deployment``. What the review covers:
+// the commit the tag pointed to at submission and, for pod apps, the SHA-256 of its
+// appstore.yaml and its image digests.
+export type AppVersionApproval = Omit<Schemas['AppVersionApprovalResponse'], 'runtime'> & {
+  runtime: DeploymentRuntime
 }
 
-export interface AppVersionApprovalWithApp extends AppVersionApproval {
-  app: App
-}
+export type AppVersionApprovalWithApp = AppVersionApproval & { app: App }
 
 // ----------------------------------------------------------------
 // DEPLOYMENT TYPES
 // ----------------------------------------------------------------
-export interface Deployment {
-  deploymentId: string
-  name: string
-  appId: string
-  userId: string
+// Derived from ``DeploymentResponse`` (frontend#86). On purpose narrower than
+// the schema: ``status`` and ``runtime`` are ``string`` there, the UI relies on
+// the known values. The schema also has ``userInputVar`` as an object (the
+// hand-written type said ``string | null``) and ``releaseTag`` / ``created_at``
+// as optional.
+export type Deployment = Omit<Schemas['DeploymentResponse'], 'status' | 'runtime'> & {
   status: DeploymentStatus
-  commitHash: string | null
-  commitInfo: string | null
-  userInputVar: string | null
-  releaseTag: string
-  created_at: string
+  runtime?: DeploymentRuntime
 }
 
-export interface DeploymentTeamMember {
-  userId: string
-  email: string
-  username: string
-}
+/** What the caller may do with a deployment, decided by the API. */
+export type DeploymentPermissions = Schemas['DeploymentPermissions']
 
-export interface DeploymentTeam {
-  teamId: string
-  name: string
-  members: DeploymentTeamMember[]
-}
+export type DeploymentTeam = Schemas['DeploymentTeamResponse']
 
-export interface DeploymentWithRelations extends Deployment {
-  user: User
-  app: App
-  latest_task?: {
-    taskId: string;
-    type: string;
-    status: string;
-    started_at: string | null;
-    finished_at: string | null;
-    created_at: string;
-  } | null;
-  // Teams + members from the DeploymentDetail backend response. Used
-  // by the Teams card on the deployment detail page (resend-access
-  // buttons hang off of these IDs).
-  teams?: DeploymentTeam[];
-  outputs?: any;
-  logs?: string | null;
+// Derived from ``DeploymentDetail``. ``status``, ``runtime`` and ``actions`` are
+// narrowed to the known values like in ``Deployment``; ``app`` is the schema's
+// ``AppResponse``, i.e. ``App`` (frontend#87). ``outputs``
+// is the schema's ``DeploymentOutputs`` (``raw``) instead of ``any``.
+export type DeploymentWithRelations = Omit<Schemas['DeploymentDetail'], 'status' | 'runtime' | 'actions'> & {
+  status: DeploymentStatus
+  runtime?: DeploymentRuntime
+  actions: DeploymentAction[]
 }
 
 // One member's access credentials, mirroring the raw terraform
@@ -193,8 +202,11 @@ export interface DeploymentWithRelations extends Deployment {
 // own entry) by the ``/deployments/{id}/my-access`` endpoint so a
 // team member can see their own credentials without the owner view.
 export interface DeploymentUserAccount {
-  username: string;
+  username?: string | null;
   team?: string;
+  // Pod apps: whose account and which workload it opens.
+  user_id?: string;
+  workload?: string;
   ip?: string;
   port?: number;
   auth?: string;
@@ -208,43 +220,35 @@ export interface DeploymentUserAccount {
 // same shape as ``outputs.user_accounts.value`` so the detail view's
 // existing account-matching pipeline consumes it unchanged. Empty maps
 // mean "no credentials yet".
+// The schema types both maps loosely (``unknown`` values) and has a third map,
+// ``team_endpoints``, that this type does not list (``useDeploymentDetail`` reads
+// it next to ``team_vms``); kept hand-written until the account shapes are
+// pinned down in the schema.
 export interface MyAccessResponse {
   user_accounts: Record<string, DeploymentUserAccount>;
-  team_vms: Record<string, { url?: string; floating_ip?: string; fixed_ip?: string }>;
+  team_vms: Record<string, { url?: string | null; floating_ip?: string; fixed_ip?: string; workloads?: string[] }>;
 }
 
-export interface DeploymentCreate {
-  name: string
-  appId: string
-  commitHash?: string | null
-  commitInfo?: string | null
-  userInputVar?: Record<string, any> | null
-  releaseTag: string
-  teams?: Array<{ name: string; userIds: string[] }>
-  // Files-map keyed by ``@openstack:file:<scope>``-marked variable
-  // name. Inner key:
+// Derived from ``DeploymentCreate``; ``files`` is a loose ``object`` in the schema.
+export type DeploymentCreate = Omit<Schemas['DeploymentCreate'], 'files'> & {
+  // Files-map keyed by the name of a ``file`` variable. Inner key:
   //   * scope = all  → exactly one inner key (conventionally "all")
   //   * scope = team → one entry per team name
   //   * scope = user → one entry per ``Team-User`` composite key
   // The wizard owns the keys; the backend persists the map verbatim
-  // into ``userInputVar.terraform`` so the worker can pass it through
-  // to terraform as a typed map.
+  // into ``userInputVar.terraform``.
   files?: Record<string, Record<string, DeploymentFile>>
 }
 
 /**
  * One uploaded file as it travels from wizard → POST /deployments
- * → backend persistence → terraform variable. ``content_b64`` is the
- * raw base64 payload (no ``data:...,`` wrapper); the rest is the
- * metadata the user-data template needs to land the file on disk.
+ * → backend persistence → the workload's files. ``content_b64`` is the
+ * raw base64 payload (no ``data:...,`` wrapper).
  */
-export interface DeploymentFile {
-  name: string
-  content_b64: string
-  size: number
-  content_type?: string
-}
+export type DeploymentFile = Schemas['DeploymentFileUpload']
 
+// No schema: the backend has no ``DeploymentUpdate`` and nothing in the frontend
+// uses this type. Kept (exported name) until it is removed on purpose.
 export interface DeploymentUpdate {
   name?: string
   status?: DeploymentStatus
@@ -254,154 +258,24 @@ export interface DeploymentUpdate {
 }
 
 // ----------------------------------------------------------------
-// DEPLOYMENT INFRASTRUCTURE / RESOURCE TYPES
+// POD WORKLOAD TYPES
 // ----------------------------------------------------------------
-//
-// Mirrors ``app/services/deployment_status.py`` and the schemas in
-// ``app/schemas.py``. The list endpoint ships Stage-1 fields
-// (lifecycle, hardware, addresses); the detail endpoint also fills
-// the Stage-2 fields (ports, security_groups, volumes, metadata).
 
-/** ``in_sync`` = TF-cached attrs match live OpenStack;
- *  ``stale``   = live fetch failed/timed out, fall back to cache;
- *  ``missing`` = live fetch confirmed the resource is gone. */
-export type ResourceDrift = 'in_sync' | 'stale' | 'missing'
+/** One workload (team or person) of a pod deployment, read live from the cluster. */
+export type PodWorkload = Schemas['PodWorkloadSchema']
 
-/** Coarse category the Infrastructure tab groups by. */
-export type DeploymentResourceCategory =
-  | 'instance'
-  | 'network'
-  | 'subnet'
-  | 'security_group'
-  | 'floating_ip'
-  | 'port'
+export type PodSetupProgress = Schemas['PodSetupProgress']
 
-export interface LifecycleStates {
-  /** OpenStack server ``status``, e.g. ``ACTIVE``/``BUILD``/``ERROR``. */
-  status: string | null
-  /** Transient action, e.g. ``spawning``/``networking``/``deleting``. */
-  task_state: string | null
-  vm_state: string | null
-  /** Nova power-state already translated to label
-   *  (``RUNNING``/``SHUTDOWN``/``CRASHED``/...). */
-  power_state: string | null
-  /** Filled when ``status === 'ERROR'`` — the underlying Nova fault
-   *  message. UI shows it as a red banner under the VM card. */
-  fault_message: string | null
-}
-
-export interface HardwareSpec {
-  flavor_name: string | null
-  ram_mb: number | null
-  vcpus: number | null
-  disk_gb: number | null
-  image_id: string | null
-  /** Stage-1 leaves this null (no extra API hop); Stage-2 resolves it. */
-  image_name: string | null
-  availability_zone: string | null
-  /** ISO-8601 timestamp; frontend computes uptime against ``Date.now()``. */
-  launched_at: string | null
-}
-
-export interface NetworkAddress {
-  network: string
-  fixed_ip: string | null
-  floating_ip: string | null
-  mac: string | null
-}
-
-export interface NetworkPort {
-  port_id: string
-  network_id: string | null
-  status: string | null
-  mac: string | null
-  fixed_ip: string | null
-  security_group_ids: string[]
-}
-
-export interface SecurityGroupSummary {
-  id: string
-  name: string
-  description: string | null
-  ingress_rules: number
-  egress_rules: number
-}
-
-export interface VolumeAttachment {
-  volume_id: string
-  device: string | null
-  size_gb: number | null
-  bootable: boolean | null
-  status: string | null
-  name: string | null
-}
-
-export interface DeploymentResource {
-  /** Terraform state address — round-trippable to the redeploy endpoint. */
-  address: string
-  /** Raw HCL resource type, e.g. ``openstack_compute_instance_v2``. */
-  type: string
-  category: DeploymentResourceCategory
-  team: string | null
-  provider_id: string
-  display_name: string
-  drift: ResourceDrift
-  // Stage-1 (instance-only)
-  lifecycle: LifecycleStates | null
-  hardware: HardwareSpec | null
-  addresses: NetworkAddress[]
-  // Stage-2 (instance-only, only populated on the detail endpoint)
-  ports?: NetworkPort[] | null
-  security_groups?: SecurityGroupSummary[] | null
-  volumes?: VolumeAttachment[] | null
-  metadata?: Record<string, string> | null
-}
-
-export interface DeploymentResourceListResponse {
-  resources: DeploymentResource[]
-  /** ``true`` when the backend overlaid live OpenStack data;
-   *  ``false`` when ``refresh=false`` was requested. */
-  live: boolean
-}
+export type DeploymentResourceListResponse = Schemas['DeploymentResourceListResponse']
 
 // ----------------------------------------------------------------
 // TASK TYPES
 // ----------------------------------------------------------------
-export interface TaskLogEntry {
-  timestamp: string
-  level: string
-  category?: string
-  message: string
-  [key: string]: any // Allow additional fields like operation, resource_type, etc.
-}
-
-export interface TaskLogsObject {
-  error?: string
-  deployment_id?: string
-  logs?: TaskLogEntry[]
-  tf_state?: any
-  commit_info?: any
-  terraform_outputs?: any
-}
-
-export interface Task {
-  taskId: string
-  deploymentId: string
-  celeryTaskId: string
-  type: TaskType
-  status: TaskStatus
-  started_at: string | null
-  finished_at: string | null
-  logs: string | TaskLogsObject | null
-  tf_state: string | object | null
-  outputs: string | object | null
-  // Live-progress fields. Backend persists them while the worker is
-  // running so a page reload mid-deploy shows the last known phase
-  // and percent without waiting for the next SSE event.
-  current_phase: string | null
-  progress_pct: number | null
-  created_at: string
-}
+// ``logs`` is ``string | null`` in the schema and stays that way (#120, #145): the
+// column is text, the API never returns an object. The worker stores either a plain
+// transcript or ``json.dumps`` of a list of entries, so a string may hold JSON;
+// ``logEntryCount`` and ``prettyJson`` parse it, the type does not promise a shape.
+export type Task = Schemas['TaskResponse']
 
 // ----------------------------------------------------------------
 // AUTH TYPES
@@ -467,6 +341,37 @@ export interface AppDefinition extends App {
   iconStr?: string
 }
 
+// Values of the wizard's variables (frontend#89). Form-side details live in
+// ``views/new-deployment/variableForm.ts``.
+/** A single value: what a text, number or checkbox input holds. */
+export type ScalarValue = string | number | boolean
+
+/**
+ * What a variable can hold, as the author's default (``AppVariable.default``) and
+ * ``draft.variables`` carry it. List entries and map entries are the author's and
+ * are not validated, hence ``unknown``.
+ */
+export type VariableValue = ScalarValue | unknown[] | Record<string, unknown>
+
+/**
+ * Value of one slot of a team- or user-scoped variable (key: team name, or
+ * ``Team-username``). A slot holds what the widgets write (text, number, boolean,
+ * list as comma text) or what an earlier draft stored (a list as array); a
+ * draft is not validated on the way back in, so null and undefined can show up too.
+ */
+export type SlotValue = VariableValue | null | undefined
+
+/** Slot key -> value of a scoped variable. */
+export type SlotMap = Record<string, SlotValue>
+
+/**
+ * A value as it is saved in the draft (``draft.variables`` / ``userInputVar``):
+ * lists as arrays, numbers as numbers. ``undefined`` is a form field that was never
+ * set, ``null`` can only come from an unvalidated slot or earlier draft.
+ */
+export type StoredValue = VariableValue | null | undefined
+export type StoredValues = Record<string, StoredValue>
+
 // Wizard state (the "cart" before submission).
 export type GroupMode = 'one' | 'eachUser' | 'custom'
 
@@ -482,17 +387,30 @@ export interface DeploymentDraft {
   // Step 3: group count
   groupMode: GroupMode
   groupCount: number,
-  userInputVar: Record<string, any> | string // object or JSON string
+  // The variables step saves the JSON text of the changed values; a parsed object
+  // (the initial ``{}``, or one set by hand) is read back as well.
+  userInputVar: StoredValues | string
 
   // Step 4: assignment (which user is in which group).
   // Key = group index (0, 1, 2...), value = array of user IDs.
-  assignments: Record<number, string[]>
+  assignments: string[][]
   releaseTag: string
-  variables: Record<string, any> // parsed/merged variables
+  variables: StoredValues // parsed/merged variables
   version: string
   groupNames: string[]
   variableDefinitions?: AppVariable[] // API definitions for the variables
-  // Wizard-side state for ``@openstack:file:<scope>``-marked variables.
+  // How the chosen version runs (``GET /apps/{id}/runtime``); null until known.
+  runtime?: DeploymentRuntime | null
+  // ``user``: one workload per person, the group step puts everyone in a team of their own.
+  scope?: 'team' | 'user' | null
+  // Pods: containers whose cpu/memory the app lets people choose; undefined until asked.
+  resourceChoices?: ResourceChoice[]
+  // The cpu/memory chosen per container; sent as ``userInputVar.resources``.
+  resources?: Record<string, { cpu: string; memory: string }>
+  // Pods: network settings the app lets people choose (from ``/runtime``) and the choice made.
+  networkChoices?: NetworkChoices
+  network?: NetworkSelection
+  // Wizard-side state for ``file`` variables.
   // Outer key: variable name. Inner key: scope routing token (``"all"``,
   // team name, or ``Team-User`` composite). Flushed verbatim into
   // ``DeploymentCreate.files`` on submit.
@@ -510,6 +428,8 @@ export interface WizardSummary {
 
 export interface AppVariable {
   name: string
+  // A readable title for people. The apps do not send one yet; the wizard then derives a title from ``name``.
+  label?: string
   type: string
   description?: string
   // Backend coerces the HCL default literal to its native Python type
@@ -518,75 +438,23 @@ export interface AppVariable {
   default?: string | number | boolean | unknown[] | Record<string, unknown> | null
   required?: boolean
   source?: 'terraform' | 'packer' | 'unknown'
-  // Value-help metadata, set by the backend when the variable carries an
-  // ``@openstack:<type>[:<mode>][:<multi>]`` marker. Undefined for free-text inputs.
-  osType?: AppVariableOsType
-  // 'id' (UUID) or 'name'; defaults to 'name' for most resource kinds.
-  osMode?: 'id' | 'name'
-  // Multi-select, from the marker or derived from the HCL list/set type.
-  osMulti?: boolean
-  // Scope for ``@openstack:file:<scope>``. Set only when ``osType === 'file'``;
-  // controls whether the wizard renders one FileDropZone, one per team, or one per user.
+  // ``file`` (a file upload) or ``enum`` (one of ``values``); null or
+  // undefined for free-text inputs.
+  osType?: AppVariableOsType | null
+  values?: string[]
+  // Scope of a file variable. Set only when ``osType === 'file'``;
+  // controls whether the wizard offers one file for everybody, one per team, or one per user.
   osScope?: 'all' | 'team' | 'user'
   // Per-variable scope for all variables. 'all' = one shared value, 'team' = one
   // value per team, 'user' = one value per user (slot key ``TeamName-Username``).
   varScope?: 'all' | 'team' | 'user'
-  // Allowed file extensions for file variables; used as the FileDropZone
-  // ``accept`` attribute. The backend rejects other extensions with 422.
+  // Allowed file extensions for file variables; used as the ``accept`` attribute and to check a file
+  // when it is picked. The backend rejects other extensions with 422.
   fileExtensions?: string[]
-  // Marker error set by the backend when a variable's ``@openstack`` marker is
-  // malformed. The frontend shows it as an inline banner and falls back to free text.
-  markerError?: AppVariableMarkerError
-  // Multi-image apps: key of the Packer template this variable belongs to
-  // (for ``source === 'packer'``). Single-template apps use the sentinel
-  // ``"default"``; Terraform variables leave this null/undefined.
-  template_key?: string | null
 }
 
-export interface AppVariableMarkerError {
-  variable: string
-  message: string
-  // ``terraform/variables.tf:42``-style hint pointing app authors to the marker location.
-  location?: string
-  // Stable error codes (e.g. ``MARKER_WHITESPACE``, ``MARKER_UNKNOWN_OS_TYPE``)
-  // set alongside the ``message`` so the frontend can i18n without string matching.
-  code?: string
-}
-
-// ----------------------------------------------------------------
-// OPENSTACK DISPLAY-CACHE TYPES
-// ----------------------------------------------------------------
-/**
- * Return shape of ``useOpenStackResourceCache.getDisplayName``.
- *
- * ``known = true`` means the value was found in the cache and ``name`` is the
- * human-readable label; ``known = false`` means the caller should render the raw value.
- * ``modeMismatch = true`` means the value was found in the other mode (e.g. a UUID
- * stored while the default is a name), which callers can surface as a subtle hint.
- */
-export interface OpenStackDisplayName {
-  name: string
-  known: boolean
-  modeMismatch?: boolean
-}
-
-// List of supported OpenStack resource types. Must stay consistent with:
-//  - backend/app/routers/apps.py (``_OS_TYPES``)
-//  - backend/app/routers/openstack_resources.py (list endpoints)
-//  - frontend/src/api/openstack-resources.api.ts (``OsResourceType``)
-//  - frontend/src/components/OpenStackResourcePicker.vue (render)
-export type AppVariableOsType =
-  | 'network'
-  | 'subnet'
-  | 'flavor'
-  | 'image'
-  | 'keypair'
-  | 'security_group'
-  | 'floating_ip_pool'
-  | 'volume'
-  | 'router'
-  | 'availability_zone'
-  // ``file`` is a pseudo-resource: rendered as a FileDropZone widget that
-  // produces a base64 payload shipped to the backend in ``DeploymentCreate.files``.
-  // ``osScope`` tells the wizard whether to render one zone, one per team, or one per user.
-  | 'file'
+// ``file``: rendered as a FileVariableCard that produces base64 payloads shipped to
+// the backend in ``DeploymentCreate.files``; ``osScope`` tells the wizard whether the
+// file is for the whole deployment, per team, or per user.
+// ``enum`` (appstore.yaml): a choice among ``values``.
+export type AppVariableOsType = 'file' | 'enum'
