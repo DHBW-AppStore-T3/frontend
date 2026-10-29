@@ -61,6 +61,27 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-29 (Epic #139, integrierter Stand auf `dev` 57bfa2a, auf Staging ausgerollt):** gemergt sind #162, #164 (a11y Phase 2 und 3), #165 (Hygiene), #167 (`Task.logs`), #168 (releaseTag, assignments), #169 (Sprachen lazy), #170 (Auth-Randfälle), #171 (Hooks Teil 1), #172 (REST-Guard App-Detail), #173 (Testkonvention, Factories). Gemessen auf dem gemeinsamen Stand: 2366 Tests grün, Coverage 94,98 % Zeilen / 89,34 % Branches (Gate je 85 %), Lint 0/0, `tsc -b`, Build grün.
+
+  | Issue | Stand | Rest |
+  |---|---|---|
+  | #140, #141 | erledigt | – |
+  | #154 | Code erledigt, Tastatur und Toast in echtem Chrome geprüft (gemockte API) | **Screenreader-Abnahme (NVDA/JAWS/VoiceOver) nicht durchgeführt**; Tastaturalternative zum Ziehen (eigenes Issue, falls gewünscht) |
+  | #142 | Teil 1 (15 → 11 Disables) | `useUserSearch`, `useDeploymentRuntime`, Eintrittsladeeffekte; 4 in `useDeploymentDetail` mit #146 |
+  | #143 | Teil 1 (App-Detail, Risikoliste in `claude_docs/decisions/2026-rest-validierung-risikoliste.md`) | Task/Logs, `StoredUserInput`, Deployment-Detail |
+  | #144 | Punkte 1, 2 behoben, übrige begründet belassen (PR #168) | #118 abhaken |
+  | #145 | erledigt (Backend gelesen, kein Objekt-Log) | #120 Teil 1 abhaken; Teil 2 in #143 |
+  | #146 | nicht begonnen | nach #142/#143 |
+  | #147 | 3 von 4 behoben, 1 begründet belassen | echter Login-/Refresh-Pfad nicht mit Zugangsdaten geprüft |
+  | #148 | Sprachen lazy (Erststart -13,1 kB gzip) | `manualChunks` ungemessen |
+  | #149 | Teil 1 (Konvention, Factories) | E2E-Freigabe, `as any` schrittweise |
+  | #150 | erledigt soweit belegt | Branch-Entscheidungen, `js-yaml` mit Linux-npm entfernen |
+
+  **Browserprüfung (Chrome, automatisiert):** Sprachen auf Staging (DE/EN-Start, Wechsel, Reload, gesperrter Sprach-Chunk mit Rückfall auf die andere Sprache, beide gesperrt: App startet mit Schlüsseln statt leerer Seite); `returnUrl`-Validierung auf Staging bis zur Weiterleitung an Keycloak; Karten, Leertaste/Enter und Toast (Pause bei Fokus, Fokusrückgabe, Auto-Ende) lokal mit gemockter API. **Nicht geprüft:** Login mit echtem Konto, 401-Retry gegen echtes Keycloak (alle 401 des Backends kommen aus der Token-Prüfung vor dem Handler, `backend/app/utils/keycloak_auth.py`, daher ist die Wiederholung auch für POST sicher), Screenreader.
+  **Die Browserprüfung fand einen Fehler, den die Unit-Tests nicht fanden:** Login-Seite und Profil schalteten die Sprache direkt um und zeigten Schlüssel, bis die Datei geladen war. Seitdem schaltet nur `switchLocale` um (Guard-Spec `no-direct-switch`).
+  **Sicherheitsbranches:** `fix/lti-one-time-code` und `fix/safe-links-and-deactivated-app` sind per `git patch-id` identisch mit den gemergten PRs #48 und #47; es fehlt nichts. Die Branches sind veraltet und können mit Freigabe gelöscht werden (nicht gelöscht).
+  **Fallen:** Issue-Nummern wie `#144` in `src` (auch Tests) schlagen `colors.spec.ts` an (Hex-Farbe), "issue 144" schreiben; `colors.spec.ts` läuft unter Last gelegentlich in das 5-s-Timeout (einzeln grün); `npm uninstall` unter Windows verwirft `libc`-Felder im Lockfile; ein laufender `vite`-Prozess blockiert `npm ci` (EPERM auf die Rollup-Binärdatei); ein globales Registrieren der App-i18n in `tests/setup.ts` bricht die Key-Echo-Specs (stattdessen der Alias `@/i18n` in `vitest.config.ts`).
+
 - **2026-10-29 (Übersicht nennt die App, „App nicht gefunden" behoben; Folge von #133 und #136):** Die Übersicht zeigte bei jeder App „App nicht gefunden für n Personen"
   (auf Staging bei pgAdmin, Web-LaTeX und windows-matlab-app gesehen). **Ursache:** sie suchte die App in `useAppStore.apps`, und diese Liste füllt nur `fetchApps()`; der Katalog (`AppsView`) hält seine Liste
   lokal, auf dem Weg „Katalog, Details, Deployen, Assistent" ist sie also leer. Bei Apps mit Variablen war das schon immer so; bei Apps **ohne** Variablen füllte früher der Übersichts-Hook (`useSummaryVariables`) die Liste nebenbei,
