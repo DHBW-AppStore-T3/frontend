@@ -412,6 +412,24 @@ describe('AppsDetailView', () => {
     expect(screen.getByTestId('where').textContent).toBe('/apps')
   })
 
+  it('navigiert nach /apps, auch wenn der Assistent zuvor besucht wurde', async () => {
+    renderView(['/apps', '/apps/app-123', '/deployment/new/config', '/apps/app-123'])
+    await screen.findByRole('heading', { name: 'Test App' })
+
+    await userEvent.click(screen.getByRole('button', { name: /AppsDetailView\.backToOverview/ }))
+
+    expect(screen.getByTestId('where').textContent).toBe('/apps')
+  })
+
+  it('navigiert nach /apps auch bei Deep Link ohne Verlauf', async () => {
+    renderView(['/apps/app-123'])
+    await screen.findByRole('heading', { name: 'Test App' })
+
+    await userEvent.click(screen.getByRole('button', { name: /AppsDetailView\.backToOverview/ }))
+
+    expect(screen.getByTestId('where').textContent).toBe('/apps')
+  })
+
   // --- store tab ---
   describe('store tab', () => {
     beforeEach(() => setAdminView())

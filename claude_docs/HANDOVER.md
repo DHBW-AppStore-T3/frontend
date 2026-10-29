@@ -48,6 +48,13 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
    (`clear()`), trifft auch Hinweise, die ihm nicht gehören (frontend#102).
 7. **Effekte sind nicht "fertig", wenn das DOM da ist:** `findBy...` löst beim Einfügen des Knotens auf; ein `useEffect`
    (Log, Analytics) kann erst danach laufen. Auf den Effekt selbst mit `waitFor` warten.
+8. **Node 25 und `localStorage`:** Node 25 legt ein globales `localStorage` ohne `setItem` an. `execArgv: ['--no-experimental-webstorage']`
+   in `vitest.config.ts` (in Vitest 4 eine Top-Level-Option) entfernt es, `dev` läuft damit auf Node 25.9 ohne Patch grün; das Flag
+   nicht entfernen. Zeigt lokal ein Typ- oder Testfehler, den die CI nicht zeigt, zuerst `npm ci` (eine veraltete `node_modules` mit
+   Vitest 3.2.7 statt 4.1.12 hat das in frontend#134 vorgetäuscht).
+9. **Lokaler Browser-Check:** Die Seed-Apps im Docker-Dev-Stack sind nicht deploybar (Version fehlt oder `appstore.yaml` ungültig,
+   „Jetzt Deployen" gesperrt). Um den Assistenten zu erreichen, in der Seite nur `GET /apps/<id>/runtime` per `XMLHttpRequest`-Patch
+   fälschen und danach ausschließlich per Klick navigieren (ein Neuladen verwirft den Patch). Nie „Deployen" im letzten Schritt klicken.
 
 ---
 
@@ -76,6 +83,15 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   (2) Schritt 1 und 2 laden jetzt beim Betreten: Specs dieser Ansichten mit `appId` im Entwurf brauchen einen Mock für `fetchAppVariables` bzw. `appApi.getVariables`
   (Netzwerk-Guard). (3) `npm ci` nach dem Branch-Wechsel, sonst fehlt `eslint-plugin-jsx-a11y` (aus #153). **Nicht im lokalen Browser geprüft** (`npm run dev` braucht den
   Docker-Stack und einen Keycloak-Login); Prüfung auf Staging nach dem Merge, Ergebnis in der PR.
+- **2026-10-29 (Zurück zur Übersicht führt fest nach `/apps`, frontend#134):** `AppsDetailView.tsx` navigiert mit
+  `navigate(paths.apps)` statt `navigate(-1)`. Ursache: „Zurück" im Assistenten **fügt** einen Verlaufseintrag hinzu
+  (`/apps/<id>` → `/deployment/new/config` → `/apps/<id>`), `navigate(-1)` landete deshalb wieder im Assistenten; bei einem Deep Link
+  gab es keinen Vorgänger. `NewDeploymentConfigView.handleBack` bleibt unverändert (kein `navigate(-1)`, wegen Deep Links).
+  **Tests:** neue Datei `tests/unit/router/wizard-back-navigation.spec.tsx` (echte Routen und Views, `createMemoryRouter(appRoutes, …)`:
+  Vollablauf mit Assistent, ohne Assistent, Deep Link) und zwei neue Fälle in `AppsDetailView.spec.tsx`. Gegen den ungefixten
+  `dev`-Stand sind 4 Fälle rot (der Fall ohne Assistent war schon grün). **Browser:** lokal geprüft (Docker-Dev-Stack, Admin): ohne
+  Assistent, mit Assistent (2×) und per Deep Link endet „Zurück zur Übersicht" auf `/apps`. **Nicht geändert:** `tests/setup.ts` und
+  `vitest.config.ts` (siehe Fallstrick 8).
 - **2026-10-28 (Deployments-Liste ohne Version und Laufzeit, Nachtrag zu frontend#56):** Auf `/deployments` stehen Version
   (`releaseTag`) und Laufzeit-Badge (`runtime-badge`, PODS/VM) einer Karte nur noch in `<RoleGate adminView>`: Dozenten,
   Studierende und Admins ohne Admin-Ansicht sehen sie nicht. Name, App, Status und Datum bleiben; das Datum trägt `ml-auto` und
