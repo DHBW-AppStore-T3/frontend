@@ -20,7 +20,7 @@ vi.mock('@/stores/auth.store', () => ({
 }))
 vi.mock('@/api/course.api', () => ({ courseApi: { list: vi.fn(), getById: vi.fn() } }))
 vi.mock('@/api/user.api', () => ({ userApi: { list: vi.fn(), search: vi.fn(), getById: vi.fn() } }))
-vi.mock('@/api/app.api', () => ({ appApi: { getRuntime: vi.fn(), getVariables: vi.fn(), list: vi.fn() } }))
+vi.mock('@/api/app.api', () => ({ appApi: { getRuntime: vi.fn(), getVariables: vi.fn(), list: vi.fn(), getById: vi.fn() } }))
 
 import { appRoutes } from '@/router'
 import { appApi } from '@/api/app.api'
@@ -113,9 +113,11 @@ const stepLabels = () => ['config', 'assignment', 'vars', 'summary'].filter((k) 
 beforeEach(() => {
   vi.clearAllMocks()
   startWizard()
-  useAppStore.setState({ apps: [] })
+  useAppStore.setState({ apps: [], currentApp: null })
   vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'kubernetes', scope: 'team' } } as never)
   vi.mocked(appApi.list).mockResolvedValue({ data: [] } as never)
+  // The catalogue keeps its own list: the summary has to ask for the app of the draft.
+  vi.mocked(appApi.getById).mockResolvedValue({ data: { appId: 'app-1', name: 'Lab App', image: null } } as never)
   vi.mocked(appApi.getVariables).mockResolvedValue({ data: [] } as never)
   vi.mocked(courseApi.list).mockResolvedValue({ data: [] } as never)
   vi.mocked(userApi.list).mockResolvedValue({ data: [john, jane] } as never)
@@ -135,6 +137,9 @@ describe('wizard flow: an app without variables, choices and network', () => {
     await assignAndContinue()
     await at(router, '/deployment/new/summary')
     expect(stepLabels()).toEqual(['config', 'assignment', 'summary'])
+    // With the store's list empty the app is asked for by id, once.
+    await waitFor(() => expect(appApi.getById).toHaveBeenCalledExactlyOnceWith('app-1'))
+    expect(useAppStore.getState().currentApp).toMatchObject({ name: 'Lab App' })
 
     await userEvent.click(screen.getByRole('button', { name: /deployment\.actions\.back/ }))
     await at(router, '/deployment/new/teams')
