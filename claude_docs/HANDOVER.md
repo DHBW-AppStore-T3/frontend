@@ -32,8 +32,9 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 1. **Typensicherheit:** `tsc -b` schlägt bei fehlerhaften Typen im CI Build fehl; Typen vor dem Commit immer lokal prüfen.
 2. **Coverage Gate:** Der Job `🧪 Test` in `ci.yml` verlangt auf **jedem** Branch und PR mindestens 85,0 % Zeilen (`MIN_COVERAGE`,
-   Metrik `total.lines.pct`). Die Linux-CI misst ca. 91,3 %. Wert immer mindestens 2 Punkte unter dem CI-Ist-Wert halten und
-   `CLAUDE.md` mit anpassen.
+   Metrik `total.lines.pct`) **und** mindestens 85,0 % Branches (`MIN_BRANCH_COVERAGE`, Metrik `total.branches.pct`); beide Werte
+   müssen gelten. Die Linux-CI misst auf `dev` ca. 94,5 % Zeilen und 88,4 % Branches. Jeden Wert immer mindestens 2 Punkte unter dem
+   CI-Ist-Wert halten und `CLAUDE.md` mit anpassen.
 3. **Security-Audit:** `npm audit --omit=dev` ist 0 und blockiert in der CI. `npm audit` (mit Dev) meldet 2 bewusst akzeptierte Funde
    (`postcss-selector-parser`, `@tailwindcss/typography`, beide moderate; Tailwind 3). Begründung je Fund und Stand nach den Upgrades in
    `claude_docs/decisions/2026-dev-dependency-audit.md`.
