@@ -1,3 +1,4 @@
+import { useRef, type FocusEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useToastStore, type Toast as ToastItem } from '@/stores/toast.store'
@@ -30,6 +31,34 @@ export default function Toast() {
   const { t } = useTranslation()
   const toasts = useToastStore((s) => s.toasts)
   const removeToast = useToastStore((s) => s.removeToast)
+  const pauseToast = useToastStore((s) => s.pauseToast)
+  const resumeToast = useToastStore((s) => s.resumeToast)
+  const containerRef = useRef<HTMLDivElement>(null)
+  // Where focus was before it entered a toast: the place to go back to when the
+  // last toast is closed from the keyboard.
+  const returnFocusRef = useRef<HTMLElement | null>(null)
+
+  const insideContainer = (node: EventTarget | null) => node instanceof Node && !!containerRef.current?.contains(node)
+
+  const rememberFocusOrigin = (e: FocusEvent) => {
+    if (!insideContainer(e.relatedTarget) && e.relatedTarget instanceof HTMLElement) {
+      returnFocusRef.current = e.relatedTarget
+    }
+  }
+
+  // Closing a toast that holds focus would drop focus on <body>. It goes to the
+  // next toast (else the previous one), and when none is left back to where it came from.
+  const closeToast = (e: MouseEvent<HTMLButtonElement>, id: string) => {
+    e.stopPropagation()
+    const card = e.currentTarget.closest('.toast')
+    const hadFocus = !!card?.contains(document.activeElement)
+    const neighbour = (card?.nextElementSibling ?? card?.previousElementSibling)?.querySelector<HTMLElement>('.toast-close')
+    removeToast(id)
+    if (!hadFocus) return
+    const origin = returnFocusRef.current
+    if (neighbour) neighbour.focus()
+    else if (origin?.isConnected) origin.focus()
+  }
 
   // `aria-atomic="false"` and `aria-relevant="additions"`: a new message is read
   // alone, earlier ones are not repeated, and removing a toast says nothing.
@@ -38,14 +67,27 @@ export default function Toast() {
 
   return createPortal(
     <>
-      <div className="toast-container">
+      <div className="toast-container" ref={containerRef}>
         {toasts.map((toast) => (
           // Clicking anywhere on the toast closes it: a mouse shortcut. The keyboard
           // and screen-reader way to the same action is the close button below.
+          // While the pointer is over a toast or focus is inside it, its timer stands still.
+          // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- mouse shortcut for the close button
           <div
             key={toast.id}
             className={`toast toast-${toast.type}`}
             onClick={() => removeToast(toast.id)}
+            onMouseEnter={() => pauseToast(toast.id)}
+            onMouseLeave={(e) => {
+              if (!e.currentTarget.contains(document.activeElement)) resumeToast(toast.id)
+            }}
+            onFocus={(e) => {
+              rememberFocusOrigin(e)
+              pauseToast(toast.id)
+            }}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) resumeToast(toast.id)
+            }}
           >
             <div className="toast-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -59,10 +101,7 @@ export default function Toast() {
               type="button"
               className="toast-close"
               aria-label={t('toast.close')}
-              onClick={(e) => {
-                e.stopPropagation()
-                removeToast(toast.id)
-              }}
+              onClick={(e) => closeToast(e, toast.id)}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d={CLOSE_PATH} clipRule="evenodd" />

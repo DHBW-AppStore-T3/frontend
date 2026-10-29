@@ -24,12 +24,14 @@ export default function Modal({ show, onClose, header, title, body, children, fo
   if (!show) return null
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- backdrop click is a mouse shortcut; Escape and the close button live in useOverlay
     <div
       className="fixed inset-0 bg-black/10 flex items-center justify-center z-50 p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- keeps clicks inside the dialog from reaching ancestors; not an action */}
       <div
         ref={containerRef}
         role="dialog"
