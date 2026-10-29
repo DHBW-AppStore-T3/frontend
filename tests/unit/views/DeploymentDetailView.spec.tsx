@@ -142,7 +142,8 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
   status: 'success',
   started_at: '2026-06-08T12:10:00Z',
   finished_at: '2026-06-08T12:20:00Z',
-  logs: { logs: [{ timestamp: '2026-06-08T12:15:00Z', level: 'INFO', message: 'hello from the worker' }] },
+  // As the worker stores it: json.dumps of a list of entries, delivered as a string.
+  logs: JSON.stringify([{ timestamp: '2026-06-08T12:15:00Z', level: 'INFO', message: 'hello from the worker' }]),
   current_phase: 'OUTPUTS_AND_CLEANUP',
   progress_pct: 100,
   created_at: '2026-06-08T12:09:00Z',
