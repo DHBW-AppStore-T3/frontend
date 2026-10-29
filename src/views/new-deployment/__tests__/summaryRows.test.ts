@@ -284,6 +284,7 @@ describe('the card and step 3 answer the same question from one place (issue 133
     ],
     ['C: Windows VM without a choice (v2.0.0)', { runtime: 'kubevirt-vm', scope: 'user' }, []],
     ['D: text variables', {}, [textVar()]],
+    ['pods where the person chooses the scope', { scope: 'user', scopeChoice: true }, []],
     [
       'pods with a network switch and two teams',
       { networkChoices: { podNetwork: { default: false } }, groupCount: 2 },

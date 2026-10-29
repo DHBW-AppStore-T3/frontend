@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 
 export type WorkloadScope = 'user' | 'team'
 
-interface Props {
+/** The scope control of an "expert settings" panel: the current choice and what happens on a change. */
+export interface ScopeChoiceProps {
   value: WorkloadScope
   onChange: (next: WorkloadScope) => void
 }
@@ -12,13 +13,13 @@ const OPTIONS: WorkloadScope[] = ['user', 'team']
 
 /**
  * What one environment is: one per person, or one per group. Only for apps whose author lets the person
- * deploying choose (``scopeChoice``); the grouping below is free either way.
+ * deploying choose (``scopeChoice``); it sits among the expert settings, the grouping is free either way.
  */
-export default function ScopeChoice({ value, onChange }: Props) {
+export default function ScopeChoice({ value, onChange }: ScopeChoiceProps) {
   const { t } = useTranslation()
   const name = useId()
   return (
-    <fieldset className="mb-5" data-testid="scope-choice">
+    <fieldset data-testid="scope-choice">
       <legend className="text-sm font-semibold text-textHeading">{t('deployment.assignment.scopeChoice.title')}</legend>
       <p className="mt-0.5 text-xs text-textFaint">{t('deployment.assignment.scopeChoice.help')}</p>
       <div className="mt-2 flex flex-wrap gap-3">

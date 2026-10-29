@@ -764,7 +764,7 @@ export default {
       perPersonConstraintTitle: "Per-person app",
       scopeChoice: {
         title: "What is one environment?",
-        help: "Group the people below as you like either way. This decides whether each person or each group gets an environment.",
+        help: "You chose the groups freely either way. This decides whether each person or each group gets an environment.",
         user: { label: "One per person", text: "Everyone gets an environment of their own, whatever the groups." },
         team: { label: "One per group", text: "Each group shares one environment (one login for the group)." },
       },

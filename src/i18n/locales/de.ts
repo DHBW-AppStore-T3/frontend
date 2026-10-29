@@ -767,7 +767,7 @@ export default {
       perPersonConstraintTitle: "App läuft je Person",
       scopeChoice: {
         title: "Was ist eine Umgebung?",
-        help: "Die Personen unten können Sie in beiden Fällen beliebig gruppieren. Das hier entscheidet, ob jede Person oder jede Gruppe eine Umgebung bekommt.",
+        help: "Die Gruppen haben Sie in beiden Fällen frei gewählt. Das hier entscheidet, ob jede Person oder jede Gruppe eine Umgebung bekommt.",
         user: { label: "Eine je Person", text: "Jede Person bekommt eine eigene Umgebung, unabhängig von den Gruppen." },
         team: { label: "Eine je Gruppe", text: "Jede Gruppe teilt sich eine Umgebung (ein Zugang für die Gruppe)." },
       },

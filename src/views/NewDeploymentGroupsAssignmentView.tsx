@@ -17,7 +17,6 @@ import { useDeploymentStore } from '@/stores/deployment.store'
 import { useDeploymentConstraints } from '@/composables/useDeploymentConstraints'
 import { paths } from '@/router/paths'
 import TeamColumn from './new-deployment/TeamColumn'
-import ScopeChoice from './new-deployment/ScopeChoice'
 import UnassignedPool from './new-deployment/UnassignedPool'
 import { useStudentNames } from './new-deployment/useStudentNames'
 import { ensureVariableDefinitions, resolveNeedsVariablesStep } from './new-deployment/variableDefinitions'
@@ -205,12 +204,6 @@ export default function NewDeploymentGroupsAssignmentView() {
 
         {/* Controls */}
         <div className="p-6 bg-white border-b-2 border-borderSubtle">
-          {draft.scopeChoice ? (
-            <ScopeChoice
-              value={draft.scope === 'team' ? 'team' : 'user'}
-              onChange={(scope) => useDeploymentStore.getState().updateDraft({ scope })}
-            />
-          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex gap-2">
               {modeButton(
