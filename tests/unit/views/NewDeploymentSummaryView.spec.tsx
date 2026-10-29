@@ -13,7 +13,7 @@ function Where() {
   return <div data-testid="where">{useLocation().pathname}</div>
 }
 
-const renderView = () =>
+const renderView = ({ real = false } = {}) =>
   renderWithProviders(
     <>
       <Routes>
@@ -22,13 +22,13 @@ const renderView = () =>
       </Routes>
       <Where />
     </>,
-    { route: '/deployment/new/summary' },
+    { route: '/deployment/new/summary', realI18n: real },
   )
 
 const definitions = [
   { name: 'region', source: 'terraform', default: 'us-east' },
   { name: 'instance_type', source: 'terraform', default: 't2.small' },
-  { name: 'ssh_key', source: 'terraform', osType: 'file', osScope: 'user' },
+  { name: 'ssh_key', source: 'terraform', osType: 'file', osScope: 'all' },
 ]
 
 const toasts = () => useToastStore.getState().toasts.map((t) => [t.type, t.message])
@@ -49,7 +49,7 @@ function seed(over: Record<string, unknown> = {}) {
     assignments: [['u1']],
     groupNames: ['Team Alpha'],
     variables: { region: 'eu-central-1', instance_type: 't2.micro' },
-    fileUploads: { ssh_key: { u1: { name: 'id_rsa.pub', size: 1024, content_b64: 'x', content_type: 't' } } },
+    fileUploads: { ssh_key: { all: { name: 'id_rsa.pub', size: 1024, content_b64: 'x', content_type: 't' } } },
     variableDefinitions: definitions as any,
     ...over,
   } as any)
@@ -58,26 +58,96 @@ function seed(over: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   useToastStore.setState({ toasts: [] })
-  useAppStore.setState({ apps: [{ appId: 'app-1', name: 'Test App', image: 'test.png' } as any] })
+  useAppStore.setState({
+    apps: [{ appId: 'app-1', name: 'Test App', image: 'test.png' } as any],
+    currentApp: null,
+    fetchAppById: vi.fn().mockResolvedValue(undefined),
+  } as any)
   seed()
 })
 
 describe('NewDeploymentSummaryView', () => {
-  it('zeigt die Basiskonfiguration, Teams, App-Einstellungen und Datei-Variablen', async () => {
-    renderView()
+  it('zeigt den Satz, die Teilnehmenden und die Konfiguration mit Werten und Datei', async () => {
+    renderView({ real: true })
 
-    expect(await screen.findByText('My Deployment')).toBeInTheDocument()
-    expect(screen.getByText('Test App')).toBeInTheDocument()
+    // "was wird gestartet": ein Satz, Name, Version
+    expect(await screen.findByRole('heading', { level: 2, name: 'Test App für 1 Person' })).toBeInTheDocument()
+    expect(screen.getByText('My Deployment')).toBeInTheDocument()
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
-    expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0)
-    expect(screen.getByText('Team Alpha')).toBeInTheDocument()
-    // rows with the draft values
+    // Teilnehmende: die Person steht einmal da
+    expect(screen.getAllByText('John Doe')).toHaveLength(1)
+    // Konfiguration: Werte des Entwurfs und die Datei, mit Größe und für wen sie gilt
     expect(screen.getByText('eu-central-1')).toBeInTheDocument()
     expect(screen.getByText('t2.micro')).toBeInTheDocument()
-    // file summary: name + size, scope
     expect(screen.getByText('id_rsa.pub')).toBeInTheDocument()
-    expect(screen.getByText('1 KB')).toBeInTheDocument()
-    expect(screen.getByText(/deployment\.summary\.scope/)).toBeInTheDocument()
+    expect(screen.getByText(/1 KB · gilt für 1 Person/)).toBeInTheDocument()
+  })
+
+  it('zeigt Titel und Untertitel der Zusammenfassung', async () => {
+    renderView()
+    expect(await screen.findByRole('heading', { level: 2, name: 'deployment.summary.title' })).toBeInTheDocument()
+    expect(screen.getByText('deployment.summary.subtitle')).toBeInTheDocument()
+  })
+
+  describe('Name der App (der Katalog füllt die Liste im App-Store nicht)', () => {
+    /** The catalogue keeps its own list: on the way into the wizard the store holds no apps. */
+    const fromCatalogue = (fetchAppById: (id: string) => Promise<void>) =>
+      useAppStore.setState({ apps: [], currentApp: null, fetchAppById: vi.fn(fetchAppById) } as any)
+
+    it('holt die App einzeln und nennt sie im Satz, wenn die Liste leer ist', async () => {
+      fromCatalogue(async () => useAppStore.setState({ currentApp: { appId: 'app-1', name: 'pgAdmin', image: null } as any }))
+      renderView({ real: true })
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'pgAdmin für 1 Person' })).toBeInTheDocument()
+      expect(useAppStore.getState().fetchAppById).toHaveBeenCalledExactlyOnceWith('app-1')
+    })
+
+    it('zeigt das Skelett, solange die App geladen wird, statt kurz "App nicht gefunden"', async () => {
+      let release!: () => void
+      fromCatalogue(
+        () =>
+          new Promise<void>((resolve) => {
+            release = () => {
+              useAppStore.setState({ currentApp: { appId: 'app-1', name: 'pgAdmin', image: null } as any })
+              resolve()
+            }
+          }),
+      )
+      renderView({ real: true })
+
+      expect(await screen.findByTestId('summary-loading')).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getAllByTestId('summary-skeleton').length).toBeGreaterThan(0)
+      expect(screen.queryByText(/App nicht gefunden/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deployen' })).toBeDisabled()
+
+      release()
+      expect(await screen.findByRole('heading', { level: 2, name: 'pgAdmin für 1 Person' })).toBeInTheDocument()
+    })
+
+    it('sagt erst "App nicht gefunden", wenn auch die Einzelabfrage die App nicht kennt', async () => {
+      fromCatalogue(async () => {})
+      renderView({ real: true })
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'App nicht gefunden für 1 Person' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deployen' })).toBeEnabled()
+    })
+
+    it('fragt nicht nach, wenn die Liste die App kennt', async () => {
+      renderView({ real: true })
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Test App für 1 Person' })).toBeInTheDocument()
+      expect(useAppStore.getState().fetchAppById).not.toHaveBeenCalled()
+    })
+
+    it('zeigt das Bild der App, wenn sie eines hat', async () => {
+      fromCatalogue(
+        async () => useAppStore.setState({ currentApp: { appId: 'app-1', name: 'pgAdmin', image: 'data:image/png;base64,AAAA' } as any }),
+      )
+      const { container } = renderView({ real: true })
+
+      await screen.findByRole('heading', { level: 2, name: 'pgAdmin für 1 Person' })
+      expect(container.querySelector('[data-testid=summary-hero] img')).toHaveAttribute('src', 'data:image/png;base64,AAAA')
+    })
   })
 
   it('zeigt die Version "latest" ohne Release-Tag', async () => {
@@ -86,12 +156,25 @@ describe('NewDeploymentSummaryView', () => {
     expect(await screen.findByText('latest')).toBeInTheDocument()
   })
 
-  it('geht über "Zurück" und "Bearbeiten" zu den Variablen', async () => {
+  it('geht über "Zurück" zu den Variablen', async () => {
     renderView()
-    await screen.findByText('My Deployment')
+    await screen.findByTestId('summary-hero')
 
     await userEvent.click(screen.getByRole('button', { name: /deployment\.actions\.back/ }))
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables')
+  })
+
+  it.each([
+    ['deployment.summary.edit.start', '/deployment/new/config'],
+    ['deployment.summary.edit.teams', '/deployment/new/teams'],
+    ['deployment.summary.edit.variables', '/deployment/new/variables'],
+  ])('führt "Bearbeiten" (%s) zum passenden Schritt', async (label, path) => {
+    renderView()
+    await screen.findByTestId('summary-hero')
+
+    await userEvent.click(screen.getByRole('button', { name: label }))
+
+    expect(screen.getByTestId('where')).toHaveTextContent(path)
   })
 
   it('sendet die Auswahl unverändert (die Auswahl ist bereits nach User-ID) und leitet bei Erfolg zur Liste', async () => {
@@ -103,7 +186,7 @@ describe('NewDeploymentSummaryView', () => {
     })
     useDeploymentStore.setState({ submitDraft } as any)
     renderView()
-    await screen.findByText('My Deployment')
+    await screen.findByTestId('summary-hero')
 
     await userEvent.click(deployButton())
 
@@ -123,7 +206,7 @@ describe('NewDeploymentSummaryView', () => {
       }),
     } as any)
     renderView()
-    await screen.findByText('My Deployment')
+    await screen.findByTestId('summary-hero')
 
     await userEvent.click(deployButton())
 
@@ -140,7 +223,7 @@ describe('NewDeploymentSummaryView', () => {
   ])('nennt den Grund einer Ablehnung durch die API (%j)', async (detail, key) => {
     useDeploymentStore.setState({ submitDraft: vi.fn().mockRejectedValue({ response: { data: { detail } } }) } as any)
     renderView()
-    await screen.findByText('My Deployment')
+    await screen.findByTestId('summary-hero')
 
     await userEvent.click(deployButton())
 
@@ -155,7 +238,7 @@ describe('NewDeploymentSummaryView', () => {
       const runtime = await screen.findByTestId('summary-runtime')
       expect(runtime).toHaveTextContent('runtime.kubernetes')
       expect(screen.queryByText('deployment.summary.packerVars')).not.toBeInTheDocument()
-      expect(screen.getByText('deployment.summary.appSettings')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-settings')).toBeInTheDocument()
     })
 
   })
@@ -165,7 +248,7 @@ describe('NewDeploymentSummaryView', () => {
     const submitDraft = vi.fn(() => new Promise((resolve) => (release = resolve)))
     useDeploymentStore.setState({ submitDraft } as any)
     renderView()
-    await screen.findByText('My Deployment')
+    await screen.findByTestId('summary-hero')
 
     await userEvent.click(deployButton())
     await waitFor(() => expect(submitDraft).toHaveBeenCalledTimes(1))
@@ -201,19 +284,23 @@ describe('NewDeploymentSummaryView', () => {
     const skipped = (over: Record<string, unknown> = {}) =>
       seed({ variableDefinitions: [], variables: {}, fileUploads: {}, ...over })
 
-    it('zeigt die Karte "3 — variables" mit "Bearbeiten" nicht', async () => {
+    it('zeigt die Karte "Variablen-Konfiguration" mit "Bearbeiten" nicht', async () => {
       skipped()
       renderView()
-      await screen.findByText('My Deployment')
+      await screen.findByTestId('summary-hero')
 
       expect(screen.queryByText('deployment.summary.variablesConfigTitle')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /deployment\.summary\.editBtn/ })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('summary-settings')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'deployment.summary.edit.variables' })).not.toBeInTheDocument()
+      // die beiden anderen Karten bleiben, jede mit ihrem "Bearbeiten"
+      expect(screen.getByRole('button', { name: 'deployment.summary.edit.start' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'deployment.summary.edit.teams' })).toBeInTheDocument()
     })
 
     it('führt "Zurück" zur Verteilung', async () => {
       skipped()
       renderView()
-      await screen.findByText('My Deployment')
+      await screen.findByTestId('summary-hero')
 
       await userEvent.click(screen.getByRole('button', { name: /deployment\.actions\.back/ }))
 
@@ -223,7 +310,7 @@ describe('NewDeploymentSummaryView', () => {
     it('zeigt in der Leiste drei Schritte', async () => {
       skipped()
       renderView()
-      await screen.findByText('My Deployment')
+      await screen.findByTestId('summary-hero')
 
       expect(screen.queryByText('deployment.steps.vars')).not.toBeInTheDocument()
       expect(screen.getByText('deployment.steps.summary')).toBeInTheDocument()
@@ -234,7 +321,7 @@ describe('NewDeploymentSummaryView', () => {
       useAppStore.setState({ fetchAppVariables } as any)
       skipped()
       renderView()
-      await screen.findByText('My Deployment')
+      await screen.findByTestId('summary-hero')
 
       expect(fetchAppVariables).not.toHaveBeenCalled()
       expect(screen.queryByText('deployment.summary.loadingConfig')).not.toBeInTheDocument()
@@ -247,26 +334,34 @@ describe('NewDeploymentSummaryView', () => {
         ],
       })
       renderView()
-      await screen.findByText('My Deployment')
+      await screen.findByTestId('summary-hero')
 
       expect(screen.getByText('deployment.summary.variablesConfigTitle')).toBeInTheDocument()
     })
 
     it('behält Karte, Leiste und "Zurück" zu den Variablen, wenn die App Variablen hat', async () => {
       renderView()
-      await screen.findByText('My Deployment')
+      await screen.findByTestId('summary-hero')
 
       expect(screen.getByText('deployment.summary.variablesConfigTitle')).toBeInTheDocument()
       expect(screen.getByText('deployment.steps.vars')).toBeInTheDocument()
-      await userEvent.click(screen.getByRole('button', { name: /deployment\.summary\.editBtn/ }))
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.summary.edit.variables' }))
       expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables')
     })
   })
 
-  describe('Experteneinstellungen', () => {
+  describe('Rechenressourcen und Netzwerk (Entscheidung 5: das Ergebnis zeigen, nicht nur die Abweichung)', () => {
     const choices = { internet: { default: false }, podNetwork: { default: false } }
+    const vmChoice = {
+      container: 'vm',
+      cpu: { default: '4', min: '2', max: '8' },
+      memory: { default: '8Gi', min: '4Gi', max: '16Gi' },
+    }
     const pods = (network: Record<string, boolean>, over: Record<string, unknown> = {}) =>
       seed({
+        variableDefinitions: [],
+        variables: {},
+        fileUploads: {},
         runtime: 'kubernetes',
         groupCount: 2,
         groupNames: ['Team A', 'Team B'],
@@ -275,34 +370,78 @@ describe('NewDeploymentSummaryView', () => {
         ...over,
       })
 
-    it('zeigt nur die vom Default abweichende Einstellung', async () => {
-      pods({ internet: true, podNetwork: false })
-      renderView()
-      const line = await screen.findByTestId('summary-network-internet')
-      expect(line).toHaveTextContent('deployment.network.internet.label')
-      expect(line).toHaveTextContent('deployment.network.summaryOn')
-      expect(screen.queryByTestId('summary-network-podNetwork')).toBeNull()
+    it('zeigt den Internetzugriff auch im Standardfall', async () => {
+      pods({ internet: false, podNetwork: false })
+      renderView({ real: true })
+      const row = await screen.findByTestId('summary-row-network-internet')
+      expect(row).toHaveTextContent('Internetzugriff')
+      expect(row).toHaveTextContent('Gesperrt')
     })
 
-    it('zeigt nichts, wenn alles dem Default entspricht', async () => {
-      pods({ internet: false, podNetwork: false })
-      renderView()
-      await screen.findByText('My Deployment')
-      expect(screen.queryByTestId('summary-network')).toBeNull()
+    it('zeigt den gewählten Wert, wenn er vom Standard abweicht', async () => {
+      pods({ internet: true, podNetwork: false })
+      renderView({ real: true })
+      expect(await screen.findByTestId('summary-row-network-internet')).toHaveTextContent('Erlaubt')
     })
 
     it('nennt bei einer VM-App „Vernetzte Desktops“, bei Pods weiter „Vernetzte Pods“', async () => {
       pods({ internet: false, podNetwork: true }, { runtime: 'kubevirt-vm' })
-      const vm = renderView()
-      const vmLine = await screen.findByTestId('summary-network-podNetwork')
-      expect(vmLine).toHaveTextContent('deployment.vm.pods.label')
-      expect(vmLine).not.toHaveTextContent('deployment.network.podNetwork.label')
+      const vm = renderView({ real: true })
+      expect(await screen.findByTestId('summary-row-network-podNetwork')).toHaveTextContent('Vernetzte Desktops')
       vm.unmount()
 
       pods({ internet: false, podNetwork: true })
+      renderView({ real: true })
+      expect(await screen.findByTestId('summary-row-network-podNetwork')).toHaveTextContent('Vernetzte Pods')
+    })
+
+    it('zeigt die gewählte Rechenleistung, die früher in der Übersicht fehlte', async () => {
+      pods(
+        { internet: false },
+        {
+          runtime: 'kubevirt-vm',
+          scope: 'user',
+          networkChoices: { internet: { default: false } },
+          resourceChoices: [vmChoice],
+          resources: { vm: { cpu: '6', memory: '12Gi' } },
+        },
+      )
+      renderView({ real: true })
+
+      const row = await screen.findByTestId('summary-row-resources')
+      expect(row).toHaveTextContent('Rechenressourcen')
+      expect(row).toHaveTextContent('Angepasst')
+      expect(row).toHaveTextContent('6')
+      expect(row).toHaveTextContent('12')
+    })
+  })
+
+  describe('Laden', () => {
+    it('zeigt Skelettkarten statt eines Spinners und sperrt "Deployen"', async () => {
+      seed({ variableDefinitions: undefined })
+      let release!: (value: unknown) => void
+      useAppStore.setState({ fetchAppVariables: vi.fn(() => new Promise((resolve) => (release = resolve))) } as any)
       renderView()
-      const podLine = await screen.findByTestId('summary-network-podNetwork')
-      expect(podLine).toHaveTextContent('deployment.network.podNetwork.label')
+
+      expect(await screen.findByTestId('summary-loading')).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getAllByTestId('summary-skeleton').length).toBeGreaterThanOrEqual(2)
+      expect(screen.getByText('deployment.summary.loadingConfig')).toHaveClass('sr-only')
+      expect(deployButton()).toBeDisabled()
+      expect(screen.queryByTestId('summary-hero')).not.toBeInTheDocument()
+
+      // Settle the request: the shared loader remembers an unfinished one across tests.
+      release([])
+      await screen.findByTestId('summary-hero')
+    })
+
+    it('ersetzt das Skelett durch die Karten, wenn die Definitionen da sind', async () => {
+      seed({ variableDefinitions: undefined })
+      useAppStore.setState({ fetchAppVariables: vi.fn().mockResolvedValue(definitions) } as any)
+      renderView()
+
+      expect(await screen.findByTestId('summary-hero')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-loading')).toHaveAttribute('aria-busy', 'false')
+      expect(screen.queryByTestId('summary-skeleton')).not.toBeInTheDocument()
     })
   })
 })

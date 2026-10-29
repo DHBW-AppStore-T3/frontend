@@ -33,8 +33,9 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 1. **Typensicherheit:** `tsc -b` schlägt bei fehlerhaften Typen im CI Build fehl; Typen vor dem Commit immer lokal prüfen.
 2. **Coverage Gate:** Der Job `🧪 Test` in `ci.yml` verlangt auf **jedem** Branch und PR mindestens 85,0 % Zeilen (`MIN_COVERAGE`,
-   Metrik `total.lines.pct`). Die Linux-CI misst ca. 91,3 %. Wert immer mindestens 2 Punkte unter dem CI-Ist-Wert halten und
-   `CLAUDE.md` mit anpassen.
+   Metrik `total.lines.pct`) **und** mindestens 85,0 % Branches (`MIN_BRANCH_COVERAGE`, Metrik `total.branches.pct`); beide Werte
+   müssen gelten. Die Linux-CI misst auf `dev` ca. 94,5 % Zeilen und 88,4 % Branches. Jeden Wert immer mindestens 2 Punkte unter dem
+   CI-Ist-Wert halten und `CLAUDE.md` mit anpassen.
 3. **Security-Audit:** `npm audit --omit=dev` ist 0 und blockiert in der CI. `npm audit` (mit Dev) meldet 2 bewusst akzeptierte Funde
    (`postcss-selector-parser`, `@tailwindcss/typography`, beide moderate; Tailwind 3). Begründung je Fund und Stand nach den Upgrades in
    `claude_docs/decisions/2026-dev-dependency-audit.md`.
@@ -78,6 +79,38 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   Backends bei unbekannten Slots ungeklärt): eigenes Issue, Vorschlag: beim Verlassen von Schritt 3 gegen die aktuellen Teams bereinigen (`dropStaleSlots` immer, gleiche Prüfung für
   `fileUploads`). **Auch offen:** in einem von Hand gewählten „Jeder einzeln“ bleibt nach dem Abwählen ein leeres Team stehen; „Weiter“ ist gesperrt, bis man „Jeder einzeln“
   erneut wählt oder die Teamzahl senkt (dasselbe Verhalten wie bei jedem leeren Team).
+- **2026-10-29 (Übersicht nennt die App, „App nicht gefunden" behoben; Folge von #133 und #136):** Die Übersicht zeigte bei jeder App „App nicht gefunden für n Personen"
+  (auf Staging bei pgAdmin, Web-LaTeX und windows-matlab-app gesehen). **Ursache:** sie suchte die App in `useAppStore.apps`, und diese Liste füllt nur `fetchApps()`; der Katalog (`AppsView`) hält seine Liste
+  lokal, auf dem Weg „Katalog, Details, Deployen, Assistent" ist sie also leer. Bei Apps mit Variablen war das schon immer so; bei Apps **ohne** Variablen füllte früher der Übersichts-Hook (`useSummaryVariables`) die Liste nebenbei,
+  weil ein leerer Cache als „nicht geladen" galt: seit #133 gilt `[]` als geladen, der Aufruf entfiel. **Behebung:** `useDraftApp()` (`src/views/new-deployment/useDraftApp.ts`) nimmt die App aus der Liste, sonst aus
+  `currentApp` (wenn es die des Entwurfs ist), sonst fragt es **einmal** `fetchAppById(appId)` und meldet `isLoading`, bis die Antwort da ist. Die Übersicht zeigt bis dahin das Skelett (und „Deployen" ist gesperrt) statt kurz „App nicht gefunden";
+  der Hinweis erscheint nur noch, wenn auch das Backend die App nicht kennt. Der Aufruf lädt nur diese App, nicht den ganzen Katalog (Bilder). `useAppStore.apps` bleibt ungefüllt: wer die Liste braucht, ruft `fetchApps()` auf.
+  **Nicht geändert:** `NewDeploymentGroupsAssignmentView` liest `draftAppDetails()` weiter aus der Liste; es ist ohne Wirkung, weil `useDeploymentConstraints` den Parameter (`_app`) ignoriert (Aufräumkandidat, auch `draftAppDetails` im Store).
+  **Tests:** `useDraftApp.test.tsx` (7), neue Fälle in `NewDeploymentSummaryView.spec` (Liste leer, Skelett, erst nach der Einzelabfrage „nicht gefunden", Bild) und im Durchlauf (`variablesStepFlow.spec`: `appApi.getById` einmal). Mutationsprobe
+  (Hook fragt nie): 9 Tests in 3 Dateien schlagen fehl. **Fallstricke:** Specs der Übersicht brauchen `fetchAppById` als Mock (Netzwerk-Guard), wenn die Liste leer ist; mit echter Übersetzung heißt der Button „Deployen" statt `deployment.actions.deploy`.
+- **2026-10-29 (Zusammenfassung, Schritt 4: ein Satz, drei ruhige Karten, frontend#136):** `NewDeploymentSummaryView` zeigt statt dreier Pastellkästen drei weiße Karten:
+  **Das wird gestartet** (`SummaryHero`: Satz „{App} für {n} Personen", `Deployment „{Name}"`, Typenschild Version und Laufzeit; `data-testid="summary-runtime"` bleibt),
+  **Teilnehmende** (`SummaryParticipants`: Modus-Chip, ein Satz je Modus und Umgebung/Desktop, eine Leiste; bei „Jeder Nutzer einzeln" nur Personen, sonst Teams mit Mitgliedern)
+  und **Variablen-Konfiguration** (`SummarySettings`, `<dl>`), die es **nur gibt, wenn `buildSettingsRows(...)` mindestens eine Zeile liefert**. Titel „Zusammenfassung";
+  Skelett (`SummarySkeleton`, `aria-busy`) statt Spinner; jede Karte hat „Bearbeiten" mit Ziel `paths.deploymentConfig`/`deploymentTeams`/`deploymentVariables` und `aria-label` des Ziels
+  (mobil nur der Stift, 34 px). **Zeilenlogik** rein in `summaryRows.ts`: Rechenressourcen (`resourceChoices`; „Empfohlen"/„Angepasst"; Summe „insgesamt für n Personen" nur bei `scope: 'user'`
+  **und** mehr als einer Person), Internetzugriff und Vernetzte Desktops/Pods aus `visibleNetworkKeys` (**auch im Standardfall**, nicht nur bei Abweichung), je Datei-Variable eine Zeile (auch ohne Datei:
+  „Keine Datei ausgewählt."; eine Datei für alle: „starter.zip · 640 KB · gilt für alle n Personen"; sonst „k Dateien · x MB" mit Leiste) und je Text-/Auswahl-Variable eine Zeile (je Team eine Zeile).
+  Zeilen tragen Daten, keine Sätze (die Komponenten übersetzen); Dateien nur mit Name und Größe, nie mit Inhalt. **Eine Frage, eine Antwort (Zusammenspiel mit #133):** ein Test
+  (`summaryRows.test.ts`, „…answer the same question…") belegt für die App-Typen A bis D, dass die Karte genau dann da ist, wenn `needsVariablesStep(draft) === true`. **Geteilte Leiste:**
+  `RecipientRail` (+ `.css`) ist aus `FileRecipients` (#113) herausgelöst; Klassen heißen jetzt `rail-row`/`rail-node`/`rail-row__right` (vorher `fv-*`), `FileRecipients` und seine Tests sind unverändert;
+  `sameFile` steht jetzt in `recipientRows.ts`. **Entscheidungen 5 bis 7 des Issues wie empfohlen umgesetzt** (Netzwerk immer zeigen, Titel „Zusammenfassung", optionale Datei ohne Auswahl als Zeile).
+  **Abweichungen vom Issue (bewusst):** (1) `buildFileSummaries` wurde **nicht** erweitert: die Dateizeile liest Empfänger (`buildRecipients`) und `draft.fileUploads` direkt, damit „für alle" dieselbe Regel hat wie die Datei-Karte
+  in Schritt 3. Damit sind `buildFileSummaries`, `buildTerraformEntries`, `toSummaryEntry` und `SummaryEntry` in `summary.ts` im Produktivcode **ungenutzt** (nur ihre Tests): Kandidaten zum Entfernen. (2) Die Folgezeile des Internetzugriffs
+  nutzt auch bei Pod-Apps die neutralen Texte `deployment.vm.internet.noteOn/noteOff` (der Pod-Text „… können **dann** …" passt zum Schalter, nicht zur Zusammenfassung). (3) Die Summe fehlt bei einer einzigen Person. (4) Das Skelett zeigt immer drei Karten
+  (vorher unbekannt, ob die dritte kommt). **Alte Texte entfernt** (`baseConfigTitle`, `deploymentNameLabel`, `selectedStudents`, `teamAssignmentTitle`, `teamCountLabel`, `modeLabel`, `submittedValue`, `uploadedFiles`, `scope`, `noFileUploaded`); neu unter
+  `deployment.summary.{hero,participants,counts,rows,edit}` (Plural mit `_one`/`_other` und `{count}`). **Offener Punkt „Rücksprung" des Issues geprüft:** Schritt 1 setzt beim Ändern der Auswahl **nichts** zurück
+  (`applyStudentIds` schreibt nur `studentIds`/`courseIds`); entfernte Studierende bleiben in `draft.assignments`, „Weiter" bleibt aktiv und `buildDeploymentPayload` schickt sie mit (Probe: `studentIds [u1,u2]`, `assignments [[u1,u2,u3]]` ergibt
+  `teams[0].userIds` mit `u3`). Das gab es schon vorher (über „Zurück" bis Schritt 1), das neue „Bearbeiten" macht den Weg kürzer. **Nicht in #136 behoben** (Schritt 1 bis 3 bleiben laut Issue), eigene Aufgabe vorgeschlagen.
+  **Fallstricke:** (1) Der Deployment-Name steht über `BoldSlot` im Satz: mit dem Schlüssel-Echo-i18n der Specs ist er **kein** Text, als „geladen"-Kennzeichen taugt `data-testid="summary-hero"`; die Texte prüfen die Tests mit `realI18n`. (2) Der Farb-Wächter
+  (`colors.spec.ts`) liest `#133` in einem Testtitel als Hex-Farbe: in Tests unter `src/**/__tests__/` keine `#<Zahl>`. (3) Ein Test mit nie endender Anfrage lässt den geteilten Lader (`variableDefinitions.ts`) für den nächsten Test mit derselben App hängen: am Testende auflösen.
+  (4) Der Seed der Summary-Spec nutzt eine Datei-Variable mit `osScope: 'all'` und dem Slot `all` (vorher `user`/`u1`: passt nicht zu den Empfänger-Slots `Team-Username`). **Sichtprüfung:** die drei Karten in einer Wegwerf-Harness mit echten Komponenten bei Desktop-Breite und 375 px
+  (kein horizontales Scrollen, Stift 34 px, Leiste und Typenschild gestapelt); **Staging-Prüfung nach dem Merge**, siehe PR.
 - **2026-10-29 (Schritt „Variablen" entfällt, wenn die App nichts einzustellen hat, frontend#133):** Der Assistent zeigt den Schritt 3 nur noch, wenn
   `needsVariablesStep(draft)` (`src/views/new-deployment/variablesStep.ts`) nicht `false` ist: die App hat Variablen-Definitionen, `resourceChoices` oder ein sichtbares
   Netzwerk (`visibleNetworkKeys`). `null` heißt „noch nicht bekannt". Sonst: Leiste mit 3 Schritten (`DeploymentProgressBar` bekommt `showVariablesStep`, Anzeigenummern

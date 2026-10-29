@@ -173,7 +173,8 @@ describe('NewDeploymentGroupsAssignmentView', () => {
 
     await waitFor(() => expect(screen.getByTestId('btn-next')).toBeEnabled())
     await userEvent.click(screen.getByTestId('btn-next'))
-    expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables')
+    // The next view is lazy: the route changes after the click has returned.
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables'))
   })
 
   it('füllt leere Teamnamen beim Betreten mit Standardnamen', async () => {

@@ -12,7 +12,6 @@ import type {
   PodSetupProgress,
   PodWorkload,
   Task,
-  TaskLogsObject,
   TaskStatus,
   TaskType,
 } from '..'
@@ -52,8 +51,8 @@ describe('schema-derived deployment, task and pod types', () => {
     expectTypeOf<Deployment['runtime']>().toEqualTypeOf<'kubernetes' | 'kubevirt-vm' | undefined>()
   })
 
-  it('still accepts structured task logs although the schema says string | null', () => {
-    expectTypeOf<Task['logs']>().toEqualTypeOf<string | TaskLogsObject | null>()
+  it('types task logs as the schema does: text, never an object (#145)', () => {
+    expectTypeOf<Task['logs']>().toEqualTypeOf<string | null | undefined>()
   })
 
   it('does not offer fields the backend request schema does not have', () => {

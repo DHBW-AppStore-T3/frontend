@@ -111,6 +111,10 @@ describe('submitDraft golden payloads', () => {
       ['an object with only a name', { name: 'rc1' }, 'rc1'],
       ['an object with an empty version (name wins)', { version: '', name: 'rc1' }, 'rc1'],
       ['an object with neither', {}, 'latest'],
+      ['an object whose version is a number (skipped, name wins)', { version: 2, name: 'rc1' }, 'rc1'],
+      ['an object whose only version is a number', { version: 2 }, 'latest'],
+      ['an object whose name is an object', { name: { x: 1 } }, 'latest'],
+      ['an object with a blank version (skipped, name wins)', { version: '  ', name: 'rc1' }, 'rc1'],
       ['an object with empty version and name', { version: '', name: '' }, 'latest'],
       ['an array', ['v1'], 'latest'],
       ['null', null, 'latest'],
@@ -227,10 +231,10 @@ describe('submitDraft golden payloads', () => {
       })
     })
 
-    it('uses the fallback when assignments is a plain object (as the type says), with names from groupNames and Team-n for the rest', async () => {
+    it('uses the fallback when assignments is a plain object (not what the type says any more, issue 144), with names from groupNames and Team-n for the rest', async () => {
       const payload = await submit({
         groupNames: ['A'],
-        assignments: { 0: ['x'], 1: ['y'] },
+        assignments: { 0: ['x'], 1: ['y'] } as unknown as DeploymentDraft['assignments'],
         studentIds: ['s1', 's2', 's3'],
         groupCount: 2,
       })
