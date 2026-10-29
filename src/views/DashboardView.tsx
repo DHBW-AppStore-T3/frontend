@@ -17,9 +17,8 @@ export default function DashboardView() {
 
   useEffect(() => {
     void fetchStats().catch(() => {})
-    // Mount-only: a stable module-level action.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    // ``fetchStats`` is a ``useCallback`` without dependencies: the effect runs once.
+  }, [fetchStats])
 
   const kpiArrow = (
     <ArrowRight
