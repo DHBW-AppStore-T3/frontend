@@ -60,7 +60,7 @@ export default function NewDeploymentGroupsAssignmentView() {
   const teams: TeamsState = {
     mode: draft.groupMode as GroupMode,
     count: draft.groupCount,
-    assignments: draft.assignments as string[][],
+    assignments: draft.assignments,
     names: draft.groupNames,
   }
   const unassigned = unassignedOf(studentIds, teams.assignments)
@@ -89,7 +89,7 @@ export default function NewDeploymentGroupsAssignmentView() {
       {
         mode: current.groupMode as GroupMode,
         count: current.groupCount,
-        assignments: current.assignments as string[][],
+        assignments: current.assignments,
         names: current.groupNames,
       },
       translate,

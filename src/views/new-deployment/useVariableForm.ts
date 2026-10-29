@@ -8,6 +8,7 @@ import type { AppVariable, SlotValue, VariableValue } from '@/types'
 import {
   buildDraftValues,
   buildWizardTeams,
+  dropStaleFileSlots,
   dropStaleSlots,
   findMissingRequired,
   hasBlockingExpert,
@@ -43,7 +44,7 @@ export function useVariableForm() {
 
   // ------------------------------------------------------------- derived
   const teams = useMemo(
-    () => buildWizardTeams(draft.groupNames, draft.assignments as string[][], studentCache),
+    () => buildWizardTeams(draft.groupNames, draft.assignments, studentCache),
     [draft.groupNames, draft.assignments, studentCache],
   )
   const terraformVariables = useMemo(() => variables.filter((v) => v.source === 'terraform'), [variables])
@@ -59,7 +60,7 @@ export function useVariableForm() {
     let cancelled = false
     const currentTeams = () => {
       const d = useDeploymentStore.getState()
-      return buildWizardTeams(d.draft.groupNames, d.draft.assignments as string[][], d.studentCache)
+      return buildWizardTeams(d.draft.groupNames, d.draft.assignments, d.studentCache)
     }
     const openBlockingExperts = (defs: AppVariable[]) => {
       if (hasBlockingExpert(defs)) setTerraformExpertOpen(true)
@@ -159,10 +160,20 @@ export function useVariableForm() {
 
   const next = () => {
     try {
-      const { changed, all } = buildDraftValues(variables, formValues)
-      useDeploymentStore.getState().updateDraft({
+      // Only what the step shows travels on. Slots of teams and people that are gone (deselected in
+      // step 1, renamed, moved or deleted in step 2) are still in the draft from an earlier visit; the
+      // backend answers a vanished team with 422 ``unknown_scope_target`` and passes on a person's
+      // slot in a team that still exists. Entering the step leaves them alone on purpose: the keys
+      // come from the student cache, and a key read differently there must not cost a value. Here
+      // they are the keys the cards have just shown.
+      const store = useDeploymentStore.getState()
+      const { values } = dropStaleSlots(variables, formValues, teams)
+      const { uploads, dropped } = dropStaleFileSlots(variables, store.draft.fileUploads, teams)
+      const { changed, all } = buildDraftValues(variables, values)
+      store.updateDraft({
         userInputVar: JSON.stringify(changed),
         variables: all,
+        ...(dropped.length > 0 ? { fileUploads: uploads } : {}),
       })
       navigate(paths.deploymentSummary)
     } catch (e) {

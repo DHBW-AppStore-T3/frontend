@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Inbox, Plus, Globe, Lock, Search, SlidersHorizontal, Star } from 'lucide-react'
@@ -90,6 +90,10 @@ export default function AppsView() {
     return 'new'
   }
 
+  const reportLoadError = useEffectEvent(() => {
+    toast.error(t('AppsView.loadError'))
+  })
+
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -115,7 +119,7 @@ export default function AppsView() {
       } catch (error) {
         console.error('Fehler beim Laden der Apps:', error)
         if (!cancelled) {
-          toast.error(t('AppsView.loadError'))
+          reportLoadError()
           setApps([])
         }
       } finally {
@@ -126,7 +130,6 @@ export default function AppsView() {
       cancelled = true
     }
     // Mount-only load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleDeploy = (app: App, configure = false) => {

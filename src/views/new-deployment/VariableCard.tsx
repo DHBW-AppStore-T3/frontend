@@ -127,6 +127,8 @@ export default function VariableCard(props: VariableCardProps) {
       className={`bg-white rounded-lg p-4 border shadow-sm ${expert ? c.expertCard : c.card}`}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
+        {/* A native label click would also activate a switch (a button). Here it only moves focus. */}
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- mouse-only focus shortcut; keyboard users reach the input itself */}
         <label
           htmlFor={formKey}
           onClick={(e) => {

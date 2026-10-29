@@ -57,6 +57,7 @@ export default function AppHeader({
         <ToggleIcon size={18} />
       </button>
       <span className="sr-only">{pageTitle}</span>
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- only catches Escape bubbling up from the menu button; the button itself is the control */}
       <div
         ref={menuRef}
         className="user-menu-root"
