@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToastStore } from '@/stores/toast.store'
 import type { UserRole } from '@/types'
+import { needsVariablesStep } from '@/views/new-deployment/variablesStep'
 import { paths } from './paths'
 
 export interface RouteMeta {
@@ -92,4 +93,13 @@ export function requireWizardStep(required: WizardField[]): string | null {
     }
   }
   return null
+}
+
+/**
+ * Guard for the variables step. Apps with nothing to set skip it, so a deep link
+ * (browser history, bookmark) goes back to the teams step. While it is not known yet
+ * whether the app has variables, the step opens as usual.
+ */
+export function skipVariablesStep(): string | null {
+  return needsVariablesStep(useDeploymentStore.getState().draft) === false ? paths.deploymentTeams : null
 }

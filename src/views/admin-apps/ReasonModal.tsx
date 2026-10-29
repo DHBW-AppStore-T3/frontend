@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
 
@@ -25,6 +25,7 @@ export interface ReasonModalProps {
 export default function ReasonModal(props: ReasonModalProps) {
   const { show, versionTag, isSubmitting, onClose, onSubmit } = props
   const [reason, setReason] = useState('')
+  const reasonId = useId()
 
   // Start with an empty reason every time the modal is (re)opened.
   const [wasShown, setWasShown] = useState(show)
@@ -47,8 +48,11 @@ export default function ReasonModal(props: ReasonModalProps) {
             {props.subtitle ? <>&nbsp;—&nbsp;{props.subtitle}</> : null}
           </p>
           <div>
-            <label className="block text-sm font-medium text-textMuted mb-1.5">{props.reasonLabel}</label>
+            <label htmlFor={reasonId} className="block text-sm font-medium text-textMuted mb-1.5">
+              {props.reasonLabel}
+            </label>
             <textarea
+              id={reasonId}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder={props.reasonPlaceholder}

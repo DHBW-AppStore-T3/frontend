@@ -19,6 +19,8 @@ import { paths } from '@/router/paths'
 import TeamColumn from './new-deployment/TeamColumn'
 import UnassignedPool from './new-deployment/UnassignedPool'
 import { useStudentNames } from './new-deployment/useStudentNames'
+import { ensureVariableDefinitions, resolveNeedsVariablesStep } from './new-deployment/variableDefinitions'
+import { useNeedsVariablesStep } from './new-deployment/variablesStep'
 import {
   chooseCustom,
   chooseEachUser,
@@ -48,6 +50,7 @@ export default function NewDeploymentGroupsAssignmentView() {
   const { forcedGroupMode, groupModeReason, groupModeTitle } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope })
 
   const isForced = forcedGroupMode === 'eachUser'
+  const needsVariables = useNeedsVariablesStep()
 
   const [dragged, setDragged] = useState<string | null>(null)
   const [dragOverTeam, setDragOverTeam] = useState<number | null>(null)
@@ -95,6 +98,33 @@ export default function NewDeploymentGroupsAssignmentView() {
     // Entry effect: runs once with the values of the first render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // The variables step is left out for apps with nothing to set. Step 1 already asked the backend;
+  // this repeats it for deep links and after a failure there (one request at a time, see the helper).
+  useEffect(() => {
+    ensureVariableDefinitions().catch(() => {})
+  }, [])
+
+  // "Weiter" waits for the answer if it is still open, so that the step is not skipped on a guess.
+  const [isDeciding, setIsDeciding] = useState(false)
+  const deciding = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const goNext = async () => {
+    if (deciding.current) return
+    deciding.current = true
+    setIsDeciding(true)
+    const needed = await resolveNeedsVariablesStep()
+    deciding.current = false
+    if (!mounted.current) return
+    setIsDeciding(false)
+    navigate(needed === false ? paths.deploymentSummary : paths.deploymentVariables)
+  }
 
   const increment = () => {
     if (teams.count < studentIds.length) apply(resizeTeams(teams, teams.count + 1, translate))
@@ -146,7 +176,7 @@ export default function NewDeploymentGroupsAssignmentView() {
             </div>
             <h1 className="text-3xl font-bold text-textHeading">{t('deployment.title')}</h1>
           </div>
-          <DeploymentProgressBar currentStep={2} />
+          <DeploymentProgressBar currentStep={2} showVariablesStep={needsVariables !== false} />
         </div>
 
         {/* Controls */}
@@ -326,13 +356,18 @@ export default function NewDeploymentGroupsAssignmentView() {
 
           <button
             type="button"
-            onClick={() => navigate(paths.deploymentVariables)}
+            onClick={() => void goNext()}
             data-testid="btn-next"
-            disabled={!isAssignmentComplete(studentIds, teams)}
+            aria-busy={isDeciding}
+            disabled={!isAssignmentComplete(studentIds, teams) || isDeciding}
             className="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-primary to-primaryDark text-white font-bold hover:from-primaryDark hover:to-primaryDark transition-all shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t('deployment.actions.next')}
-            <ArrowRight size={20} />
+            {isDeciding ? (
+              <span className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+            ) : (
+              <ArrowRight size={20} />
+            )}
           </button>
         </div>
       </div>

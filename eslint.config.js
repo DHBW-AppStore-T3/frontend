@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import reactHooks from 'eslint-plugin-react-hooks'
 import globals from 'globals'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
 import tseslint from 'typescript-eslint'
 
 // Flat config. `tsc -b` already covers types; ESLint adds what a type-checker
@@ -65,6 +66,36 @@ export default tseslint.config(
 
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'smart'],
+    },
+  },
+
+  // Accessibility (#141). The plugin's `recommended` set, minus the three
+  // rules about click handlers on non-interactive elements: those match the
+  // backdrop and clickable card/row patterns (Modal, Drawer, Toast, LogoPicker,
+  // NewDeploymentConfigView, ...) that need a keyboard design of their own, not
+  // a lint comment (23 hits, #154). They get switched on there.
+  //
+  // eslint-plugin-jsx-a11y 6.10 lists ESLint up to ^9 as a peer, so package.json
+  // carries an `overrides` entry to let `npm ci` resolve it next to ESLint 10.
+  // It runs (tests/unit/infra/eslint-a11y.spec.ts lints fixtures and expects the
+  // rules to fire), but this combination is not covered by the plugin's own
+  // tests: re-check on every ESLint or plugin upgrade.
+  //
+  // `label-has-associated-control` only sees literal label text: it stays
+  // silent on `<label>{t('key')}</label>`, which is every label here. The
+  // form specs (`getByLabelText`) are what guards the label wiring.
+  {
+    files: ['src/**/*.tsx'],
+    plugins: { 'jsx-a11y': jsxA11y },
+    rules: {
+      ...jsxA11y.flatConfigs.recommended.rules,
+      'jsx-a11y/label-has-associated-control': ['error', {
+        controlComponents: ['BaseInput', 'MarkdownEditor'],
+        depth: 3,
+      }],
+      'jsx-a11y/click-events-have-key-events': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'jsx-a11y/no-noninteractive-element-interactions': 'off',
     },
   },
 

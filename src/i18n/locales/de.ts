@@ -109,6 +109,10 @@ export default {
     panelLabel: "Seitenbereich",
   },
 
+  toast: {
+    close: "Meldung schließen",
+  },
+
   action: {
     back: "Zurück",
   },
@@ -204,6 +208,7 @@ export default {
       noUsersFound: "Keine Benutzer gefunden.",
       alreadyMember: "bereits Mitglied",
       inOtherCourse: "In Kurs: {courseName}",
+      removeSelected: "{username} aus der Auswahl entfernen",
       cancel: "Abbrechen",
       adding: "Hinzufügen...",
       addCount: "{count} hinzufügen"

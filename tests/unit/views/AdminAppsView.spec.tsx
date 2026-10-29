@@ -49,6 +49,12 @@ beforeEach(() => {
 })
 
 describe('AdminAppsView', () => {
+  it('names the submissions-only switch by its visible label (#141)', async () => {
+    renderView()
+    await screen.findByText('App One')
+    expect(screen.getByRole('switch', { name: 'AdminAppsView.filterLabel' })).toHaveAttribute('aria-checked', 'true')
+  })
+
   it('loads apps and pending approvals on mount', async () => {
     renderView()
     await screen.findByText('App One')

@@ -109,6 +109,10 @@ export default {
     panelLabel: "Side panel",
   },
 
+  toast: {
+    close: "Dismiss notification",
+  },
+
   action: {
     back: "Back",
   },
@@ -204,6 +208,7 @@ export default {
       noUsersFound: "No users found.",
       alreadyMember: "already member",
       inOtherCourse: "In course: {courseName}",
+      removeSelected: "Remove {username} from the selection",
       cancel: "Cancel",
       adding: "Adding...",
       addCount: "Add {count}"

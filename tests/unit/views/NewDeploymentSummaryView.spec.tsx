@@ -176,7 +176,7 @@ describe('NewDeploymentSummaryView', () => {
 
   describe('fehlende Variablen-Definitionen (Deep-Link)', () => {
     it('lädt sie nach und ergänzt die Defaults im Draft', async () => {
-      seed({ variableDefinitions: [], variables: { instance_type: 't3.large' } })
+      seed({ variableDefinitions: undefined, variables: { instance_type: 't3.large' } })
       const fetchAppVariables = vi.fn().mockResolvedValue(definitions)
       useAppStore.setState({ fetchAppVariables } as any)
       renderView()
@@ -188,12 +188,78 @@ describe('NewDeploymentSummaryView', () => {
     })
 
     it('meldet einen Ladefehler', async () => {
-      seed({ variableDefinitions: [] })
+      seed({ variableDefinitions: undefined })
       useAppStore.setState({ fetchAppVariables: vi.fn().mockRejectedValue({ response: { status: 500 } }) } as any)
       vi.spyOn(console, 'error').mockImplementation(() => {})
       renderView()
 
       await waitFor(() => expect(toasts()).toContainEqual(['error', 'deployment.summary.fetchVarsError500']))
+    })
+  })
+
+  describe('Schritt "Variablen" entfällt (App ohne Einstellungen)', () => {
+    const skipped = (over: Record<string, unknown> = {}) =>
+      seed({ variableDefinitions: [], variables: {}, fileUploads: {}, ...over })
+
+    it('zeigt die Karte "3 — variables" mit "Bearbeiten" nicht', async () => {
+      skipped()
+      renderView()
+      await screen.findByText('My Deployment')
+
+      expect(screen.queryByText('deployment.summary.variablesConfigTitle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /deployment\.summary\.editBtn/ })).not.toBeInTheDocument()
+    })
+
+    it('führt "Zurück" zur Verteilung', async () => {
+      skipped()
+      renderView()
+      await screen.findByText('My Deployment')
+
+      await userEvent.click(screen.getByRole('button', { name: /deployment\.actions\.back/ }))
+
+      expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/teams')
+    })
+
+    it('zeigt in der Leiste drei Schritte', async () => {
+      skipped()
+      renderView()
+      await screen.findByText('My Deployment')
+
+      expect(screen.queryByText('deployment.steps.vars')).not.toBeInTheDocument()
+      expect(screen.getByText('deployment.steps.summary')).toBeInTheDocument()
+    })
+
+    it('fragt das Backend nicht erneut, auch nicht für die geladene, leere Antwort', async () => {
+      const fetchAppVariables = vi.fn().mockResolvedValue([])
+      useAppStore.setState({ fetchAppVariables } as any)
+      skipped()
+      renderView()
+      await screen.findByText('My Deployment')
+
+      expect(fetchAppVariables).not.toHaveBeenCalled()
+      expect(screen.queryByText('deployment.summary.loadingConfig')).not.toBeInTheDocument()
+    })
+
+    it('behält die Karte, wenn der Schritt nötig ist (Ressourcen-Auswahl)', async () => {
+      skipped({
+        resourceChoices: [
+          { container: 'vm', cpu: { default: '2', min: '1', max: '4' }, memory: { default: '4Gi', min: '2Gi', max: '8Gi' } },
+        ],
+      })
+      renderView()
+      await screen.findByText('My Deployment')
+
+      expect(screen.getByText('deployment.summary.variablesConfigTitle')).toBeInTheDocument()
+    })
+
+    it('behält Karte, Leiste und "Zurück" zu den Variablen, wenn die App Variablen hat', async () => {
+      renderView()
+      await screen.findByText('My Deployment')
+
+      expect(screen.getByText('deployment.summary.variablesConfigTitle')).toBeInTheDocument()
+      expect(screen.getByText('deployment.steps.vars')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: /deployment\.summary\.editBtn/ }))
+      expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables')
     })
   })
 

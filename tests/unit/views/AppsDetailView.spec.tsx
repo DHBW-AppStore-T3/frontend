@@ -244,6 +244,14 @@ describe('AppsDetailView', () => {
       await waitFor(() => expect(appApi.listVersionApprovals).toHaveBeenCalled())
     }
 
+    it('benennt die Versionsauswahl über ihr sichtbares Label (#141)', async () => {
+      await openAsAdmin()
+
+      expect(screen.getByRole('combobox', { name: 'AppsDetailView.selectVersionLabel' })).toBe(
+        screen.getByRole('combobox'),
+      )
+    })
+
     it('zeigt Badge, Tab und Versionsauswahl und statt Deploy den Button Version festlegen', async () => {
       await openAsAdmin()
 

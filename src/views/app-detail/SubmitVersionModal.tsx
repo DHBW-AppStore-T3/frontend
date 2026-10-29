@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BaseButton from '@/components/ui/BaseButton'
 import Modal from '@/components/ui/Modal'
@@ -22,6 +22,7 @@ export default function SubmitVersionModal({
 }: SubmitVersionModalProps) {
   const { t } = useTranslation()
   const [notes, setNotes] = useState('')
+  const notesId = useId()
 
   // Fresh notes for every version the modal is opened for.
   const [lastTag, setLastTag] = useState(versionTag)
@@ -42,10 +43,11 @@ export default function SubmitVersionModal({
             <span className="font-mono bg-surfaceMuted px-1.5 py-0.5 rounded text-xs ml-1">{versionTag}</span>
           </p>
           <div>
-            <label className="block text-sm font-medium text-textMuted mb-1.5">
+            <label htmlFor={notesId} className="block text-sm font-medium text-textMuted mb-1.5">
               {t('AppsDetailView.submitModal.notesLabel')}
             </label>
             <textarea
+              id={notesId}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t('AppsDetailView.submitModal.notesPlaceholder')}

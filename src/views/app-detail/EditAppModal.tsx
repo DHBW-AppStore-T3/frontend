@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image as ImageIcon } from 'lucide-react'
 import BaseButton from '@/components/ui/BaseButton'
@@ -30,7 +30,11 @@ export default function EditAppModal({ show, app, isSaving, onClose, onSave }: E
   const [image, setImage] = useState<EditImage>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const imageLabelId = useId()
+  const imageCaptionId = useId()
+  const nameId = useId()
+  const descId = useId()
+  const descHintId = useId()
 
   // Reset the form from the app each time the modal opens (render-phase).
   const [wasShown, setWasShown] = useState(show)
@@ -79,10 +83,11 @@ export default function EditAppModal({ show, app, isSaving, onClose, onSave }: E
           <p className="text-sm text-textMuted">{t('AppsDetailView.editModal.description')}</p>
 
           <div>
-            <label className="block text-sm font-medium text-textMuted mb-1.5">
+            <label htmlFor={nameId} className="block text-sm font-medium text-textMuted mb-1.5">
               {t('AppsDetailView.editModal.nameLabel')}
             </label>
             <input
+              id={nameId}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               type="text"
@@ -91,25 +96,32 @@ export default function EditAppModal({ show, app, isSaving, onClose, onSave }: E
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-textMuted mb-1.5">
+            <label htmlFor={descId} className="block text-sm font-medium text-textMuted mb-1.5">
               {t('AppsDetailView.editModal.descLabel')}
             </label>
             <MarkdownEditor
+              id={descId}
+              aria-describedby={descHintId}
               value={form.description}
               onChange={(description) => setForm({ ...form, description })}
               placeholder={t('AppsCreateView.form.descPlaceholder')}
               minHeightPx={120}
               maxHeightPx={320}
             />
-            <p className="mt-1 text-xs text-textMuted">{t('AppsCreateView.form.descMarkdownHint')}</p>
+            <p id={descHintId} className="mt-1 text-xs text-textMuted">
+              {t('AppsCreateView.form.descMarkdownHint')}
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-textMuted mb-1.5">
+            <span id={imageLabelId} className="block text-sm font-medium text-textMuted mb-1.5">
               {t('AppsDetailView.editModal.imageLabel')}
-            </label>
+            </span>
+            {/* The file input is visually hidden, not display:none: it stays in the tab order and
+                Enter/Space open the file dialog natively. The label is the click target; the remove
+                button is a sibling, so no button sits inside another interactive element. */}
             <div
-              className={`bg-white rounded-lg py-2 px-3 text-textMuted shadow-sm border-2 transition-all cursor-pointer flex items-center min-h-[60px] ${dropZoneClass}`}
+              className={`bg-white rounded-lg text-textMuted shadow-sm border-2 transition-all flex items-center min-h-[60px] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary ${dropZoneClass}`}
               onDragOver={(e) => {
                 e.preventDefault()
                 setIsDragging(true)
@@ -124,46 +136,46 @@ export default function EditAppModal({ show, app, isSaving, onClose, onSave }: E
                 const file = e.dataTransfer?.files?.[0]
                 if (file) acceptFile(file)
               }}
-              onClick={() => inputRef.current?.click()}
             >
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) acceptFile(file)
-                  e.target.value = ''
-                }}
-              />
-              {preview ? (
-                <div className="flex justify-between items-center w-full">
-                  <div className="flex items-center gap-3">
+              <label className="relative flex min-w-0 flex-1 cursor-pointer items-center self-stretch py-2 pl-3 pr-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  aria-labelledby={imageLabelId}
+                  aria-describedby={imageCaptionId}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) acceptFile(file)
+                    e.target.value = ''
+                  }}
+                />
+                {preview ? (
+                  <span className="flex min-w-0 items-center gap-3">
                     <img src={preview} alt={form.name} className="w-10 h-10 object-contain rounded bg-surfaceMuted" />
-                    <span className="text-sm text-textMuted">
+                    <span id={imageCaptionId} className="text-sm text-textMuted truncate">
                       {image instanceof File ? image.name : t('AppsDetailView.editModal.currentImage')}
                     </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="text-xs text-textFaint hover:text-danger"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setImage('remove')
-                      setPreview(null)
-                    }}
-                  >
-                    {t('AppsDetailView.editModal.imageRemove')}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-textFaint">
-                  <ImageIcon size={18} />
-                  <span>{t('AppsDetailView.editModal.imageHint')}</span>
-                </div>
-              )}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2 text-sm text-textFaint">
+                    <ImageIcon size={18} />
+                    <span id={imageCaptionId}>{t('AppsDetailView.editModal.imageHint')}</span>
+                  </span>
+                )}
+              </label>
+              {preview ? (
+                <button
+                  type="button"
+                  className="text-xs text-textFaint hover:text-danger py-2 pl-2 pr-3"
+                  onClick={() => {
+                    setImage('remove')
+                    setPreview(null)
+                  }}
+                >
+                  {t('AppsDetailView.editModal.imageRemove')}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

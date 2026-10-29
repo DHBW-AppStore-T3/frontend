@@ -13,8 +13,7 @@ import type {
   DeploymentWithRelations,
   DeploymentCreate,
   DeploymentStatus,
-  DeploymentDraft,
-  AppVariable
+  DeploymentDraft
 } from '@/types'
 
 const defaultDraft: DeploymentDraft = {
@@ -32,7 +31,8 @@ const defaultDraft: DeploymentDraft = {
   variables: {},
   userInputVar: {},
   groupNames: [],
-  variableDefinitions: [] as AppVariable[], // stores the API definitions for the variables
+  // ``variableDefinitions`` (the API definitions of the app's variables) is left out on purpose:
+  // ``undefined`` means "not loaded yet", ``[]`` "loaded, and the app has none".
   // ``fileUploads`` is the wizard-side staging area for files. Each
   // ``file`` variable contributes one entry
   // here, with inner-keys driven by the scope. ``submitDraft`` ships
