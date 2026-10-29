@@ -769,12 +769,12 @@ export default {
       summaryOff: 'Off',
       internet: {
         label: 'Internet access',
-        help: 'Lets the pods reach servers on the internet. Internal networks stay blocked.',
-        warning: 'Students will then be able to reach servers on the internet.',
+        help: 'Lets the pods reach web servers on the internet (HTTP and HTTPS). The cluster, other deployments and other ports stay blocked.',
+        warning: 'Students will then be able to reach web servers on the internet.',
       },
       podNetwork: {
         label: 'Networked pods',
-        help: 'Lets the pods of this deployment reach each other. Other deployments stay separated.',
+        help: 'Lets the pods of this deployment reach each other on any TCP and UDP port, so students can run their own servers and clients. Each pod is found by its name, all of them together as "peers". Other deployments stay separated; a broadcast to 255.255.255.255 is not delivered, send to each address of "peers" instead.',
       },
     },
     resources: {
@@ -798,7 +798,7 @@ export default {
       },
       pods: {
         label: 'Networked desktops',
-        help: 'Lets the desktops of this deployment reach each other. Other deployments stay separated.',
+        help: 'Lets the desktops of this deployment reach each other on every port. Other deployments stay separated.',
       },
       expert: {
         recommended: 'Recommended',
