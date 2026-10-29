@@ -60,6 +60,29 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-29 (Zusammenfassung, Schritt 4: ein Satz, drei ruhige Karten, frontend#136):** `NewDeploymentSummaryView` zeigt statt dreier Pastellkästen drei weiße Karten:
+  **Das wird gestartet** (`SummaryHero`: Satz „{App} für {n} Personen", `Deployment „{Name}"`, Typenschild Version und Laufzeit; `data-testid="summary-runtime"` bleibt),
+  **Teilnehmende** (`SummaryParticipants`: Modus-Chip, ein Satz je Modus und Umgebung/Desktop, eine Leiste; bei „Jeder Nutzer einzeln" nur Personen, sonst Teams mit Mitgliedern)
+  und **Variablen-Konfiguration** (`SummarySettings`, `<dl>`), die es **nur gibt, wenn `buildSettingsRows(...)` mindestens eine Zeile liefert**. Titel „Zusammenfassung";
+  Skelett (`SummarySkeleton`, `aria-busy`) statt Spinner; jede Karte hat „Bearbeiten" mit Ziel `paths.deploymentConfig`/`deploymentTeams`/`deploymentVariables` und `aria-label` des Ziels
+  (mobil nur der Stift, 34 px). **Zeilenlogik** rein in `summaryRows.ts`: Rechenressourcen (`resourceChoices`; „Empfohlen"/„Angepasst"; Summe „insgesamt für n Personen" nur bei `scope: 'user'`
+  **und** mehr als einer Person), Internetzugriff und Vernetzte Desktops/Pods aus `visibleNetworkKeys` (**auch im Standardfall**, nicht nur bei Abweichung), je Datei-Variable eine Zeile (auch ohne Datei:
+  „Keine Datei ausgewählt."; eine Datei für alle: „starter.zip · 640 KB · gilt für alle n Personen"; sonst „k Dateien · x MB" mit Leiste) und je Text-/Auswahl-Variable eine Zeile (je Team eine Zeile).
+  Zeilen tragen Daten, keine Sätze (die Komponenten übersetzen); Dateien nur mit Name und Größe, nie mit Inhalt. **Eine Frage, eine Antwort (Zusammenspiel mit #133):** ein Test
+  (`summaryRows.test.ts`, „…answer the same question…") belegt für die App-Typen A bis D, dass die Karte genau dann da ist, wenn `needsVariablesStep(draft) === true`. **Geteilte Leiste:**
+  `RecipientRail` (+ `.css`) ist aus `FileRecipients` (#113) herausgelöst; Klassen heißen jetzt `rail-row`/`rail-node`/`rail-row__right` (vorher `fv-*`), `FileRecipients` und seine Tests sind unverändert;
+  `sameFile` steht jetzt in `recipientRows.ts`. **Entscheidungen 5 bis 7 des Issues wie empfohlen umgesetzt** (Netzwerk immer zeigen, Titel „Zusammenfassung", optionale Datei ohne Auswahl als Zeile).
+  **Abweichungen vom Issue (bewusst):** (1) `buildFileSummaries` wurde **nicht** erweitert: die Dateizeile liest Empfänger (`buildRecipients`) und `draft.fileUploads` direkt, damit „für alle" dieselbe Regel hat wie die Datei-Karte
+  in Schritt 3. Damit sind `buildFileSummaries`, `buildTerraformEntries`, `toSummaryEntry` und `SummaryEntry` in `summary.ts` im Produktivcode **ungenutzt** (nur ihre Tests): Kandidaten zum Entfernen. (2) Die Folgezeile des Internetzugriffs
+  nutzt auch bei Pod-Apps die neutralen Texte `deployment.vm.internet.noteOn/noteOff` (der Pod-Text „… können **dann** …" passt zum Schalter, nicht zur Zusammenfassung). (3) Die Summe fehlt bei einer einzigen Person. (4) Das Skelett zeigt immer drei Karten
+  (vorher unbekannt, ob die dritte kommt). **Alte Texte entfernt** (`baseConfigTitle`, `deploymentNameLabel`, `selectedStudents`, `teamAssignmentTitle`, `teamCountLabel`, `modeLabel`, `submittedValue`, `uploadedFiles`, `scope`, `noFileUploaded`); neu unter
+  `deployment.summary.{hero,participants,counts,rows,edit}` (Plural mit `_one`/`_other` und `{count}`). **Offener Punkt „Rücksprung" des Issues geprüft:** Schritt 1 setzt beim Ändern der Auswahl **nichts** zurück
+  (`applyStudentIds` schreibt nur `studentIds`/`courseIds`); entfernte Studierende bleiben in `draft.assignments`, „Weiter" bleibt aktiv und `buildDeploymentPayload` schickt sie mit (Probe: `studentIds [u1,u2]`, `assignments [[u1,u2,u3]]` ergibt
+  `teams[0].userIds` mit `u3`). Das gab es schon vorher (über „Zurück" bis Schritt 1), das neue „Bearbeiten" macht den Weg kürzer. **Nicht in #136 behoben** (Schritt 1 bis 3 bleiben laut Issue), eigene Aufgabe vorgeschlagen.
+  **Fallstricke:** (1) Der Deployment-Name steht über `BoldSlot` im Satz: mit dem Schlüssel-Echo-i18n der Specs ist er **kein** Text, als „geladen"-Kennzeichen taugt `data-testid="summary-hero"`; die Texte prüfen die Tests mit `realI18n`. (2) Der Farb-Wächter
+  (`colors.spec.ts`) liest `#133` in einem Testtitel als Hex-Farbe: in Tests unter `src/**/__tests__/` keine `#<Zahl>`. (3) Ein Test mit nie endender Anfrage lässt den geteilten Lader (`variableDefinitions.ts`) für den nächsten Test mit derselben App hängen: am Testende auflösen.
+  (4) Der Seed der Summary-Spec nutzt eine Datei-Variable mit `osScope: 'all'` und dem Slot `all` (vorher `user`/`u1`: passt nicht zu den Empfänger-Slots `Team-Username`). **Sichtprüfung:** die drei Karten in einer Wegwerf-Harness mit echten Komponenten bei Desktop-Breite und 375 px
+  (kein horizontales Scrollen, Stift 34 px, Leiste und Typenschild gestapelt); **Staging-Prüfung nach dem Merge**, siehe PR.
 - **2026-10-29 (Schritt „Variablen" entfällt, wenn die App nichts einzustellen hat, frontend#133):** Der Assistent zeigt den Schritt 3 nur noch, wenn
   `needsVariablesStep(draft)` (`src/views/new-deployment/variablesStep.ts`) nicht `false` ist: die App hat Variablen-Definitionen, `resourceChoices` oder ein sichtbares
   Netzwerk (`visibleNetworkKeys`). `null` heißt „noch nicht bekannt". Sonst: Leiste mit 3 Schritten (`DeploymentProgressBar` bekommt `showVariablesStep`, Anzeigenummern

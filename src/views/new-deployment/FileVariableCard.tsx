@@ -12,7 +12,7 @@ import {
   validateUpload,
   type UploadCheck,
 } from './fileLimits'
-import { buildRecipients } from './recipientRows'
+import { buildRecipients, sameFile } from './recipientRows'
 import { readDeploymentFile } from './readDeploymentFile'
 import { displayDescription, type WizardTeam } from './variableForm'
 import './FileVariableCard.css'
@@ -31,9 +31,6 @@ interface Props {
   /** Bytes of the files of the deployment's other file variables (they count against the total). */
   otherBytes?: number
 }
-
-const sameFile = (a: DeploymentFile | null, b: DeploymentFile | null): boolean =>
-  !!a && !!b && a.name === b.name && a.size === b.size && a.content_b64 === b.content_b64
 
 /**
  * A file variable of the app: one card instead of a drop zone per team. By default one file goes to

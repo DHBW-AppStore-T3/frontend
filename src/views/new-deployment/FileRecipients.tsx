@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { FileArchive, X } from 'lucide-react'
 import type { DeploymentFile } from '@/types'
 import { formatFileSize } from './fileLimits'
+import RecipientRail from './RecipientRail'
 import type { Recipient, RecipientKind } from './recipientRows'
 import './FileVariableCard.css'
 
@@ -52,6 +53,61 @@ export default function FileRecipients({ rows, files, mode, kind, popIds, onPick
     if (file) onDropFile(id, file)
   }
 
+  /** The right column of a row: the file (with pick, replace, remove) per row, or just its name for one shared file. */
+  const rightOf = (row: Recipient) => {
+    const file = files[row.id] ?? null
+    if (!each) {
+      return (
+        <span className={`rail-row__right text-right text-sm tabular-nums ${file ? 'font-semibold text-textHeading' : 'text-textStrong'}`}>
+          {file ? file.name : t('deployment.fileVariable.recipients.none')}
+        </span>
+      )
+    }
+    return (
+      <div className="rail-row__right flex min-w-0 items-center justify-end gap-1">
+        {file ? (
+          <>
+            <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-primaryFaint px-2.5 py-0.5 text-sm font-semibold text-primaryDeep">
+              <FileArchive size={14} aria-hidden="true" className="flex-none" />
+              <span className="max-w-[15ch] truncate max-sm:max-w-[20ch]" title={file.name}>
+                {file.name}
+              </span>
+              <span className="whitespace-nowrap font-medium tabular-nums text-textStrong">{formatFileSize(file.size, language)}</span>
+            </span>
+            <button
+              type="button"
+              data-pick={row.id}
+              onClick={() => onPick(row.id)}
+              className="rounded-md px-2.5 py-1 text-sm font-semibold text-primaryDark hover:bg-primaryFaint focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              {t('deployment.fileVariable.file.replace')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(row.id)}
+              aria-label={t('deployment.fileVariable.file.removeFor', { name: row.name })}
+              className="rounded-lg p-1.5 text-textStrong hover:bg-surfaceMuted hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-sm text-textStrong">{t('deployment.fileVariable.recipients.none')}</span>
+            <button
+              type="button"
+              data-pick={row.id}
+              onClick={() => onPick(row.id)}
+              className="rounded-full border-2 border-primary bg-surface px-3 py-1 text-sm font-bold text-primaryDark transition-colors hover:bg-primaryFaint focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              {t('deployment.fileVariable.drop.pick')}
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div data-testid="file-recipients">
       <div className="mb-1 flex items-baseline justify-between gap-3">
@@ -68,92 +124,34 @@ export default function FileRecipients({ rows, files, mode, kind, popIds, onPick
         ) : null}
       </div>
 
-      <ol>
-        {shown.map((row, index) => {
-          const file = files[row.id] ?? null
-          const eachProps = each
+      <RecipientRail
+        items={shown.map((row) => ({
+          id: row.id,
+          name: row.name,
+          sub: row.sub,
+          filled: !!files[row.id],
+          right: rightOf(row),
+        }))}
+        rowProps={(item, index) => ({
+          'data-testid': 'file-row',
+          'data-id': item.id,
+          'data-pop': popIds.includes(item.id),
+          'data-dragging': each && dragId === item.id,
+          style: { '--i': Math.min(index, MAX_STAGGER) } as CSSProperties,
+          ...(each
             ? {
                 onDragOver: (event: DragEvent) => {
                   event.preventDefault()
-                  setDragId(row.id)
+                  setDragId(item.id)
                 },
                 onDragLeave: (event: DragEvent) => {
                   if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragId(null)
                 },
-                onDrop: (event: DragEvent) => onRowDrop(row.id, event),
+                onDrop: (event: DragEvent) => onRowDrop(item.id, event),
               }
-            : {}
-          return (
-            <li
-              key={row.id}
-              className="fv-row"
-              data-testid="file-row"
-              data-id={row.id}
-              data-has={!!file}
-              data-pop={popIds.includes(row.id)}
-              data-dragging={each && dragId === row.id}
-              style={{ '--i': Math.min(index, MAX_STAGGER) } as CSSProperties}
-              {...eachProps}
-            >
-              <span className="fv-node" aria-hidden="true" />
-              <div className="min-w-0">
-                <b className="block truncate text-sm font-semibold text-textHeading">{row.name}</b>
-                {row.sub ? <small className="block truncate text-xs text-textStrong">{row.sub}</small> : null}
-              </div>
-
-              {each ? (
-                <div className="fv-row__right flex min-w-0 items-center justify-end gap-1">
-                  {file ? (
-                    <>
-                      <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-primaryFaint px-2.5 py-0.5 text-sm font-semibold text-primaryDeep">
-                        <FileArchive size={14} aria-hidden="true" className="flex-none" />
-                        <span className="max-w-[15ch] truncate max-sm:max-w-[20ch]" title={file.name}>
-                          {file.name}
-                        </span>
-                        <span className="whitespace-nowrap font-medium tabular-nums text-textStrong">{formatFileSize(file.size, language)}</span>
-                      </span>
-                      <button
-                        type="button"
-                        data-pick={row.id}
-                        onClick={() => onPick(row.id)}
-                        className="rounded-md px-2.5 py-1 text-sm font-semibold text-primaryDark hover:bg-primaryFaint focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                      >
-                        {t('deployment.fileVariable.file.replace')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onRemove(row.id)}
-                        aria-label={t('deployment.fileVariable.file.removeFor', { name: row.name })}
-                        className="rounded-lg p-1.5 text-textStrong hover:bg-surfaceMuted hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                      >
-                        <X size={16} aria-hidden="true" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-sm text-textStrong">{t('deployment.fileVariable.recipients.none')}</span>
-                      <button
-                        type="button"
-                        data-pick={row.id}
-                        onClick={() => onPick(row.id)}
-                        className="rounded-full border-2 border-primary bg-surface px-3 py-1 text-sm font-bold text-primaryDark transition-colors hover:bg-primaryFaint focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                      >
-                        {t('deployment.fileVariable.drop.pick')}
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <span
-                  className={`fv-row__right text-right text-sm tabular-nums ${file ? 'font-semibold text-textHeading' : 'text-textStrong'}`}
-                >
-                  {file ? file.name : t('deployment.fileVariable.recipients.none')}
-                </span>
-              )}
-            </li>
-          )
+            : {}),
         })}
-      </ol>
+      />
 
       {hidden > 0 ? (
         <button
