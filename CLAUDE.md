@@ -11,7 +11,7 @@ Harness-Gesamtkonzept: siehe https://github.com/DHBW-AppStore-T3/.github/blob/ma
 ## Lokale Befehle
 - Dev-Server: `npm run dev`
 - Build & Typecheck: `npm run build` (`tsc -b && vite build`)
-- Tests & Coverage: `npm run test` / `npm run test:coverage` (CI-Gate: mind. 85 % Zeilen, Linux-CI misst ca. 91 %)
+- Tests & Coverage: `npm run test` / `npm run test:coverage` (CI-Gate: mind. 85 % Zeilen, zuletzt gemessen 93,6 % Zeilen / 87,5 % Branches, Basis des Epics #139)
   - `docker-entrypoint.spec.ts` braucht `sh` und `envsubst` (Windows: Git for Windows im `PATH`); läuft auf Windows und Linux, kein Plattform-Skip
 - OpenAPI Typen synchronisieren: Schema aus dem Backend exportieren (`poetry run python scripts/export_openapi.py ../frontend/src/types/openapi.json`), dann `npm run gen:api-types` und `npx tsc -b`; Details im README
 - Lebendes Übergabedokument: `claude_docs/HANDOVER.md`

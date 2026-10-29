@@ -43,8 +43,8 @@ jobs:
   # ================================================================
   # tsc above covers types. ESLint covers what a type-checker
   # cannot see: the rules of hooks, effect dependency arrays, an unused
-  # import left behind by a refactor. Warnings are not fatal (there are ~157,
-  # mostly `any`s forced by the hand-maintained API types); errors are.
+  # import left behind by a refactor. `--max-warnings=0` (npm run lint): a warning
+  # fails the job like an error, so there is no backlog of tolerated warnings.
   lint:
     name: "🧹 Lint"
     runs-on: ubuntu-latest
