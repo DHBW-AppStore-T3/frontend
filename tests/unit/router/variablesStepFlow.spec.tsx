@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router'
 import { I18nextProvider } from 'react-i18next'
 
 // The wizard runs on its real routes and views; only the backend and the sign-in are stand-ins.
@@ -33,6 +33,19 @@ import { keyEchoI18n } from '../../helpers/render'
 const john = { userId: 'u1', firstName: 'John', lastName: 'Doe' }
 const jane = { userId: 'u2', firstName: 'Jane', lastName: 'Roe' }
 const region = { name: 'region', type: 'string', source: 'terraform', default: 'eu' }
+
+// The views are loaded by a real dynamic import the first time a route needs them. With coverage
+// instrumentation on a CI runner that can take longer than a test's 5 s, so load every lazy route
+// once up front (as routes.spec does) and keep the tests about the flow.
+const loadLazyRoutes = (routes: RouteObject[]): Promise<unknown>[] =>
+  routes.flatMap((r) => [
+    ...(r.lazy ? [(r.lazy as () => Promise<unknown>)()] : []),
+    ...loadLazyRoutes(r.children ?? []),
+  ])
+
+beforeAll(async () => {
+  await Promise.all(loadLazyRoutes(appRoutes))
+}, 120_000)
 
 function startWizard() {
   const store = useDeploymentStore.getState()
