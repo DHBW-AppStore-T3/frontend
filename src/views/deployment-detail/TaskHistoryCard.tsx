@@ -102,16 +102,17 @@ export default function TaskHistoryCard({
               {historyTasks.map((task) => {
                 const Icon = getStatusStyles(task.status).icon
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={task.taskId}
                     data-testid="task-row"
                     onClick={() => onSelectTask(task)}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200 hover:border-primary/30"
+                    className="w-full text-left flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200 hover:border-primary/30"
                   >
-                    <div className="flex items-center gap-4 flex-1">
+                    <span className="flex items-center gap-4 flex-1">
                       <Icon size={18} className={statusIconColor(task.status)} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
+                      <span className="block flex-1">
+                        <span className="flex items-center gap-3 mb-1">
                           <span className="font-medium text-gray-900 capitalize">{task.type}</span>
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border capitalize ${
@@ -120,12 +121,12 @@ export default function TaskHistoryCard({
                           >
                             {task.status}
                           </span>
-                        </div>
-                        <div className="text-xs text-gray-500">Created: {formatDateTime(task.created_at)}</div>
-                      </div>
-                    </div>
+                        </span>
+                        <span className="block text-xs text-gray-500">Created: {formatDateTime(task.created_at)}</span>
+                      </span>
+                    </span>
                     <ChevronDown size={20} className="text-gray-400 transform -rotate-90" />
-                  </div>
+                  </button>
                 )
               })}
             </div>
