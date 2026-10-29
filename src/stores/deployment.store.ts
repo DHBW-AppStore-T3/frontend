@@ -5,6 +5,7 @@ import { useAuthStore } from './auth.store'
 import { runRequest } from './_request'
 import { buildDeploymentPayload, DRAFT_REQUIRED_ERROR } from '@/utils/deployment-payload'
 
+import { parseDeploymentDetail } from '@/utils/rest-guards'
 import type {
   App,
   User,
@@ -119,7 +120,9 @@ export const useDeploymentStore = create<DeploymentState>()((set, get) => ({
       await runRequest(set, async () => {
         try {
           const response = await deploymentApi.getById(id)
-          set({ currentDeployment: response.data })
+          const detail = parseDeploymentDetail(response.data)
+          if (!detail) throw new Error('GET /deployments/{id}: unusable answer')
+          set({ currentDeployment: detail })
         } catch (err) {
           // 404 = deployment was soft-deleted upstream (e.g. after a successful
           // destroy). This is not a UI error state: the DetailView's stream-ended

@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { DeploymentTeam, PodWorkload, Task } from '@/types'
+import { parseStoredUserInput, type StoredUserInput } from '@/utils/rest-guards'
 import { userUrlFor } from '@/utils/connection-commands'
 
 // One account entry as an app publishes it (VM apps: Terraform outputs; pods:
@@ -313,21 +314,9 @@ export function statusIconColor(status?: string): string {
   return 'text-yellow-600'
 }
 
-/** What the wizard stored in ``userInputVar``; read back as parsed JSON, not validated. */
-interface StoredUserInput {
-  groupNames?: string[]
-  assignments?: Record<string, string[]>
-  variables?: Record<string, string>
-}
-
 function userInputObject(raw: unknown): StoredUserInput | null {
   if (!raw) return null
-  try {
-    return typeof raw === 'string' ? JSON.parse(raw) : (raw as StoredUserInput)
-  } catch (e) {
-    console.error('Error parsing userInputVar:', e)
-    return null
-  }
+  return parseStoredUserInput(raw)
 }
 
 export interface DeploymentGroup {
@@ -339,8 +328,7 @@ export interface DeploymentGroup {
 export function parseGroups(userInputVar: unknown): DeploymentGroup[] {
   const data = userInputObject(userInputVar)
   if (!data) return []
-  const groupNames: string[] = data.groupNames || []
-  const assignments: Record<string, string[]> = data.assignments || {}
+  const { groupNames, assignments } = data
   return Object.keys(assignments).map((groupIndex, idx) => ({
     index: parseInt(groupIndex),
     name: groupNames[idx] || `Gruppe ${parseInt(groupIndex) + 1}`,
@@ -350,7 +338,7 @@ export function parseGroups(userInputVar: unknown): DeploymentGroup[] {
 
 export function parseVariables(userInputVar: unknown): Record<string, string> {
   const data = userInputObject(userInputVar)
-  return data?.variables || {}
+  return data?.variables ?? {}
 }
 
 /** Variable values may carry HCL-style trailing comments and quotes. */

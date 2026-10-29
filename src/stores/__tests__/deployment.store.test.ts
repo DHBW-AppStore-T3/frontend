@@ -101,6 +101,31 @@ describe('DeploymentStore', () => {
 
       expect(store.error).toBe('boom')
     })
+
+    it('ignores an unusable answer (no id) and reports a load error, keeping the old deployment', async () => {
+      const { deploymentApi } = await import('@/api/deployment.api')
+      vi.mocked(deploymentApi.getById).mockResolvedValueOnce({ data: { name: 'no id' } } as any)
+
+      const store = liveStore(useDeploymentStore)
+      store.currentDeployment = { deploymentId: 'd-1', status: 'success' } as any
+      await store.fetchDeploymentById('d-1')
+
+      expect(store.currentDeployment).toMatchObject({ deploymentId: 'd-1' })
+      expect(store.error).not.toBeNull()
+    })
+
+    it('drops a field of the wrong type instead of storing it', async () => {
+      const { deploymentApi } = await import('@/api/deployment.api')
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      vi.mocked(deploymentApi.getById).mockResolvedValueOnce({
+        data: { deploymentId: 'd-1', status: 'success', teams: 'none' },
+      } as any)
+
+      const store = liveStore(useDeploymentStore)
+      await store.fetchDeploymentById('d-1')
+
+      expect(store.currentDeployment).toEqual({ deploymentId: 'd-1', status: 'success' })
+    })
   })
 
   describe('createDeployment', () => {

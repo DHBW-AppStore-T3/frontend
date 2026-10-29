@@ -37,6 +37,7 @@ import {
 } from './helpers'
 import { permissionsOf, lifecycleGates } from './access'
 import { useDeploymentStatusPolling, shouldPollDeploymentStatus } from './useDeploymentStatusPolling'
+import { parseTask, parseTaskList } from '@/utils/rest-guards'
 import { isClusterRuntime } from '@/utils/runtime'
 
 /** Minimum gap between two REST resyncs triggered by invalid SSE events. */
@@ -83,8 +84,9 @@ export function useDeploymentDetail(deploymentId: string) {
     setLoadingTasks(true)
     try {
       const { data } = await taskApi.listByDeployment(deploymentId)
-      setTasks(data)
-      return data
+      const list = parseTaskList(data)
+      setTasks(list)
+      return list
     } catch (err) {
       console.error('Error loading tasks:', err)
       return []
@@ -439,7 +441,9 @@ export function useDeploymentDetail(deploymentId: string) {
     setLoadingTaskDetail(true)
     try {
       const { data } = await taskApi.getById(task.taskId)
-      setSelectedTask(data)
+      const detail = parseTask(data)
+      if (!detail) throw new Error('GET /tasks/{id}: unusable answer')
+      setSelectedTask(detail)
     } catch (err) {
       console.error('Error loading task details:', err)
       toasts.addToast({ type: 'error', message: t('DeploymentDetailView.taskDetailError') })
