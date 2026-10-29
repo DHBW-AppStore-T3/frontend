@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useEffectEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
@@ -71,7 +71,7 @@ export function useStudentDirectory() {
   )
 
   // Initial load: courses (then their members), plus the initial student list.
-  useEffect(() => {
+  const loadOnEntry = useEffectEvent(() => {
     let cancelled = false
     void (async () => {
       setLoadingCourses(true)
@@ -103,9 +103,10 @@ export function useStudentDirectory() {
     return () => {
       cancelled = true
     }
-    // Mount-only load; the actions used are stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  })
+
+  // Mount-only load; the store actions and `t` are read when the answers arrive.
+  useEffect(() => loadOnEntry(), [])
 
   // Debounced search. Empty → initial list; a single character keeps the list.
   const latest = useRef({ toast, t, remember })

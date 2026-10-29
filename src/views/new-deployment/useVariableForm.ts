@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useEffectEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useDeploymentStore } from '@/stores/deployment.store'
@@ -49,7 +49,7 @@ export function useVariableForm() {
   )
   const terraformVariables = useMemo(() => variables.filter((v) => v.source === 'terraform'), [variables])
   // ---------------------------------------------------------- initial load
-  useEffect(() => {
+  const loadOnEntry = useEffectEvent(() => {
     const store = useDeploymentStore.getState()
     const appId = store.draft.appId
     if (!appId) {
@@ -92,9 +92,10 @@ export function useVariableForm() {
     return () => {
       cancelled = true
     }
-    // Entry load, once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  })
+
+  // Entry load, once; `t` is read when an error has to be reported.
+  useEffect(() => loadOnEntry(), [])
 
   // ----------------------------------------- team rename reconciliation
   // When teams change while this step is open, slot values of vanished teams
@@ -113,14 +114,15 @@ export function useVariableForm() {
   const formValues = reconciled.values
   const droppedKey = reconciled.dropped.join('\n')
 
-  useEffect(() => {
+  const notifyDropped = useEffectEvent(() => {
     if (!droppedKey) return
     toast.info(
       t('deployment.variables.teamRenameToast', { count: droppedKey.split('\n').length, lines: droppedKey }),
     )
-    // Notify once per distinct set of dropped slots.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [droppedKey])
+  })
+
+  // Notify once per distinct set of dropped slots.
+  useEffect(() => notifyDropped(), [droppedKey])
 
   const missingRequired = useMemo(
     () => findMissingRequired(variables, formValues, teams),

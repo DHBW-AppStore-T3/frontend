@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useEffectEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { GraduationCap, Trash2, Plus, Users, Search, ChevronRight } from 'lucide-react'
@@ -41,7 +41,7 @@ export default function CoursesView() {
     return courses.filter((c) => c.name.toLocaleLowerCase().includes(q))
   }, [courses, searchQuery])
 
-  useEffect(() => {
+  const loadCourses = useEffectEvent(() => {
     let cancelled = false
     void (async () => {
       try {
@@ -68,9 +68,10 @@ export default function CoursesView() {
     return () => {
       cancelled = true
     }
-    // Mount-only load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  })
+
+  // Loads on entry and again when the role changes (member counts are staff-only).
+  useEffect(() => loadCourses(), [isStaff])
 
   const openCreateModal = () => {
     setCourseName('')
