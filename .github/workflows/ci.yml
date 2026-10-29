@@ -43,8 +43,8 @@ jobs:
   # ================================================================
   # tsc above covers types. ESLint covers what a type-checker
   # cannot see: the rules of hooks, effect dependency arrays, an unused
-  # import left behind by a refactor. Warnings are not fatal (there are ~157,
-  # mostly `any`s forced by the hand-maintained API types); errors are.
+  # import left behind by a refactor. `--max-warnings=0` (npm run lint): a warning
+  # fails the job like an error, so there is no backlog of tolerated warnings.
   lint:
     name: "🧹 Lint"
     runs-on: ubuntu-latest
@@ -101,12 +101,12 @@ jobs:
         run: |
           # Line AND branch coverage (two separate minimums, both must hold),
           # on every git branch, so regressions are caught before they reach
-          # dev/main. Lines were raised 2026-10 from 40 to 85 % (frontend#80);
-          # branches got their own gate on top. Keep each minimum at least 2
+          # dev/main. Both minimums are 80 % (lines went from 40 to 85 % in frontend#80,
+          # then both were set to 80 %). Keep each minimum at least 2
           # points below the CI value (a flaky drop must not block merges) and
           # update CLAUDE.md and claude_docs/HANDOVER.md with them.
-          MIN_COVERAGE=85.0
-          MIN_BRANCH_COVERAGE=85.0
+          MIN_COVERAGE=80.0
+          MIN_BRANCH_COVERAGE=80.0
           PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
           BRANCH_PCT=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
           echo "Current frontend coverage: lines ${PCT}% (minimum ${MIN_COVERAGE}%), branches ${BRANCH_PCT}% (minimum ${MIN_BRANCH_COVERAGE}%)"

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
+import { safeReturnUrl } from '@/utils/return-url'
 import { thrownMessage } from '@/utils/http-error'
 
 export default function CallbackView() {
@@ -18,7 +19,7 @@ export default function CallbackView() {
         const returnUrl = await useAuthStore.getState().handleCallback()
         if (cancelled) return
         // Redirect to original destination or dashboard
-        navigate(returnUrl || '/dashboard')
+        navigate(safeReturnUrl(returnUrl, '/dashboard'))
       } catch (err) {
         if (cancelled) return
         console.error('Callback error:', err)

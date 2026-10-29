@@ -10,12 +10,14 @@ type Team = NonNullable<DeploymentCreate['teams']>[number]
  * The version to deploy. The release tag may come as a string or as an object
  * (``{ version }`` / ``{ name }``) from the UI; anything else, and an empty
  * or blank string, means ``latest``. A string is passed on as it is (not trimmed).
+ * In an object, the first of ``version``/``name`` that is a non-blank string wins.
  */
 export function normalizeReleaseTag(raw: unknown): string {
   if (raw && typeof raw === 'object') {
     const tag = raw as { version?: unknown; name?: unknown }
-    // Passed on as it is, whatever type ``version``/``name`` have.
-    return (tag.version || tag.name || 'latest') as string
+    // The contract is a string: a ``version``/``name`` of another type (or blank) is skipped.
+    const named = [tag.version, tag.name].find((v): v is string => typeof v === 'string' && v.trim() !== '')
+    return named ?? 'latest'
   }
   if (typeof raw === 'string' && raw.trim() !== '') return raw
   return 'latest'

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '@/App'
+import { loadActiveLocale } from '@/i18n'
 import { env } from '@/env'
 import { applyTheme } from '@/theme/applyTheme'
 import { resolveTheme } from '@/theme'
@@ -22,6 +23,8 @@ function stripParams(keys: string[]): void {
  */
 export async function bootstrap(): Promise<void> {
   applyTheme(resolveTheme(env.THEME))
+  // Messages first: the route guards and the first render translate.
+  await loadActiveLocale()
   // Before anything else sees the URL: the fragment carries a one-time code.
   const ltiCode = takeLtiLaunch()
   // An invalid or expired code (a reload, a link from somewhere else) ends in

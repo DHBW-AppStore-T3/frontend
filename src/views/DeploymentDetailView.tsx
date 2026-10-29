@@ -351,22 +351,23 @@ export default function DeploymentDetailView() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {d.groups.map((group) => (
-                    <div
+                    <button
+                      type="button"
                       key={group.index}
                       data-testid="group-card"
                       onClick={() => d.selectGroup(group.index)}
-                      className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 hover:border-primary/30"
+                      className="block text-left bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 hover:border-primary/30"
                     >
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="flex items-center gap-3 mb-2">
+                        <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                           <span className="text-primary font-bold text-sm">{group.index + 1}</span>
-                        </div>
-                        <div className="font-semibold">{group.name}</div>
-                      </div>
-                      <div className="text-sm text-gray-600 ml-11">
+                        </span>
+                        <span className="font-semibold">{group.name}</span>
+                      </span>
+                      <span className="block text-sm text-gray-600 ml-11">
                         {t('DeploymentDetailView.deploymentStudentCount', { count: group.students.length })}
-                      </div>
-                    </div>
+                      </span>
+                    </button>
                   ))}
                 </div>
               )}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppVariable } from '@/types'
-import type { WizardTeam } from '../variableForm'
+import { fileSlotKeysFor, type WizardTeam } from '../variableForm'
 import { buildRecipients } from '../recipientRows'
 
 const member = (userId: string, username: string) => ({ userId, username })
@@ -68,5 +68,34 @@ describe('buildRecipients', () => {
 
   it('has no rows without teams', () => {
     expect(buildRecipients(variable(), [], nameOf).rows).toEqual([])
+  })
+})
+
+// The card writes files under the ids of its rows; the step drops every other key on "Next".
+describe('buildRecipients and fileSlotKeysFor name the same slots', () => {
+  const several: WizardTeam[] = [
+    { name: 'Alpha', members: [member('u1', 'anna'), member('u2', 'ben')] },
+    { name: 'Beta', members: [member('u3', 'carla')] },
+  ]
+  const eachOne: WizardTeam[] = [
+    { name: 'Team #1', members: [member('u1', 'anna')] },
+    { name: 'Team #2', members: [member('u2', 'ben')] },
+  ]
+  const withEmpty: WizardTeam[] = [...several, { name: 'Gamma', members: [] }]
+
+  it.each<['all' | 'team' | 'user', WizardTeam[]]>([
+    ['all', several],
+    ['all', []],
+    ['team', several],
+    ['team', eachOne],
+    ['team', withEmpty],
+    ['team', []],
+    ['user', several],
+    ['user', eachOne],
+    ['user', withEmpty],
+    ['user', []],
+  ])('scope %s', (scope, teams) => {
+    const file = variable({ osScope: scope, varScope: scope })
+    expect(fileSlotKeysFor(file, teams)).toEqual(buildRecipients(file, teams, nameOf).rows.map((r) => r.id))
   })
 })

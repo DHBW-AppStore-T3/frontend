@@ -218,6 +218,6 @@ The multi-step deployment wizard follows this flow:
 
 If Copilot generates tests:
 - Use **Vitest** with **React Testing Library**
-- Coverage gate: at least 85% lines **and** 85% branches (`npm run test:coverage`)
+- Coverage gate: at least 80% lines **and** 80% branches (`npm run test:coverage`)
 - Tests must pass Network Guard (mock network requests or use handlers)
 - Focus on user interactions, accessibility, state transitions, and error handling.

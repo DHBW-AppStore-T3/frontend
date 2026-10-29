@@ -1,4 +1,4 @@
-import axios, { type AxiosError } from 'axios'
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { keycloak } from '@/services/keycloak.service'
 import { env } from '@/env'
 
@@ -23,6 +23,10 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+// A request is repeated once after a 401 that a silent refresh cured; the flag
+// keeps a 401 that is not about the token from looping.
+type RetriableConfig = InternalAxiosRequestConfig & { _retriedAfterRefresh?: boolean }
+
 // Global error handling
 api.interceptors.response.use(
   (response) => response,
@@ -32,7 +36,15 @@ api.interceptors.response.use(
         
       // Try to ensure valid token (silent refresh)
       const hasValidToken = await keycloak.ensureValidToken()
-      
+
+      // The server turned the request down before it did anything, so sending it
+      // again with the new token (the request interceptor adds it) is safe.
+      const config = error.config as RetriableConfig | undefined
+      if (hasValidToken && config && !config._retriedAfterRefresh) {
+        config._retriedAfterRefresh = true
+        return api.request(config)
+      }
+
       if (!hasValidToken) {
         // Clear any stored data
         try {

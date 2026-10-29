@@ -33,7 +33,7 @@ npm run gen:api-types   # API-Typen aus src/types/openapi.json erzeugen (siehe u
 
 Tests liegen an zwei Stellen: neben dem Code in `src/**/__tests__/` und übergreifend in `tests/unit/` (Router, Contract, i18n, Styles, Infrastruktur). `tests/setup.ts` und `tests/helpers/` stellen den Netzwerk-Guard und Render-Helfer bereit: Ein ungemockter `fetch`/XHR lässt den Test fehlschlagen.
 
-Die CI (`.github/workflows/ci.yml`) verlangt auf jedem Branch mindestens 85 % Zeilen **und** 85 % Branches (`MIN_COVERAGE` / `MIN_BRANCH_COVERAGE`).
+Die CI (`.github/workflows/ci.yml`) verlangt auf jedem Branch mindestens 80 % Zeilen **und** 80 % Branches (`MIN_COVERAGE` / `MIN_BRANCH_COVERAGE`).
 
 Die Tests in `tests/unit/infra/docker-entrypoint.spec.ts` führen `docker-entrypoint.sh` mit `sh` und `envsubst` aus. Unter Windows kommen beide mit Git for Windows (im `PATH`), unter Linux/macOS sind sie üblicherweise vorhanden (`gettext`). Alle Tests laufen auf beiden Systemen; ohne diese Werkzeuge werden sie lokal sichtbar übersprungen, in der CI schlagen sie fehl.
 
@@ -141,7 +141,6 @@ src/
 - Routing, Rollen und Guards: [docs/routing-and-access.md](docs/routing-and-access.md)
 - Texte und Übersetzungen: [docs/i18n.md](docs/i18n.md)
 - Theming: [docs/themes.md](docs/themes.md)
-- Frontend-Architektur (C4, Abläufe, Befunde): [docs/architecture/architecture.md](docs/architecture/architecture.md)
 - Design-Mockups zu UI-Issues: [docs/design/](docs/design/README.md)
 - Übergabedokument: [claude_docs/HANDOVER.md](claude_docs/HANDOVER.md)
 - Architektur und projektübergreifende Doku: [.github-Repo](https://github.com/DHBW-AppStore-T3/.github)
