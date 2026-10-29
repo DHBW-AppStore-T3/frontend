@@ -116,6 +116,28 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   (2) Schritt 1 und 2 laden jetzt beim Betreten: Specs dieser Ansichten mit `appId` im Entwurf brauchen einen Mock für `fetchAppVariables` bzw. `appApi.getVariables`
   (Netzwerk-Guard). (3) `npm ci` nach dem Branch-Wechsel, sonst fehlt `eslint-plugin-jsx-a11y` (aus #153). **Nicht im lokalen Browser geprüft** (`npm run dev` braucht den
   Docker-Stack und einen Keycloak-Login); Prüfung auf Staging nach dem Merge, Ergebnis in der PR.
+- **2026-10-29 (Schritt „Variablen“ schickt keine Slots von Teams und Personen mehr mit, die es nicht mehr gibt):** „Weiter“ in Schritt 3 (`next()` in
+  `useVariableForm.ts`) entfernt jetzt aus `draft.variables`/`userInputVar` und aus `draft.fileUploads` alle Slots, die die aktuellen Teams nicht (mehr) enthalten: abgewählte
+  Person (Schritt 1), umbenanntes, gelöschtes Team, Person in ein anderes Team verschoben (Schritt 2). **Ursache:** `dropStaleSlots` lief nur, wenn sich die Teams änderten,
+  *während* der Schritt offen war; `restoreFromDraft`/`seedScopedDefault` und `buildDraftValues`/`cleanScopedMap` behalten fremde Schlüssel, `fileUploads` wurde nirgends bereinigt.
+  Beim Zurückkommen standen alte Slots deshalb unsichtbar im Entwurf und in der Nutzlast (`userInputVar.terraform.<var>`, `files.<var>`). **Backend** (`app/services/deployment_input.py`,
+  `validate_scoped_user_input`): ein `team`-Slot ohne Team und ein `Team-Person`-Slot ohne Team (Variable und Datei) ergeben 422 `unknown_scope_target` (das Frontend kennt den Grund nicht und
+  zeigt nur „Request failed with status code 422“); der Slot einer Person in einem Team, das es noch gibt, wird nicht geprüft (nur das Team-Präfix; eine Mitgliederliste hat die Prüfung nicht) und geht weiter an Terraform.
+  **Neu in `variableForm.ts`:** `fileSlotKeysFor` (Scope `all` → `['all']`, sonst `slotKeysFor`; ein Test vergleicht es für alle Scopes und Teamformen mit den Zeilen-Ids von `buildRecipients`,
+  damit die Karte und die Bereinigung nicht auseinanderlaufen) und `dropStaleFileSlots` (wie `dropStaleSlots`: gleiches Objekt zurück, wenn nichts fällt; die Map einer Variablen bleibt leer stehen,
+  die Nutzlast lässt leere Einträge aus). `next()` schreibt `fileUploads` nur, wenn etwas fiel. **Entscheidungen:** (1) *Wo:* beim Verlassen, nicht beim Betreten und nicht in der Nutzlast. Dort sind die
+  Schlüssel genau die, die die Karten eben gezeigt haben, es geht also nie etwas verloren, was die Person sehen konnte. Beim Betreten käme der Schlüssel (`Team-Benutzername`, Benutzername aus
+  `studentCache`, sonst E-Mail-Teil, Vorname, `userId.slice(0, 8)`) aus einem Cache, der seit dem Speichern Einträge ersetzt haben kann (`mergeIntoCache` tauscht, wenn Vor-/Nachname dazukommen); ein
+  anders gelesener Schlüssel würde einen gültigen Wert unsichtbar und unwiederbringlich löschen. Das Backend führt `username` als Pflichtfeld, der Fallback greift praktisch nie, ist aber
+  der Grund, den Eintritt nicht anzufassen (der Kommentar „restoring previously saved slots on entry is left untouched“ gilt weiter). `buildDeploymentPayload` kennt nur den Entwurf, nicht den Cache,
+  und könnte Benutzer-Slots gar nicht prüfen; die Übersicht würde außerdem Slots zeigen, die nicht gesendet werden. (2) Kein Hinweis-Toast beim Verlassen: die Slots waren nicht zu sehen. Der bestehende
+  `teamRenameToast` (Teams ändern sich bei offenem Schritt) bleibt unverändert. **Tests:** `tests/unit/views/NewDeploymentVariables.staleSlots.spec.tsx` (echte Ansicht, Entwurf mit den Slots der
+  Probe aus PR 159 plus Umbenennen, Löschen, Verschieben, alle Teams ersetzt, nichts Veraltetes, Eingabe bleibt; prüft `variables`, `userInputVar`, `fileUploads` und `buildDeploymentPayload`),
+  `variableForm.test.ts` (`fileSlotKeysFor`, `dropStaleFileSlots`), `recipientRows.test.ts` (Gleichlauf mit `buildRecipients`); gegen den `dev`-Stand sind 7 der 8 Ansichtsfälle rot, der
+  achte („Teams wie vorher, nichts geht verloren“) schützt vor zu viel Löschen. **Grenzen:** (a) Nur der Weg über „Weiter“ in Schritt 3 bereinigt. Wer Schritt 2 per Browser-Zurück ändert und per
+  Browser-Vor durch Schritt 3 zur Übersicht springt, umgeht es (Übersicht zeigt die Slots dann sichtbar). (b) `bytesOf` in `NewDeploymentVariableView` zählt beim Betreten auch verwaiste Dateien
+  anderer Datei-Variablen zur Gesamtgröße; spürbar erst bei einer App mit zwei Datei-Variablen (heute hat jede App eine). (c) `fileUploads`-Einträge zu Variablen, die der App fehlen, bleiben
+  unberührt (nur Slots bekannter Datei-Variablen werden geprüft). Der offene Punkt „Schritt 3“ im Eintrag zu Abgewählten Studierenden (PR 159) ist damit erledigt. **Nicht im Browser geprüft.**
 - **2026-10-29 (Zurück zur Übersicht führt fest nach `/apps`, frontend#134):** `AppsDetailView.tsx` navigiert mit
   `navigate(paths.apps)` statt `navigate(-1)`. Ursache: „Zurück" im Assistenten **fügt** einen Verlaufseintrag hinzu
   (`/apps/<id>` → `/deployment/new/config` → `/apps/<id>`), `navigate(-1)` landete deshalb wieder im Assistenten; bei einem Deep Link
