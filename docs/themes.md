@@ -4,7 +4,7 @@ Das Theming-System steuert Farben, Logos, Favicon, Seitentitel und das Login-/Da
 
 ## Funktionsweise
 
-Beim App-Start liest `bootstrap.tsx` die Umgebungsvariable `VITE_THEME` und ruft `resolveTheme()` auf. Diese gibt das passende `Theme`-Objekt zurück — bei fehlendem oder unbekanntem Wert immer `t3`. `applyTheme()` schreibt dann alle Farbkanäle als CSS-Variablen auf das `<html>`-Element und setzt Titel und Favicon.
+Beim App-Start liest `bootstrap.tsx` den Wert `env.THEME` (`src/env.ts`: zuerst `window.__ENV__.VITE_THEME` aus `env-config.js`, dann `import.meta.env.VITE_THEME`; ein nicht ersetzter `$…`-Platzhalter zählt als nicht gesetzt) und ruft `resolveTheme()` auf. Diese gibt das passende `Theme`-Objekt zurück — bei fehlendem oder unbekanntem Wert immer `t3`. `applyTheme()` schreibt dann alle Farbkanäle als CSS-Variablen (`--color-<schlüssel>`) auf das `<html>`-Element, setzt Titel und Favicon und macht das Theme für Komponenten über `useTheme()` verfügbar (Logo, Login-Bild).
 
 Im Container wird `VITE_THEME` über `env-config.js` und `envsubst` zur Laufzeit gesetzt (nicht zur Build-Zeit).
 
@@ -27,6 +27,7 @@ Im Container wird `VITE_THEME` über `env-config.js` und `envsubst` zur Laufzeit
    npm run test
    npm run build
    ```
+   `tests/unit/theme/` (u. a. `themes.spec.ts`, `contrast.spec.ts`) prüft jedes registrierte Theme: vollständige Farbschlüssel und ausreichenden Kontrast der Status- und Textfarben. `tests/unit/styles/colors.spec.ts` verhindert fest eingetragene Farbwerte im Code.
 
 ## Theme-Vertrag (`src/theme/types.ts`)
 

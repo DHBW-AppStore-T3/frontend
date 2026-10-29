@@ -22,13 +22,18 @@ make shell-frontend         # interaktive Shell im Container
 Lint, Type-Check und Tests laufen im Frontend-Container — `make shell-frontend` öffnet eine Shell. Die tatsächlich vorhandenen Skripte:
 
 ```bash
-npm run lint            # ESLint (eslint.config.js)
+npm run lint            # ESLint inkl. jsx-a11y (eslint.config.js), --max-warnings=0
 npm run lint:fix        # ESLint mit --fix
 npx tsc -b --noEmit # Type-Check (kein eigenes npm-Skript)
 npm run test            # Vitest, einmaliger Lauf
 npm run test:coverage   # Vitest + Coverage (istanbul)
 npm run build           # tsc + vite build
+npm run gen:api-types   # API-Typen aus src/types/openapi.json erzeugen (siehe unten)
 ```
+
+Tests liegen an zwei Stellen: neben dem Code in `src/**/__tests__/` und übergreifend in `tests/unit/` (Router, Contract, i18n, Styles, Infrastruktur). `tests/setup.ts` und `tests/helpers/` stellen den Netzwerk-Guard und Render-Helfer bereit: Ein ungemockter `fetch`/XHR lässt den Test fehlschlagen.
+
+Die CI (`.github/workflows/ci.yml`) verlangt auf jedem Branch mindestens 85 % Zeilen **und** 85 % Branches (`MIN_COVERAGE` / `MIN_BRANCH_COVERAGE`).
 
 Die Tests in `tests/unit/infra/docker-entrypoint.spec.ts` führen `docker-entrypoint.sh` mit `sh` und `envsubst` aus. Unter Windows kommen beide mit Git for Windows (im `PATH`), unter Linux/macOS sind sie üblicherweise vorhanden (`gettext`). Alle Tests laufen auf beiden Systemen; ohne diese Werkzeuge werden sie lokal sichtbar übersprungen, in der CI schlagen sie fehl.
 
@@ -93,18 +98,22 @@ Der Code liegt in `src/`. Der typische Datenfluss von der Oberfläche bis zum Ba
 ```
 src/
 ├── main.tsx          # Einstiegspunkt — ruft bootstrap.tsx auf
-├── bootstrap.tsx     # App-Start: Theme, Auth (LTI/Handoff/Keycloak), Router, Rendering
+├── bootstrap.tsx     # App-Start: Theme, Auth (LTI/Dev-Brücke/Keycloak), Rendering
 ├── App.tsx           # Root-Komponente mit RouterProvider
-├── views/            # Seiten der App (Ziele der Navigation), z.B. Deployment-Wizard, App-Katalog
+├── env.ts            # Laufzeit-Konfiguration (window.__ENV__ aus env-config.js, sonst import.meta.env)
+├── silent-refresh.ts # Skript der Silent-Refresh-Seite (eigener Build-Einstieg neben index.html)
+├── views/            # Seiten der App (Ziele der Navigation); je Seite ein Unterordner mit Teilkomponenten und use*-Hooks
 ├── layouts/          # Seitenrahmen (App/Auth/User), je nach Route gewählt
-├── components/       # Wiederverwendbare Bausteine; ui/ = generische Elemente (Button, Dialog, ...)
+├── components/       # Wiederverwendbare Bausteine; ui/ = generische Elemente (Button, Modal, Drawer, Toast, ...)
 ├── stores/           # Gemeinsamer Datenspeicher mehrerer Seiten + zugehörige Aktionen (*.store.ts)
 ├── api/              # Aufrufe ans Backend, ein File pro Ressource (*.api.ts) + axios.ts
-├── composables/      # Wiederverwendbare Hooks (use*), z.B. Login, Live-Updates
+├── composables/      # Wiederverwendbare Hooks (use*), z.B. Rollen, Toasts, Live-Updates
 ├── services/         # Logik ohne Oberfläche (keycloak.service fürs OIDC-Login, auth.service für /users/me, lti-launch für LTI 1.3)
-├── router/           # Definition der Seiten-Adressen + Zugriffsschutz (Login nötig ja/nein)
-├── types/            # TypeScript-Typdefinitionen (Apps, Deployments, Pods, ...)
-├── utils/            # Kleine Helfer (Formatierung, Fehler-Aufbereitung)
+├── router/           # Seiten-Adressen (paths.ts), Routen (index.tsx) und Zugriffsschutz (guards.ts)
+├── config/           # Fachliche Kataloge (App-Darstellung, Fachbereichs-Zuordnung)
+├── types/            # TypeScript-Typdefinitionen; api.generated.ts und openapi.json stammen aus dem Backend-Schema
+├── utils/            # Kleine Helfer (Formatierung, Fehler-Aufbereitung, Deployment-Payload, sichere Links)
+├── styles/           # Design-Tokens, Schriften und Farben für die App-Icons (CSS)
 ├── theme/            # Theming-System (Typen, Registry, CSS-Variablen)
 └── i18n/             # Mehrsprachigkeit: Setup + Übersetzungstexte (DE/EN)
 ```
@@ -120,13 +129,20 @@ src/
 | `services/keycloak.service.ts` | Login und Logout gegen Keycloak (via Bibliothek `oidc-client-ts`) |
 | `services/lti-launch.ts` | LTI 1.3-Start aus Moodle: löst den One-Time-Code ein und setzt den Session-Token |
 | `composables/useDeploymentStream.ts` | Empfängt den Live-Fortschritt eines Deployments in Echtzeit vom Backend (Server-Sent Events) |
-| `router/index.ts` | Legt die Seiten-Adressen fest und schützt geschützte Seiten vor nicht eingeloggten Nutzern |
+| `router/index.tsx`, `router/guards.ts` | Legt die Routen fest (`paths.ts` hält alle Adressen) und schützt Seiten per Loader: Login, Rolle, Wizard-Schritt (siehe [docs/routing-and-access.md](docs/routing-and-access.md)) |
+| `composables/useRole.ts` | Einziger Ort für Rollen- und Berechtigungsabfragen in Komponenten |
 
-**views/** — Kern ist der mehrstufige Deployment-Wizard: Basis-Konfiguration (`NewDeploymentConfigView`) → Teilnehmende/Teams (`NewDeploymentGroupsAssignmentView`) → optional Variablen (`NewDeploymentVariableView`, entfällt automatisch, falls die App keine Einstellungen benötigt) → Zusammenfassung (`NewDeploymentSummaryView`, strukturierte Karten). Dazu App-Katalog (`AppsView`/`AppsDetailView`), Deployments (`DeploymentsView`/`DeploymentDetailView`), Kurse, Dashboard und Settings.
+**views/** — Kern ist der mehrstufige Deployment-Wizard: Basis-Konfiguration mit Name und Teilnehmenden (`NewDeploymentConfigView`) → Teams (`NewDeploymentGroupsAssignmentView`) → optional Variablen (`NewDeploymentVariableView`, entfällt automatisch, falls die App weder Variablen noch Ressourcenwahl noch Netzwerkschalter hat; entschieden von `needsVariablesStep`) → Zusammenfassung (`NewDeploymentSummaryView`, ein Satz und drei Karten). Dazu App-Katalog (`AppsView`/`AppsDetailView`/`AddAppsView`), Deployments (`DeploymentsView` mit `DeploymentsListView` und `DeploymentDetailView`), Kurse (`CoursesView`/`CourseDetailView`), Dashboard, Hilfe, Profil (`UserView`) sowie die Admin-Seiten `AdminAppsView` (Freigaben) und `AdminSettingsView` (Admin-Ansicht, empfohlene Apps).
 
-**api/ ↔ stores/** — spiegeln sich paarweise: zu jeder Ressource gibt es ein `*.api.ts` (macht nur die reinen Aufrufe ans Backend) und meist einen `*.store.ts` (hält die Daten im Speicher und bietet Aktionen darauf an, die wiederum die Aufrufe nutzen). Beispiele: `deployment`, `app`, `course`, `team`, `user`, `credentials`.
+**api/ ↔ stores/** — spiegeln sich bei den Kernressourcen: zu jeder gibt es ein `*.api.ts` (macht nur die reinen Aufrufe ans Backend) und meist einen `*.store.ts` (hält die Daten im Speicher und bietet Aktionen darauf an, die wiederum die Aufrufe nutzen). Vorhanden sind die APIs `app`, `course`, `dashboard`, `deployment`, `task`, `user` und die Stores `app`, `auth`, `course`, `deployment`, `admin-view` (Admin-Ansicht, in `localStorage`) und `toast`. Nicht jede Seite geht über einen Store: Mehrere Daten-Hooks in `views/` und `composables/useDashboard.ts` rufen die API direkt auf, etwa für Polling oder Suchfelder (siehe Befund B1 in [docs/architecture/architecture.md](docs/architecture/architecture.md)).
 
 ## Mehr
 
+- Routing, Rollen und Guards: [docs/routing-and-access.md](docs/routing-and-access.md)
+- Texte und Übersetzungen: [docs/i18n.md](docs/i18n.md)
+- Theming: [docs/themes.md](docs/themes.md)
+- Frontend-Architektur (C4, Abläufe, Befunde): [docs/architecture/architecture.md](docs/architecture/architecture.md)
+- Design-Mockups zu UI-Issues: [docs/design/](docs/design/README.md)
+- Übergabedokument: [claude_docs/HANDOVER.md](claude_docs/HANDOVER.md)
 - Architektur und projektübergreifende Doku: [.github-Repo](https://github.com/DHBW-AppStore-T3/.github)
 - API-Docs (Backend Swagger): http://localhost:8000/docs (nach `make dev-up`)

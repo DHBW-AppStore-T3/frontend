@@ -10,11 +10,11 @@ Es gibt drei Rollen, die von Keycloak kommen und in `src/stores/auth.store.ts` g
 
 | Rolle | Konstante | Bedeutung |
 |---|---|---|
-| `student` | `isStudent` | Kann deployen nicht starten, sieht nur eigene Deployments als Mitglied |
-| `teacher` | `isTeacher` | Kann deployen, Kurse verwalten, eigene Deployments sehen |
+| `student` | `isStudent` | Startet keine Deployments und registriert keine Apps; sieht die Deployments, in denen die Person Mitglied ist |
+| `teacher` | `isTeacher` | Registriert Apps, startet Deployments, verwaltet Kurse, bedient eigene Deployments |
 | `admin` | `isAdmin` | Wie teacher + App-Freigaben, alle Deployments sehen |
 
-`isStaff` ist ein Kurzschluss für `isAdmin || isTeacher` — die Grenze, ab der Deployment-Funktionen freigeschaltet sind.
+`isStaff` ist ein Kurzschluss für `isAdmin || isTeacher` — die Grenze, ab der Apps registriert und Deployments gestartet werden können. Im Router heißt das Gegenstück `staffOnly` (`STAFF_ROLES` in `src/router/guards.ts`).
 
 ---
 
@@ -37,7 +37,7 @@ Der Zustand liegt in `src/stores/admin-view.store.ts` (Zustand `persist`, Schlü
 Alle Rollenprüfungen in Komponenten laufen über den `useRole()`-Hook (`src/composables/useRole.ts`). Nicht `useAuthStore` direkt abfragen.
 
 ```ts
-const { isAdmin, isStaff, isAdminView, canEditApp, canOperateDeployment } = useRole()
+const { role, isAdmin, isTeacher, isStudent, isStaff, isAdminView, canEditApp, canOperateDeployment } = useRole()
 ```
 
 **Capabilities** (`can*`) sind ressourcengebunden und spiegeln `backend/app/utils/capabilities.py`:
@@ -50,6 +50,7 @@ const { isAdmin, isStaff, isAdminView, canEditApp, canOperateDeployment } = useR
 | `canApproveApp` | nur `isAdmin` |
 | `canOperateDeployment(d)` | `isAdmin` oder Deployment gehört dem eingeloggten User |
 | `canEditCourse(c)` | `isAdmin` oder User ist in `c.teacherIds` |
+| `canChangeUserRole` | nur `isAdmin` |
 
 > Die `can*`-Prüfungen sind **kosmetisch** — sie steuern Button-Sichtbarkeit. Die maßgebliche Prüfung passiert immer im Backend (API liefert sonst 403).
 
@@ -119,9 +120,13 @@ requireWizardStep(['appId', 'name', 'studentIds'])
 // → paths.deploymentConfig  wenn kein name / keine studentIds
 ```
 
-### `guarded(route, meta, wizard?)` — internes Hilfsmittel
+### `skipVariablesStep()`
 
-Verpackt eine Route mit beiden Guards als `loader`. Intern in `src/router/index.tsx` verwendet — nicht direkt importieren.
+Der Variablen-Schritt des Wizards entfällt, wenn die App nichts einzustellen hat. `needsVariablesStep(draft)` (`src/views/new-deployment/variablesStep.ts`) liefert dafür `true` (Variablen, Ressourcenwahl oder sichtbarer Netzwerkschalter), `false` oder `null` (noch nicht bekannt, der Schritt öffnet dann wie gewohnt). Bei `false` leitet `skipVariablesStep()` `/deployment/new/variables` per `replace` nach `paths.deploymentTeams` um: Die übersprungene Seite landet nie im Verlauf, ein Lesezeichen oder „Zurück“ führt also nicht in eine leere Seite.
+
+### `guarded(route, meta, wizard?, stepGuard?)` — internes Hilfsmittel
+
+Verpackt eine Route mit den Guards als `loader`, in dieser Reihenfolge: `resolveRouteGuard`, dann optional `requireWizardStep(wizard)`, dann optional `stepGuard` (Umleitung mit `replace`). Intern in `src/router/index.tsx` verwendet — nicht direkt importieren.
 
 ---
 
@@ -137,11 +142,13 @@ Alle Pfade stehen in `src/router/paths.ts`. Die Guard-Ebene je Route:
 | `/apps`, `/apps/:id` | `requiresAuth` |
 | `/apps/create` | `staffOnly` |
 | `/deployments`, `/deployments/:id` | `requiresAuth` |
-| `/deployment/new/*` (Wizard) | `staffOnly` + Wizard-Step-Guard |
+| `/deployment/new/config` (Wizard, Schritt 1) | `staffOnly` |
+| `/deployment/new/teams`, `/variables`, `/summary` | `staffOnly` + Wizard-Step-Guard; `/variables` zusätzlich `skipVariablesStep` |
 | `/courses`, `/courses/:id` | `staffOnly` |
 | `/admin/apps` | `requiresRole: ['admin']` |
 | `/admin/settings` | `requiresRole: ['admin']` |
 | `/user`, `/help`, `/forbidden` | `requiresAuth` |
+| `*` (unbekannt) | Umleitung auf `/` |
 
 ---
 

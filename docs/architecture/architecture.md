@@ -4,12 +4,13 @@
 > **Frontend** `dev` @ `0005672` · **self-service-ui** `dev` @ `54130c3`. Prod läuft auf älteren Ständen (Abschnitt 1.1).
 > **Nachgeführt am 2026-10-27** auf Frontend `dev` @ `3779c08`: Datei- und Importzahlen (2.3), Node-Version (2.4) und die Bezeichnung „Eigentümer-Ansicht“ (3.7). Seit `0005672` kamen u. a. die VM-Einstellungen im Wizard (#109, #111) und neu generierte API-Typen (#92) dazu. An den geänderten Importen bleiben Schichten und Kanten gleich; nur `views/` → `utils/` und `views/` → `stores/` wachsen um 4 bzw. 1. Die Ablaufbeschreibungen (Abschnitt 3) wurden dabei **nicht** erneut gegen den Code gelesen, alles andere beschreibt weiter `0005672`. Befund B7 ist überholt: `openapi.json` und `api.generated.ts` kennen `/recommended` und `/deploy-version` inzwischen; der Befund ist noch nicht überarbeitet.
 > **Nachgeführt am 2026-10-29** auf Frontend `dev` @ `4959b12`: Zusammenfassung mit drei ruhigen Karten (#136), konditioneller Variablen-Schritt (#133), feste Rücknavigation nach `/apps` (#134), a11y-Maßnahmen (#140, #141, #154) und SSE-Validierung mit REST-Resync (#90). Befund B6 (README-Reihenfolge) und B7 (API-Vertrag & 0 ESLint-Warnungen) sind behoben.
+> **Erneut geprüft am 2026-10-29** auf Frontend `dev` @ `e232c21` (zusätzlich zum Stand `4959b12`: Branch-Coverage-Gate, #158). Gegen den Code gelesen und, wo nötig, korrigiert: alle Dateizahlen und Zeilenzahlen (2.3), die Import-Kanten (2.3) und B1 bis B5 sowie B8, die Routen und Guards (2.7, inkl. `skipVariablesStep`), der Wizard (3.6), die Abläufe 3.2 bis 3.4 und 3.7 bis 3.9 (Konstanten, Zustände, Single-Flight, Backoff), Build und Auslieferung (2.4) und das CI-Gate (2.6). **Nicht erneut geprüft** (Stand 26.10. bzw. andere Repos): Umgebungsstand und Image-Pins (1.1, 2.6), alles zu self-service-ui (2.5, 3.10 bis 3.13) und die Befunde B9 bis B13.
 > **Quellen:** Code beider Repos, Importanalyse, `nginx.conf`, `Caddyfile`, Docker- und CI-Dateien, das Kubernetes-README, die Workflows, Skripte und das Helm-Chart im deployment-Repo, `claude_docs/` beider Repos, die Image-Pins in `k8s/images/`. Dazu die laufenden Workloads und Pods beider Namespaces sowie der Argo-CD-Stand (appstore-MCP, geprüft am 2026-10-26 um 14:14 UTC).
 > **Modell:** [`workspace.dsl`](workspace.dsl) (Structurizr DSL, C4). Die Diagramme sind aus diesem Modell erzeugt, über den Structurizr MCP Server (v2026.04.20, lokal; Tools `validate`, `parse`, `inspect`, `export-mermaid`).
 
 ## Kurzfassung
 
-- Der AppStore hat **zwei Oberflächen für dieselbe Backend-API**: das **Frontend** (eigene React-SPA, TypeScript, 166 Quelldateien) und **self-service-ui** (Fork von `pfisterer/self-service-ui`, nur zu Demozwecken, eigener Anteil `web/app-store/` mit 23 Quelldateien, rund 14 % des Codes).
+- Der AppStore hat **zwei Oberflächen für dieselbe Backend-API**: das **Frontend** (eigene React-SPA, TypeScript, 182 Quelldateien) und **self-service-ui** (Fork von `pfisterer/self-service-ui`, nur zu Demozwecken, eigener Anteil `web/app-store/` mit 23 Quelldateien, rund 14 % des Codes).
 - **Frontend:** Die SPA macht die OIDC-Anmeldung selbst (Code + PKCE, Tokens nur im Speicher). Ausgeliefert wird sie von nginx, das in Kubernetes zugleich das Gateway für `/api` ist. Zweiter Zugang ist Moodle per LTI 1.3.
 - **self-service-ui:** Ein **oauth2-proxy** (BFF) meldet bei Keycloak an. Der Browser hält nur ein Cookie, der Proxy setzt den Access-Token als Bearer, Caddy reicht `/api/app-store/*` an die API. Keine LTI-Anbindung.
 - **Live-Status:** Beide Oberflächen zeigen den Fortschritt per **SSE** (nur in der Eigentümer-Ansicht) und **Polling** (Frontend: 10 s für Mitglieder, self-service-ui: 5 s, solange der Status in Bewegung ist).
@@ -245,21 +246,21 @@ graph TB
 | Komponente | Ort in `src/` | Dateien / Zeilen | Verantwortung |
 |---|---|---|---|
 | **Bootstrap** | `main.tsx`, `bootstrap.tsx`, `App.tsx`, `env.ts` | 4 | Boot-Reihenfolge *Theme → LTI-Fragment → Auth → Render*. Auth ist entschieden, **bevor** die erste Route rendert. `env.ts` liest `window.__ENV__` (aus `/env-config.js`), dann `import.meta.env`, dann Defaults für localhost. |
-| **Router & Guards** | `router/`, `components/RouteError.tsx` | 3 / 274 | Datenrouter mit `lazy()` je View. Guards laufen als **Loader**: Login nötig, nur Gäste, Rolle, Wizard-Schritt vollständig. **Error Boundaries** (`RouteError`) auf der Root-Route und auf einer pfadlosen Wrapper-Route um die Kindrouten jedes Layouts: ein Seitenfehler ersetzt nur die Seite, nicht Sidebar und Header. Unbekannte Pfade leiten auf `/`. |
-| **Layouts** | `layouts/` | 7 / 408 | `AuthLayout`, `AppLayout` (Sidebar, Header), `UserLayout`. |
-| **Views & Feature-Hooks** | `views/` | 76 / 10 708 | 20 Seiten. Zu jeder gehören `use*`-Hooks für Daten und Zustand (z. B. `useDeploymentDetail`, `useAppDetail`), reine Logikmodule und Teilkomponenten. **Größte Schicht, hier liegt die Fachlogik.** |
-| **UI-Komponenten** | `components/` | 22 / 1 673 | `ui/` (Button, Modal, Drawer, Toast, Badge …), Variablen-Eingabe, Dropzone, Markdown-Editor und -Renderer, `RouteError`. |
-| **Composables** | `composables/` | 9 / 831 | `useRole`, `useToast`, `useOverlay`, `useDashboard`, `useDeploymentPhases` u. a. |
+| **Router & Guards** | `router/`, `components/RouteError.tsx` | 3 / 291 | Datenrouter mit `lazy()` je View. Guards laufen als **Loader**: Login nötig, nur Gäste, Rolle, Wizard-Schritt vollständig, übersprungener Variablen-Schritt (`skipVariablesStep`, Umleitung per `replace`). **Error Boundaries** (`RouteError`) auf der Root-Route und auf einer pfadlosen Wrapper-Route um die Kindrouten jedes Layouts: ein Seitenfehler ersetzt nur die Seite, nicht Sidebar und Header. Unbekannte Pfade leiten auf `/`. |
+| **Layouts** | `layouts/` | 7 / 410 | `AuthLayout`, `AppLayout` (Sidebar, Header), `UserLayout`. |
+| **Views & Feature-Hooks** | `views/` | 91 / 12 286 | 20 Seiten. Zu jeder gehören `use*`-Hooks für Daten und Zustand (z. B. `useDeploymentDetail`, `useAppDetail`), reine Logikmodule und Teilkomponenten. **Größte Schicht, hier liegt die Fachlogik.** |
+| **UI-Komponenten** | `components/` | 21 / 1 608 | `ui/` (Button, Modal, Drawer, Toast, Badge …), Variablen-Eingabe, Dropzone, Markdown-Editor und -Renderer, `RouteError`. |
+| **Composables** | `composables/` | 9 / 942 (mit dem Stream-Client) | `useRole`, `useToast`, `useOverlay`, `useDashboard`, `useDeploymentPhases` u. a. |
 | **Live-Stream-Client** | `composables/useDeploymentStream.ts` | 1 | SSE-Client mit eigenem Zustandsautomaten (3.7). |
-| **Stores** | `stores/` | 7 / 878 | Zustand: `auth`, `app`, `course`, `deployment` (inkl. Wizard-Draft und Caches), `admin-view` (persistiert unter `appstore.adminView`), `toast`. `_request.ts` kapselt das Muster *loading → Fehler → finally*. |
-| **API-Layer** | `api/` | 7 / 448 | Eine axios-Instanz (30 s Timeout) mit Token-Interceptor und 401-Behandlung, dazu je Ressource ein `*.api.ts`. |
+| **Stores** | `stores/` | 7 / 752 | Zustand: `auth`, `app`, `course`, `deployment` (inkl. Wizard-Draft und Caches), `admin-view` (persistiert unter `appstore.adminView`), `toast`. `_request.ts` kapselt das Muster *loading → Fehler → finally*. |
+| **API-Layer** | `api/` | 7 / 457 | Eine axios-Instanz (30 s Timeout) mit Token-Interceptor und 401-Behandlung, dazu je Ressource ein `*.api.ts`. |
 | **Auth-Services** | `services/` | 3 / 398 | `keycloak.service` (OIDC, Tokens nur im Speicher, Single-Flight-Refresh), `auth.service` (`/users/me`, Nutzer-Cache in `localStorage`), `lti-launch` (Einmal-Code einlösen). |
 | **Silent-Refresh-Seite** | `silent-refresh.html`, `silent-refresh.ts` | 2 | Callback des versteckten Iframes. Wird mitgebündelt, weil die CSP nur Skripte von `self` erlaubt. |
-| **i18n** | `i18n/` | 7 / 2 305 | DE/EN, Rollenlabels, `BoldSlot` für Nutzernamen in Texten (Text statt HTML). |
+| **i18n** | `i18n/` | 7 / 2 579 | DE/EN, Rollenlabels, `BoldSlot` für Nutzernamen in Texten (Text statt HTML). |
 | **Theming** | `theme/` | 5 / 176 | White-Label: Registry (Standard `t3`), Farbkanäle als CSS-Variablen, Titel, Favicon. Auswahl über `VITE_THEME`. |
-| **Utils, Config & Types** | `utils/`, `config/`, `types/` | 15 / 5 485 | Reine Helfer, App-/Fachbereichs-Katalog (`department-catalog.ts`), API-Typen. 4 252 Zeilen sind generiert (`api.generated.ts`). |
+| **Utils, Config & Types** | `utils/`, `config/`, `types/` | 16 / 5 646 | Reine Helfer, App-/Fachbereichs-Katalog (`department-catalog.ts`), API-Typen. 4 317 Zeilen sind generiert (`api.generated.ts`). |
 
-Zusammen **166** Quelldateien und **131** Testdateien.
+Zusammen **182** Quelldateien (`.ts`/`.tsx` unter `src/`, ohne `.d.ts`, Tests und `assets/`; darin `silent-refresh.ts` und `env.ts`) und **169** Testdateien (`*.test.*`/`*.spec.*` unter `src/` und `tests/`), gezählt mit `find` auf `e232c21`. Die Tabelle nennt je Zeile Dateien / Zeilen.
 
 **Wer nutzt die Querschnittsmodule?** (aus den Importen)
 
@@ -273,15 +274,15 @@ Zusammen **166** Quelldateien und **131** Testdateien.
 
 | Von | Nach (Anzahl) |
 |---|---|
-| `views/` | components 64, utils 42, stores 31, composables 28, router 16, api **15**, i18n 10 |
-| `components/` | utils 5, composables 3, i18n 1, stores 1, router 1 |
+| `views/` | components 64, utils 46, stores 33, composables 28, router 16, api **15**, i18n 11 |
+| `components/` | utils 4, composables 3, i18n 1, stores 1, router 1, config 1 |
 | `composables/` | stores 4, api **1**, services 1 |
-| `stores/` | utils 3, api 3, services 2 |
+| `stores/` | utils 4, api 3, services 2 |
 | `services/` | api **2** |
 | `api/` | services **1** |
-| `router/` | views 21, layouts 3, stores 3, components 2 |
+| `router/` | views 22, layouts 3, stores 3, components 2 |
 
-Fett markiert sind die Kanten, die in Abschnitt 4 als Abweichung geführt werden. Es gibt **keine** Abhängigkeit mehr von Stores auf Composables oder von UI-Komponenten auf die API.
+Gezählt mit einem kleinen Skript über `import`/`export … from` und dynamische `import()` im Nicht-Test-Code (`@/…` und relative Pfade), ohne Typ-Importe auszunehmen. Fett markiert sind die Kanten, die in Abschnitt 4 als Abweichung geführt werden. Es gibt **keine** Abhängigkeit mehr von Stores auf Composables oder von UI-Komponenten auf die API.
 
 **Laufzeit-Bausteine.** Dieselben Komponenten, aber nur die, die mit Keycloak, Moodle und dem Backend sprechen:
 
@@ -524,7 +525,7 @@ flowchart LR
   pr --> argo["Argo CD: dev wird Staging, main wird Prod"]
 ```
 
-Frontend-CI laut `ci.yml`: Typecheck, Lint, Test mit Coverage-Gate **40 %** (seit frontend#80: 85 %), `npm audit`, Trivy. self-service-ui hat die Jobs `checks`, `security`, `image` und `k8s-rollout`. **Beide CIs signieren** für den gepushten Digest, welches Repository, welcher Workflow, Branch und Commit ihn gebaut hat (`actions/attest`, SLSA-Provenance, keyless). Das deployment-Repo pinnt nur Digests mit dieser Signatur: `k8s-bump.yml` ruft `verify-image.sh` auf und lehnt einen Digest ab, dessen Signatur nicht die CI der Komponente, den Branch der Umgebung und den Commit des Tags nennt. Gestartet wird der Bump mit einem **einstündigen Token der GitHub App „DHBW AppStore deploy“** (nur auf dem deployment-Repo installiert, nur *Actions: write*); der frühere `DEPLOYMENT_PAT` ist in beiden CIs abgelöst. Auf `dev` ist der Bump ein Pull Request, der sofort gemergt wird (`dev` nimmt Änderungen nur per PR an). Auf `main` ist es ein PR, den eine Person prüft und mergt. Mit der Repository-Variable `PROD_AUTO_MERGE=true` merged er sich selbst; ob sie gesetzt ist, wurde nicht geprüft.
+Frontend-CI laut `ci.yml`: Typecheck, Lint (`--max-warnings=0`), Test mit Coverage-Gate (seit frontend#80 mindestens **85 % Zeilen**, seit #158 zusätzlich **85 % Branches**, beide müssen gelten; vorher 40 %), `npm audit`, Trivy. self-service-ui hat die Jobs `checks`, `security`, `image` und `k8s-rollout`. **Beide CIs signieren** für den gepushten Digest, welches Repository, welcher Workflow, Branch und Commit ihn gebaut hat (`actions/attest`, SLSA-Provenance, keyless). Das deployment-Repo pinnt nur Digests mit dieser Signatur: `k8s-bump.yml` ruft `verify-image.sh` auf und lehnt einen Digest ab, dessen Signatur nicht die CI der Komponente, den Branch der Umgebung und den Commit des Tags nennt. Gestartet wird der Bump mit einem **einstündigen Token der GitHub App „DHBW AppStore deploy“** (nur auf dem deployment-Repo installiert, nur *Actions: write*); der frühere `DEPLOYMENT_PAT` ist in beiden CIs abgelöst. Auf `dev` ist der Bump ein Pull Request, der sofort gemergt wird (`dev` nimmt Änderungen nur per PR an). Auf `main` ist es ein PR, den eine Person prüft und mergt. Mit der Repository-Variable `PROD_AUTO_MERGE=true` merged er sich selbst; ob sie gesetzt ist, wurde nicht geprüft.
 
 ### 2.7 Routen und Rollen
 
@@ -537,7 +538,7 @@ Frontend-CI laut `ci.yml`: Typecheck, Lint, Test mit Coverage-Gate **40 %** (sei
 | `/`, `/dashboard`, `/apps`, `/apps/:id`, `/help`, `/deployments`, `/deployments/:id`, `/user`, `/forbidden` | Dashboard, Katalog, App-Detail, Hilfe, Deployments, Profil, Verboten | angemeldet |
 | `/courses`, `/courses/:id`, `/apps/create` | Kurse, App anlegen | **Staff** (`teacher` oder `admin`) |
 | `/deployment/new/config` | Wizard Schritt 1 | Staff |
-| `/deployment/new/teams`, `/variables`, `/summary` | Wizard Schritte 2 bis 4 | Staff **und** Wizard-Guard (`appId`, `name`, `studentIds` im Draft, sonst Rücksprung zu Schritt 1 bzw. zum Katalog) |
+| `/deployment/new/teams`, `/variables`, `/summary` | Wizard Schritte 2 bis 4 | Staff **und** Wizard-Guard (`appId`, `name`, `studentIds` im Draft, sonst Rücksprung zu Schritt 1 bzw. zum Katalog). `/variables` leitet per `replace` nach `/teams`, wenn die App nichts einzustellen hat (`needsVariablesStep(draft) === false`). |
 | `/admin/apps`, `/admin/settings` | Freigaben, Admin-Einstellungen | `admin` |
 | `*` | – | Umleitung auf `/` |
 
@@ -584,7 +585,7 @@ In beiden Oberflächen ist die Rollenprüfung **kosmetisch** (Sichtbarkeit, Weit
 | Auslieferung | nginx, zugleich Gateway für `/api` | Caddy hinter dem Proxy, `/api/app-store/` |
 | Moodle, LTI | ja | nein |
 | Live-Fortschritt | SSE per `fetch` mit Reconnect (Eigentümer-Ansicht), Polling 10 s (Mitglieder) | SSE per `EventSource`, **kein** Reconnect (Eigentümer-Ansicht), Polling 5 s bei laufendem Status (alle) |
-| Wizard | Konfiguration → Teams → Variablen → Zusammenfassung | gleiche Schritte, Logik kopiert |
+| Wizard | Konfiguration → Teams → Variablen (entfällt, wenn nichts einzustellen ist) → Zusammenfassung | gleiche vier Schritte, Logik kopiert; ob der Variablen-Schritt dort ebenfalls entfällt, wurde nicht geprüft |
 | Lifecycle-Aktionen, App-Verwaltung, Kurse | ja | nein, verlinkt ins Frontend |
 | OpenStack-VM-Pfad | **entfernt** (nur Pods und KubeVirt) | Zugangsdaten-Seite und Credential-Wahl im Wizard noch vorhanden |
 | Replikate | 2 | 1 |
@@ -801,7 +802,8 @@ sequenceDiagram
 ```
 
 **Beobachtungen**
-- **Reihenfolge der Schritte laut Code:** App-Detail → Konfiguration (`/config`) → Teams (`/teams`) → Variablen (`/variables`) → Zusammenfassung (`/summary`). Die README nennt „Variablen“ vor „Gruppen“ und weicht damit ab (Befund B6).
+- **Reihenfolge der Schritte laut Code:** App-Detail → Konfiguration (`/config`) → Teams (`/teams`) → Variablen (`/variables`, **nur wenn nötig**) → Zusammenfassung (`/summary`). Die README hat „Variablen“ früher vor „Gruppen“ genannt (Befund B6, behoben).
+- **Der Variablen-Schritt ist bedingt (#133):** `needsVariablesStep(draft)` ist `true`, wenn die App Variablen, eine Ressourcenwahl oder einen sichtbaren Netzwerkschalter hat, `false`, wenn nichts davon gilt, und `null`, solange die Variablen-Definitionen noch laden (`draft.variableDefinitions === undefined`). Bei `false` zeigt die Fortschrittsleiste drei Schritte, „Weiter“ geht von Teams direkt zur Zusammenfassung, und ein Deep-Link auf `/variables` wird per `replace` nach `/teams` umgeleitet. Bei `null` oder einem Ladefehler wird der Schritt **nicht** übersprungen. Die Zusammenfassung zeigt ihre dritte Karte („Variablen-Konfiguration“) nur, wenn es mindestens eine Zeile gibt.
 - Der **Wizard-Zustand ist ein Draft im Deployment-Store**, nicht im URL. Ein Reload oder Deep-Link ohne Draft wird vom Guard auf Schritt 1 bzw. auf den Katalog zurückgeleitet.
 - `submitDraft()` baut den Payload: Teams (`groupNames` × `assignments`, Fallback: gleichmäßige Aufteilung nach `groupCount`), `userInputVar` (nur noch der Schlüssel `terraform`, der Name ist historisch), Dateien unter `files`, dazu `resources` und `network`. Leere Werte werden **weggelassen**, damit HCL-Defaults greifen.
 - Es gibt **keine Credential-Wahl mehr**: Das Frontend kennt nur noch die Laufzeiten `kubernetes` und `kubevirt-vm`, beide im Cluster. Der Typwert `openstack-vm` ist entfernt (#93, #96); eine unbekannte Laufzeit wird wie `kubernetes` beschriftet.

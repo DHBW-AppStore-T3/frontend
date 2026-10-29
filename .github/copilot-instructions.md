@@ -184,10 +184,10 @@ Keep stores focused: one domain = one store (`auth`, `app`, `course`, `deploymen
 
 ### Deployment Wizard
 The multi-step deployment wizard follows this flow:
-1. **Config (`NewDeploymentConfigView`)**: Select app version, deployment name, description, duration.
-2. **Teams / Participants (`NewDeploymentGroupsAssignmentView`)**: Allocate students into individual or group teams.
-3. **Variables (`NewDeploymentVariableView`)**: *Conditional step!* Automatically skipped if the app requires no configuration variables, resources, or network settings.
-4. **Summary (`NewDeploymentSummaryView`)**: 3 clean summary cards (Deployment info, Participants, Settings).
+1. **Config (`NewDeploymentConfigView`)**: Deployment name and recipients (pick courses or individual students). The app version is chosen beforehand on the app detail page.
+2. **Teams / Participants (`NewDeploymentGroupsAssignmentView`)**: Allocate students into teams (drag and drop, random split); apps with `scope: user` force one team per person.
+3. **Variables (`NewDeploymentVariableView`)**: *Conditional step!* Skipped when `needsVariablesStep(draft)` is `false`, i.e. the app has no variables, no resource choices and no network switch (guard `skipVariablesStep`).
+4. **Summary (`NewDeploymentSummaryView`)**: One sentence and three cards (what starts, participants, variable configuration); the third card only exists if there are settings to show.
 
 ---
 
@@ -218,6 +218,6 @@ The multi-step deployment wizard follows this flow:
 
 If Copilot generates tests:
 - Use **Vitest** with **React Testing Library**
-- Coverage gate: at least 85% lines (`npm run test:coverage`)
+- Coverage gate: at least 85% lines **and** 85% branches (`npm run test:coverage`)
 - Tests must pass Network Guard (mock network requests or use handlers)
 - Focus on user interactions, accessibility, state transitions, and error handling.
