@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { waitFor } from '@testing-library/react'
 import i18n, { loadLocale, loadActiveLocale, switchLocale } from '@/i18n'
 import de from '@/i18n/locales/de'
@@ -48,9 +48,9 @@ describe('lazy locales', () => {
 
     switchLocale('en')
     expect(i18n.language).toBe('de') // not switched before the messages are there
-    expect(localStorage.getItem('locale')).toBe('en')
 
     await waitFor(() => expect(i18n.language).toBe('en'))
+    expect(localStorage.getItem('locale')).toBe('en')
     expect(i18n.t('workspace.profile')).toBe(en.workspace.profile)
   })
 
@@ -60,6 +60,50 @@ describe('lazy locales', () => {
     switchLocale('de')
     await waitFor(() => expect(i18n.language).toBe('de'))
     expect(i18n.t('workspace.profile')).toBe(de.workspace.profile)
+  })
+
+  describe('when a language file cannot be loaded', () => {
+    const failing = (...locales: Array<'de' | 'en'>) => {
+      vi.spyOn(i18n, 'addResourceBundle').mockImplementation(function (this: unknown, lng: string) {
+        if (locales.includes(lng as 'de' | 'en')) throw new Error('chunk failed')
+        return i18n
+      })
+    }
+    afterEach(() => vi.restoreAllMocks())
+
+    it('the start never rejects, even when nothing loads', async () => {
+      const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+      unload('de')
+      unload('en')
+      failing('de', 'en')
+
+      await expect(loadActiveLocale()).resolves.toBeUndefined()
+      expect(err).toHaveBeenCalled()
+    })
+
+    it('the start falls back to the other language when the saved one fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      localStorage.setItem('locale', 'de')
+      unload('de')
+      failing('de')
+
+      await loadActiveLocale()
+
+      expect(i18n.language).toBe('en')
+    })
+
+    it('switching keeps the current language and the saved choice', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      localStorage.setItem('locale', 'de')
+      unload('en')
+      failing('en')
+
+      switchLocale('en')
+      await new Promise((r) => setTimeout(r, 20))
+
+      expect(i18n.language).toBe('de')
+      expect(localStorage.getItem('locale')).toBe('de')
+    })
   })
 
   it('a German start needs no English messages (no key shows up as text)', async () => {

@@ -1,7 +1,7 @@
 import i18next, { type i18n as I18nInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-import { readSavedLocale, FALLBACK_LOCALE, saveLocale, type SupportedLocale } from './locale'
+import { readSavedLocale, FALLBACK_LOCALE, saveLocale, SUPPORTED_LOCALES, type SupportedLocale } from './locale'
 
 // Single i18n instance, shared by components (via react-i18next) and by
 // non-React code such as the router guards (`i18n.t(...)`).
@@ -39,9 +39,24 @@ export async function loadLocale(locale: SupportedLocale): Promise<void> {
   i18n.addResourceBundle(locale, 'translation', messages, true, true)
 }
 
-/** Loads the language the instance starts in; call it before the first render. */
-export function loadActiveLocale(): Promise<void> {
-  return loadLocale(readSavedLocale())
+/**
+ * Loads the language the instance starts in; call it before the first render.
+ * Never rejects: a failed chunk is tried once more, then the other language is
+ * used, and if nothing can be loaded the app still starts (messages show as keys)
+ * instead of staying blank.
+ */
+export async function loadActiveLocale(): Promise<void> {
+  const wanted = readSavedLocale()
+  const others = SUPPORTED_LOCALES.filter((l) => l !== wanted)
+  for (const locale of [wanted, wanted, ...others]) {
+    try {
+      await loadLocale(locale)
+      if (locale !== wanted) await i18n.changeLanguage(locale)
+      return
+    } catch (error) {
+      console.error(`Could not load the "${locale}" messages:`, error)
+    }
+  }
 }
 
 /**
@@ -49,10 +64,13 @@ export function loadActiveLocale(): Promise<void> {
  * so the page never shows keys; a language that is already loaded switches at once.
  */
 export function switchLocale(locale: SupportedLocale): void {
-  saveLocale(locale)
-  const apply = () => void i18n.changeLanguage(locale)
+  const apply = () => {
+    saveLocale(locale)
+    void i18n.changeLanguage(locale)
+  }
   if (isLoaded(locale)) apply()
-  else void loadLocale(locale).then(apply)
+  // A failed load leaves language and saved choice as they were.
+  else loadLocale(locale).then(apply, (error) => console.error(`Could not load the "${locale}" messages:`, error))
 }
 
 export default i18n
