@@ -60,6 +60,24 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-29 (Abgewählte Studierende verlassen ihre Teams, aufgefallen bei frontend#136):** `NewDeploymentConfigView.applyStudentIds` schreibt zusammen mit
+  `studentIds` und `courseIds` jetzt auch `assignments` ohne die nicht mehr gewählten Personen (`keepSelected` in `teamAssignment.ts`). Die Teams behalten ihre Position:
+  ein Team, das alle verliert, bleibt leer und sperrt „Weiter“ in Schritt 2 wie bisher; wer dazukommt, bleibt unzugewiesen. **Ursache:** Schritt 1 schrieb nur
+  `studentIds`/`courseIds`, Schritt 2 ruft beim Betreten `normalizeTeams` auf, das nur auffüllt. Mit „Ein Team für alle“ blieb die abgewählte Person in `assignments`,
+  `unassignedOf` war leer, „Weiter“ aktiv und `buildDeploymentPayload(...).teams[].userIds` enthielt sie: sie hätte ein Deployment bekommen. Erreichbar über „Zurück“ von
+  Schritt 2 (das „Bearbeiten“ der Übersicht, frontend#136, macht den Weg kürzer). Bei erzwungenem „Jeder einzeln“ trat es nicht auf (Schritt 2 baut die Teams beim Betreten
+  aus `studentIds` neu). **Tests:** `teamAssignment.test.ts` (`keepSelected`) und der Abschnitt „Studierende abwählen, nachdem die Teams festgelegt waren“ in
+  `NewDeploymentConfigView.spec.tsx` (Entwurf, Nutzlast, Kurs abwählen, Zufügen lässt Teams unberührt, Weg über Schritt 2 mit den echten Ansichten auf zwei Routen); gegen den
+  `dev`-Stand sind 10 Fälle rot. **Nicht im Browser geprüft.** **Offen, bewusst nicht Teil dieser Änderung (Schritt 3):** `draft.variables` und `draft.fileUploads` behalten Slots
+  (`Team` bzw. `Team-Username`) von Teams und Personen, die es nicht mehr gibt, und `buildDeploymentPayload` schickt sie mit (`userInputVar.terraform.<var>` und `files.<var>`).
+  Probe (Wegwerf-Spec gegen `NewDeploymentVariableView`, nicht eingecheckt): Entwurf mit gespeicherten Slots `Alpha-ann`/`Alpha-bob` (Variable und Datei) und `Alpha`/`Beta`
+  (Team-Variable), nur `ann` noch in Team `Alpha`, „Weiter“ in Schritt 3 → `Alpha-bob` und `Beta` stehen danach unverändert in `variables`, `fileUploads` und der Nutzlast. Ursache: `dropStaleSlots` läuft nur, wenn sich die Teams ändern, *während* Schritt 3
+  offen ist (`useVariableForm`, „restoring previously saved slots on entry is left untouched“); `restoreFromDraft`/`seedScopedDefault` und `buildDraftValues`/`cleanScopedMap`
+  behalten fremde Slots, `fileUploads` wird nirgends bereinigt. Betrifft auch Umbenennen und Löschen eines Teams in Schritt 2 nach Schritt 3, nicht nur das Abwählen. Nicht klein
+  genug für diese Änderung (Entscheidung, wo bereinigt wird; Slot-Schlüssel enthalten den Benutzernamen aus `studentCache`; Scope `all` hat den Schlüssel `all`; Verhalten des
+  Backends bei unbekannten Slots ungeklärt): eigenes Issue, Vorschlag: beim Verlassen von Schritt 3 gegen die aktuellen Teams bereinigen (`dropStaleSlots` immer, gleiche Prüfung für
+  `fileUploads`). **Auch offen:** in einem von Hand gewählten „Jeder einzeln“ bleibt nach dem Abwählen ein leeres Team stehen; „Weiter“ ist gesperrt, bis man „Jeder einzeln“
+  erneut wählt oder die Teamzahl senkt (dasselbe Verhalten wie bei jedem leeren Team).
 - **2026-10-29 (Schritt „Variablen" entfällt, wenn die App nichts einzustellen hat, frontend#133):** Der Assistent zeigt den Schritt 3 nur noch, wenn
   `needsVariablesStep(draft)` (`src/views/new-deployment/variablesStep.ts`) nicht `false` ist: die App hat Variablen-Definitionen, `resourceChoices` oder ein sichtbares
   Netzwerk (`visibleNetworkKeys`). `null` heißt „noch nicht bekannt". Sonst: Leiste mit 3 Schritten (`DeploymentProgressBar` bekommt `showVariablesStep`, Anzeigenummern

@@ -10,6 +10,7 @@ import { useStudentDirectory } from './new-deployment/useStudentDirectory'
 import { useDeploymentRuntime } from './new-deployment/useDeploymentRuntime'
 import { ensureVariableDefinitions } from './new-deployment/variableDefinitions'
 import { useNeedsVariablesStep } from './new-deployment/variablesStep'
+import { keepSelected } from './new-deployment/teamAssignment'
 import {
   deriveCourseIds,
   displayNameOf,
@@ -51,7 +52,8 @@ export default function NewDeploymentConfigView() {
   const [activeTab, setActiveTab] = useState<Tab>('courses')
   const updateDraft = useDeploymentStore.getState().updateDraft
 
-  // Keep the course selection in sync with the student selection.
+  // Keep the course selection and the teams of step 2 (when we come back from there) in sync with the
+  // student selection: someone who is deselected must not stay in a team, or the deployment would reach them.
   const applyStudentIds = (studentIds: string[]) => {
     updateDraft({
       studentIds,
@@ -60,6 +62,7 @@ export default function NewDeploymentConfigView() {
         directory.membersByCourse,
         studentIds,
       ),
+      assignments: keepSelected(useDeploymentStore.getState().draft.assignments as string[][], studentIds),
     })
   }
 
