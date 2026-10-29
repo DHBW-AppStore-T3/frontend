@@ -43,7 +43,7 @@ export function useVariableForm() {
 
   // ------------------------------------------------------------- derived
   const teams = useMemo(
-    () => buildWizardTeams(draft.groupNames, draft.assignments as string[][], studentCache),
+    () => buildWizardTeams(draft.groupNames, draft.assignments, studentCache),
     [draft.groupNames, draft.assignments, studentCache],
   )
   const terraformVariables = useMemo(() => variables.filter((v) => v.source === 'terraform'), [variables])
@@ -59,7 +59,7 @@ export function useVariableForm() {
     let cancelled = false
     const currentTeams = () => {
       const d = useDeploymentStore.getState()
-      return buildWizardTeams(d.draft.groupNames, d.draft.assignments as string[][], d.studentCache)
+      return buildWizardTeams(d.draft.groupNames, d.draft.assignments, d.studentCache)
     }
     const openBlockingExperts = (defs: AppVariable[]) => {
       if (hasBlockingExpert(defs)) setTerraformExpertOpen(true)

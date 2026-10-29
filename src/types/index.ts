@@ -59,10 +59,6 @@ export type User = Schemas['UserResponse']
 export type UserWithCourse = Schemas['UserWithCourse']
 export type UserStatistics = Schemas['UserStatistics']
 
-// Profile fields live in Keycloak; role and courseId are the only
-// things this API updates, and role is admin-only.
-export type UserUpdate = Schemas['UserUpdate']
-
 // `UserCreate` and `UserPasswordUpdate` used to sit here. The backend
 // has no create-user or change-password endpoint -- Keycloak owns both,
 // and the users.password column was dropped in migration
@@ -189,8 +185,6 @@ export type Deployment = Omit<Schemas['DeploymentResponse'], 'status' | 'runtime
 /** What the caller may do with a deployment, decided by the API. */
 export type DeploymentPermissions = Schemas['DeploymentPermissions']
 
-export type DeploymentTeamMember = Schemas['DeploymentTeamMember']
-
 export type DeploymentTeam = Schemas['DeploymentTeamResponse']
 
 // Derived from ``DeploymentDetail``. ``status``, ``runtime`` and ``actions`` are
@@ -277,29 +271,11 @@ export type DeploymentResourceListResponse = Schemas['DeploymentResourceListResp
 // ----------------------------------------------------------------
 // TASK TYPES
 // ----------------------------------------------------------------
-export interface TaskLogEntry {
-  timestamp: string
-  level: string
-  category?: string
-  message: string
-  [key: string]: unknown // Allow additional fields like operation, resource_type, etc.
-}
-
-export interface TaskLogsObject {
-  error?: string
-  deployment_id?: string
-  logs?: TaskLogEntry[]
-  tf_state?: unknown
-  commit_info?: unknown
-  terraform_outputs?: unknown
-}
-
-// Derived from ``TaskResponse``. ``logs`` is ``string | null`` in the schema; the
-// frontend also reads structured logs (``logEntryCount``, ``splitTaskLogs`` and the
-// test fixtures handle an object), so the object form stays accepted.
-export type Task = Omit<Schemas['TaskResponse'], 'logs'> & {
-  logs: string | TaskLogsObject | null
-}
+// ``logs`` is ``string | null`` in the schema and stays that way (#120, #145): the
+// column is text, the API never returns an object. The worker stores either a plain
+// transcript or ``json.dumps`` of a list of entries, so a string may hold JSON;
+// ``logEntryCount`` and ``prettyJson`` parse it, the type does not promise a shape.
+export type Task = Schemas['TaskResponse']
 
 // ----------------------------------------------------------------
 // AUTH TYPES
@@ -417,7 +393,7 @@ export interface DeploymentDraft {
 
   // Step 4: assignment (which user is in which group).
   // Key = group index (0, 1, 2...), value = array of user IDs.
-  assignments: Record<number, string[]>
+  assignments: string[][]
   releaseTag: string
   variables: StoredValues // parsed/merged variables
   version: string
