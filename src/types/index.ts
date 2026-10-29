@@ -271,29 +271,11 @@ export type DeploymentResourceListResponse = Schemas['DeploymentResourceListResp
 // ----------------------------------------------------------------
 // TASK TYPES
 // ----------------------------------------------------------------
-export interface TaskLogEntry {
-  timestamp: string
-  level: string
-  category?: string
-  message: string
-  [key: string]: unknown // Allow additional fields like operation, resource_type, etc.
-}
-
-export interface TaskLogsObject {
-  error?: string
-  deployment_id?: string
-  logs?: TaskLogEntry[]
-  tf_state?: unknown
-  commit_info?: unknown
-  terraform_outputs?: unknown
-}
-
-// Derived from ``TaskResponse``. ``logs`` is ``string | null`` in the schema; the
-// frontend also reads structured logs (``logEntryCount``, ``splitTaskLogs`` and the
-// test fixtures handle an object), so the object form stays accepted.
-export type Task = Omit<Schemas['TaskResponse'], 'logs'> & {
-  logs: string | TaskLogsObject | null
-}
+// ``logs`` is ``string | null`` in the schema and stays that way (#120, #145): the
+// column is text, the API never returns an object. The worker stores either a plain
+// transcript or ``json.dumps`` of a list of entries, so a string may hold JSON;
+// ``logEntryCount`` and ``prettyJson`` parse it, the type does not promise a shape.
+export type Task = Schemas['TaskResponse']
 
 // ----------------------------------------------------------------
 // AUTH TYPES
