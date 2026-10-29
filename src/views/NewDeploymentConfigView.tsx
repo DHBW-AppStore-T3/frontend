@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Search, Check, Users, BookOpen, UserPlus } from 'lucide-react'
@@ -21,9 +21,19 @@ import {
 
 type Tab = 'courses' | 'individuals'
 
+/** Space or Enter, the keys that operate a `role="checkbox"` row. */
+function onToggleKey(toggle: () => void) {
+  return (e: KeyboardEvent) => {
+    if (e.key !== ' ' && e.key !== 'Enter') return
+    e.preventDefault()
+    toggle()
+  }
+}
+
 function Checkbox({ checked }: { checked: boolean }) {
   return (
     <div
+      aria-hidden="true"
       className={`w-6 h-6 flex items-center justify-center rounded border transition-colors ${
         checked ? 'bg-primary border-primary' : 'border-gray-400 bg-white'
       }`}
@@ -162,7 +172,11 @@ export default function NewDeploymentConfigView() {
                       return (
                         <div
                           key={course.courseId}
+                          role="checkbox"
+                          aria-checked={selected}
+                          tabIndex={0}
                           onClick={() => void toggleCourse(course.courseId)}
+                          onKeyDown={onToggleKey(() => void toggleCourse(course.courseId))}
                           data-testid={`course-${course.courseId}`}
                           className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
                             selected
@@ -216,7 +230,11 @@ export default function NewDeploymentConfigView() {
                       return (
                         <div
                           key={student.userId}
+                          role="checkbox"
+                          aria-checked={checked}
+                          tabIndex={0}
                           onClick={() => toggleStudent(student.userId)}
+                          onKeyDown={onToggleKey(() => toggleStudent(student.userId))}
                           data-testid={`student-${student.userId}`}
                           className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-borderSubtle transition-colors select-none ${
                             checked ? 'bg-primaryFaint' : 'hover:bg-surfaceMuted'

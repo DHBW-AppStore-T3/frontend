@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { GraduationCap, ArrowLeft } from 'lucide-react'
@@ -35,6 +35,11 @@ export default function CourseDetailView() {
   const [memberToRemove, setMemberToRemove] = useState<User | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
+  const reportLoadError = useEffectEvent(() => {
+    toast.error(t('CourseDetailView.toasts.loadError'))
+    navigate(paths.courses)
+  })
+
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -44,15 +49,13 @@ export default function CourseDetailView() {
         if (useCourseStore.getState().courses.length === 0) await store.fetchCourses()
       } catch {
         if (cancelled) return
-        toast.error(t('CourseDetailView.toasts.loadError'))
-        navigate(paths.courses)
+        reportLoadError()
       }
     })()
     return () => {
       cancelled = true
     }
-    // Reload when the route param changes; toast/t/navigate are stable enough here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Reload when the route param changes.
   }, [id])
 
   const saveName = async (name: string) => {

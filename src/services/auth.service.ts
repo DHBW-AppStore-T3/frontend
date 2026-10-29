@@ -28,6 +28,16 @@ function safeRemove(key: string): void {
   }
 }
 
+/**
+ * The cached profile is only shown until ``fetchMe`` answers, but a value of
+ * another shape (a number, an array, ``null``) must not become the user.
+ */
+function isStoredUser(value: unknown): value is User {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const user = value as Record<string, unknown>
+  return typeof user.userId === 'string' && typeof user.role === 'string'
+}
+
 // ----------------------------------------------------------------
 // AUTH SERVICE (Keycloak Integration)
 // ----------------------------------------------------------------
@@ -50,7 +60,8 @@ export class AuthService {
     if (!userStr) return null
 
     try {
-      return JSON.parse(userStr) as User
+      const parsed: unknown = JSON.parse(userStr)
+      return isStoredUser(parsed) ? parsed : null
     } catch {
       return null
     }

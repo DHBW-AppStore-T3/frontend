@@ -69,11 +69,11 @@ export default tseslint.config(
     },
   },
 
-  // Accessibility (#141). The plugin's `recommended` set, minus the three
-  // rules about click handlers on non-interactive elements: those match the
-  // backdrop and clickable card/row patterns (Modal, Drawer, Toast, LogoPicker,
-  // NewDeploymentConfigView, ...) that need a keyboard design of their own, not
-  // a lint comment (23 hits, #154). They get switched on there.
+  // Accessibility (#141, #154). The plugin's `recommended` set, including the
+  // three rules about click handlers on non-interactive elements. Cards and rows
+  // are real buttons or `role="checkbox"` now. What remains is allowed one by
+  // one with a reason next to the line: mouse shortcuts next to a keyboard path
+  // (backdrops, toast card, label focus) and pointer-only drag-and-drop targets.
   //
   // eslint-plugin-jsx-a11y 6.10 lists ESLint up to ^9 as a peer, so package.json
   // carries an `overrides` entry to let `npm ci` resolve it next to ESLint 10.
@@ -93,9 +93,6 @@ export default tseslint.config(
         controlComponents: ['BaseInput', 'MarkdownEditor'],
         depth: 3,
       }],
-      'jsx-a11y/click-events-have-key-events': 'off',
-      'jsx-a11y/no-static-element-interactions': 'off',
-      'jsx-a11y/no-noninteractive-element-interactions': 'off',
     },
   },
 

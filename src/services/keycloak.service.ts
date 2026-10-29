@@ -1,5 +1,6 @@
 import { UserManager, WebStorageStateStore, InMemoryWebStorage, User } from 'oidc-client-ts'
 import { createStore } from 'zustand/vanilla'
+import { safeReturnUrl } from '@/utils/return-url'
 import { env } from '@/env'
 
 // ----------------------------------------------------------------
@@ -143,7 +144,7 @@ function createKeycloak() {
     try {
       // Store return URL for after login
       if (returnUrl) {
-        sessionStorage.setItem('returnUrl', returnUrl)
+        sessionStorage.setItem('returnUrl', safeReturnUrl(returnUrl))
       }
       await userManager.signinRedirect()
     } catch (error) {
@@ -163,7 +164,7 @@ function createKeycloak() {
         state.setState({ user: callbackUser, isAuthenticated: true })
 
         // Get return URL and clean up
-        const returnUrl = sessionStorage.getItem('returnUrl') || '/'
+        const returnUrl = safeReturnUrl(sessionStorage.getItem('returnUrl'))
         sessionStorage.removeItem('returnUrl')
 
         return returnUrl
