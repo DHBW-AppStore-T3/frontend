@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // MarkdownEditor/Renderer sanitise through DOMPurify, which needs a spec-complete DOM.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
@@ -53,6 +53,74 @@ beforeEach(() => {
 })
 
 describe('AddAppsView', () => {
+  describe('Sichtbarkeit (#154)', () => {
+    const group = () => screen.getByRole('group', { name: 'AppsCreateView.form.visibilityLabel' })
+    const option = (key: string) =>
+      within(group()).getByRole('button', { name: `AppsCreateView.form.${key}` })
+
+    it('ist eine benannte Gruppe mit genau zwei Optionen', () => {
+      renderView()
+      expect(within(group()).getAllByRole('button')).toHaveLength(2)
+    })
+
+    it('zeigt den Zustand: Öffentlich ist vorgewählt', () => {
+      renderView()
+      expect(option('visibilityPublic')).toHaveAttribute('aria-pressed', 'true')
+      expect(option('visibilityPrivate')).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('wechselt Zustand, Hinweistext und abhängigen Schalter per Klick', async () => {
+      renderView()
+      expect(screen.getByText('AppsCreateView.form.visibilityPublicHint')).toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeInTheDocument()
+
+      await userEvent.click(option('visibilityPrivate'))
+
+      expect(option('visibilityPrivate')).toHaveAttribute('aria-pressed', 'true')
+      expect(option('visibilityPublic')).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByText('AppsCreateView.form.visibilityPrivateHint')).toBeInTheDocument()
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    })
+
+    it('lässt sich per Tab, Enter und Leertaste bedienen', async () => {
+      renderView()
+      option('visibilityPublic').focus()
+      await userEvent.tab()
+      expect(option('visibilityPrivate')).toHaveFocus()
+
+      await userEvent.keyboard('{Enter}')
+      expect(option('visibilityPrivate')).toHaveAttribute('aria-pressed', 'true')
+
+      await userEvent.tab({ shift: true })
+      expect(option('visibilityPublic')).toHaveFocus()
+      await userEvent.keyboard(' ')
+      expect(option('visibilityPublic')).toHaveAttribute('aria-pressed', 'true')
+      expect(option('visibilityPrivate')).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('sendet is_private passend zur Auswahl, auch nach dem Zurückwechseln', async () => {
+      vi.mocked(appApi.create).mockResolvedValue({ data: {} } as any)
+      renderView()
+      await fill(nameInput(), 'App')
+      await fill(repoInput(), 'https://github.com/u/r')
+
+      // By name only: this test records the payload and must hold on the old markup too.
+      await userEvent.click(screen.getByRole('button', { name: 'AppsCreateView.form.visibilityPrivate' }))
+      await userEvent.click(screen.getByRole('button', { name: 'AppsCreateView.form.visibilityPublic' }))
+      await userEvent.click(submitButton())
+
+      await waitFor(() =>
+        expect(appApi.create).toHaveBeenCalledWith(expect.objectContaining({ is_private: false })),
+      )
+    })
+  })
+
+  it('benennt den Logo-Upload über die Zeilenbeschriftung (#154)', () => {
+    renderView()
+    expect(screen.getByLabelText('AppsCreateView.form.logoLabel')).toBe(fileInput())
+    expect(fileInput()).not.toHaveClass('hidden')
+  })
+
   it('names name, description and repo fields by their row labels (#141)', () => {
     renderView()
     expect(screen.getByRole('textbox', { name: 'AppsCreateView.form.nameLabel' })).toBe(nameInput())

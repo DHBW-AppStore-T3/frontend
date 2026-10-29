@@ -59,6 +59,22 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
   steht ohne die linke Gruppe weiter rechts. Nur Oberfläche, keine neuen Texte. **Nicht geändert:** `DeploymentDetailView`
   zeigt weiter `releaseTag` und Laufzeit (eigener Nachtrag, falls gewünscht). Nicht im Browser geprüft (Tests prüfen DOM und
   Klasse).
+- **2026-10-29 (Upload, Toast, Sichtbarkeit, frontend#154 Phase 1, Teil von Epic #139):** **Bild-Upload** (`LogoPicker`,
+  `EditAppModal`): der Datei-Input ist `sr-only` statt `display: none`, liegt in einem `<label>` (Klickziel, Fokus per Tab,
+  Enter/Leertaste öffnen den Dialog nativ) und wird über die Zeilenbeschriftung benannt (`aria-labelledby`, `FormRow labelId`;
+  ohne Zeilenlabel `aria-label`); Hinweis bzw. Dateiname ist die Beschreibung. „Entfernen“ ist ein Geschwister des Labels, kein
+  verschachtelter Button; die Drop-Zone behält ihre Drag-Handler, der Fokusring kommt über `has-[:focus-visible]`.
+  **Toast:** Schließen-Button mit Namen (`toast.close`), Icons `aria-hidden`. Angesagt wird über zwei dauerhafte, anfangs
+  leere `sr-only`-Regionen (`aria-live="polite"` für Erfolg/Info, `"assertive"` für Fehler/Warnung, ohne Rolle, damit sie nicht neben `RouteError` als Alert auftauchen; `aria-atomic="false"`,
+  `aria-relevant="additions"`), die pro Meldung ein Kind bekommen. Grund: ein `role="status"`-Element, das samt Text neu
+  eingefügt wird, wird nicht zuverlässig angesagt. Die sichtbaren Toasts tragen keine Live-Rolle (eine Ansage je Meldung); der
+  Text steht deshalb zweimal im DOM, Tests fragen die sichtbare Meldung über `.toast-message` ab. Die Specs prüfen den
+  DOM-Vertrag, **nicht** die tatsächliche Ansage: dafür bleibt eine Handprüfung mit NVDA/JAWS/VoiceOver nötig.
+  Klick auf den Toast schließt weiterhin (Mausabkürzung; der Button ist der Tastaturweg), das ist beim Einschalten der Klick-Regeln
+  (Phase 3) mit Begründung freizugeben. **Sichtbarkeit** (`AddAppsView`): `role="group"` mit der Zeilenbeschriftung als Namen,
+  `aria-pressed` je Button (bewusst keine Radiogroup: Tab statt Pfeiltasten). Specs: `image-upload.a11y.spec.tsx`,
+  `Toast.a11y.spec.tsx`, Abschnitt „Sichtbarkeit“ in `AddAppsView.spec.tsx`. **Offen (#154 Phase 2/3):** klickbare Karten/Zeilen,
+  Klick-Regeln einschalten, Toast ohne Typ-Ansage im Text, Fokus nach Schließen eines Toasts (geht verloren), Toasts verschwinden auch bei Tastaturfokus nach 5 s.
 - **2026-10-28 (Formular-Labels und jsx-a11y, frontend#141, Teil von Epic #139):** Felder ohne zugänglichen Namen sind verknüpft:
   `ReasonModal`, `SubmitVersionModal`, `EditAppModal`, `OverviewTab`, `NewDeploymentConfigView`, `AddAppsView` (über
   `FormRow htmlFor`) per `useId` + `htmlFor`; Suchfelder (`AddMembersModal`, Studierendensuche), `CourseNameEditor` und

@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event'
 import Toast from '@/components/ui/Toast'
 import { useToastStore } from '@/stores/toast.store'
 
+// The message also lives in a live region for screen readers (#154); the specs
+// below are about the visible toast.
+const MESSAGE = { selector: '.toast-message' }
+
 describe('Toast', () => {
   beforeEach(() => {
     useToastStore.setState({ toasts: [] })
@@ -16,8 +20,8 @@ describe('Toast', () => {
       useToastStore.getState().error('Boom', 999999)
     })
 
-    expect(screen.getByText('Saved').closest('.toast')).toHaveClass('toast-success')
-    expect(screen.getByText('Boom').closest('.toast')).toHaveClass('toast-error')
+    expect(screen.getByText('Saved', MESSAGE).closest('.toast')).toHaveClass('toast-success')
+    expect(screen.getByText('Boom', MESSAGE).closest('.toast')).toHaveClass('toast-error')
   })
 
   it('is mounted in document.body (portal)', () => {
@@ -36,10 +40,10 @@ describe('Toast', () => {
       useToastStore.getState().info('Second', 999999)
     })
 
-    await userEvent.click(screen.getByText('First'))
+    await userEvent.click(screen.getByText('First', MESSAGE))
     expect(screen.queryByText('First')).not.toBeInTheDocument()
 
-    const second = screen.getByText('Second').closest('.toast') as HTMLElement
+    const second = screen.getByText('Second', MESSAGE).closest('.toast') as HTMLElement
     await userEvent.click(second.querySelector('.toast-close') as HTMLElement)
     expect(screen.queryByText('Second')).not.toBeInTheDocument()
   })

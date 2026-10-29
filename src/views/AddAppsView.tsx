@@ -40,6 +40,8 @@ export default function AddAppsView() {
   const descId = useId()
   const descHintId = useId()
   const repoId = useId()
+  const logoLabelId = useId()
+  const visibilityLabelId = useId()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -112,6 +114,7 @@ export default function AddAppsView() {
     return (
       <button
         type="button"
+        aria-pressed={selected}
         onClick={() => update({ isPrivate })}
         className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
           selected ? activeClass : 'border-borderSubtle bg-white text-textMuted hover:border-textFaint'
@@ -168,8 +171,12 @@ export default function AddAppsView() {
             </div>
           </FormRow>
 
-          <FormRow icon={<ImageIcon className="text-primary" size={28} />} label={t('AppsCreateView.form.logoLabel')}>
-            <LogoPicker file={logo} onFile={acceptLogo} onRemove={removeLogo} />
+          <FormRow
+            icon={<ImageIcon className="text-primary" size={28} />}
+            label={t('AppsCreateView.form.logoLabel')}
+            labelId={logoLabelId}
+          >
+            <LogoPicker file={logo} onFile={acceptLogo} onRemove={removeLogo} labelledBy={logoLabelId} />
           </FormRow>
 
           <FormRow
@@ -191,10 +198,11 @@ export default function AddAppsView() {
           <FormRow
             icon={<VisibilityIcon className="text-primary" size={28} />}
             label={t('AppsCreateView.form.visibilityLabel')}
+            labelId={visibilityLabelId}
             align="start"
           >
             <div className="flex-1 mx-2">
-              <div className="flex gap-3">
+              <div role="group" aria-labelledby={visibilityLabelId} className="flex gap-3">
                 {visibilityButton(false, t('AppsCreateView.form.visibilityPublic'))}
                 {visibilityButton(true, t('AppsCreateView.form.visibilityPrivate'))}
               </div>

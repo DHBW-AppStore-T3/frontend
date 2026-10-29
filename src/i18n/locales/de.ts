@@ -109,6 +109,10 @@ export default {
     panelLabel: "Seitenbereich",
   },
 
+  toast: {
+    close: "Meldung schließen",
+  },
+
   action: {
     back: "Zurück",
   },
