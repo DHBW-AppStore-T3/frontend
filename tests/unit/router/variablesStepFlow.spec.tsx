@@ -84,8 +84,21 @@ function renderWizard(url = '/deployment/new/config') {
   return router
 }
 
-const at = (router: ReturnType<typeof renderWizard>, path: string) =>
-  waitFor(() => expect(router.state.location.pathname).toBe(path))
+// router.state changes before React commits the new view (the update is a transition), so for a
+// moment the DOM still holds the previous step. A button found then is detached by the commit and a
+// click on it is lost. Wait for something only the target step renders: then state and DOM agree.
+const shown: Record<string, () => Promise<unknown>> = {
+  '/deployment/new/config': () => screen.findByTestId('deployment-name'),
+  '/deployment/new/teams': () => screen.findByRole('button', { name: 'deployment.groups.one' }),
+  '/deployment/new/variables': () =>
+    screen.findByRole('heading', { level: 1, name: 'deployment.summary.variablesConfigTitle' }),
+  '/deployment/new/summary': () => screen.findByText('deployment.summary.title'),
+}
+
+const at = async (router: ReturnType<typeof renderWizard>, path: string) => {
+  await waitFor(() => expect(router.state.location.pathname).toBe(path))
+  await shown[path]!()
+}
 
 /** Step 2: put everybody into one team and press "Weiter". */
 async function assignAndContinue() {
