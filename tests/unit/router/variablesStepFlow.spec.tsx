@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, configure, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router'
 import { I18nextProvider } from 'react-i18next'
@@ -33,6 +33,12 @@ import { keyEchoI18n } from '../../helpers/render'
 const john = { userId: 'u1', firstName: 'John', lastName: 'Doe' }
 const jane = { userId: 'u2', firstName: 'Jane', lastName: 'Roe' }
 const region = { name: 'region', type: 'string', source: 'terraform', default: 'eu' }
+
+// These tests render the whole layout on real routes. Locally each takes about 100 ms; on the CI
+// runner, under coverage and with other test files running in parallel, single runs took more than the
+// 5 s a test and the 1 s a findBy/waitFor get by default. A real hang still fails, just later.
+vi.setConfig({ testTimeout: 30_000 })
+configure({ asyncUtilTimeout: 10_000 })
 
 // The views are loaded by a real dynamic import the first time a route needs them. With coverage
 // instrumentation on a CI runner that can take longer than a test's 5 s, so load every lazy route
@@ -79,7 +85,7 @@ function renderWizard(url = '/deployment/new/config') {
 }
 
 const at = (router: ReturnType<typeof renderWizard>, path: string) =>
-  waitFor(() => expect(router.state.location.pathname).toBe(path), { timeout: 5000 })
+  waitFor(() => expect(router.state.location.pathname).toBe(path))
 
 /** Step 2: put everybody into one team and press "Weiter". */
 async function assignAndContinue() {
