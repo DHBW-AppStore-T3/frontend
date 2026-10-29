@@ -258,6 +258,8 @@ describe('TeamColumn', () => {
         nameOf={(id) => id}
         isDragOver={false}
         onRename={noop}
+        moveTargets={[]}
+        onMove={noop}
         onDragStart={noop}
         onDragEnd={noop}
         onDragEnter={noop}

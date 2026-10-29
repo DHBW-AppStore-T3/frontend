@@ -736,6 +736,7 @@ export default {
       unassigned: 'Unassigned', // Optional
       removeAll: 'Remove all',
       removeStudent: 'Remove student from group',
+      moveStudent: 'Assign {name} to',
       moveAllHere: 'Move all here',
       removeAllTooltip: 'Remove all students from this group',
       moveAllTooltip: 'Moves all students to this group',
