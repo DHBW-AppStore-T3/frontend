@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { saveLocale, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
+import { switchLocale } from '@/i18n'
 
 export default function LanguageSwitch() {
   const { i18n, t } = useTranslation()
 
   function selectLocale(value: SupportedLocale) {
-    void i18n.changeLanguage(value)
-    saveLocale(value)
+    switchLocale(value)
   }
 
   return (
