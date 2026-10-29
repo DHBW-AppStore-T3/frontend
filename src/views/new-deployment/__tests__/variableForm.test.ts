@@ -16,6 +16,8 @@ import {
   buildDraftValues,
   findMissingRequired,
   dropStaleSlots,
+  dropStaleFileSlots,
+  fileSlotKeysFor,
   hasBlockingExpert,
   type WizardTeam,
 } from '../variableForm'
@@ -199,6 +201,92 @@ describe('dropStaleSlots', () => {
     const result = dropStaleSlots([v({ name: 'sc', varScope: 'team' })], values, teams)
     expect(result.values).toBe(values)
     expect(result.dropped).toEqual([])
+  })
+})
+
+describe('fileSlotKeysFor', () => {
+  const file = (over: Record<string, unknown> = {}) => v({ name: 'f', osType: 'file', ...over })
+
+  it('has the one key "all" for a deployment-wide file, whatever the teams are', () => {
+    expect(fileSlotKeysFor(file({ varScope: 'all' }), teams)).toEqual(['all'])
+    expect(fileSlotKeysFor(file({ varScope: 'all' }), [])).toEqual(['all'])
+    expect(fileSlotKeysFor(file(), teams)).toEqual(['all'])
+  })
+
+  it('has one key per team or per person otherwise, like the slots of a plain variable', () => {
+    expect(fileSlotKeysFor(file({ varScope: 'team' }), teams)).toEqual(['Alpha', 'Beta'])
+    expect(fileSlotKeysFor(file({ varScope: 'user' }), teams)).toEqual(['Alpha-ann', 'Alpha-bob', 'Beta-cy'])
+    expect(fileSlotKeysFor(file({ varScope: 'team' }), [])).toEqual([])
+  })
+
+  it('reads the scope like the card: varScope before osScope', () => {
+    expect(fileSlotKeysFor(file({ osScope: 'team' }), teams)).toEqual(['Alpha', 'Beta'])
+    expect(fileSlotKeysFor(file({ varScope: 'user', osScope: 'team' }), teams)).toEqual([
+      'Alpha-ann',
+      'Alpha-bob',
+      'Beta-cy',
+    ])
+  })
+})
+
+describe('dropStaleFileSlots', () => {
+  const upload = (name: string) => ({ name, size: 1, content_b64: 'eA==', content_type: 'text/plain' })
+  const starter = v({ name: 'starter', osType: 'file', varScope: 'user' })
+  const handout = v({ name: 'handout', osType: 'file', varScope: 'team' })
+  const syllabus = v({ name: 'syllabus', osType: 'file', varScope: 'all' })
+  const defs = [starter, handout, syllabus]
+
+  it('removes the files of people, teams and keys that no longer exist, and lists them', () => {
+    const uploads = {
+      starter: { 'Alpha-ann': upload('a'), 'Alpha-gone': upload('b'), 'Beta-cy': upload('c'), 'Old-cy': upload('d') },
+      handout: { Alpha: upload('e'), Gone: upload('f') },
+      syllabus: { all: upload('g'), Alpha: upload('h') },
+    }
+    const result = dropStaleFileSlots(defs, uploads, teams)
+    expect(result.uploads).toEqual({
+      starter: { 'Alpha-ann': upload('a'), 'Beta-cy': upload('c') },
+      handout: { Alpha: upload('e') },
+      syllabus: { all: upload('g') },
+    })
+    expect(result.dropped).toEqual([
+      'starter → Alpha-gone',
+      'starter → Old-cy',
+      'handout → Gone',
+      'syllabus → Alpha',
+    ])
+  })
+
+  it('keeps the variable with an empty map when all its files are gone', () => {
+    const result = dropStaleFileSlots(defs, { handout: { Gone: upload('f') } }, teams)
+    expect(result.uploads).toEqual({ handout: {} })
+  })
+
+  it('returns the same object when nothing was dropped', () => {
+    const uploads = { starter: { 'Alpha-ann': upload('a') }, syllabus: { all: upload('g') } }
+    const result = dropStaleFileSlots(defs, uploads, teams)
+    expect(result.uploads).toBe(uploads)
+    expect(result.dropped).toEqual([])
+  })
+
+  it('does not change the input', () => {
+    const uploads = { handout: { Alpha: upload('e'), Gone: upload('f') } }
+    const copy = JSON.parse(JSON.stringify(uploads))
+    dropStaleFileSlots(defs, uploads, teams)
+    expect(uploads).toEqual(copy)
+  })
+
+  it('leaves entries alone that belong to no file variable of the app', () => {
+    const plain = v({ name: 'plain', varScope: 'team' })
+    const uploads = { unknown: { Gone: upload('x') }, plain: { Gone: upload('y') } }
+    const result = dropStaleFileSlots([...defs, plain], uploads, teams)
+    expect(result.uploads).toBe(uploads)
+    expect(result.dropped).toEqual([])
+  })
+
+  it('handles missing uploads and an empty team list', () => {
+    expect(dropStaleFileSlots(defs, undefined, teams)).toEqual({ uploads: undefined, dropped: [] })
+    const result = dropStaleFileSlots(defs, { handout: { Alpha: upload('e') }, syllabus: { all: upload('g') } }, [])
+    expect(result.uploads).toEqual({ handout: {}, syllabus: { all: upload('g') } })
   })
 })
 

@@ -58,7 +58,11 @@ function seed(over: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   useToastStore.setState({ toasts: [] })
-  useAppStore.setState({ apps: [{ appId: 'app-1', name: 'Test App', image: 'test.png' } as any] })
+  useAppStore.setState({
+    apps: [{ appId: 'app-1', name: 'Test App', image: 'test.png' } as any],
+    currentApp: null,
+    fetchAppById: vi.fn().mockResolvedValue(undefined),
+  } as any)
   seed()
 })
 
@@ -85,10 +89,65 @@ describe('NewDeploymentSummaryView', () => {
     expect(screen.getByText('deployment.summary.subtitle')).toBeInTheDocument()
   })
 
-  it('nennt die App als nicht gefunden im Satz, wenn sie nicht in der Liste steht', async () => {
-    useAppStore.setState({ apps: [] })
-    renderView({ real: true })
-    expect(await screen.findByRole('heading', { level: 2, name: 'App nicht gefunden für 1 Person' })).toBeInTheDocument()
+  describe('Name der App (der Katalog füllt die Liste im App-Store nicht)', () => {
+    /** The catalogue keeps its own list: on the way into the wizard the store holds no apps. */
+    const fromCatalogue = (fetchAppById: (id: string) => Promise<void>) =>
+      useAppStore.setState({ apps: [], currentApp: null, fetchAppById: vi.fn(fetchAppById) } as any)
+
+    it('holt die App einzeln und nennt sie im Satz, wenn die Liste leer ist', async () => {
+      fromCatalogue(async () => useAppStore.setState({ currentApp: { appId: 'app-1', name: 'pgAdmin', image: null } as any }))
+      renderView({ real: true })
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'pgAdmin für 1 Person' })).toBeInTheDocument()
+      expect(useAppStore.getState().fetchAppById).toHaveBeenCalledExactlyOnceWith('app-1')
+    })
+
+    it('zeigt das Skelett, solange die App geladen wird, statt kurz "App nicht gefunden"', async () => {
+      let release!: () => void
+      fromCatalogue(
+        () =>
+          new Promise<void>((resolve) => {
+            release = () => {
+              useAppStore.setState({ currentApp: { appId: 'app-1', name: 'pgAdmin', image: null } as any })
+              resolve()
+            }
+          }),
+      )
+      renderView({ real: true })
+
+      expect(await screen.findByTestId('summary-loading')).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getAllByTestId('summary-skeleton').length).toBeGreaterThan(0)
+      expect(screen.queryByText(/App nicht gefunden/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deployen' })).toBeDisabled()
+
+      release()
+      expect(await screen.findByRole('heading', { level: 2, name: 'pgAdmin für 1 Person' })).toBeInTheDocument()
+    })
+
+    it('sagt erst "App nicht gefunden", wenn auch die Einzelabfrage die App nicht kennt', async () => {
+      fromCatalogue(async () => {})
+      renderView({ real: true })
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'App nicht gefunden für 1 Person' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deployen' })).toBeEnabled()
+    })
+
+    it('fragt nicht nach, wenn die Liste die App kennt', async () => {
+      renderView({ real: true })
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Test App für 1 Person' })).toBeInTheDocument()
+      expect(useAppStore.getState().fetchAppById).not.toHaveBeenCalled()
+    })
+
+    it('zeigt das Bild der App, wenn sie eines hat', async () => {
+      fromCatalogue(
+        async () => useAppStore.setState({ currentApp: { appId: 'app-1', name: 'pgAdmin', image: 'data:image/png;base64,AAAA' } as any }),
+      )
+      const { container } = renderView({ real: true })
+
+      await screen.findByRole('heading', { level: 2, name: 'pgAdmin für 1 Person' })
+      expect(container.querySelector('[data-testid=summary-hero] img')).toHaveAttribute('src', 'data:image/png;base64,AAAA')
+    })
   })
 
   it('zeigt die Version "latest" ohne Release-Tag', async () => {

@@ -35,9 +35,7 @@ interface AuthState {
 type AuthData = Pick<AuthState, 'user'>
 
 // Derived values as selectors: `useAuthStore(selectIsAdmin)`.
-export const selectUserRole = (s: AuthData): UserRole | null => s.user?.role || null
 export const selectIsStudent = (s: AuthData) => s.user?.role === 'student'
-export const selectIsTeacher = (s: AuthData) => s.user?.role === 'teacher'
 export const selectIsAdmin = (s: AuthData) => s.user?.role === 'admin'
 export const selectIsTeacherOrAdmin = (s: AuthData) =>
   s.user?.role === 'teacher' || s.user?.role === 'admin'

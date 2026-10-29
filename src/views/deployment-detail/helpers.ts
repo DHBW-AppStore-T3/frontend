@@ -124,9 +124,11 @@ export function accessLinkFor(
 }
 
 /**
- * Count of log entries for the Logs card badge. Logs arrive as an object
- * ``{logs: [...]}`` (failure payload), a plain array (success path) or a JSON
- * string of either. Returns ``null`` when the count can't be determined.
+ * Count of log entries for the Logs card badge. The API sends ``tasks.logs`` as a
+ * string: the worker stores ``json.dumps`` of a list of entries, older rows may hold
+ * a JSON object ``{logs: [...]}``, and a plain transcript is not countable.
+ * Objects and arrays are accepted as well (already parsed). Returns ``null`` when
+ * the count can't be determined.
  */
 export function logEntryCount(raw: unknown): number | null {
   if (raw == null) return null

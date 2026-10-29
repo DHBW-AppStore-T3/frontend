@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Package, Layers, ShieldCheck, Settings, SquarePlay, Check } from 'lucide-react'
 import { useTheme } from '@/theme/useTheme'
 import { THEME_COLOR_KEYS } from '@/theme/types'
-import { saveLocale, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
+import { switchLocale } from '@/i18n'
 import '@/theme/auth.css'
 import './AuthLayout.css'
 
@@ -29,8 +30,7 @@ export default function AuthLayout({ children }: { children?: ReactNode }) {
   ) as CSSProperties
 
   function changeLocale(lang: SupportedLocale) {
-    void i18n.changeLanguage(lang)
-    saveLocale(lang)
+    switchLocale(lang)
   }
 
   // Translators define intentional line groups; no language-specific word parsing.
