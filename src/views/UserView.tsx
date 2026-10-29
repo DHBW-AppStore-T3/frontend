@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { saveLocale, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locale'
+import { switchLocale } from '@/i18n'
 import { roleLabelKey } from '@/i18n/role-labels'
 import type { UserWithCourse } from '@/types'
 import PageHeader from '@/components/ui/PageHeader'
@@ -25,8 +26,7 @@ export default function UserView() {
 
   function savePreferences(e: React.FormEvent) {
     e.preventDefault()
-    void i18n.changeLanguage(selectedLanguage)
-    saveLocale(selectedLanguage)
+    switchLocale(selectedLanguage)
     setDraft(null)
     toast.success(t('workspace.preferencesSaved'))
   }
