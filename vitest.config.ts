@@ -8,10 +8,12 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['tests/setup.ts'],
-    // Node 22–24: --no-experimental-webstorage suppresses the broken global
-    // localStorage stub. On Node 25+ the stub is gone without the flag, but
-    // tests/setup.ts patches localStorage unconditionally, so all Node
-    // versions get a working in-memory store regardless.
+    // Node 22+ ships an experimental global `localStorage` that is unusable
+    // without `--localstorage-file` (it has no `.clear`/`.setItem` etc.) and
+    // shadows happy-dom's working `window.localStorage`. Disable it so tests
+    // get happy-dom's implementation instead of Node's broken stub.
+    // (Vitest 4 removed `poolOptions`; `execArgv` is a top-level option now.)
+    execArgv: ['--no-experimental-webstorage'],
     coverage: {
       // istanbul instruments the source directly, so a file that is never
       // rendered by any test reads as uncovered (the v8 provider can report
