@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { useAppStore } from '@/stores/app.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
@@ -9,7 +8,6 @@ import type { AppVariable, SlotValue, VariableValue } from '@/types'
 import {
   buildDraftValues,
   buildWizardTeams,
-  dedupeVariables,
   dropStaleSlots,
   findMissingRequired,
   hasBlockingExpert,
@@ -19,7 +17,7 @@ import {
   restoreFromDraft,
   type FormValues,
 } from './variableForm'
-import { versionLabelOf } from './summary'
+import { ensureVariableDefinitions } from './variableDefinitions'
 
 /**
  * State and actions of the wizard's variables step: definitions, form values,
@@ -37,8 +35,9 @@ export function useVariableForm() {
     () => useDeploymentStore.getState().draft.variableDefinitions ?? [],
   )
   const [rawFormValues, setFormValues] = useState<FormValues>({})
+  // ``undefined`` is "not loaded"; ``[]`` is a loaded answer (the app has no variables).
   const [isLoading, setIsLoading] = useState(
-    () => !(useDeploymentStore.getState().draft.variableDefinitions?.length),
+    () => useDeploymentStore.getState().draft.variableDefinitions === undefined,
   )
   const [terraformExpertOpen, setTerraformExpertOpen] = useState(false)
 
@@ -65,27 +64,21 @@ export function useVariableForm() {
     const openBlockingExperts = (defs: AppVariable[]) => {
       if (hasBlockingExpert(defs)) setTerraformExpertOpen(true)
     }
+    // Back from the summary (or the step opened again): the values the step saved. First visit,
+    // also with definitions the first wizard step already loaded: defaults under the saved input.
+    const initialValues = (defs: AppVariable[]): FormValues => {
+      const { variables: stored, userInputVar } = useDeploymentStore.getState().draft
+      if (Object.keys(stored ?? {}).length > 0) return restoreFromDraft(defs, stored, currentTeams())
+      const saved = parseStoredInput(userInputVar, () => toast.error(t('deployment.summary.invalidJson')))
+      return initialFromFetch(defs, saved, currentTeams())
+    }
 
     void (async () => {
-      const cached = store.draft.variableDefinitions
-      if (cached && cached.length > 0) {
-        setFormValues(restoreFromDraft(cached, store.draft.variables || {}, currentTeams()))
-        openBlockingExperts(cached)
-        return
-      }
-
-      let defs: AppVariable[]
       try {
-        const raw = await useAppStore.getState().fetchAppVariables(appId, versionLabelOf(store.draft.releaseTag))
+        const defs = store.draft.variableDefinitions ?? (await ensureVariableDefinitions())
         if (cancelled) return
-        defs = dedupeVariables(raw)
-        useDeploymentStore.getState().updateDraft({ variableDefinitions: defs })
         setVariables(defs)
-
-        const saved = parseStoredInput(useDeploymentStore.getState().draft.userInputVar, () =>
-          toast.error(t('deployment.summary.invalidJson')),
-        )
-        setFormValues(initialFromFetch(defs, saved, currentTeams()))
+        setFormValues(initialValues(defs))
         openBlockingExperts(defs)
       } catch (error) {
         console.error(error)

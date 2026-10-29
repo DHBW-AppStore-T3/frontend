@@ -319,7 +319,7 @@ describe('summary: loading missing variable definitions', () => {
     { name: 'd', source: 'terraform', default: null },
   ]
   const seedSummary = (over: Record<string, unknown> = {}) => {
-    seedDraft({ variableDefinitions: [], variables: {}, userInputVar: {}, ...over })
+    seedDraft({ variableDefinitions: undefined, variables: {}, userInputVar: {}, ...over })
     useAppStore.setState({
       apps: [{ appId: 'app-1', name: 'App' } as never],
       fetchAppVariables: vi.fn().mockResolvedValue(defs),
@@ -380,7 +380,7 @@ describe('summary: loading missing variable definitions', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     renderSummary()
     await waitFor(() => expect(toasts()).toContainEqual(['error', message]))
-    expect(draft().variableDefinitions).toEqual([])
+    expect(draft().variableDefinitions).toBeUndefined()
   })
 
   it('does nothing when the app of the draft is not in the list', async () => {
@@ -390,7 +390,7 @@ describe('summary: loading missing variable definitions', () => {
     renderSummary()
     await waitFor(() => expect(console.warn).toHaveBeenCalledWith('No app selected or app not found'))
     expect(useAppStore.getState().fetchAppVariables).not.toHaveBeenCalled()
-    expect(draft().variableDefinitions).toEqual([])
+    expect(draft().variableDefinitions).toBeUndefined()
   })
 
   it('asks for the version label of the release tag (object form, text, or latest)', async () => {

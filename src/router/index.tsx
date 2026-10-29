@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { createBrowserRouter, Outlet, redirect, type RouteObject } from 'react-router'
+import { createBrowserRouter, Outlet, redirect, replace, type RouteObject } from 'react-router'
 import AuthLayout from '@/layouts/AuthLayout'
 import AppLayout from '@/layouts/AppLayout'
 import UserLayout from '@/layouts/UserLayout'
@@ -9,6 +9,7 @@ import { paths } from './paths'
 import {
   resolveRouteGuard,
   requireWizardStep,
+  skipVariablesStep,
   staffOnly,
   type RouteMeta,
   type WizardField,
@@ -21,12 +22,15 @@ const lazyView = (load: () => Promise<{ default: ComponentType }>) => async () =
 
 /**
  * Route with the navigation guards attached as a `loader`:
- * global auth/role guard first, then an optional wizard-step guard.
+ * global auth/role guard first, then an optional wizard-step guard, then an
+ * optional step guard whose redirect replaces the history entry (the page it
+ * guards is never part of the history).
  */
 function guarded(
   route: RouteObject,
   meta: RouteMeta,
   wizard?: WizardField[],
+  stepGuard?: () => string | null,
 ): RouteObject {
   return {
     ...route,
@@ -38,6 +42,8 @@ function guarded(
         const step = requireWizardStep(wizard)
         if (step) throw redirect(step)
       }
+      const skipTo = stepGuard?.()
+      if (skipTo) throw replace(skipTo)
       return null
     },
   }
@@ -116,6 +122,7 @@ export const appRoutes: RouteObject[] = [
             { path: 'deployment/new/variables', lazy: lazyView(() => import('@/views/NewDeploymentVariableView')) },
             staffOnly,
             wizardFields,
+            skipVariablesStep,
           ),
           guarded(
             { path: 'deployment/new/summary', lazy: lazyView(() => import('@/views/NewDeploymentSummaryView')) },

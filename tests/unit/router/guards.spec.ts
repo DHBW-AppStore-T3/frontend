@@ -22,7 +22,7 @@ vi.mock('@/stores/toast.store', () => ({
   useToastStore: { getState: () => ({ error: mocks.toastError }) },
 }))
 
-import { resolveRouteGuard, requireWizardStep, staffOnly, STAFF_ROLES } from '@/router/guards'
+import { resolveRouteGuard, requireWizardStep, skipVariablesStep, staffOnly, STAFF_ROLES } from '@/router/guards'
 
 beforeEach(() => {
   mocks.auth.user = null
@@ -127,6 +127,35 @@ describe('requireWizardStep', () => {
   it('lets a complete draft through', () => {
     mocks.draft = { appId: 'a', name: 'n', studentIds: ['s'] }
     expect(requireWizardStep(['appId', 'name', 'studentIds'])).toBeNull()
+  })
+})
+
+describe('skipVariablesStep', () => {
+  const complete = { appId: 'a', name: 'n', studentIds: ['s'] }
+  const withDraft = (extra: Record<string, unknown>) => {
+    mocks.draft = { ...complete, ...extra } as typeof mocks.draft
+  }
+
+  it('sends users back to the teams when the app has nothing to set', () => {
+    withDraft({ variableDefinitions: [] })
+    expect(skipVariablesStep()).toBe('/deployment/new/teams')
+  })
+
+  it('lets the step open while it is not known yet', () => {
+    withDraft({})
+    expect(skipVariablesStep()).toBeNull()
+  })
+
+  it('lets the step open when the app has variables', () => {
+    withDraft({ variableDefinitions: [{ name: 'region' }] })
+    expect(skipVariablesStep()).toBeNull()
+  })
+
+  it('lets the step open when the app offers resource choices or a network switch', () => {
+    withDraft({ variableDefinitions: [], resourceChoices: [{ container: 'vm' }] })
+    expect(skipVariablesStep()).toBeNull()
+    withDraft({ variableDefinitions: [], networkChoices: { internet: { default: false } } })
+    expect(skipVariablesStep()).toBeNull()
   })
 })
 

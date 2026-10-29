@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
@@ -29,6 +29,19 @@ const renderView = () =>
 
 const draft = () => useDeploymentStore.getState().draft
 
+// The view asks the backend for the variable definitions as soon as it opens.
+const fetchAppVariables = vi.fn()
+
+/** A backend answer the test releases by hand; unreleased ones are settled after the test. */
+const open: Array<() => void> = []
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => (resolve = res))
+  open.push(() => resolve([] as T))
+  return { promise, resolve }
+}
+afterEach(() => open.splice(0).forEach((settle) => settle()))
+
 function seed(over: Record<string, unknown> = {}) {
   useDeploymentStore.getState().resetDraft()
   useDeploymentStore.getState().updateDraft({
@@ -47,7 +60,8 @@ beforeEach(() => {
   cache.clear()
   cache.set('u1', { userId: 'u1', firstName: 'John', lastName: 'Doe' } as any)
   cache.set('u2', { userId: 'u2', firstName: 'Jane', lastName: 'Smith' } as any)
-  useAppStore.setState({ apps: [] })
+  fetchAppVariables.mockReset().mockResolvedValue([])
+  useAppStore.setState({ apps: [], fetchAppVariables } as any)
   vi.mocked(userApi.getById).mockResolvedValue({ data: { userId: 'u3', firstName: 'Missing', lastName: 'User' } } as any)
   seed()
 })
@@ -207,6 +221,149 @@ describe('NewDeploymentGroupsAssignmentView', () => {
     await userEvent.click(screen.getByTestId('btn-back'))
 
     expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
+  })
+
+  describe('Schritt "Variablen" nötig oder nicht', () => {
+    const resourceChoices = [
+      { container: 'vm', cpu: { default: '2', min: '1', max: '4' }, memory: { default: '4Gi', min: '2Gi', max: '8Gi' } },
+    ]
+    /** A complete assignment, so that "Weiter" is enabled. */
+    const ready = (over: Record<string, unknown> = {}) =>
+      seed({ appId: 'app-1', releaseTag: '1.0.0', assignments: [['u1'], ['u2']], ...over })
+
+    const clickNext = async () => {
+      await screen.findByText('John Doe')
+      await userEvent.click(screen.getByTestId('btn-next'))
+    }
+
+    it('geht bei geladenen, leeren Definitionen direkt zur Übersicht', async () => {
+      ready({ variableDefinitions: [] })
+      renderView()
+      await clickNext()
+
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/summary'))
+      expect(fetchAppVariables).not.toHaveBeenCalled()
+    })
+
+    it('geht bei geladenen Variablen zum Schritt "Variablen"', async () => {
+      ready({ variableDefinitions: [{ name: 'region', source: 'terraform' }] })
+      renderView()
+      await clickNext()
+
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables'))
+    })
+
+    it('geht bei einer Ressourcen-Auswahl zum Schritt "Variablen", ohne auf das Backend zu warten', async () => {
+      fetchAppVariables.mockReturnValue(deferred().promise)
+      ready({ resourceChoices })
+      renderView()
+      await clickNext()
+
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables'))
+    })
+
+    it('wartet bei noch nicht geladenen Definitionen auf die Antwort und überspringt dann', async () => {
+      const pending = deferred<unknown[]>()
+      fetchAppVariables.mockReturnValue(pending.promise)
+      ready()
+      renderView()
+      await clickNext()
+
+      expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/teams')
+      expect(screen.getByTestId('btn-next')).toBeDisabled()
+      expect(screen.getByTestId('btn-next')).toHaveAttribute('aria-busy', 'true')
+
+      pending.resolve([])
+
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/summary'))
+    })
+
+    it('wartet und geht dann zum Schritt "Variablen", wenn die App Variablen hat', async () => {
+      const pending = deferred<unknown[]>()
+      fetchAppVariables.mockReturnValue(pending.promise)
+      ready()
+      renderView()
+      await clickNext()
+
+      pending.resolve([{ name: 'region', source: 'terraform' }])
+
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables'))
+    })
+
+    it('überspringt den Schritt bei einem Ladefehler nicht', async () => {
+      fetchAppVariables.mockRejectedValue(new Error('boom'))
+      ready()
+      renderView()
+      await clickNext()
+
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/variables'))
+      expect(draft().variableDefinitions).toBeUndefined()
+    })
+
+    it('stellt keine zweite Anfrage, wenn "Weiter" während des Wartens nochmals geklickt wird', async () => {
+      const pending = deferred<unknown[]>()
+      fetchAppVariables.mockReturnValue(pending.promise)
+      ready()
+      renderView()
+      await clickNext()
+      await userEvent.click(screen.getByTestId('btn-next'))
+
+      pending.resolve([])
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/summary'))
+      expect(fetchAppVariables).toHaveBeenCalledTimes(1)
+    })
+
+    it('navigiert nicht mehr, wenn die Ansicht beim Warten verlassen wurde', async () => {
+      const pending = deferred<unknown[]>()
+      fetchAppVariables.mockReturnValue(pending.promise)
+      ready()
+      renderView()
+      await clickNext()
+      await userEvent.click(screen.getByTestId('btn-back'))
+      await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config'))
+
+      pending.resolve([])
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
+    })
+
+    it('stößt das Laden schon beim Betreten an (Deep-Link, Neuladen)', async () => {
+      ready()
+      renderView()
+      await screen.findByText('John Doe')
+
+      await waitFor(() => expect(fetchAppVariables).toHaveBeenCalledWith('app-1', '1.0.0'))
+      await waitFor(() => expect(draft().variableDefinitions).toEqual([]))
+    })
+
+    it('zeigt vier Schritte, solange unbekannt ist, ob der Schritt nötig ist', async () => {
+      fetchAppVariables.mockReturnValue(deferred().promise)
+      ready()
+      renderView()
+      await screen.findByText('John Doe')
+
+      expect(screen.getByText('deployment.steps.vars')).toBeInTheDocument()
+    })
+
+    it('zeigt drei Schritte, wenn der Schritt entfällt', async () => {
+      ready()
+      renderView()
+      await screen.findByText('John Doe')
+
+      await waitFor(() => expect(screen.queryByText('deployment.steps.vars')).not.toBeInTheDocument())
+      expect(screen.getByText('deployment.steps.summary')).toBeInTheDocument()
+    })
+
+    it('zeigt vier Schritte, wenn die App Variablen hat', async () => {
+      fetchAppVariables.mockResolvedValue([{ name: 'region', source: 'terraform' }])
+      ready()
+      renderView()
+      await screen.findByText('John Doe')
+
+      await waitFor(() => expect(draft().variableDefinitions).toHaveLength(1))
+      expect(screen.getByText('deployment.steps.vars')).toBeInTheDocument()
+    })
   })
 
   describe('nach Laufzeit und Scope der Version (appstore.yaml)', () => {

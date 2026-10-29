@@ -14,6 +14,7 @@ import {
   type SummaryEntry,
 } from './new-deployment/summary'
 import { useSummaryVariables } from './new-deployment/useSummaryVariables'
+import { useNeedsVariablesStep } from './new-deployment/variablesStep'
 import { networkDeviations } from '@/utils/network'
 import { useSubmitDeployment } from './new-deployment/useSubmitDeployment'
 import { runtimeLabelKey } from '@/utils/runtime'
@@ -76,6 +77,8 @@ export default function NewDeploymentSummaryView() {
   const studentCache = useDeploymentStore((s) => s.studentCache)
   const apps = useAppStore((s) => s.apps)
   const { defs, isLoading: isLoadingVariables } = useSummaryVariables()
+  // Apps with nothing to set skip the "Variables" step: no card for it, "Back" leads to the teams.
+  const showVariablesStep = useNeedsVariablesStep() !== false
   const { submit, isSubmitting } = useSubmitDeployment()
 
   const selectedApp = apps.find((a) => a.appId === draft.appId)
@@ -106,7 +109,7 @@ export default function NewDeploymentSummaryView() {
           <h1 className="text-3xl font-bold text-textHeading">{t('deployment.title')}</h1>
           <BarChart3 size={32} className="text-primary" />
         </div>
-        <DeploymentProgressBar currentStep={4} />
+        <DeploymentProgressBar currentStep={4} showVariablesStep={showVariablesStep} />
         <div className="border-b border-borderSubtle mt-4" />
       </div>
 
@@ -256,6 +259,7 @@ export default function NewDeploymentSummaryView() {
           </div>
 
           {/* 3 — variables */}
+          {showVariablesStep ? (
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -329,13 +333,14 @@ export default function NewDeploymentSummaryView() {
               ) : null}
             </div>
           </div>
+          ) : null}
         </div>
       )}
 
       <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-borderSubtle">
         <button
           type="button"
-          onClick={() => navigate(paths.deploymentVariables)}
+          onClick={() => navigate(showVariablesStep ? paths.deploymentVariables : paths.deploymentTeams)}
           className="flex items-center gap-2 px-8 py-3 rounded-full bg-surfaceMuted text-textMuted font-semibold hover:bg-gray-200 transition-colors"
         >
           <ArrowLeft size={18} />

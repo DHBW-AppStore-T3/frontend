@@ -53,6 +53,29 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-29 (Schritt „Variablen" entfällt, wenn die App nichts einzustellen hat, frontend#133):** Der Assistent zeigt den Schritt 3 nur noch, wenn
+  `needsVariablesStep(draft)` (`src/views/new-deployment/variablesStep.ts`) nicht `false` ist: die App hat Variablen-Definitionen, `resourceChoices` oder ein sichtbares
+  Netzwerk (`visibleNetworkKeys`). `null` heißt „noch nicht bekannt". Sonst: Leiste mit 3 Schritten (`DeploymentProgressBar` bekommt `showVariablesStep`, Anzeigenummern
+  1 bis 3, `currentStep` bleibt die logische Nummer), „Weiter" in Schritt 2 führt nach `/deployment/new/summary`, „Zurück" in der Übersicht nach `/deployment/new/teams`, die Karte
+  „3 — variables" fehlt, `/deployment/new/variables` leitet per `replace` nach `/teams` (Guard `skipVariablesStep` in `router/guards.ts`, vierter Parameter von `guarded`).
+  **Zustand:** `defaultDraft.variableDefinitions` ist jetzt `undefined` (nicht geladen); `[]` heißt „geladen, leer". `useVariableForm` und `useSummaryVariables` prüfen
+  `!== undefined` statt `.length > 0`, eine App ohne Variablen wird pro Entwurf also nur einmal beim Backend abgefragt. **Laden:** `ensureVariableDefinitions()`
+  (`variableDefinitions.ts`) holt, bereinigt (`dedupeVariables`) und schreibt die Definitionen, fasst parallele Aufrufe zu einer Anfrage zusammen (modulweiter Merker
+  je App und Version, 30 s Axios-Timeout) und schreibt nur in den Entwurf, der noch zu App und Version passt und nichts hat. Schritt 1 stößt es beim Betreten an
+  (Fehler verschluckt), Schritt 2 ebenfalls; `resolveNeedsVariablesStep()` lässt „Weiter" auf die Antwort warten (Ladeanzeige, `aria-busy`, nicht doppelt klickbar,
+  kein Sprung mehr, wenn die Ansicht verlassen wurde) und liefert bei Ladefehler `null`: der Schritt wird dann **nicht** übersprungen. Gesendet wird unverändert
+  (Test: `variablesStep.payload.spec.tsx` vergleicht die Nutzlast mit und ohne Besuch von Schritt 3). **Abweichungen vom Issue (bewusst):** (1) `needsVariablesStep`
+  liefert `true`, sobald Auswahl oder Netzwerk den Schritt belegen, auch wenn die Definitionen noch fehlen: VM-Apps warten in Schritt 2 nicht auf das Backend.
+  (2) Die Variablen-Ansicht selbst übergibt `showVariablesStep` nicht (sie ist der Schritt, die Leiste bleibt vierteilig). (3) Der Variablen-Schritt entscheidet beim
+  Betreten nach „gespeicherte Werte in `draft.variables`" statt nach „Definitionen im Cache": ohne gespeicherte Werte läuft auch mit vorgeladenen Definitionen
+  `initialFromFetch`, nicht `restoreFromDraft`. Sonst bekäme ein Pflicht-Bool ohne Default `''` statt `false` und „Weiter" wäre gesperrt. (4) `useSummaryVariables` behält die
+  Prüfung gegen die App-Liste (Charakterisierungstest). **Bestehende Tests angepasst:** Seeds, die `variableDefinitions: []` für „nicht geladen" nutzten, nutzen
+  `undefined` (`NewDeploymentSummaryView.spec` 2, `NewDeploymentVariables.characterization.spec` Seed und 2 Erwartungen: nach einem Ladefehler bleibt der Wert `undefined`);
+  die Erwartungen zum Verhalten sind unverändert. **Fallstricke:** (1) Ein Test, der eine Anfrage nie beendet (`new Promise(() => {})`), lässt den modulweiten Merker
+  stehen und der nächste Test teilt sich die hängende Anfrage: offene Antworten am Testende auflösen (`deferred` in `NewDeploymentGroupsAssignmentView.spec`).
+  (2) Schritt 1 und 2 laden jetzt beim Betreten: Specs dieser Ansichten mit `appId` im Entwurf brauchen einen Mock für `fetchAppVariables` bzw. `appApi.getVariables`
+  (Netzwerk-Guard). (3) `npm ci` nach dem Branch-Wechsel, sonst fehlt `eslint-plugin-jsx-a11y` (aus #153). **Nicht im lokalen Browser geprüft** (`npm run dev` braucht den
+  Docker-Stack und einen Keycloak-Login); Prüfung auf Staging nach dem Merge, Ergebnis in der PR.
 - **2026-10-28 (Deployments-Liste ohne Version und Laufzeit, Nachtrag zu frontend#56):** Auf `/deployments` stehen Version
   (`releaseTag`) und Laufzeit-Badge (`runtime-badge`, PODS/VM) einer Karte nur noch in `<RoleGate adminView>`: Dozenten,
   Studierende und Admins ohne Admin-Ansicht sehen sie nicht. Name, App, Status und Datum bleiben; das Datum trägt `ml-auto` und

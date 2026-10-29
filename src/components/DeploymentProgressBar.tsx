@@ -1,11 +1,13 @@
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 
-// 4 steps: config -> assignment -> variables -> summary
+// 4 steps: config -> assignment -> variables -> summary. ``step`` is the logical number the
+// views pass as ``currentStep``; the number on screen is the position among the visible steps.
+const VARIABLES_STEP = 3
 const STEPS = [
   { step: 1, key: 'deployment.steps.config' },
   { step: 2, key: 'deployment.steps.assignment' },
-  { step: 3, key: 'deployment.steps.vars' },
+  { step: VARIABLES_STEP, key: 'deployment.steps.vars' },
   { step: 4, key: 'deployment.steps.summary' },
 ]
 
@@ -16,12 +18,22 @@ function textAlignmentClass(step: number, total: number): string {
   return 'left-1/2 -translate-x-1/2 origin-center' // in between: centered
 }
 
-export default function DeploymentProgressBar({ currentStep }: { currentStep: number }) {
+interface DeploymentProgressBarProps {
+  /** Logical step: 1 config, 2 assignment, 3 variables, 4 summary. */
+  currentStep: number
+  /** ``false`` when the app has nothing to set: the variables step is left out and the rest renumbered. */
+  showVariablesStep?: boolean
+}
+
+export default function DeploymentProgressBar({ currentStep, showVariablesStep = true }: DeploymentProgressBarProps) {
   const { t } = useTranslation()
 
-  // Compute the fill width automatically from the number of steps.
-  const totalSteps = STEPS.length
-  const percentage = totalSteps <= 1 ? 0 : ((currentStep - 1) / (totalSteps - 1)) * 100
+  const steps = showVariablesStep ? STEPS : STEPS.filter((item) => item.step !== VARIABLES_STEP)
+
+  // Compute the fill width automatically from the number of visible steps.
+  const totalSteps = steps.length
+  const reached = steps.filter((item) => item.step <= currentStep).length
+  const percentage = totalSteps <= 1 ? 0 : (Math.max(reached - 1, 0) / (totalSteps - 1)) * 100
   // Clamp to 0-100% for safety.
   const progressWidth = `${Math.min(Math.max(percentage, 0), 100)}%`
 
@@ -37,7 +49,7 @@ export default function DeploymentProgressBar({ currentStep }: { currentStep: nu
         />
 
         <div className="relative flex justify-between w-full">
-          {STEPS.map((item) => (
+          {steps.map((item, index) => (
             <div key={item.step} className="flex flex-col items-center group relative">
               <div
                 className={[
@@ -51,14 +63,14 @@ export default function DeploymentProgressBar({ currentStep }: { currentStep: nu
                   currentStep === item.step ? 'text-primary' : '',
                 ].join(' ')}
               >
-                {currentStep > item.step ? <Check size={16} /> : <span>{item.step}</span>}
+                {currentStep > item.step ? <Check size={16} /> : <span>{index + 1}</span>}
               </div>
 
               <span
                 className={[
                   'absolute top-10 text-xs font-bold uppercase tracking-wider transition-colors duration-300 whitespace-nowrap',
                   currentStep >= item.step ? 'text-primary' : 'text-textFaint',
-                  textAlignmentClass(item.step, STEPS.length),
+                  textAlignmentClass(index + 1, totalSteps),
                 ].join(' ')}
               >
                 {t(item.key)}
