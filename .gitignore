@@ -39,3 +39,5 @@ coverage/
 
 # Claude Code skills (symlinks to deployment repo — local only)
 .claude/skills/
+test-results
+playwright-report

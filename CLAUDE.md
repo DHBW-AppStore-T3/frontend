@@ -16,6 +16,7 @@ Harness-Gesamtkonzept: siehe https://github.com/DHBW-AppStore-T3/.github/blob/ma
   - Netzwerk-Guard: ein ungemockter `fetch`/XHR lässt den Test fehlschlagen (`NETWORK_GUARD=warn` listet alle Verursacher)
 - Lint: `npm run lint` (ESLint inkl. jsx-a11y, `--max-warnings=0`: jede Warnung bricht die CI)
 - OpenAPI Typen synchronisieren: Schema aus dem Backend exportieren (`poetry run python scripts/export_openapi.py ../frontend/src/types/openapi.json`), dann `npm run gen:api-types` und `npx tsc -b`; Details im README
+- E2E-Smoke (Playwright, nicht in der CI): `npm run e2e` (hermetisch, Dev-Server + gemockte API) bzw. `E2E_BASE_URL=https://<host> npm run e2e` (ohne Login); Details in `e2e/README.md`
 - Lebendes Übergabedokument: `claude_docs/HANDOVER.md`
 - Fachdoku: `docs/routing-and-access.md` (Rollen, Guards), `docs/i18n.md` (Sie-Form, `BoldSlot`, `translateHtml`), `docs/themes.md`
 - Änderst du das Coverage-Gate in `ci.yml`, passe `CLAUDE.md` und `claude_docs/HANDOVER.md` mit an

@@ -73,6 +73,7 @@ import DeploymentDetailView from '@/views/DeploymentDetailView'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
+import { makeTask } from '../../helpers/factories'
 import { keyEchoI18n } from '../../helpers/render'
 
 // What the API says the caller may do (`permissions` and `actions` of the detail).
@@ -135,20 +136,16 @@ const baseDeployment = (overrides: Partial<DeploymentWithRelations> = {}): Deplo
   ...overrides,
 }) as DeploymentWithRelations
 
-const baseTask = (overrides: Partial<Task> = {}): Task => ({
-  taskId: 'task-1',
-  deploymentId: 'dep-1',
-  type: 'deploy',
-  status: 'success',
-  started_at: '2026-06-08T12:10:00Z',
-  finished_at: '2026-06-08T12:20:00Z',
-  // As the worker stores it: json.dumps of a list of entries, delivered as a string.
-  logs: JSON.stringify([{ timestamp: '2026-06-08T12:15:00Z', level: 'INFO', message: 'hello from the worker' }]),
-  current_phase: 'OUTPUTS_AND_CLEANUP',
-  progress_pct: 100,
-  created_at: '2026-06-08T12:09:00Z',
-  ...overrides,
-}) as Task
+const baseTask = (overrides: Partial<Task> = {}): Task =>
+  makeTask({
+    started_at: '2026-06-08T12:10:00Z',
+    finished_at: '2026-06-08T12:20:00Z',
+    // As the worker stores it: json.dumps of a list of entries, delivered as a string.
+    logs: JSON.stringify([{ timestamp: '2026-06-08T12:15:00Z', level: 'INFO', message: 'hello from the worker' }]),
+    current_phase: 'OUTPUTS_AND_CLEANUP',
+    progress_pct: 100,
+    ...overrides,
+  })
 
 function LocationProbe() {
   const loc = useLocation()

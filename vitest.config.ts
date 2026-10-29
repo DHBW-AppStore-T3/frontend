@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
+    // Playwright specs (npm run e2e) are not unit tests.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     environment: 'happy-dom',
     setupFiles: ['tests/setup.ts'],
     // Node 22+ ships an experimental global `localStorage` that is unusable
