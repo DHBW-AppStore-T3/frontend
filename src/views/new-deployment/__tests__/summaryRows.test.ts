@@ -56,7 +56,7 @@ function draftOf(over: Partial<DeploymentDraft> = {}): DeploymentDraft {
 }
 
 function rowsOf(draft: DeploymentDraft, defs: AppVariable[] = draft.variableDefinitions ?? []): SettingsRow[] {
-  const teams = buildWizardTeams(draft.groupNames, draft.assignments as string[][], new Map())
+  const teams = buildWizardTeams(draft.groupNames, draft.assignments, new Map())
   const ctx: SettingsContext = { t, teams, nameOf }
   return buildSettingsRows(draft, defs, ctx)
 }
