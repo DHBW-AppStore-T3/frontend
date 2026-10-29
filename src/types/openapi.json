@@ -4376,6 +4376,11 @@
             ],
             "title": "Scope"
           },
+          "scope_choice": {
+            "type": "boolean",
+            "title": "Scope Choice",
+            "default": false
+          },
           "egress": {
             "anyOf": [
               {

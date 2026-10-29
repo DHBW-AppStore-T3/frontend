@@ -17,6 +17,7 @@ import { useDeploymentStore } from '@/stores/deployment.store'
 import { useDeploymentConstraints } from '@/composables/useDeploymentConstraints'
 import { paths } from '@/router/paths'
 import TeamColumn from './new-deployment/TeamColumn'
+import ScopeChoice from './new-deployment/ScopeChoice'
 import UnassignedPool from './new-deployment/UnassignedPool'
 import { useStudentNames } from './new-deployment/useStudentNames'
 import { ensureVariableDefinitions, resolveNeedsVariablesStep } from './new-deployment/variableDefinitions'
@@ -48,7 +49,7 @@ export default function NewDeploymentGroupsAssignmentView() {
   const navigate = useNavigate()
   const draft = useDeploymentStore((s) => s.draft)
   const draftApp = useDeploymentStore((s) => s.draftAppDetails)()
-  const { forcedGroupMode, groupModeReason, groupModeTitle } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope })
+  const { forcedGroupMode, groupModeReason, groupModeTitle } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope, scopeChoice: draft.scopeChoice })
 
   const isForced = forcedGroupMode === 'eachUser'
   const needsVariables = useNeedsVariablesStep()
@@ -204,6 +205,12 @@ export default function NewDeploymentGroupsAssignmentView() {
 
         {/* Controls */}
         <div className="p-6 bg-white border-b-2 border-borderSubtle">
+          {draft.scopeChoice ? (
+            <ScopeChoice
+              value={draft.scope === 'team' ? 'team' : 'user'}
+              onChange={(scope) => useDeploymentStore.getState().updateDraft({ scope })}
+            />
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex gap-2">
               {modeButton(

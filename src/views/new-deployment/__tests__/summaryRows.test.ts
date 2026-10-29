@@ -307,3 +307,18 @@ describe('the card and step 3 answer the same question from one place (issue 133
     expect(rowsOf(draft, defs).length > 0).toBe(needsVariablesStep(draft) === true)
   })
 })
+
+describe('buildSettingsRows: what one environment is (scope the person chose)', () => {
+  it('says it only where the app lets the person choose', () => {
+    expect(kinds(rowsOf(draftOf({ scope: 'user', scopeChoice: false })))).toEqual([])
+    const rows = rowsOf(draftOf({ scope: 'team', scopeChoice: true }))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ kind: 'value', id: 'scope' })
+    expect((rows[0] as { lines: { text: string }[] }).lines[0].text).toBe('deployment.assignment.scopeChoice.team.label')
+  })
+
+  it('names per person when the choice is left at its default', () => {
+    const rows = rowsOf(draftOf({ scope: 'user', scopeChoice: true }))
+    expect((rows[0] as { lines: { text: string }[] }).lines[0].text).toBe('deployment.assignment.scopeChoice.user.label')
+  })
+})

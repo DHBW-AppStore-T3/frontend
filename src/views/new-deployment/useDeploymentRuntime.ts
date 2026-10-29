@@ -44,6 +44,7 @@ export function useDeploymentRuntime() {
         useDeploymentStore.getState().updateDraft({
           runtime: data.runtime,
           scope: data.scope ?? null,
+          scopeChoice: data.scope_choice ?? false,
           resourceChoices: choices,
           // A choice already made (back and forth in the wizard) stays.
           resources: sameContainers(draft.resources, choices) ? draft.resources : defaultSelection(choices),

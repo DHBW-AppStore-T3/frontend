@@ -100,6 +100,9 @@ export type App = Schemas['AppResponse']
 export interface AppRuntime {
   runtime: DeploymentRuntime
   scope?: 'team' | 'user' | null
+  // The app lets the person deploying choose between one workload per person and per team
+  // (``scopeChoice`` in appstore.yaml); ``scope`` is the default.
+  scope_choice?: boolean
   egress?: 'none' | 'internet' | null
   access?: Array<Record<string, unknown>>
   // Containers whose cpu/memory a person may choose (``resourceBounds`` in appstore.yaml).
@@ -403,6 +406,8 @@ export interface DeploymentDraft {
   runtime?: DeploymentRuntime | null
   // ``user``: one workload per person, the group step puts everyone in a team of their own.
   scope?: 'team' | 'user' | null
+  // The app lets people choose the scope (see ``AppRuntime.scope_choice``); ``scope`` then holds the choice.
+  scopeChoice?: boolean
   // Pods: containers whose cpu/memory the app lets people choose; undefined until asked.
   resourceChoices?: ResourceChoice[]
   // The cpu/memory chosen per container; sent as ``userInputVar.resources``.

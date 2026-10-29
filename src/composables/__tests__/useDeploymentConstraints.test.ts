@@ -57,3 +57,18 @@ describe('useDeploymentConstraints', () => {
     expect(result.current.forcedGroupMode).toBe('eachUser')
   })
 })
+
+describe('useDeploymentConstraints with a scope choice', () => {
+  it('leaves every grouping open for a per-person default the person may change', () => {
+    const open = withVersion(makeApp('Online-IDE'), { runtime: 'kubernetes', scope: 'user', scopeChoice: true })
+    expect(open.forcedGroupMode).toBeNull()
+    expect(open.groupModeReason).toBeNull()
+    expect(open.groupModeTitle).toBeNull()
+  })
+
+  it('still forces one team per person when the scope is fixed (the Windows desktop)', () => {
+    expect(
+      withVersion(makeApp('Windows'), { runtime: 'kubevirt-vm', scope: 'user', scopeChoice: false }).forcedGroupMode,
+    ).toBe('eachUser')
+  })
+})

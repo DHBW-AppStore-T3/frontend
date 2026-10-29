@@ -1383,6 +1383,11 @@ export interface components {
             runtime: string;
             /** Scope */
             scope?: string | null;
+            /**
+             * Scope Choice
+             * @default false
+             */
+            scope_choice: boolean;
             /** Egress */
             egress?: string | null;
             /**
