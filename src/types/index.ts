@@ -59,10 +59,6 @@ export type User = Schemas['UserResponse']
 export type UserWithCourse = Schemas['UserWithCourse']
 export type UserStatistics = Schemas['UserStatistics']
 
-// Profile fields live in Keycloak; role and courseId are the only
-// things this API updates, and role is admin-only.
-export type UserUpdate = Schemas['UserUpdate']
-
 // `UserCreate` and `UserPasswordUpdate` used to sit here. The backend
 // has no create-user or change-password endpoint -- Keycloak owns both,
 // and the users.password column was dropped in migration
@@ -188,8 +184,6 @@ export type Deployment = Omit<Schemas['DeploymentResponse'], 'status' | 'runtime
 
 /** What the caller may do with a deployment, decided by the API. */
 export type DeploymentPermissions = Schemas['DeploymentPermissions']
-
-export type DeploymentTeamMember = Schemas['DeploymentTeamMember']
 
 export type DeploymentTeam = Schemas['DeploymentTeamResponse']
 
