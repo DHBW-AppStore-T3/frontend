@@ -5,12 +5,21 @@ import Toast from '@/components/ui/Toast'
 import { useToastStore } from '@/stores/toast.store'
 import { renderWithProviders } from '../../../helpers/render'
 
-// Toast accessibility (#154, phase 1B): a named close button, a live region per
-// message that fits its urgency, and no doubled announcements.
+// Toast accessibility (#154, phase 1B): a named close button and announcements
+// through two live regions (polite, assertive) that exist before any message.
+// A live region that is inserted together with its text is not reliably
+// announced, so the regions are permanent and only their content changes.
+//
+// These specs check the DOM contract. They do not prove that a screen reader
+// speaks the message: that needs a manual check with NVDA/JAWS/VoiceOver.
 
 const LONG = 999999
 
 const show = () => renderWithProviders(<Toast />)
+const status = () => screen.getByTestId('toast-live-polite')
+const alertRegion = () => screen.getByTestId('toast-live-assertive')
+/** Visible toast text, not the copy in the live regions. */
+const visible = (text: string) => screen.queryByText(text, { selector: '.toast-message' })
 const closeButtons = () => screen.queryAllByRole('button', { name: 'toast.close' })
 const post = (fn: (s: ReturnType<typeof useToastStore.getState>) => void) => act(() => fn(useToastStore.getState()))
 
@@ -35,7 +44,7 @@ describe('Toast: close button', () => {
   it('hides the decorative icons from assistive technology', () => {
     show()
     post((s) => s.success('Saved', LONG))
-    const toast = screen.getByText('Saved').closest('.toast') as HTMLElement
+    const toast = visible('Saved')!.closest('.toast') as HTMLElement
     const icons = toast.querySelectorAll('svg')
     expect(icons.length).toBeGreaterThan(0)
     icons.forEach((icon) => expect(icon).toHaveAttribute('aria-hidden', 'true'))
@@ -52,12 +61,12 @@ describe('Toast: close button', () => {
     await userEvent.tab()
     expect(closeButtons()[0]).toHaveFocus()
     await userEvent.keyboard('{Enter}')
-    expect(screen.queryByText('First')).not.toBeInTheDocument()
+    expect(visible('First')).not.toBeInTheDocument()
 
     closeButtons()[0].focus()
     await userEvent.keyboard(' ')
-    expect(screen.queryByText('Second')).not.toBeInTheDocument()
-    expect(screen.getByText('Third')).toBeInTheDocument()
+    expect(visible('Second')).not.toBeInTheDocument()
+    expect(visible('Third')).toBeInTheDocument()
     expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual(['Third'])
   })
 
@@ -65,41 +74,73 @@ describe('Toast: close button', () => {
     show()
     post((s) => s.info('Only', LONG))
     await userEvent.click(screen.getByRole('button', { name: 'toast.close' }))
-    expect(screen.queryByText('Only')).not.toBeInTheDocument()
+    expect(visible('Only')).not.toBeInTheDocument()
   })
 })
 
 describe('Toast: live regions', () => {
-  it('announces errors and warnings assertively as alerts', () => {
+  it('has a polite and an assertive region from the start, both empty', () => {
     show()
-    post((s) => {
-      s.error('Boom', LONG)
-      s.warning('Careful', LONG)
-    })
-    const alerts = screen.getAllByRole('alert')
-    expect(alerts.map((a) => a.textContent)).toEqual(['Boom', 'Careful'])
+    expect(status()).toBeEmptyDOMElement()
+    expect(alertRegion()).toBeEmptyDOMElement()
+    expect(status()).toHaveAttribute('aria-live', 'polite')
+    expect(alertRegion()).toHaveAttribute('aria-live', 'assertive')
+    expect(status()).toHaveAttribute('aria-atomic', 'false')
+    expect(alertRegion()).toHaveAttribute('aria-atomic', 'false')
   })
 
-  it('announces success and info politely as status', () => {
+  it('fills the existing regions afterwards instead of inserting new ones', () => {
+    show()
+    const polite = status()
+    const assertive = alertRegion()
+    const changes: string[] = []
+    const watch = (name: string, el: HTMLElement) =>
+      new MutationObserver((records) => records.forEach((r) => r.addedNodes.length && changes.push(name))).observe(el, {
+        childList: true,
+      })
+    watch('status', polite)
+    watch('alert', assertive)
+
+    post((s) => {
+      s.info('FYI', LONG)
+      s.error('Boom', LONG)
+    })
+
+    expect(status()).toBe(polite)
+    expect(alertRegion()).toBe(assertive)
+    expect(polite).toHaveTextContent(/^FYI$/)
+    expect(assertive).toHaveTextContent(/^Boom$/)
+    return Promise.resolve().then(() => expect(changes.sort()).toEqual(['alert', 'status']))
+  })
+
+  it('announces success and info politely, error and warning assertively', () => {
     show()
     post((s) => {
       s.success('Saved', LONG)
       s.info('FYI', LONG)
+      s.error('Boom', LONG)
+      s.warning('Careful', LONG)
     })
-    const statuses = screen.getAllByRole('status')
-    expect(statuses.map((a) => a.textContent)).toEqual(['Saved', 'FYI'])
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(Array.from(status().children).map((c) => c.textContent)).toEqual(['Saved', 'FYI'])
+    expect(Array.from(alertRegion().children).map((c) => c.textContent)).toEqual(['Boom', 'Careful'])
   })
 
-  it('announces only the message, not the close button', () => {
+  it('announces a later message without repeating the earlier ones (additions only)', () => {
+    show()
+    post((s) => s.success('One', LONG))
+    expect(status()).toHaveAttribute('aria-relevant', 'additions')
+    post((s) => s.success('Two', LONG))
+    expect(Array.from(status().children).map((c) => c.textContent)).toEqual(['One', 'Two'])
+  })
+
+  it('takes a message out of its region when the toast goes away', async () => {
     show()
     post((s) => s.error('Boom', LONG))
-    const alert = screen.getByRole('alert')
-    expect(alert).toHaveTextContent(/^Boom$/)
-    expect(within(alert).queryByRole('button')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'toast.close' }))
+    expect(alertRegion()).toBeEmptyDOMElement()
   })
 
-  it('has exactly one live region per toast and none on the container', () => {
+  it('gives the visible toast no live role of its own: one announcement per message', () => {
     show()
     post((s) => {
       s.success('A', LONG)
@@ -107,9 +148,24 @@ describe('Toast: live regions', () => {
       s.info('C', LONG)
     })
     const container = document.body.querySelector('.toast-container') as HTMLElement
-    expect(container).not.toHaveAttribute('role')
-    expect(container).not.toHaveAttribute('aria-live')
-    expect(container.querySelectorAll('[role="status"], [role="alert"], [aria-live]')).toHaveLength(3)
+    expect(container.querySelectorAll('[role], [aria-live]')).toHaveLength(0)
+    expect(document.body.querySelectorAll('[role="status"], [role="alert"], [aria-live]')).toHaveLength(2)
+  })
+
+  it('adds no alert or status role to the page: real alerts stay unambiguous', () => {
+    show()
+    post((s) => {
+      s.error('Boom', LONG)
+      s.info('FYI', LONG)
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('keeps the close button out of the announced text', () => {
+    show()
+    post((s) => s.error('Boom', LONG))
+    expect(within(alertRegion()).queryByRole('button')).toBeNull()
   })
 })
 
@@ -121,24 +177,25 @@ describe('Toast: lifetime and click behaviour stay', () => {
       s.info('Short', 1000)
       s.info('Default')
     })
-    expect(screen.getByText('Short')).toBeInTheDocument()
+    expect(visible('Short')).toBeInTheDocument()
 
     act(() => {
       vi.advanceTimersByTime(1000)
     })
-    expect(screen.queryByText('Short')).not.toBeInTheDocument()
-    expect(screen.getByText('Default')).toBeInTheDocument()
+    expect(visible('Short')).not.toBeInTheDocument()
+    expect(visible('Default')).toBeInTheDocument()
 
     act(() => {
       vi.advanceTimersByTime(4000)
     })
-    expect(screen.queryByText('Default')).not.toBeInTheDocument()
+    expect(visible('Default')).not.toBeInTheDocument()
+    expect(status()).toBeEmptyDOMElement()
   })
 
   it('still closes when the toast itself is clicked (mouse shortcut for the button)', async () => {
     show()
     post((s) => s.info('Click me', LONG))
-    await userEvent.click(screen.getByText('Click me'))
-    expect(screen.queryByText('Click me')).not.toBeInTheDocument()
+    await userEvent.click(visible('Click me')!)
+    expect(visible('Click me')).not.toBeInTheDocument()
   })
 })
