@@ -32,8 +32,8 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 ## 3. Bekannte Fallstricke & Blocker
 
 1. **Typensicherheit:** `tsc -b` schlägt bei fehlerhaften Typen im CI Build fehl; Typen vor dem Commit immer lokal prüfen.
-2. **Coverage Gate:** Der Job `🧪 Test` in `ci.yml` verlangt auf **jedem** Branch und PR mindestens 85,0 % Zeilen (`MIN_COVERAGE`,
-   Metrik `total.lines.pct`) **und** mindestens 85,0 % Branches (`MIN_BRANCH_COVERAGE`, Metrik `total.branches.pct`); beide Werte
+2. **Coverage Gate:** Der Job `🧪 Test` in `ci.yml` verlangt auf **jedem** Branch und PR mindestens 80,0 % Zeilen (`MIN_COVERAGE`,
+   Metrik `total.lines.pct`) **und** mindestens 80,0 % Branches (`MIN_BRANCH_COVERAGE`, Metrik `total.branches.pct`); beide Werte
    müssen gelten. Die Linux-CI misst auf `dev` ca. 94,5 % Zeilen und 88,4 % Branches. Jeden Wert immer mindestens 2 Punkte unter dem
    CI-Ist-Wert halten und `CLAUDE.md` mit anpassen.
 3. **Security-Audit:** `npm audit --omit=dev` ist 0 und blockiert in der CI. `npm audit` (mit Dev) meldet 2 bewusst akzeptierte Funde
