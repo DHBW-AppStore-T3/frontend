@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import MoveSelect, { type MoveTarget } from './MoveSelect'
 import { GripVertical, UserPlus } from 'lucide-react'
 
 export interface UnassignedPoolProps {
@@ -12,6 +13,9 @@ export interface UnassignedPoolProps {
   onDragEnter: () => void
   onDragLeave: () => void
   onDrop: (event: React.DragEvent) => void
+  /** Keyboard alternative to dragging: where a student can be moved to. */
+  moveTargets: MoveTarget[]
+  onMove: (studentId: string, target: number | null) => void
 }
 
 /** Students without a team; also a drop target to un-assign someone. */
@@ -63,6 +67,15 @@ export default function UnassignedPool(props: UnassignedPoolProps) {
                 <span className="font-semibold text-textMuted group-hover:text-textHeading flex-1 transition-colors">
                   {nameOf(studentId)}
                 </span>
+                {dragDisabled ? null : (
+                  <MoveSelect
+                    studentId={studentId}
+                    studentName={nameOf(studentId)}
+                    current={null}
+                    targets={props.moveTargets}
+                    onMove={props.onMove}
+                  />
+                )}
               </div>
             ))}
           </div>

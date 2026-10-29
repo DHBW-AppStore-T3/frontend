@@ -739,6 +739,7 @@ export default {
       unassigned: 'Nicht zugewiesen', // Optional
       removeAll: 'Alle entfernen',
       removeStudent: 'Student aus Gruppe entfernen',
+      moveStudent: '{name} zuweisen an',
       moveAllHere: 'Alle hierhin verschieben',
       removeAllTooltip: 'Alle aus dieser Gruppe entfernen',
       moveAllTooltip: 'Verschiebt alle Studenten in diese Gruppe',

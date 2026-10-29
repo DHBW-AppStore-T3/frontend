@@ -21,6 +21,7 @@ import UnassignedPool from './new-deployment/UnassignedPool'
 import { useStudentNames } from './new-deployment/useStudentNames'
 import { ensureVariableDefinitions, resolveNeedsVariablesStep } from './new-deployment/variableDefinitions'
 import { useNeedsVariablesStep } from './new-deployment/variablesStep'
+import { type MoveTarget } from './new-deployment/MoveSelect'
 import {
   chooseCustom,
   chooseEachUser,
@@ -144,6 +145,27 @@ export default function NewDeploymentGroupsAssignmentView() {
     setDragOverTeam(null)
     setDragOverPool(false)
   }
+  // Keyboard alternative to dragging (MoveSelect). The chip moves to another list, so focus
+  // follows it: after the render the select of the same student is focused again.
+  const pendingFocus = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pendingFocus.current) return
+    document.querySelector<HTMLElement>(`[data-move-for="${CSS.escape(pendingFocus.current)}"]`)?.focus()
+    pendingFocus.current = null
+  })
+  const moveTargets: MoveTarget[] = [
+    { index: null, label: t('deployment.assignment.unassigned') },
+    ...teams.assignments.slice(0, teams.count).map((_, index) => ({
+      index,
+      label: teams.names[index] || t('deployment.assignment.vmDefaultName', { index: index + 1 }),
+    })),
+  ]
+  const moveByKeyboard = (studentId: string, target: number | null) => {
+    if (isForced) return
+    pendingFocus.current = studentId
+    apply({ ...teams, assignments: moveStudent(teams.assignments, studentId, target) })
+  }
+
   const dropOn = (target: number | null) => (event: React.DragEvent) => {
     event.preventDefault()
     if (dragged && !isForced) apply({ ...teams, assignments: moveStudent(teams.assignments, dragged, target) })
@@ -301,6 +323,8 @@ export default function NewDeploymentGroupsAssignmentView() {
                 onDragEnter={() => setDragOverPool(true)}
                 onDragLeave={() => setDragOverPool(false)}
                 onDrop={dropOn(null)}
+                moveTargets={moveTargets}
+                onMove={moveByKeyboard}
               />
             </div>
 
@@ -323,6 +347,8 @@ export default function NewDeploymentGroupsAssignmentView() {
                     onDragEnter={() => setDragOverTeam(index)}
                     onDragLeave={() => setDragOverTeam(null)}
                     onDrop={dropOn(index)}
+                    moveTargets={moveTargets}
+                    onMove={moveByKeyboard}
                     onRemove={(studentId) =>
                       apply({ ...teams, assignments: removeFromTeam(teams.assignments, studentId, index) })
                     }

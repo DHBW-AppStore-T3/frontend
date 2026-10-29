@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
@@ -129,10 +129,62 @@ describe('NewDeploymentGroupsAssignmentView', () => {
 
     const assigned = screen.getAllByText('John Doe')[0]!.closest('[draggable]') as HTMLElement
     fireEvent.dragStart(assigned, { dataTransfer: { setData: vi.fn(), effectAllowed: '' } })
-    const pool = screen.getByText('deployment.assignment.unassigned').closest('.flex-col')!.querySelector('.overflow-y-auto')!
+    const pool = screen.getByRole('heading', { name: 'deployment.assignment.unassigned' }).closest('.flex-col')!.querySelector('.overflow-y-auto')!
     fireEvent.drop(pool, { dataTransfer: { dropEffect: '' } })
 
     expect(draft().assignments[0]).toEqual([])
+  })
+
+  describe('Zuweisen per Tastatur statt Ziehen (issue 154)', () => {
+    const ids: Record<string, string> = { 'John Doe': 'u1', 'Jane Smith': 'u2' }
+    const moveSelect = (name: string) =>
+      document.querySelector<HTMLSelectElement>(`[data-move-for="${ids[name]}"]`) as HTMLSelectElement
+
+    it('jede Person hat eine benannte Auswahl, die das aktuelle Team zeigt', async () => {
+      seed({ assignments: [['u1'], []] })
+      renderView()
+      await screen.findAllByText('John Doe')
+
+      expect(moveSelect('John Doe')).toHaveValue('0')
+      expect(moveSelect('Jane Smith')).toHaveValue('pool')
+      expect(within(moveSelect('John Doe')).getAllByRole('option')).toHaveLength(3) // pool + two teams
+      expect(moveSelect('John Doe')).toHaveAccessibleName('deployment.assignment.moveStudent')
+    })
+
+    it('weist aus dem Pool einem Team zu, setzt den Fokus auf die Auswahl am neuen Ort und zurück in den Pool', async () => {
+      renderView()
+      await screen.findByText('John Doe')
+
+      await userEvent.selectOptions(moveSelect('John Doe'), '1')
+
+      expect(draft().assignments[1]).toEqual(['u1'])
+      await waitFor(() => expect(moveSelect('John Doe')).toHaveFocus())
+      expect(moveSelect('John Doe')).toHaveValue('1')
+
+      await userEvent.selectOptions(moveSelect('John Doe'), 'pool')
+
+      expect(draft().assignments[1]).toEqual([])
+      await waitFor(() => expect(moveSelect('John Doe')).toHaveFocus())
+    })
+
+    it('verschiebt zwischen Teams, ohne die anderen Mitglieder anzufassen', async () => {
+      seed({ assignments: [['u1', 'u2'], []] })
+      renderView()
+      await screen.findAllByText('John Doe')
+
+      await userEvent.selectOptions(moveSelect('John Doe'), '1')
+
+      expect(draft().assignments).toEqual([['u2'], ['u1']])
+    })
+
+    it('bietet bei fest vorgegebener Zuweisung keine Auswahl an', async () => {
+      seed({ scope: 'user' } as never)
+      renderView()
+      await screen.findByText('John Doe')
+      await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
+
+      expect(screen.queryAllByRole('combobox')).toHaveLength(0)
+    })
   })
 
   it('entfernt einen Studierenden per X-Button aus dem Team', async () => {

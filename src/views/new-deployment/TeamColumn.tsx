@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import MoveSelect, { type MoveTarget } from './MoveSelect'
 import { GripVertical, UserPlus, Users, X } from 'lucide-react'
 
 export interface TeamColumnProps {
@@ -16,6 +17,9 @@ export interface TeamColumnProps {
   onDragLeave: () => void
   onDrop: (event: React.DragEvent) => void
   onRemove: (studentId: string) => void
+  /** Keyboard alternative to dragging: where a student can be moved to. */
+  moveTargets: MoveTarget[]
+  onMove: (studentId: string, target: number | null) => void
 }
 
 /** One team: editable name, student count and a drop zone with draggable chips. */
@@ -85,11 +89,20 @@ export default function TeamColumn(props: TeamColumnProps) {
                   {nameOf(studentId)}
                 </span>
                 {dragDisabled ? null : (
+                  <MoveSelect
+                    studentId={studentId}
+                    studentName={nameOf(studentId)}
+                    current={index}
+                    targets={props.moveTargets}
+                    onMove={props.onMove}
+                  />
+                )}
+                {dragDisabled ? null : (
                   <button
                     type="button"
                     onClick={() => props.onRemove(studentId)}
                     data-testid="btn-remove-student"
-                    className="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-dangerTint rounded-lg"
+                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all p-1.5 hover:bg-dangerTint rounded-lg"
                     title={t('deployment.assignment.removeStudent')}
                   >
                     <X size={14} className="text-danger" />
