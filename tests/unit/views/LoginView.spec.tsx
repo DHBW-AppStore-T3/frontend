@@ -75,6 +75,21 @@ describe('LoginView', () => {
     expect(login).toHaveBeenCalledWith('/apps/42')
   })
 
+  it.each(['https://evil.example', '//evil.example', `/${String.fromCharCode(92)}evil.example`, 'javascript:alert(1)'])(
+    'ignores the foreign returnUrl %s (#147)',
+    async (foreign) => {
+      login.mockResolvedValue(undefined)
+      renderView(`/login?returnUrl=${encodeURIComponent(foreign)}`)
+      await userEvent.click(screen.getByRole('button'))
+      expect(login).toHaveBeenCalledWith('/dashboard')
+    },
+  )
+
+  it('does not forward an authenticated user to a foreign returnUrl', () => {
+    renderView(`/login?returnUrl=${encodeURIComponent('//evil.example')}`, true)
+    expect(screen.getByTestId('where')).toHaveTextContent('/dashboard')
+  })
+
   it('swallows a failed login redirect instead of throwing', async () => {
     login.mockRejectedValue(new Error('keycloak unreachable'))
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
