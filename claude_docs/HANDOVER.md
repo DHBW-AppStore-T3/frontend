@@ -60,6 +60,15 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 ## 4. Letzte Übergaben (Historie)
 
+- **2026-10-29 (Übersicht nennt die App, „App nicht gefunden" behoben; Folge von #133 und #136):** Die Übersicht zeigte bei jeder App „App nicht gefunden für n Personen"
+  (auf Staging bei pgAdmin, Web-LaTeX und windows-matlab-app gesehen). **Ursache:** sie suchte die App in `useAppStore.apps`, und diese Liste füllt nur `fetchApps()`; der Katalog (`AppsView`) hält seine Liste
+  lokal, auf dem Weg „Katalog, Details, Deployen, Assistent" ist sie also leer. Bei Apps mit Variablen war das schon immer so; bei Apps **ohne** Variablen füllte früher der Übersichts-Hook (`useSummaryVariables`) die Liste nebenbei,
+  weil ein leerer Cache als „nicht geladen" galt: seit #133 gilt `[]` als geladen, der Aufruf entfiel. **Behebung:** `useDraftApp()` (`src/views/new-deployment/useDraftApp.ts`) nimmt die App aus der Liste, sonst aus
+  `currentApp` (wenn es die des Entwurfs ist), sonst fragt es **einmal** `fetchAppById(appId)` und meldet `isLoading`, bis die Antwort da ist. Die Übersicht zeigt bis dahin das Skelett (und „Deployen" ist gesperrt) statt kurz „App nicht gefunden";
+  der Hinweis erscheint nur noch, wenn auch das Backend die App nicht kennt. Der Aufruf lädt nur diese App, nicht den ganzen Katalog (Bilder). `useAppStore.apps` bleibt ungefüllt: wer die Liste braucht, ruft `fetchApps()` auf.
+  **Nicht geändert:** `NewDeploymentGroupsAssignmentView` liest `draftAppDetails()` weiter aus der Liste; es ist ohne Wirkung, weil `useDeploymentConstraints` den Parameter (`_app`) ignoriert (Aufräumkandidat, auch `draftAppDetails` im Store).
+  **Tests:** `useDraftApp.test.tsx` (7), neue Fälle in `NewDeploymentSummaryView.spec` (Liste leer, Skelett, erst nach der Einzelabfrage „nicht gefunden", Bild) und im Durchlauf (`variablesStepFlow.spec`: `appApi.getById` einmal). Mutationsprobe
+  (Hook fragt nie): 9 Tests in 3 Dateien schlagen fehl. **Fallstricke:** Specs der Übersicht brauchen `fetchAppById` als Mock (Netzwerk-Guard), wenn die Liste leer ist; mit echter Übersetzung heißt der Button „Deployen" statt `deployment.actions.deploy`.
 - **2026-10-29 (Zusammenfassung, Schritt 4: ein Satz, drei ruhige Karten, frontend#136):** `NewDeploymentSummaryView` zeigt statt dreier Pastellkästen drei weiße Karten:
   **Das wird gestartet** (`SummaryHero`: Satz „{App} für {n} Personen", `Deployment „{Name}"`, Typenschild Version und Laufzeit; `data-testid="summary-runtime"` bleibt),
   **Teilnehmende** (`SummaryParticipants`: Modus-Chip, ein Satz je Modus und Umgebung/Desktop, eine Leiste; bei „Jeder Nutzer einzeln" nur Personen, sonst Teams mit Mitgliedern)

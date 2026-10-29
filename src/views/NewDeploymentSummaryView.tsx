@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { BarChart3, ArrowLeft } from 'lucide-react'
 import DeploymentProgressBar from '@/components/DeploymentProgressBar'
 import { useDeploymentStore } from '@/stores/deployment.store'
-import { useAppStore } from '@/stores/app.store'
 import { paths } from '@/router/paths'
 import { displayNameOf } from './new-deployment/studentSelection'
 import { versionLabelOf } from './new-deployment/summary'
 import { buildSettingsRows, type EnvironmentUnit } from './new-deployment/summaryRows'
 import { buildWizardTeams } from './new-deployment/variableForm'
+import { useDraftApp } from './new-deployment/useDraftApp'
 import { useSummaryVariables } from './new-deployment/useSummaryVariables'
 import { useNeedsVariablesStep } from './new-deployment/variablesStep'
 import { useSubmitDeployment } from './new-deployment/useSubmitDeployment'
@@ -24,13 +24,13 @@ export default function NewDeploymentSummaryView() {
   const draft = useDeploymentStore((s) => s.draft)
   const isStoreLoading = useDeploymentStore((s) => s.isLoading)
   const studentCache = useDeploymentStore((s) => s.studentCache)
-  const apps = useAppStore((s) => s.apps)
+  const { app: selectedApp, isLoading: isLoadingApp } = useDraftApp()
   const { defs, isLoading: isLoadingVariables } = useSummaryVariables()
+  const isLoading = isLoadingVariables || isLoadingApp
   // Apps with nothing to set skip the "Variables" step: "Back" leads to the teams, the bar has three steps.
   const showVariablesStep = useNeedsVariablesStep() !== false
   const { submit, isSubmitting } = useSubmitDeployment()
 
-  const selectedApp = apps.find((a) => a.appId === draft.appId)
   const nameOf = (id: string) => {
     const student = studentCache.get(id)
     return student ? displayNameOf(student) || id : id
@@ -76,9 +76,9 @@ export default function NewDeploymentSummaryView() {
         className="mx-auto grid w-full max-w-3xl flex-grow content-start gap-4"
         data-testid="summary-loading"
         aria-live="polite"
-        aria-busy={isLoadingVariables}
+        aria-busy={isLoading}
       >
-        {isLoadingVariables ? (
+        {isLoading ? (
           <SummarySkeleton />
         ) : (
           <>
@@ -116,7 +116,7 @@ export default function NewDeploymentSummaryView() {
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={isLoadingVariables || busy}
+          disabled={isLoading || busy}
           className="flex items-center gap-3 px-10 py-3 rounded-full bg-gradient-to-r from-primary to-primaryDark text-white font-bold hover:from-primaryDark hover:to-primaryDark transition-all shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? (
