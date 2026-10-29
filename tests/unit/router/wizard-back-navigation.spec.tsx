@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router'
 import { I18nextProvider } from 'react-i18next'
-import i18n from '@/i18n'
+import { keyEchoI18n } from '../../helpers/render'
 
-// --- Mocks: API modules that make real network calls ---
+// Routes and views are the real ones, so the history the buttons leave behind is the real one too;
+// only the backend and the sign-in are stand-ins.
 vi.mock('@/api/app.api', () => ({
   appApi: {
     getById: vi.fn(),
     listVersionApprovals: vi.fn(),
     getRuntime: vi.fn(),
-    list: vi.fn().mockResolvedValue({ data: [] }),
+    list: vi.fn(),
     admin: {
       setRecommended: vi.fn(),
       setDeployVersion: vi.fn(),
@@ -41,7 +42,10 @@ import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useAdminViewStore } from '@/stores/admin-view.store'
 
-const baseApp = {
+const APP_DETAIL = '/apps/app-123'
+const WIZARD_START = '/deployment/new/config'
+
+const app = {
   appId: 'app-123',
   name: 'Test App',
   description: 'Eine Beschreibung',
@@ -57,8 +61,8 @@ const baseApp = {
   submit_all_versions: false,
 }
 
-// Load all lazy routes once so dynamic imports don't time out the assertions.
-import type { RouteObject } from 'react-router'
+// The views are loaded by a real dynamic import the first time a route needs them. Load every lazy
+// route once up front (as routes.spec does), so the tests are about the flow and not about import time.
 const loadLazyRoutes = (routes: RouteObject[]): Promise<unknown>[] =>
   routes.flatMap((r) => [
     ...(r.lazy ? [(r.lazy as () => Promise<unknown>)()] : []),
@@ -74,100 +78,68 @@ beforeEach(() => {
   useToastStore.setState({ toasts: [] })
   useAdminViewStore.setState({ enabledByAccount: {} })
   useDeploymentStore.getState().resetDraft()
-
-  // Log in as teacher (can deploy).
   useAuthStore.setState({
     isAuthenticated: true,
-    user: { userId: 'teacher-1', role: 'teacher' } as any,
+    user: { userId: 'teacher-1', role: 'teacher' } as never,
   })
 
-  vi.mocked(appApi.getById).mockResolvedValue({ data: baseApp } as any)
-  vi.mocked(appApi.listVersionApprovals).mockResolvedValue({ data: [] } as any)
-  vi.mocked(appApi.getRuntime).mockResolvedValue({
-    data: { runtime: 'kubernetes', scope: 'team' },
-  } as any)
-  vi.mocked(courseApi.list).mockResolvedValue({ data: [] } as any)
-  vi.mocked(userApi.list).mockResolvedValue({ data: [] } as any)
-  vi.mocked(userApi.search).mockResolvedValue({ data: [] } as any)
+  vi.mocked(appApi.getById).mockResolvedValue({ data: app } as never)
+  vi.mocked(appApi.listVersionApprovals).mockResolvedValue({ data: [] } as never)
+  vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'kubernetes', scope: 'team' } } as never)
+  vi.mocked(appApi.list).mockResolvedValue({ data: [] } as never)
+  vi.mocked(courseApi.list).mockResolvedValue({ data: [] } as never)
+  vi.mocked(userApi.list).mockResolvedValue({ data: [] } as never)
+  vi.mocked(userApi.search).mockResolvedValue({ data: [] } as never)
 })
 
-function renderAt(initialEntries: string[], initialIndex?: number) {
-  const router = createMemoryRouter(appRoutes, {
-    initialEntries,
-    initialIndex: initialIndex ?? initialEntries.length - 1,
-  })
+function renderAt(history: string[]) {
+  const router = createMemoryRouter(appRoutes, { initialEntries: history })
   render(
-    <I18nextProvider i18n={i18n}>
+    <I18nextProvider i18n={keyEchoI18n()}>
       <RouterProvider router={router} />
     </I18nextProvider>,
   )
   return router
 }
 
+type Router = ReturnType<typeof renderAt>
+
+const expectPath = (router: Router, pathname: string) =>
+  waitFor(() => expect(router.state.location.pathname).toBe(pathname))
+
+const appDetailShown = () => screen.findByRole('heading', { name: app.name })
+
+async function startWizard(router: Router) {
+  const deploy = await screen.findByRole('button', { name: /AppsDetailView\.deployButton/ })
+  await waitFor(() => expect(deploy).toBeEnabled())
+  await userEvent.click(deploy)
+  await expectPath(router, WIZARD_START)
+}
+
+async function backToOverview(router: Router) {
+  await appDetailShown()
+  await userEvent.click(screen.getByRole('button', { name: /AppsDetailView\.backToOverview/ }))
+  await expectPath(router, '/apps')
+}
+
 describe('wizard-back-navigation', () => {
-  it('Vollständiger Ablauf: Assistent starten, Zurück, Zurück zur Übersicht → /apps', async () => {
-    // Start at /apps/app-123 with /apps in history.
-    const router = renderAt(['/apps', '/apps/app-123'], 1)
+  it('"Zurück zur Übersicht" führt nach /apps, auch nachdem der Assistent gestartet und verlassen wurde', async () => {
+    const router = renderAt(['/apps', APP_DETAIL])
+    await appDetailShown()
 
-    // Wait for the App detail page to render.
-    await screen.findByRole('heading', { name: 'Test App' })
+    await startWizard(router)
+    await userEvent.click(await screen.findByTestId('btn-back'))
+    await expectPath(router, APP_DETAIL)
 
-    // Click "Deployment starten" / "Jetzt Deployen" button.
-    const deployBtn = await screen.findByRole('button', {
-      name: /Jetzt Deployen|Deployment starten/,
-    })
-    await userEvent.click(deployBtn)
-
-    // Should now be on the wizard config step.
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/deployment/new/config'),
-    )
-
-    // Click "Zurück" in the wizard (btn-back).
-    const backInWizard = await screen.findByTestId('btn-back')
-    await userEvent.click(backInWizard)
-
-    // Should be back on the App detail page.
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/apps/app-123'),
-    )
-
-    // Click "Zurück zur Übersicht" on the App detail page.
-    await screen.findByRole('heading', { name: 'Test App' })
-    const backToOverview = screen.getByRole('button', {
-      name: /Zurück zur Übersicht/,
-    })
-    await userEvent.click(backToOverview)
-
-    // Must land on /apps, NOT back in the wizard.
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/apps'),
-    )
+    await backToOverview(router)
   })
 
-  it('"Zurück zur Übersicht" ohne vorherigen Assistenten-Besuch führt nach /apps', async () => {
-    const router = renderAt(['/apps', '/apps/app-123'], 1)
-    await screen.findByRole('heading', { name: 'Test App' })
+  it.each([
+    ['ohne vorherigen Assistenten-Besuch', ['/apps', APP_DETAIL]],
+    ['bei Deep Link (ohne Verlauf)', [APP_DETAIL]],
+  ])('"Zurück zur Übersicht" %s führt nach /apps', async (_case, history) => {
+    const router = renderAt(history)
 
-    await userEvent.click(
-      screen.getByRole('button', { name: /Zurück zur Übersicht/ }),
-    )
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/apps'),
-    )
-  })
-
-  it('"Zurück zur Übersicht" bei Deep Link (ohne Verlauf) führt nach /apps', async () => {
-    const router = renderAt(['/apps/app-123'])
-    await screen.findByRole('heading', { name: 'Test App' })
-
-    await userEvent.click(
-      screen.getByRole('button', { name: /Zurück zur Übersicht/ }),
-    )
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/apps'),
-    )
+    await backToOverview(router)
   })
 })
