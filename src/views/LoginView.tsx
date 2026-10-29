@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { LogIn } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import BaseButton from '@/components/ui/BaseButton'
+import { safeReturnUrl } from '@/utils/return-url'
 import './LoginView.css'
 
 export default function LoginView() {
@@ -14,7 +15,7 @@ export default function LoginView() {
   const login = useAuthStore((s) => s.login)
 
   // Get return URL from query params
-  const returnUrl = params.get('returnUrl') || '/dashboard'
+  const returnUrl = safeReturnUrl(params.get('returnUrl'), '/dashboard')
 
   // Redirect to Keycloak login
   const loginWithKeycloak = async () => {

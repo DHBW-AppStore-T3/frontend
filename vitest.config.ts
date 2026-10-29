@@ -30,8 +30,10 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
+    alias: [
+      // Exactly `@/i18n`: the app instance with both languages registered (#148).
+      { find: /^@\/i18n$/, replacement: path.resolve(__dirname, 'tests/helpers/i18n-eager.ts') },
+      { find: '@', replacement: path.resolve(__dirname, 'src') },
+    ],
   },
 })

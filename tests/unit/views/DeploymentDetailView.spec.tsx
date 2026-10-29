@@ -142,7 +142,8 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
   status: 'success',
   started_at: '2026-06-08T12:10:00Z',
   finished_at: '2026-06-08T12:20:00Z',
-  logs: { logs: [{ timestamp: '2026-06-08T12:15:00Z', level: 'INFO', message: 'hello from the worker' }] },
+  // As the worker stores it: json.dumps of a list of entries, delivered as a string.
+  logs: JSON.stringify([{ timestamp: '2026-06-08T12:15:00Z', level: 'INFO', message: 'hello from the worker' }]),
   current_phase: 'OUTPUTS_AND_CLEANUP',
   progress_pct: 100,
   created_at: '2026-06-08T12:09:00Z',
@@ -249,6 +250,22 @@ describe('DeploymentDetailView', () => {
     expect(screen.getAllByTestId('group-card')).toHaveLength(1)
   })
 
+  it('Gruppenkarten sind Buttons und öffnen per Enter und Leertaste (#154)', async () => {
+    renderView()
+    const card = (await screen.findAllByTestId('group-card'))[0]!
+    expect(card.tagName).toBe('BUTTON')
+    expect(card).toHaveAccessibleName(/Group A/)
+
+    card.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(await screen.findByText('student-1')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByText('DeploymentDetailView.deploymentGroupsBack'))
+    ;(await screen.findAllByTestId('group-card'))[0]!.focus()
+    await userEvent.keyboard(' ')
+    expect(await screen.findByText('student-2')).toBeInTheDocument()
+  })
+
   it('navigiert zur Liste mit Fehler-Toast wenn das Deployment nicht existiert', async () => {
     mocks.getDeployment.mockRejectedValue({ response: { status: 404 } })
     renderView()
@@ -285,6 +302,20 @@ describe('DeploymentDetailView', () => {
     expect(screen.queryByText('Celery Task ID')).not.toBeInTheDocument()
     expect(screen.getByText(/hello from the worker/)).toBeInTheDocument()
     expect(screen.getByText('1 entries')).toBeInTheDocument()
+  })
+
+  it('Task-Zeilen sind Buttons mit Namen und öffnen per Tastatur (#154)', async () => {
+    renderView()
+
+    const rows = await screen.findAllByTestId('task-row')
+    expect(rows[0]!.tagName).toBe('BUTTON')
+    expect(rows[0]).toHaveAccessibleName(/deploy/i)
+
+    rows[0]!.focus()
+    await userEvent.keyboard('{Enter}')
+
+    expect(await screen.findByText('Task ID')).toBeInTheDocument()
+    expect(mocks.getTask).toHaveBeenCalled()
   })
 
   it('zeigt bei fehlgeschlagenen String-Logs Headline und klappbare Details', async () => {
