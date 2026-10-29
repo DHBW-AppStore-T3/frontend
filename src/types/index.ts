@@ -393,7 +393,7 @@ export interface DeploymentDraft {
 
   // Step 4: assignment (which user is in which group).
   // Key = group index (0, 1, 2...), value = array of user IDs.
-  assignments: Record<number, string[]>
+  assignments: string[][]
   releaseTag: string
   variables: StoredValues // parsed/merged variables
   version: string

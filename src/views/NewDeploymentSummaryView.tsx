@@ -40,7 +40,7 @@ export default function NewDeploymentSummaryView() {
   const mode = draft.groupMode === 'one' ? 'one' : draft.groupMode === 'eachUser' ? 'eachUser' : 'custom'
   const people = draft.studentIds.length
 
-  const participantTeams: ParticipantTeam[] = Object.values((draft.assignments || {}) as Record<string, string[]>).map(
+  const participantTeams: ParticipantTeam[] = (draft.assignments || []).map(
     (members, index) => ({
       id: String(index),
       name: draft.groupNames[index] || t('deployment.assignment.vmDefaultName', { index: index + 1 }),
@@ -51,7 +51,7 @@ export default function NewDeploymentSummaryView() {
   // The card "Variablen-Konfiguration" exists exactly when there are rows; step 3 exists when the app has something to set.
   const settingsRows = buildSettingsRows(draft, defs, {
     t,
-    teams: buildWizardTeams(draft.groupNames, draft.assignments as string[][], studentCache),
+    teams: buildWizardTeams(draft.groupNames, draft.assignments, studentCache),
     nameOf,
   })
   const busy = isSubmitting || isStoreLoading
