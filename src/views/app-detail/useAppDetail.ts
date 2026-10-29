@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
 import type { AppVersionApproval } from '@/types'
 import type { AppDetail } from './versionInfo'
+import { parseAppDetail } from './appDetailGuard'
 import { buildEditPayload, type EditFormValues, type EditImage } from './editPayload'
 
 const HTTP_CONFLICT = 409
@@ -72,7 +73,8 @@ export function useAppDetail(appId: string, loadsApprovals: (app: AppDetail) => 
       try {
         const response = await appApi.getById(appId, false)
         if (cancelled) return
-        const loaded = response.data as unknown as AppDetail
+        const loaded = parseAppDetail(response.data)
+        if (!loaded) throw new Error('GET /apps/{id}: unusable answer')
         setApp(loaded)
         if (loadsApprovals(loaded)) await fetchApprovals()
       } catch {
