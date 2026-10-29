@@ -29,7 +29,7 @@ beforeEach(() => {
 // restart for a new app and for nothing else.
 describe('useAppDetail: initial load', () => {
   it('loads the app once and approvals when the caller asks for them', async () => {
-    mocks.getById.mockResolvedValue({ data: { appId: 'a1' } })
+    mocks.getById.mockResolvedValue({ data: { appId: 'a1', name: 'App' } })
     const { result } = renderHook(() => useAppDetail('a1', () => true), { wrapper })
 
     await waitFor(() => expect(result.current.app).toMatchObject({ appId: 'a1' }))
@@ -38,7 +38,7 @@ describe('useAppDetail: initial load', () => {
   })
 
   it('does not load approvals when the caller says no', async () => {
-    mocks.getById.mockResolvedValue({ data: { appId: 'a1' } })
+    mocks.getById.mockResolvedValue({ data: { appId: 'a1', name: 'App' } })
     const { result } = renderHook(() => useAppDetail('a1', () => false), { wrapper })
 
     await waitFor(() => expect(result.current.app).not.toBeNull())
@@ -46,7 +46,7 @@ describe('useAppDetail: initial load', () => {
   })
 
   it('does not reload when only the loadsApprovals function changes between renders', async () => {
-    mocks.getById.mockResolvedValue({ data: { appId: 'a1' } })
+    mocks.getById.mockResolvedValue({ data: { appId: 'a1', name: 'App' } })
     const { result, rerender } = renderHook(({ fn }) => useAppDetail('a1', fn), {
       wrapper,
       initialProps: { fn: (() => false) as () => boolean },
@@ -60,7 +60,7 @@ describe('useAppDetail: initial load', () => {
   })
 
   it('reloads when the app id changes', async () => {
-    mocks.getById.mockResolvedValue({ data: { appId: 'x' } })
+    mocks.getById.mockResolvedValue({ data: { appId: 'x', name: 'App' } })
     const { rerender } = renderHook(({ id }) => useAppDetail(id, () => false), { wrapper, initialProps: { id: 'a1' } })
     await waitFor(() => expect(mocks.getById).toHaveBeenCalledTimes(1))
 
@@ -81,12 +81,12 @@ describe('useAppDetail: initial load', () => {
   it('ignores an answer that arrives after the id has changed', async () => {
     let resolveFirst!: (v: unknown) => void
     mocks.getById.mockImplementationOnce(() => new Promise((r) => (resolveFirst = r)))
-    mocks.getById.mockResolvedValueOnce({ data: { appId: 'a2' } })
+    mocks.getById.mockResolvedValueOnce({ data: { appId: 'a2', name: 'App' } })
     const { result, rerender } = renderHook(({ id }) => useAppDetail(id, () => false), { wrapper, initialProps: { id: 'a1' } })
 
     rerender({ id: 'a2' })
     await waitFor(() => expect(result.current.app).toMatchObject({ appId: 'a2' }))
-    await act(async () => resolveFirst({ data: { appId: 'a1' } }))
+    await act(async () => resolveFirst({ data: { appId: 'a1', name: 'App' } }))
 
     expect(result.current.app).toMatchObject({ appId: 'a2' })
   })
