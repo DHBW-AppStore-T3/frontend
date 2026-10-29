@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
 vi.mock('@/api/course.api', () => ({ courseApi: { list: vi.fn(), getById: vi.fn() } }))
-vi.mock('@/api/app.api', () => ({ appApi: { getRuntime: vi.fn() } }))
+vi.mock('@/api/app.api', () => ({ appApi: { getRuntime: vi.fn(), getVariables: vi.fn() } }))
 vi.mock('@/api/user.api', () => ({ userApi: { list: vi.fn(), search: vi.fn() } }))
 
 import { appApi } from '@/api/app.api'
@@ -44,6 +44,7 @@ beforeEach(() => {
   useDeploymentStore.getState().updateDraft({ appId: 'app-1', releaseTag: 'v1', runtime: 'kubernetes', scope: 'team' })
   useDeploymentStore.getState().studentCache.clear()
   vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'kubernetes', scope: 'team' } } as any)
+  vi.mocked(appApi.getVariables).mockResolvedValue({ data: [] } as any)
   vi.mocked(courseApi.list).mockResolvedValue({ data: [{ courseId: 'c1', name: 'Web Dev' }] } as any)
   vi.mocked(courseApi.getById).mockResolvedValue({ data: { users: [john, jane] } } as any)
   vi.mocked(userApi.list).mockResolvedValue({ data: [john, jane] } as any)
@@ -73,6 +74,51 @@ describe('NewDeploymentConfigView', () => {
     expect(await screen.findByText('Web Dev')).toBeInTheDocument()
     expect(userApi.list).toHaveBeenCalledWith({ role: 'student', limit: 1000 })
     await waitFor(() => expect(courseApi.getById).toHaveBeenCalledWith('c1'))
+  })
+
+  describe('Variablen-Definitionen vorladen', () => {
+    it('fragt beim Betreten die Variablen der App ab, damit die Antwort in Schritt 2 da ist', async () => {
+      renderView()
+
+      await waitFor(() => expect(appApi.getVariables).toHaveBeenCalledExactlyOnceWith('app-1', 'v1'))
+      await waitFor(() => expect(draft().variableDefinitions).toEqual([]))
+    })
+
+    it('zeigt vier Schritte, bis die Antwort da ist, und drei, wenn die App nichts einzustellen hat', async () => {
+      renderView()
+      await screen.findByText('Web Dev')
+
+      await waitFor(() => expect(screen.queryByText('deployment.steps.vars')).not.toBeInTheDocument())
+      expect(screen.getByText('deployment.steps.summary')).toBeInTheDocument()
+    })
+
+    it('zeigt vier Schritte, wenn die App Variablen hat', async () => {
+      vi.mocked(appApi.getVariables).mockResolvedValue({ data: [{ name: 'region', source: 'terraform' }] } as any)
+      renderView()
+      await screen.findByText('Web Dev')
+
+      await waitFor(() => expect(draft().variableDefinitions).toHaveLength(1))
+      expect(screen.getByText('deployment.steps.vars')).toBeInTheDocument()
+    })
+
+    it('verschluckt einen Ladefehler: keine Meldung, der Schritt bleibt in der Leiste', async () => {
+      vi.mocked(appApi.getVariables).mockRejectedValue(new Error('boom'))
+      renderView()
+      await screen.findByText('Web Dev')
+
+      await waitFor(() => expect(appApi.getVariables).toHaveBeenCalled())
+      expect(useToastStore.getState().toasts.filter((t) => t.type === 'error')).toEqual([])
+      expect(draft().variableDefinitions).toBeUndefined()
+      expect(screen.getByText('deployment.steps.vars')).toBeInTheDocument()
+    })
+
+    it('fragt nicht, wenn keine App im Entwurf ist', async () => {
+      useDeploymentStore.getState().updateDraft({ appId: null })
+      renderView()
+      await screen.findByText('Web Dev')
+
+      expect(appApi.getVariables).not.toHaveBeenCalled()
+    })
   })
 
   describe('Laufzeit', () => {

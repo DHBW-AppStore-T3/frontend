@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Search, Check, Users, BookOpen, UserPlus } from 'lucide-react'
@@ -8,6 +8,8 @@ import { useToast } from '@/composables/useToast'
 import { paths } from '@/router/paths'
 import { useStudentDirectory } from './new-deployment/useStudentDirectory'
 import { useDeploymentRuntime } from './new-deployment/useDeploymentRuntime'
+import { ensureVariableDefinitions } from './new-deployment/variableDefinitions'
+import { useNeedsVariablesStep } from './new-deployment/variablesStep'
 import {
   deriveCourseIds,
   displayNameOf,
@@ -39,6 +41,13 @@ export default function NewDeploymentConfigView() {
   const draft = useDeploymentStore((s) => s.draft)
   const directory = useStudentDirectory()
   useDeploymentRuntime()
+  const needsVariables = useNeedsVariablesStep()
+  // Whether the "Variables" step exists depends on the app's variable definitions, and the backend needs
+  // seconds for them (it clones the app repo): ask now, so the answer is usually there at "Weiter" of
+  // step 2. A failure is not reported here; step 2 and the variables step ask again.
+  useEffect(() => {
+    ensureVariableDefinitions().catch(() => {})
+  }, [])
   const [activeTab, setActiveTab] = useState<Tab>('courses')
   const updateDraft = useDeploymentStore.getState().updateDraft
 
@@ -107,7 +116,7 @@ export default function NewDeploymentConfigView() {
           <BarChart3 size={32} className="text-primary" />
         </div>
 
-        <DeploymentProgressBar currentStep={1} />
+        <DeploymentProgressBar currentStep={1} showVariablesStep={needsVariables !== false} />
 
         <div className="mb-8">
           <label htmlFor={nameId} className="block text-xl font-bold text-textHeading mb-3">

@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     initialize: vi.fn(),
     hasAnyRole: (..._r: string[]): boolean => false,
   },
-  draft: { appId: null, name: '', studentIds: [] as string[] },
+  draft: { appId: null as string | null, name: '', studentIds: [] as string[] },
 }))
 
 vi.mock('@/stores/auth.store', () => ({
@@ -33,6 +33,8 @@ vi.mock('@/views/AppsView', () => ({ default: () => <p>apps</p> }))
 vi.mock('@/views/DashboardView', () => ({ default: () => <p>dashboard</p> }))
 vi.mock('@/views/AddAppsView', () => ({ default: () => <p>add-app</p> }))
 vi.mock('@/views/NewDeploymentConfigView', () => ({ default: () => <p>wizard-config</p> }))
+vi.mock('@/views/NewDeploymentGroupsAssignmentView', () => ({ default: () => <p>wizard-teams</p> }))
+vi.mock('@/views/NewDeploymentVariableView', () => ({ default: () => <p>wizard-variables</p> }))
 vi.mock('@/views/SettingsOpenStackView', () => ({ default: () => <p>openstack-settings</p> }))
 vi.mock('@/views/DeploymentDetailView', () => ({
   default: () => <p data-testid="detail-view">detail</p>,
@@ -128,6 +130,40 @@ describe('app routes', () => {
     const router = renderAt('/does/not/exist')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+})
+
+describe('wizard: the variables step is left out for apps with nothing to set', () => {
+  const complete = { appId: 'a', name: 'n', studentIds: ['s'] }
+
+  it('replaces /deployment/new/variables by the teams step', async () => {
+    loginAs('teacher')
+    mocks.draft = { ...complete, variableDefinitions: [] } as typeof mocks.draft
+    const router = renderAt('/deployment/new/variables')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/deployment/new/teams'))
+    expect(router.state.historyAction).toBe('REPLACE')
+  })
+
+  it.each([
+    ['not known yet', {}],
+    ['with variables', { variableDefinitions: [{ name: 'region' }] }],
+    ['with resource choices', { variableDefinitions: [], resourceChoices: [{ container: 'vm' }] }],
+  ])('opens /deployment/new/variables when the app is %s', async (_, extra) => {
+    loginAs('teacher')
+    mocks.draft = { ...complete, ...extra } as typeof mocks.draft
+    const router = renderAt('/deployment/new/variables')
+
+    await waitFor(() => expect(document.querySelector('.app-shell, .user-shell, main')).not.toBeNull())
+    expect(router.state.location.pathname).toBe('/deployment/new/variables')
+  })
+
+  it('still sends an incomplete draft to the matching earlier step first', async () => {
+    loginAs('teacher')
+    mocks.draft = { appId: null, name: '', studentIds: [], variableDefinitions: [] } as typeof mocks.draft
+    const router = renderAt('/deployment/new/variables')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/apps'))
   })
 })
 

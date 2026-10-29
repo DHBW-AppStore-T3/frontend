@@ -5,16 +5,16 @@ import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToast } from '@/composables/useToast'
 import type { AppVariable, StoredValues } from '@/types'
 import { parseStoredInput } from './variableForm'
-import { versionLabelOf } from './summary'
+import { ensureVariableDefinitions } from './variableDefinitions'
 
 /**
  * The variable definitions shown by the summary.
  *
- * A cache hit from the variables step (``draft.variableDefinitions``) always
- * wins, so the page renders immediately and does not depend on the apps list.
- * Only for deep links / reloads are the definitions fetched from the backend
- * (it sparse-clones the app repo, which can take seconds) and merged into the
- * draft (defaults first, then user overrides).
+ * A cache hit (``draft.variableDefinitions``, also an empty one: the app has no
+ * variables) always wins, so the page renders immediately and does not depend on
+ * the apps list. Only for deep links / reloads are the definitions fetched from
+ * the backend (it sparse-clones the app repo, which can take seconds) and their
+ * defaults merged into the draft (defaults first, then user overrides).
  */
 export function useSummaryVariables() {
   const { t } = useTranslation()
@@ -24,16 +24,15 @@ export function useSummaryVariables() {
     () => useDeploymentStore.getState().draft.variableDefinitions ?? [],
   )
   const [isLoading, setIsLoading] = useState(
-    () => !(useDeploymentStore.getState().draft.variableDefinitions?.length),
+    () => useDeploymentStore.getState().draft.variableDefinitions === undefined,
   )
 
   useEffect(() => {
     let cancelled = false
     const drafts = useDeploymentStore.getState()
-    const cached = drafts.draft.variableDefinitions
 
     void (async () => {
-      if (cached && cached.length > 0) return
+      if (drafts.draft.variableDefinitions !== undefined) return
 
       try {
         const apps = useAppStore.getState()
@@ -44,8 +43,7 @@ export function useSummaryVariables() {
           return
         }
 
-        const variables =
-          (await useAppStore.getState().fetchAppVariables(app.appId, versionLabelOf(drafts.draft.releaseTag))) ?? []
+        const variables = await ensureVariableDefinitions()
         if (cancelled) return
 
         const overrides = parseStoredInput(drafts.draft.userInputVar, () =>
@@ -57,7 +55,7 @@ export function useSummaryVariables() {
         }
         Object.assign(merged, overrides)
 
-        useDeploymentStore.getState().updateDraft({ variableDefinitions: variables, variables: merged })
+        useDeploymentStore.getState().updateDraft({ variables: merged })
         setDefs(variables)
       } catch (error) {
         console.error(error)

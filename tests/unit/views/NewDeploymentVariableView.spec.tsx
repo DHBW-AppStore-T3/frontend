@@ -128,6 +128,48 @@ describe('NewDeploymentVariableView', () => {
     expect(appApi.getVariables).not.toHaveBeenCalled()
   })
 
+  describe('Definitionen aus dem Draft (vorgeladen in Schritt 1)', () => {
+    it('lädt eine geladene, leere Antwort nicht erneut und zeigt die Leer-Meldung sofort', () => {
+      useDeploymentStore.getState().updateDraft({ variableDefinitions: [] })
+      renderView()
+
+      expect(screen.getByText('deployment.variables.noVariables')).toBeInTheDocument()
+      expect(screen.queryByText('deployment.variables.loading')).not.toBeInTheDocument()
+      expect(appApi.getVariables).not.toHaveBeenCalled()
+    })
+
+    it('wartet auf eine noch laufende Anfrage, statt eine zweite zu stellen', async () => {
+      const { ensureVariableDefinitions } = await import('@/views/new-deployment/variableDefinitions')
+      const prefetch = ensureVariableDefinitions()
+      renderView()
+
+      expect(await screen.findByLabelText('region')).toBeInTheDocument()
+      await prefetch
+      expect(appApi.getVariables).toHaveBeenCalledTimes(1)
+    })
+
+    it('startet beim ersten Besuch wie nach einem frischen Laden: ein Pflicht-Bool ohne Default ist aus', async () => {
+      useDeploymentStore.getState().updateDraft({
+        variableDefinitions: [variable({ name: 'agree', type: 'bool', required: true })] as any,
+      })
+      renderView()
+
+      await screen.findByLabelText('agree')
+      expect(screen.getByRole('button', { name: /deployment\.actions\.next/ })).toBeEnabled()
+    })
+
+    it('zeigt nach dem Zurückkehren die gespeicherten Werte statt der Defaults', async () => {
+      useDeploymentStore.getState().updateDraft({
+        variableDefinitions: [variable({ name: 'cpu', type: 'number', default: 2 })] as any,
+        variables: { cpu: 16 },
+        userInputVar: JSON.stringify({ cpu: 16 }),
+      })
+      renderView()
+
+      await waitFor(() => expect((screen.getByLabelText('cpu') as HTMLInputElement).value).toBe('16'))
+    })
+  })
+
   describe('Expert-Variablen', () => {
     beforeEach(() => {
       mockDefinitions([
