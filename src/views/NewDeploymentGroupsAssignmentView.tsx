@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useEffectEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import {
@@ -77,7 +77,7 @@ export default function NewDeploymentGroupsAssignmentView() {
 
   // Guard + normalisation on entry (and the Windows constraint).
   const initialised = useRef(false)
-  useEffect(() => {
+  const normaliseOnEntry = useEffectEvent(() => {
     if (initialised.current) return
     initialised.current = true
     const current = useDeploymentStore.getState().draft
@@ -95,9 +95,10 @@ export default function NewDeploymentGroupsAssignmentView() {
       translate,
     )
     apply(forcedGroupMode === 'eachUser' ? chooseEachUser(current.studentIds, translate) : normalised)
-    // Entry effect: runs once with the values of the first render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  })
+
+  // Entry effect: runs once; the guard reads the draft at that moment.
+  useEffect(() => normaliseOnEntry(), [])
 
   // The variables step is left out for apps with nothing to set. Step 1 already asked the backend;
   // this repeats it for deep links and after a failure there (one request at a time, see the helper).

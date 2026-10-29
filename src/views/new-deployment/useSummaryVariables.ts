@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useEffectEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/stores/app.store'
 import { useDeploymentStore } from '@/stores/deployment.store'
@@ -27,7 +27,7 @@ export function useSummaryVariables() {
     () => useDeploymentStore.getState().draft.variableDefinitions === undefined,
   )
 
-  useEffect(() => {
+  const loadOnEntry = useEffectEvent(() => {
     let cancelled = false
     const drafts = useDeploymentStore.getState()
 
@@ -73,9 +73,10 @@ export function useSummaryVariables() {
     return () => {
       cancelled = true
     }
-    // Entry load, once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  })
+
+  // Entry load, once; `t` is read when an error has to be reported.
+  useEffect(() => loadOnEntry(), [])
 
   return { defs, isLoading }
 }

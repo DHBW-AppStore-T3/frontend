@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useEffectEvent } from 'react'
 import { userApi } from '@/api/user.api'
 import type { User } from '@/types'
 
@@ -29,7 +29,7 @@ export function useUserSearch(active: boolean, session: number, onListError?: ()
   const requestKey = `${session}:${trimmed}`
   const isRequest = active && (trimmed.length === 0 || trimmed.length >= MIN_QUERY_LENGTH)
 
-  useEffect(() => {
+  const load = useEffectEvent(() => {
     if (!isRequest) return
     let cancelled = false
     const publish = (users: User[]) => {
@@ -59,9 +59,10 @@ export function useUserSearch(active: boolean, session: number, onListError?: ()
       cancelled = true
       window.clearTimeout(timer)
     }
-    // onListError is intentionally excluded: it only reports, it must not retrigger a load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRequest, requestKey, trimmed])
+  })
+
+  // The list/search reload only for the query; `onListError` is read when a load fails.
+  useEffect(() => load(), [isRequest, requestKey, trimmed])
 
   const isSearching = isRequest && result.key !== requestKey
 

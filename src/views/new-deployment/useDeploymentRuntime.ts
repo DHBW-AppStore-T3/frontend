@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { appApi } from '@/api/app.api'
@@ -29,7 +29,7 @@ export function useDeploymentRuntime() {
       runtime: s.draft.runtime,
     })),
   )
-  useEffect(() => {
+  const loadRuntime = useEffectEvent(() => {
     // Asked once per app/version; the choices come with the runtime.
     if (runtime || !appId || !releaseTag) return
     let cancelled = false
@@ -55,7 +55,8 @@ export function useDeploymentRuntime() {
     return () => {
       cancelled = true
     }
-    // The runtime is asked once per app/version; toast and t are stable enough here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appId, releaseTag, runtime])
+  })
+
+  // Asked again only for another app/version; `toast` and `t` are read when the answer fails.
+  useEffect(() => loadRuntime(), [appId, releaseTag, runtime])
 }

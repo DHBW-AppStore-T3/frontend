@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useEffectEvent } from 'react'
 import { userApi } from '@/api/user.api'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import type { User } from '@/types'
@@ -15,7 +15,7 @@ export function useStudentNames(ids: string[]) {
   const [loaded, setLoaded] = useState<Map<string, User>>(new Map())
   const idsKey = ids.join('|')
 
-  useEffect(() => {
+  const loadMissing = useEffectEvent(() => {
     const shared = useDeploymentStore.getState().studentCache
     const known = (id: string) => {
       const direct = shared.get(id)
@@ -48,9 +48,10 @@ export function useStudentNames(ids: string[]) {
     return () => {
       cancelled = true
     }
-    // ``ids`` is represented by ``idsKey``.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey])
+  })
+
+  // Runs when the set of ids changes (`idsKey` stands for `ids`).
+  useEffect(() => loadMissing(), [idsKey])
 
   /** Best available label for an id (falls back to the raw id). */
   return (id: string): string => {

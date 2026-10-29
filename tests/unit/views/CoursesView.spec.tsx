@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route, useLocation } from 'react-router'
 
@@ -110,6 +110,32 @@ describe('CoursesView', () => {
 
     expect(screen.queryByText('CoursesView.newCourse')).not.toBeInTheDocument()
     expect(screen.queryByText('CoursesView.createFirst')).not.toBeInTheDocument()
+  })
+
+  it('lädt die Mitgliederanzahl nach, wenn die Rolle erst nach dem Start Staff wird (issue 142)', async () => {
+    setRole('student')
+    vi.mocked(courseApi.list).mockResolvedValue({ data: [{ courseId: 'c-1', name: 'Test Kurs' }] } as any)
+    vi.mocked(courseApi.listMembers).mockResolvedValue({ data: [{}, {}] } as any)
+    renderView()
+    await screen.findByText('Test Kurs')
+    expect(courseApi.listMembers).not.toHaveBeenCalled()
+
+    act(() => setRole('teacher'))
+
+    await waitFor(() => expect(courseApi.listMembers).toHaveBeenCalledWith('c-1'))
+  })
+
+  it('lädt bei gleichbleibender Rolle nicht erneut', async () => {
+    vi.mocked(courseApi.list).mockResolvedValue({ data: [{ courseId: 'c-1', name: 'Test Kurs' }] } as any)
+    renderView()
+    await screen.findByText('Test Kurs')
+    await waitFor(() => expect(courseApi.listMembers).toHaveBeenCalledTimes(1))
+
+    act(() => setRole('admin'))
+    await new Promise((r) => setTimeout(r, 30))
+
+    // teacher -> admin: still staff, no new load
+    expect(courseApi.list).toHaveBeenCalledTimes(1)
   })
 
   it('versteckt Löschen und Mitgliederanzahl für Nicht-Staff und lädt keine Mitglieder', async () => {
