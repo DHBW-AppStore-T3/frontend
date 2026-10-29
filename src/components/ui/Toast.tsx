@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
-import { useToastStore } from '@/stores/toast.store'
+import { useTranslation } from 'react-i18next'
+import { useToastStore, type Toast as ToastItem } from '@/stores/toast.store'
 import './Toast.css'
 
 const ICON_PATHS: Record<string, string> = {
@@ -15,35 +16,44 @@ const ICON_PATHS: Record<string, string> = {
 const CLOSE_PATH =
   'M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z'
 
+// Errors and warnings interrupt (`alert`), the rest waits for a pause in the
+// speech (`status`). The role sits on the message only, so a screen reader
+// reads the text and not the close button, and every toast is announced once.
+const liveRole = (type: ToastItem['type']) => (type === 'error' || type === 'warning' ? 'alert' : 'status')
+
 export default function Toast() {
+  const { t } = useTranslation()
   const toasts = useToastStore((s) => s.toasts)
   const removeToast = useToastStore((s) => s.removeToast)
 
   return createPortal(
     <div className="toast-container">
       {toasts.map((toast) => (
+        // Clicking anywhere on the toast closes it: a mouse shortcut. The keyboard
+        // and screen-reader way to the same action is the close button below.
         <div
           key={toast.id}
           className={`toast toast-${toast.type}`}
           onClick={() => removeToast(toast.id)}
         >
           <div className="toast-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fillRule="evenodd" d={ICON_PATHS[toast.type] ?? ICON_PATHS.info} clipRule="evenodd" />
             </svg>
           </div>
-          <div className="toast-content">
+          <div className="toast-content" role={liveRole(toast.type)}>
             <p className="toast-message">{toast.message}</p>
           </div>
           <button
             type="button"
             className="toast-close"
+            aria-label={t('toast.close')}
             onClick={(e) => {
               e.stopPropagation()
               removeToast(toast.id)
             }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fillRule="evenodd" d={CLOSE_PATH} clipRule="evenodd" />
             </svg>
           </button>

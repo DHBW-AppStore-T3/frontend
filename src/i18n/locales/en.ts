@@ -109,6 +109,10 @@ export default {
     panelLabel: "Side panel",
   },
 
+  toast: {
+    close: "Dismiss notification",
+  },
+
   action: {
     back: "Back",
   },
