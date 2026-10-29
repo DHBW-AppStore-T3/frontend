@@ -241,6 +241,54 @@ describe('NewDeploymentConfigView', () => {
     expect(draft().studentIds).toEqual([])
   })
 
+  describe('Tastaturbedienung (#154)', () => {
+    it('Kurse sind Checkboxen mit Zustand und lassen sich mit Leertaste und Enter wählen', async () => {
+      renderView()
+      await screen.findByText('Web Dev')
+
+      const course = screen.getByRole('checkbox', { name: /Web Dev/ })
+      expect(course).toHaveAttribute('aria-checked', 'false')
+      expect(course).toHaveAttribute('data-testid', 'course-c1')
+
+      await userEvent.tab() // name field
+      course.focus()
+      await userEvent.keyboard(' ')
+      await waitFor(() => expect(course).toHaveAttribute('aria-checked', 'true'))
+      expect(draft().courseIds).toEqual(['c1'])
+
+      await userEvent.keyboard('{Enter}')
+      await waitFor(() => expect(course).toHaveAttribute('aria-checked', 'false'))
+      expect(draft().courseIds).toEqual([])
+    })
+
+    it('andere Tasten auf einem Kurs wählen nichts', async () => {
+      renderView()
+      await screen.findByText('Web Dev')
+      screen.getByTestId('course-c1').focus()
+
+      await userEvent.keyboard('a{Escape}')
+
+      expect(draft().courseIds).toEqual([])
+    })
+
+    it('Studierende sind Checkboxen, per Tastatur wählbar', async () => {
+      renderView()
+      await screen.findByText('Web Dev')
+      await userEvent.click(screen.getByRole('button', { name: /deployment\.config\.studentsLabel/ }))
+      await userEvent.type(screen.getByTestId('student-search'), 'Ja')
+      const student = await screen.findByTestId('student-u2')
+      await waitFor(() => expect(screen.queryByTestId('student-u1')).not.toBeInTheDocument())
+
+      expect(student).toHaveAttribute('role', 'checkbox')
+      expect(student).toHaveAttribute('aria-checked', 'false')
+      student.focus()
+      await userEvent.keyboard(' ')
+
+      expect(draft().studentIds).toEqual(['u2'])
+      expect(screen.getByTestId('student-u2')).toHaveAttribute('aria-checked', 'true')
+    })
+  })
+
   describe('Hinweise während der Suche', () => {
     const messages = () => useToastStore.getState().toasts.map((t) => t.message)
     const openSearch = async () => {

@@ -7,6 +7,7 @@
  */
 import type {
   AppVariable,
+  DeploymentFile,
   ScalarValue,
   SlotMap,
   SlotValue,
@@ -104,6 +105,14 @@ export function slotKeysFor(v: AppVariable, teams: WizardTeam[]): string[] {
   }
   return []
 }
+
+/**
+ * Keys under which a file variable may hold files: ``all`` for one file for the whole deployment,
+ * otherwise the slots of a plain variable. These are the ids of the rows of the file card
+ * (``buildRecipients``).
+ */
+export const fileSlotKeysFor = (v: AppVariable, teams: WizardTeam[]): string[] =>
+  effectiveScope(v) === 'all' ? ['all'] : slotKeysFor(v, teams)
 
 /** Human label of a slot. Longest team name wins so dashes in names resolve correctly. */
 export function formatSlotLabel(v: AppVariable, slotKey: string, teams: WizardTeam[]): string {
@@ -359,6 +368,32 @@ export function dropStaleSlots(
     values = { ...values, [key]: kept }
   }
   return { values, dropped }
+}
+
+/**
+ * Removes the files of slots whose team/user no longer exists, as ``dropStaleSlots`` does for
+ * the values. Only the file variables of ``defs`` are looked at; the map of a variable stays (empty)
+ * when its last file goes.
+ */
+export function dropStaleFileSlots(
+  defs: AppVariable[],
+  uploads: Record<string, Record<string, DeploymentFile>> | undefined,
+  teams: WizardTeam[],
+): { uploads: Record<string, Record<string, DeploymentFile>> | undefined; dropped: string[] } {
+  const dropped: string[] = []
+  let result = uploads
+  for (const v of defs) {
+    if (!isFileVar(v)) continue
+    const files = uploads?.[v.name]
+    if (!isSlotMap(files)) continue
+    const valid = new Set(fileSlotKeysFor(v, teams))
+    const stale = Object.keys(files).filter((slot) => !valid.has(slot))
+    if (stale.length === 0) continue
+    stale.forEach((slot) => dropped.push(`${v.name} → ${slot}`))
+    const kept = Object.fromEntries(Object.entries(files).filter(([slot]) => valid.has(slot)))
+    result = { ...result, [v.name]: kept }
+  }
+  return { uploads: result, dropped }
 }
 
 /** Expert sections open by default when a required expert variable has no default. */

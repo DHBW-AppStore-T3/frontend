@@ -21,6 +21,7 @@ export default function Drawer({ show, onClose, side = 'left', label, labelledBy
   if (!show) return null
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- backdrop click is a mouse shortcut; Escape and the focus trap live in useOverlay
     <div
       className="fixed inset-0 bg-black/20 z-50"
       onClick={(e) => {
