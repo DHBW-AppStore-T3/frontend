@@ -5,7 +5,7 @@ Harness-Gesamtkonzept: siehe https://github.com/DHBW-AppStore-T3/.github/blob/ma
 
 ## Die 2 Flows
 1. **Flow 1 (`/user-story`):** UI/UX-Spezifikation und OpenAPI-Contracts werden vorab im Issue definiert.
-2. **Flow 2 (`/harness-workflow`):** TDD (`npm run test`), OpenAPI-Typen generieren (`npm run openapi:generate`), PR auf `dev`, CI grün, Auto-Merge auf `dev`, automatisches Staging-Deploy, Hermes Discord Reporting.
+2. **Flow 2 (`/harness-workflow`):** TDD (`npm run test`), OpenAPI-Typen generieren (`npm run gen:api-types`), PR auf `dev`, CI grün, Auto-Merge auf `dev`, automatisches Staging-Deploy, Hermes Discord Reporting.
    - Push auf `main` bleibt rein menschlich + Test Coverage Gate (mind. 85 % Zeilen, `MIN_COVERAGE` in `ci.yml`, gilt für jeden Branch).
 
 ## Lokale Befehle

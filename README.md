@@ -51,24 +51,35 @@ npx tsc -b
 
 Neue oder geänderte Endpunkte, die das Frontend aufruft, gehören in `REQUIRED_OPERATIONS` in `tests/unit/contract/openapi.spec.ts`.
 
-Schritt 2 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die User-Typen bereits aus dem generierten Schema ab; die übrigen Blöcke sind noch handgepflegt und sollten bei Gelegenheit nachgezogen werden.
+Schritt 2 ist der eigentliche Zweck: Eine Contract-Änderung im Backend wird hier zu einem Type-Error statt zu einem Laufzeitfehler. `src/types/index.ts` leitet die Domain-Typen (User, Course, App, Version-Approval, Deployment, Task, Pod) direkt aus dem generierten Schema ab.
 
 ## Theming
 
 Branding (Logo, Name, Titel, Favicon, Farben und Login-Bild) kommt aus `src/theme/`.
-Ohne `VITE_THEME` wird `t3` geladen. Ein unbekannter Wert f?llt mit Warnung auf `t3` zur?ck.
+Ohne `VITE_THEME` wird `t3` geladen. Ein unbekannter Wert fällt mit Warnung auf `t3` zurück.
 
 ```bash
 VITE_THEME=t3 npm run dev
 ```
 
-Im Container wird `VITE_THEME` ?ber `env-config.js`/`envsubst` gesetzt.
+Im Container wird `VITE_THEME` über `env-config.js`/`envsubst` gesetzt.
 Neue Themes: [docs/themes.md](docs/themes.md).
+
+## Laufzeittypen
+
+Der Wizard und die Deployment-Detailseite kennen zwei Laufzeittypen, die aus `GET /apps/{id}/runtime` kommen:
+
+| Typ | Label | Besonderheit |
+|---|---|---|
+| `kubernetes` | Pods im Cluster | Scope `user`/`team`, App-eigene Settings aus `appstore.yaml` |
+| `kubevirt-vm` | VM im Cluster | Ressourcen-Picker (vCPU/RAM), Netzwerkauswahl |
+
+`isClusterRuntime(runtime)` in `src/utils/runtime.ts` fasst beide zusammen.
 
 ## Technologie-Stack
 
 - **React 19** mit Function Components, Hooks und TypeScript
-- **Zustand** für globalen State
+- **Zustand 5** für globalen State
 - **React Router 7** mit Auth-Guards (Route-Loader)
 - **Axios** mit Keycloak-Bearer-Interceptor
 - **Tailwind CSS** für Styling
@@ -81,18 +92,21 @@ Der Code liegt in `src/`. Der typische Datenfluss von der Oberfläche bis zum Ba
 
 ```
 src/
-├── main.tsx       # Startpunkt der App (Router, Übersetzungen, Rendering)
-├── views/         # Seiten der App (Ziele der Navigation), z.B. Deployment-Wizard, App-Katalog
-├── layouts/       # Seitenrahmen (App/Auth/User), je nach Route gewählt
-├── components/    # Wiederverwendbare Bausteine; ui/ = generische Elemente (Button, Dialog, ...)
-├── stores/        # Gemeinsamer Datenspeicher mehrerer Seiten + zugehörige Aktionen (*.store.ts)
-├── api/           # Aufrufe ans Backend, ein File pro Ressource (*.api.ts) + axios.ts
-├── composables/   # Wiederverwendbare Hooks (use*), z.B. Login, Live-Updates
-├── services/      # Logik ohne Oberfläche (aktuell: auth.service fürs Keycloak-Login)
-├── router/        # Definition der Seiten-Adressen + Zugriffsschutz (Login nötig ja/nein)
-├── types/         # TypeScript-Typdefinitionen (Apps, Deployments, Pods, ...)
-├── utils/         # Kleine Helfer (Formatierung, Fehler-Aufbereitung)
-└── i18n/          # Mehrsprachigkeit: Setup + Übersetzungstexte (DE/EN)
+├── main.tsx          # Einstiegspunkt — ruft bootstrap.tsx auf
+├── bootstrap.tsx     # App-Start: Theme, Auth (LTI/Handoff/Keycloak), Router, Rendering
+├── App.tsx           # Root-Komponente mit RouterProvider
+├── views/            # Seiten der App (Ziele der Navigation), z.B. Deployment-Wizard, App-Katalog
+├── layouts/          # Seitenrahmen (App/Auth/User), je nach Route gewählt
+├── components/       # Wiederverwendbare Bausteine; ui/ = generische Elemente (Button, Dialog, ...)
+├── stores/           # Gemeinsamer Datenspeicher mehrerer Seiten + zugehörige Aktionen (*.store.ts)
+├── api/              # Aufrufe ans Backend, ein File pro Ressource (*.api.ts) + axios.ts
+├── composables/      # Wiederverwendbare Hooks (use*), z.B. Login, Live-Updates
+├── services/         # Logik ohne Oberfläche (keycloak.service fürs OIDC-Login, auth.service für /users/me, lti-launch für LTI 1.3)
+├── router/           # Definition der Seiten-Adressen + Zugriffsschutz (Login nötig ja/nein)
+├── types/            # TypeScript-Typdefinitionen (Apps, Deployments, Pods, ...)
+├── utils/            # Kleine Helfer (Formatierung, Fehler-Aufbereitung)
+├── theme/            # Theming-System (Typen, Registry, CSS-Variablen)
+└── i18n/             # Mehrsprachigkeit: Setup + Übersetzungstexte (DE/EN)
 ```
 
 > Die `.d.ts`-Dateien neben den `.ts` werden beim Build automatisch erzeugt (sie beschreiben nur die Typen) — kein handgeschriebener Code.
@@ -104,10 +118,11 @@ src/
 | `api/axios.ts` | Zentrale Stelle für alle Backend-Aufrufe: hängt vor dem Absenden automatisch den Login-Token an (`Authorization: Bearer <token>`) und fängt abgelaufene Logins (Fehler 401) ab |
 | `stores/auth.store.ts` | Merkt sich, wer eingeloggt ist, und dessen Rolle (student/teacher/admin) |
 | `services/keycloak.service.ts` | Login und Logout gegen Keycloak (via Bibliothek `oidc-client-ts`) |
+| `services/lti-launch.ts` | LTI 1.3-Start aus Moodle: löst den One-Time-Code ein und setzt den Session-Token |
 | `composables/useDeploymentStream.ts` | Empfängt den Live-Fortschritt eines Deployments in Echtzeit vom Backend (Server-Sent Events) |
 | `router/index.ts` | Legt die Seiten-Adressen fest und schützt geschützte Seiten vor nicht eingeloggten Nutzern |
 
-**views/** — Kern ist der mehrstufige Deployment-Wizard (`NewDeploymentConfigView` → `…VariableView` → `…GroupsAssignmentView` → `…SummaryView`), dazu App-Katalog (`AppsView`/`AppsDetailView`), Deployments (`DeploymentsView`/`DeploymentDetailView`), Kurse, Dashboard und Settings.
+**views/** — Kern ist der mehrstufige Deployment-Wizard: Basis-Konfiguration (`NewDeploymentConfigView`) → Teilnehmende/Teams (`NewDeploymentGroupsAssignmentView`) → optional Variablen (`NewDeploymentVariableView`, entfällt automatisch, falls die App keine Einstellungen benötigt) → Zusammenfassung (`NewDeploymentSummaryView`, strukturierte Karten). Dazu App-Katalog (`AppsView`/`AppsDetailView`), Deployments (`DeploymentsView`/`DeploymentDetailView`), Kurse, Dashboard und Settings.
 
 **api/ ↔ stores/** — spiegeln sich paarweise: zu jeder Ressource gibt es ein `*.api.ts` (macht nur die reinen Aufrufe ans Backend) und meist einen `*.store.ts` (hält die Daten im Speicher und bietet Aktionen darauf an, die wiederum die Aufrufe nutzen). Beispiele: `deployment`, `app`, `course`, `team`, `user`, `credentials`.
 

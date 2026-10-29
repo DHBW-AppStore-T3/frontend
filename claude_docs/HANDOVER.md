@@ -22,10 +22,9 @@ Jede Session liest dieses Dokument zu Beginn und aktualisiert es vor dem Abschlu
 
 - [x] Reengineering auf 2 Flows: `ci.yml` auf `dev`-Trunk und Test Coverage Gate für `main` umgestellt.
 - [x] Staging-Deploy-Trigger korrigiert auf `DHBW-AppStore-T3/deployment --ref dev`.
-- [ ] Typensichere API-Client-Integration mit generierten Typen (`api.generated.ts`) fortführen.
-- [ ] Pods/K8s-Frontend (frontend#36, Branch `spike/react-pods`): Port von `spike/vue-pods` abgeschlossen (AP0-AP7);
-      offen ist die E2E-Abnahme auf dem k8s-Staging und der Cutover (AP8, Checkliste in
-      `claude_docs/decisions/2026-react-pods.md`).
+- [x] Typensichere API-Client-Integration mit generierten Typen (`api.generated.ts`) weitgehend umgesetzt (#86, #87).
+- [x] Pods/K8s-Frontend (frontend#36): Cutover vollzogen (siehe `claude_docs/decisions/2026-react-pods.md`).
+- [ ] Barrierefreiheit / a11y (Epic #139, #154 Phase 2 & 3): klickbare Karten/Zeilen Tastaturzugänglichkeit, Fokus nach Schließen von Toasts.
 
 ---
 
