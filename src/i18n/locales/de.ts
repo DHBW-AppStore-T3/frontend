@@ -773,12 +773,12 @@ export default {
       summaryOff: 'Aus',
       internet: {
         label: 'Internetzugriff',
-        help: 'Erlaubt den Pods, Server im Internet zu erreichen. Interne Netze bleiben gesperrt.',
-        warning: 'Studierende können dann Server im Internet erreichen.',
+        help: 'Erlaubt den Pods, Webserver im Internet zu erreichen (HTTP und HTTPS). Cluster, andere Deployments und andere Ports bleiben gesperrt.',
+        warning: 'Studierende können dann Webserver im Internet erreichen.',
       },
       podNetwork: {
         label: 'Vernetzte Pods',
-        help: 'Erlaubt den Pods dieses Deployments, sich gegenseitig zu erreichen. Andere Deployments bleiben getrennt.',
+        help: 'Erlaubt den Pods dieses Deployments, sich auf jedem TCP- und UDP-Port gegenseitig zu erreichen, damit Studierende eigene Server und Clients schreiben können. Jeder Pod ist unter seinem Namen erreichbar, alle zusammen unter "peers". Andere Deployments bleiben getrennt; ein Broadcast an 255.255.255.255 wird nicht zugestellt, stattdessen an jede Adresse von "peers" senden.',
       },
     },
     resources: {
@@ -802,7 +802,7 @@ export default {
       },
       pods: {
         label: 'Vernetzte Desktops',
-        help: 'Erlaubt den Desktops dieses Deployments, sich gegenseitig zu erreichen. Andere Deployments bleiben getrennt.',
+        help: 'Erlaubt den Desktops dieses Deployments, sich auf jedem Port gegenseitig zu erreichen. Andere Deployments bleiben getrennt.',
       },
       expert: {
         recommended: 'Empfohlen',

@@ -28,3 +28,16 @@ describe('network expert settings messages', () => {
     }
   })
 })
+
+describe('what pod networking promises', () => {
+  const pods = (l: any) => l.deployment.network.podNetwork.help as string
+
+  it('names the way to reach all peers, and that a broadcast is not delivered', () => {
+    for (const text of [pods(de), pods(en)]) {
+      expect(text).toContain('"peers"')
+      expect(text).toContain('255.255.255.255')
+      expect(text).toMatch(/TCP/)
+      expect(text).toMatch(/UDP/)
+    }
+  })
+})
