@@ -10,6 +10,7 @@ import {
   shuffleIntoTeams,
   clearAssignments,
   unassignedOf,
+  keepSelected,
   isAssignmentComplete,
   type TeamsState,
 } from '../teamAssignment'
@@ -76,6 +77,35 @@ describe('normalizeTeams', () => {
     const padded = normalizeTeams(state({ count: 3, assignments: [['a']], names: ['x', ' '] }), t)
     expect(padded.assignments).toEqual([['a'], [], []])
     expect(padded.names).toEqual(['x', 'VM-2', 'VM-3'])
+  })
+})
+
+describe('keepSelected', () => {
+  it('drops students who are no longer selected, from whichever team they are in', () => {
+    expect(keepSelected([['a', 'b'], ['c', 'd']], ['a', 'd'])).toEqual([['a'], ['d']])
+  })
+
+  it('keeps the team positions: a team that loses everyone stays, empty', () => {
+    const next = keepSelected([['a'], ['b', 'c']], ['b', 'c'])
+    expect(next).toEqual([[], ['b', 'c']])
+    expect(isAssignmentComplete(['b', 'c'], state({ assignments: next }))).toBe(false)
+  })
+
+  it('leaves the teams of an unchanged selection as they are, order included', () => {
+    const teams = [['b', 'a'], ['c']]
+    expect(keepSelected(teams, ['a', 'b', 'c'])).toEqual(teams)
+  })
+
+  it('does not assign anybody: a student added to the selection stays unassigned', () => {
+    const next = keepSelected([['a']], ['a', 'b'])
+    expect(next).toEqual([['a']])
+    expect(unassignedOf(['a', 'b'], next)).toEqual(['b'])
+  })
+
+  it('tolerates a missing team entry and does not mutate the input', () => {
+    const teams = [['a', 'b'], undefined as unknown as string[]]
+    expect(keepSelected(teams, ['a'])).toEqual([['a'], []])
+    expect(teams[0]).toEqual(['a', 'b'])
   })
 })
 

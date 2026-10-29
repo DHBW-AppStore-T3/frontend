@@ -119,6 +119,15 @@ export function shuffleIntoTeams(studentIds: string[], count: number, random: ()
 
 export const clearAssignments = (count: number): string[][] => Array.from({ length: count }, () => [])
 
+/**
+ * The teams without the students who are no longer selected (step 1, "back" from step 2). The teams
+ * keep their positions, so a team that loses everyone stays, empty, and keeps "Weiter" locked.
+ */
+export function keepSelected(assignments: string[][], studentIds: string[]): string[][] {
+  const selected = new Set(studentIds)
+  return assignments.map((group) => (group ?? []).filter((id) => selected.has(id)))
+}
+
 export function unassignedOf(studentIds: string[], assignments: string[][]): string[] {
   const assigned = new Set(assignments.flat())
   return studentIds.filter((id) => !assigned.has(id))

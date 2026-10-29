@@ -5,14 +5,16 @@ import { Routes, Route, useLocation } from 'react-router'
 
 vi.mock('@/api/course.api', () => ({ courseApi: { list: vi.fn(), getById: vi.fn() } }))
 vi.mock('@/api/app.api', () => ({ appApi: { getRuntime: vi.fn(), getVariables: vi.fn() } }))
-vi.mock('@/api/user.api', () => ({ userApi: { list: vi.fn(), search: vi.fn() } }))
+vi.mock('@/api/user.api', () => ({ userApi: { list: vi.fn(), search: vi.fn(), getById: vi.fn() } }))
 
 import { appApi } from '@/api/app.api'
 import { courseApi } from '@/api/course.api'
 import { userApi } from '@/api/user.api'
 import NewDeploymentConfigView from '@/views/NewDeploymentConfigView'
+import NewDeploymentGroupsAssignmentView from '@/views/NewDeploymentGroupsAssignmentView'
 import { useDeploymentStore } from '@/stores/deployment.store'
 import { useToastStore } from '@/stores/toast.store'
+import { buildDeploymentPayload } from '@/utils/deployment-payload'
 import { renderWithProviders } from '../../helpers/render'
 
 function Where() {
@@ -24,6 +26,20 @@ const renderView = () =>
     <>
       <Routes>
         <Route path="/deployment/new/config" element={<NewDeploymentConfigView />} />
+        <Route path="*" element={<p>elsewhere</p>} />
+      </Routes>
+      <Where />
+    </>,
+    { route: '/deployment/new/config' },
+  )
+
+// Steps 1 and 2 on their own routes, for the way back from the teams.
+const renderSteps = () =>
+  renderWithProviders(
+    <>
+      <Routes>
+        <Route path="/deployment/new/config" element={<NewDeploymentConfigView />} />
+        <Route path="/deployment/new/teams" element={<NewDeploymentGroupsAssignmentView />} />
         <Route path="*" element={<p>elsewhere</p>} />
       </Routes>
       <Where />
@@ -343,5 +359,87 @@ describe('NewDeploymentConfigView', () => {
     await userEvent.click(screen.getByTestId('btn-back'))
 
     expect(screen.getByTestId('where').textContent).toBe('/apps')
+  })
+  describe('Studierende abwählen, nachdem die Teams festgelegt waren', () => {
+    // The state after step 2 with "Ein Team für alle", and the way back to step 1.
+    const withTeams = (over: Record<string, unknown> = {}) =>
+      useDeploymentStore.getState().updateDraft({
+        name: 'Mein Lab',
+        studentIds: ['u1', 'u2'],
+        groupMode: 'one',
+        groupCount: 1,
+        groupNames: ['VM-1'],
+        assignments: [['u1', 'u2']],
+        ...over,
+      } as any)
+
+    it('entfernt den abgewählten Studierenden aus dem Team', async () => {
+      withTeams()
+      renderView()
+
+      await userEvent.click(await screen.findByTestId('remove-u2'))
+
+      expect(draft().studentIds).toEqual(['u1'])
+      expect(draft().assignments).toEqual([['u1']])
+    })
+
+    it('schickt den abgewählten Studierenden nicht mit der Nutzlast', async () => {
+      withTeams()
+      renderView()
+
+      await userEvent.click(await screen.findByTestId('remove-u2'))
+
+      expect(buildDeploymentPayload(draft()).teams).toEqual([{ name: 'VM-1', userIds: ['u1'] }])
+    })
+
+    it('entfernt ihn auch, wenn ein ganzer Kurs abgewählt wird, und lässt die Teams leer stehen', async () => {
+      withTeams({ groupMode: 'custom', groupCount: 2, groupNames: ['A', 'B'], assignments: [['u1'], ['u2']] })
+      renderView()
+      await screen.findByTestId('remove-u2')
+      await userEvent.click(screen.getByTestId('course-c1'))
+      // Everybody of the course is selected: the click deselects them all.
+      await waitFor(() => expect(draft().studentIds).toEqual([]))
+
+      expect(draft().assignments).toEqual([[], []])
+      expect(draft().groupNames).toEqual(['A', 'B'])
+    })
+
+    it('lässt die Teams unberührt, wenn jemand dazukommt', async () => {
+      withTeams({ studentIds: ['u1'], assignments: [['u1']] })
+      renderView()
+      await screen.findByText('Web Dev')
+
+      await userEvent.click(screen.getByTestId('course-c1'))
+      await waitFor(() => expect(draft().studentIds).toEqual(['u1', 'u2']))
+
+      expect(draft().assignments).toEqual([['u1']])
+    })
+
+    it('"Weiter" in Schritt 2 ist offen, und die Nutzlast kennt nur noch die gewählte Person', async () => {
+      withTeams()
+      renderSteps()
+      await userEvent.click(await screen.findByTestId('remove-u2'))
+
+      await userEvent.click(screen.getByTestId('btn-next'))
+      // Wait for something only step 2 renders: the path changes before the view does.
+      await screen.findByRole('button', { name: 'deployment.groups.one' })
+
+      expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/teams')
+      expect(screen.getByTestId('btn-next')).toBeEnabled()
+      expect(draft().assignments).toEqual([['u1']])
+      expect(buildDeploymentPayload(draft()).teams).toEqual([{ name: 'VM-1', userIds: ['u1'] }])
+    })
+
+    it('in Schritt 2 bleibt die Person weg und "Weiter" gesperrt, wenn ein Team danach leer ist', async () => {
+      withTeams({ groupMode: 'custom', groupCount: 2, groupNames: ['A', 'B'], assignments: [['u1'], ['u2']] })
+      renderSteps()
+      await userEvent.click(await screen.findByTestId('remove-u2'))
+
+      await userEvent.click(screen.getByTestId('btn-next'))
+      await screen.findByRole('button', { name: 'deployment.groups.one' })
+
+      expect(draft().assignments).toEqual([['u1'], []])
+      expect(screen.getByTestId('btn-next')).toBeDisabled()
+    })
   })
 })
