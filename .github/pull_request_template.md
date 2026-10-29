@@ -8,7 +8,7 @@ Closes #
 
 ## Prüfung
 
-<!-- Wie wurde das Verhalten geprüft? Welche Rollen, welche Umgebung (lokal mit `deployment` → `make dev-up`, Staging), welche Abläufe durchgeklickt? -->
+<!-- Wie wurde das Verhalten geprüft? Welche Rollen, welche Umgebung (lokal mit `deployment` → `make init`, Staging), welche Abläufe durchgeklickt? -->
 
 ## Screenshots
 
@@ -54,4 +54,4 @@ CI-Checks und werden hier nicht wiederholt.
 **Sicherheit & Doku**
 
 - [ ] Sicherheit: Keine Secrets im Diff; kein `dangerouslySetInnerHTML` mit Nutzereingaben, HTML aus Übersetzungen nur über `translateHtml`, Markdown nur über `MarkdownRenderer`; neue externe Quellen in der CSP (`docker-entrypoint.sh`) bewusst geprüft; neue `.trivyignore`-Einträge begründet
-- [ ] Doku: `claude_docs/HANDOVER.md` bzw. README/`docs/` aktualisiert, falls sich Verhalten, Setup oder Entscheidungen geändert haben
+- [ ] Doku: `claude_docs/HANDOVER.md`, README und die Fachdoku in `docs/` (`routing-and-access.md`, `i18n.md`, `themes.md`, `e2e/README.md`) aktualisiert, falls sich Verhalten, Setup oder Entscheidungen geändert haben; bei sichtbarem Verhalten auch die Endnutzer-Doku in `DHBW-AppStore-T3/.github` (`docs/DokumentationEndnutzer.md`, Screenshots in `docs/img/`)

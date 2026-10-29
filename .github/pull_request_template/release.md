@@ -48,3 +48,4 @@ Image Scan laufen als CI-Checks.
 - [ ] Kompatibilität: Alle Backend-Endpunkte und -Felder, die dieser Stand nutzt, sind bereits in Produktion oder werden vorher released; die Reihenfolge ist oben festgelegt
 - [ ] Konfiguration: Neue Laufzeit-Variablen (`VITE_*`) sind in `docker-entrypoint.sh` und `public/env-config.js` eingetragen und in `deployment/k8s/charts/appstore/templates/frontend.yaml` (Werte in `k8s/environments/prod.yaml`) gesetzt; diese Änderung ist auf `deployment/main` (`k8s/promote.sh`), bevor der Digest-PR für Produktion gemergt wird
 - [ ] Rollback: Digest/Tag für den Rückweg ist oben notiert (Rückweg: Digest in `deployment/k8s/images/prod.yaml` per PR auf `main` zurücksetzen)
+- [ ] Doku: README, `docs/`, `claude_docs/HANDOVER.md` und die Endnutzer-Doku in `DHBW-AppStore-T3/.github` (`docs/DokumentationEndnutzer.md`, Screenshots) beschreiben den Stand, der jetzt in Produktion geht
