@@ -191,6 +191,27 @@ describe('AppsDetailView', () => {
       expect(screen.getByTestId('where')).toHaveTextContent('/deployment/new/config')
     })
 
+    it('nimmt die Scope-Wahl der App in den Entwurf mit', async () => {
+      vi.mocked(appApi.getRuntime).mockResolvedValue({
+        data: { runtime: 'kubernetes', scope: 'user', scope_choice: true },
+      } as any)
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+      await deployNow()
+
+      const draft = useDeploymentStore.getState().draft
+      expect(draft.scope).toBe('user')
+      expect(draft.scopeChoice).toBe(true)
+    })
+
+    it('ohne Scope-Wahl der App bleibt der Entwurf fest', async () => {
+      renderView()
+      await screen.findByRole('heading', { name: 'Test App' })
+      await deployNow()
+
+      expect(useDeploymentStore.getState().draft.scopeChoice).toBe(false)
+    })
+
     it('ohne festgelegte Version wird die erste Version deployt', async () => {
       vi.mocked(appApi.getById).mockResolvedValue({
         data: baseApp({ deploy_version: null, versions: ['v2.0', 'v1.0'] }),
