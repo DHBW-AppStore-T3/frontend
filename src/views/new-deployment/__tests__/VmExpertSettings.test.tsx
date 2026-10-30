@@ -140,32 +140,3 @@ describe('VmExpertSettings', () => {
     expect(screen.queryByTestId('vm-total')).toBeNull()
   })
 })
-
-describe('VmExpertSettings with a scope choice', () => {
-  const renderWith = (over: { choices?: any[]; draft?: any; onScope?: any } = {}) =>
-    renderWithProviders(
-      <VmExpertSettings
-        draft={over.draft ?? draft}
-        choices={over.choices ?? []}
-        resources={atDefault}
-        onResourcesChange={vi.fn()}
-        onNetworkChange={vi.fn()}
-        scope={{ value: 'user', onChange: over.onScope ?? vi.fn() }}
-      />,
-    )
-
-  it('is there for the scope alone', () => {
-    const onScope = vi.fn()
-    renderWith({ draft: { ...draft, networkChoices: {} }, onScope })
-    fireEvent.click(head())
-    fireEvent.click(screen.getByRole('radio', { name: /deployment\.assignment\.scopeChoice\.team\.label/ }))
-    expect(onScope).toHaveBeenCalledWith('team')
-  })
-
-  it('keeps the resources next to it', () => {
-    renderWith({ choices: [choice] })
-    fireEvent.click(head())
-    expect(screen.getByTestId('scope-choice')).toBeInTheDocument()
-    expect(screen.getAllByRole('slider')).toHaveLength(2)
-  })
-})

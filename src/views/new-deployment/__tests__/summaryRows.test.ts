@@ -284,7 +284,6 @@ describe('the card and step 3 answer the same question from one place (issue 133
     ],
     ['C: Windows VM without a choice (v2.0.0)', { runtime: 'kubevirt-vm', scope: 'user' }, []],
     ['D: text variables', {}, [textVar()]],
-    ['pods where the person chooses the scope', { scope: 'user', scopeChoice: true }, []],
     [
       'pods with a network switch and two teams',
       { networkChoices: { podNetwork: { default: false } }, groupCount: 2 },
@@ -306,20 +305,5 @@ describe('the card and step 3 answer the same question from one place (issue 133
   it.each(cases)('%s', (_name, over, defs) => {
     const draft = draftOf({ ...over, variableDefinitions: defs })
     expect(rowsOf(draft, defs).length > 0).toBe(needsVariablesStep(draft) === true)
-  })
-})
-
-describe('buildSettingsRows: what one environment is (scope the person chose)', () => {
-  it('says it only where the app lets the person choose', () => {
-    expect(kinds(rowsOf(draftOf({ scope: 'user', scopeChoice: false })))).toEqual([])
-    const rows = rowsOf(draftOf({ scope: 'team', scopeChoice: true }))
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ kind: 'value', id: 'scope' })
-    expect((rows[0] as { lines: { text: string }[] }).lines[0].text).toBe('deployment.assignment.scopeChoice.team.label')
-  })
-
-  it('names per person when the choice is left at its default', () => {
-    const rows = rowsOf(draftOf({ scope: 'user', scopeChoice: true }))
-    expect((rows[0] as { lines: { text: string }[] }).lines[0].text).toBe('deployment.assignment.scopeChoice.user.label')
   })
 })

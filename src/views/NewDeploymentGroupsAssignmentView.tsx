@@ -74,6 +74,11 @@ export default function NewDeploymentGroupsAssignmentView() {
       groupCount: next.count,
       assignments: next.assignments,
       groupNames: next.names,
+      // Where the app lets the person choose, the grouping decides what one environment is:
+      // everybody on their own gets a workload each, any group gets one per group.
+      ...(useDeploymentStore.getState().draft.scopeChoice
+        ? { scope: next.mode === 'eachUser' ? ('user' as const) : ('team' as const) }
+        : {}),
     })
 
   // Guard + normalisation on entry (and the Windows constraint).
@@ -95,7 +100,9 @@ export default function NewDeploymentGroupsAssignmentView() {
       },
       translate,
     )
-    apply(forcedGroupMode === 'eachUser' ? chooseEachUser(current.studentIds, translate) : normalised)
+    // An app whose author default is one workload per person starts that way, so clicking through changes nothing.
+    const startsPerPerson = !!current.scopeChoice && current.scope === 'user' && current.groupMode === 'one'
+    apply(forcedGroupMode === 'eachUser' || startsPerPerson ? chooseEachUser(current.studentIds, translate) : normalised)
   })
 
   // Entry effect: runs once; the guard reads the draft at that moment.
@@ -204,6 +211,11 @@ export default function NewDeploymentGroupsAssignmentView() {
 
         {/* Controls */}
         <div className="p-6 bg-white border-b-2 border-borderSubtle">
+          {draft.scopeChoice ? (
+            <p className="mb-3 text-sm text-textMuted" data-testid="scope-hint">
+              {t('deployment.groups.scopeHint')}
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex gap-2">
               {modeButton(

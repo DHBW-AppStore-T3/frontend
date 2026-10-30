@@ -5,7 +5,6 @@ import type { DeploymentDraft, NetworkSelection, ResourceChoice } from '@/types'
 import { networkValue, visibleNetworkKeys, workloadCount } from '@/utils/network'
 import { formatMemoryGb, isDefaultSelection, totalResources } from '@/utils/resources'
 import NetworkSwitchRow from './NetworkSwitchRow'
-import ScopeChoice, { type ScopeChoiceProps } from './ScopeChoice'
 import VmResourceSliders from './VmResourceSliders'
 import './VmSettings.css'
 
@@ -17,22 +16,20 @@ interface Props {
   resources: Selection
   onResourcesChange: (next: Selection) => void
   onNetworkChange: (next: NetworkSelection) => void
-  /** Only where the app lets the person choose what one environment is. */
-  scope?: ScopeChoiceProps
 }
 
 /**
  * "Expert settings" of a Windows VM: compute resources and networked desktops. Closed by default;
  * the closed header says what applies ("Recommended · 4 vCPU · 8 GB RAM"), so nothing is hidden.
  */
-export default function VmExpertSettings({ draft, choices, resources, onResourcesChange, onNetworkChange, scope }: Props) {
+export default function VmExpertSettings({ draft, choices, resources, onResourcesChange, onNetworkChange }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const headId = useId()
   const bodyId = useId()
   const showResources = choices.length > 0
   const showPods = visibleNetworkKeys(draft).includes('podNetwork')
-  if (!showResources && !showPods && !scope) return null
+  if (!showResources && !showPods) return null
 
   const changed = showResources && !isDefaultSelection(choices, resources)
   const total = totalResources(choices, resources)
@@ -108,18 +105,11 @@ export default function VmExpertSettings({ draft, choices, resources, onResource
             data-testid="vm-expert-settings-body"
             className="border-t border-borderSubtle px-6 pb-6"
           >
-            {scope ? (
-              <div className="pt-6">
-                <ScopeChoice {...scope} />
-              </div>
-            ) : null}
             {showResources ? (
-              <div className={scope ? 'mt-6 border-t border-borderSubtle' : undefined}>
-                <VmResourceSliders choices={choices} value={resources} onChange={onResourcesChange} people={people} />
-              </div>
+              <VmResourceSliders choices={choices} value={resources} onChange={onResourcesChange} people={people} />
             ) : null}
             {showPods ? (
-              <div className={showResources || scope ? 'mt-6 border-t border-borderSubtle pt-6' : 'pt-6'}>
+              <div className={showResources ? 'mt-6 border-t border-borderSubtle pt-6' : 'pt-6'}>
                 <NetworkSwitchRow
                   label={t('deployment.vm.pods.label')}
                   help={t('deployment.vm.pods.help')}
