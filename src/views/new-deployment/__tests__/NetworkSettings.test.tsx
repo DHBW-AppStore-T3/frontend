@@ -57,32 +57,3 @@ describe('NetworkSettings', () => {
     expect(screen.getByTestId('network-internet-warning')).toBeInTheDocument()
   })
 })
-
-describe('NetworkSettings with a scope choice', () => {
-  beforeEach(async () => {
-    await i18n.changeLanguage('de')
-  })
-
-  it('is there for the scope alone and keeps it behind the expert settings', () => {
-    const onChange = vi.fn()
-    render(
-      <NetworkSettings
-        draft={{ ...base, networkChoices: {}, network: {} }}
-        onChange={vi.fn()}
-        scope={{ value: 'user', onChange }}
-      />,
-    )
-    expect(screen.queryByTestId('scope-choice')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Experteneinstellungen/ }))
-    expect(screen.getByRole('radio', { name: /Eine je Person/ })).toBeChecked()
-    fireEvent.click(screen.getByRole('radio', { name: /Eine je Gruppe/ }))
-    expect(onChange).toHaveBeenCalledWith('team')
-  })
-
-  it('shows the switches below the scope', () => {
-    render(<NetworkSettings draft={base} onChange={vi.fn()} scope={{ value: 'team', onChange: vi.fn() }} />)
-    fireEvent.click(screen.getByRole('button', { name: /Experteneinstellungen/ }))
-    expect(screen.getByRole('radio', { name: /Eine je Gruppe/ })).toBeChecked()
-    expect(screen.getByRole('switch', { name: 'Internetzugriff' })).toBeInTheDocument()
-  })
-})

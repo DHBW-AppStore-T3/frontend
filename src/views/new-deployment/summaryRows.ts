@@ -115,20 +115,6 @@ function resourcesRow(draft: DeploymentDraft, ctx: SettingsContext): ResourcesRo
   }
 }
 
-/** What one environment is, where the person chose it (one per person or per group). */
-function scopeRows(draft: DeploymentDraft, ctx: SettingsContext): ValueRow[] {
-  if (!draft.scopeChoice) return []
-  const scope = draft.scope === 'team' ? 'team' : 'user'
-  return [
-    {
-      kind: 'value',
-      id: 'scope',
-      label: ctx.t('deployment.assignment.scopeChoice.title'),
-      lines: [{ slot: null, text: ctx.t(`deployment.assignment.scopeChoice.${scope}.label`) }],
-    },
-  ]
-}
-
 function networkRows(draft: DeploymentDraft, ctx: SettingsContext): NetworkRow[] {
   const unit = unitOf(draft)
   return visibleNetworkKeys(draft).map((key) => ({
@@ -187,7 +173,6 @@ function valueRow(def: AppVariable, draft: DeploymentDraft, ctx: SettingsContext
 export function buildSettingsRows(draft: DeploymentDraft, defs: AppVariable[], ctx: SettingsContext): SettingsRow[] {
   const resources = resourcesRow(draft, ctx)
   return [
-    ...scopeRows(draft, ctx),
     ...(resources ? [resources] : []),
     ...networkRows(draft, ctx),
     // Files marked @expert are not offered by the wizard, so they are not listed either.

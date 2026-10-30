@@ -725,6 +725,7 @@ export default {
       title: 'Set the number of groups',
       one: 'One group',
       eachUser: 'Each user individually', // <--- WICHTIG: "eachUser" statt "each"
+      scopeHint: 'The grouping also decides what one environment is: with "Each user individually" everyone gets an environment of their own, with groups the members of a group share one.',
       custom: 'Custom',
       autoAssigned: 'Assigned automatically',
       autoDistributed: 'Distributed automatically',
@@ -762,12 +763,6 @@ export default {
       assignedCount: '{assigned} / {total} assigned',
       perPersonConstraintText: "This app runs per person: everyone gets a team of their own.",
       perPersonConstraintTitle: "Per-person app",
-      scopeChoice: {
-        title: "What is one environment?",
-        help: "You chose the groups freely either way. This decides whether each person or each group gets an environment.",
-        user: { label: "One per person", text: "Everyone gets an environment of their own, whatever the groups." },
-        team: { label: "One per group", text: "Each group shares one environment (one login for the group)." },
-      },
     },
 
     network: {

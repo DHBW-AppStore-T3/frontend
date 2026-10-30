@@ -4,7 +4,6 @@ import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react'
 import Toggle from '@/views/add-app/Toggle'
 import type { DeploymentDraft, NetworkSelection } from '@/types'
 import { networkValue, visibleNetworkKeys } from '@/utils/network'
-import ScopeChoice, { type ScopeChoiceProps } from './ScopeChoice'
 
 interface Props {
   draft: Pick<
@@ -12,20 +11,18 @@ interface Props {
     'scope' | 'studentIds' | 'groupNames' | 'groupCount' | 'networkChoices' | 'network'
   >
   onChange: (next: NetworkSelection) => void
-  /** Only where the app lets the person choose what one environment is. */
-  scope?: ScopeChoiceProps
 }
 
 /**
- * Collapsible "expert settings" below the resources: what one environment is, internet access and
+ * Collapsible "expert settings" below the resources: internet access and
  * networked pods, only what the app author allowed. Closed by default.
  */
-export default function NetworkSettings({ draft, onChange, scope }: Props) {
+export default function NetworkSettings({ draft, onChange }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const bodyId = useId()
   const keys = visibleNetworkKeys(draft)
-  if (keys.length === 0 && !scope) return null
+  if (keys.length === 0) return null
 
   const Chevron = open ? ChevronUp : ChevronDown
   const set = (key: 'internet' | 'podNetwork', value: boolean) =>
@@ -46,7 +43,6 @@ export default function NetworkSettings({ draft, onChange, scope }: Props) {
 
       {open ? (
         <div id={bodyId} className="px-6 pb-6 space-y-5 border-t border-borderSubtle pt-4" data-testid="network-settings-body">
-          {scope ? <ScopeChoice {...scope} /> : null}
           {keys.map((key) => {
             const on = networkValue(draft, key)
             return (

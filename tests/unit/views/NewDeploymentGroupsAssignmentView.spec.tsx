@@ -526,4 +526,75 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       expect(screen.queryByText('deployment.assignment.perPersonConstraintTitle')).not.toBeInTheDocument()
     })
   })
+
+  describe('die Gruppierung bestimmt den Scope, wenn die App die Wahl lässt (scopeChoice)', () => {
+    const choiceApp = (over: Record<string, unknown> = {}) => {
+      useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
+      seed({ appId: 'lab', runtime: 'kubernetes', scopeChoice: true, ...over })
+    }
+
+    it('lässt alle Gruppierungen frei, auch bei Standard-Scope user, und erklärt, was sie bedeuten', async () => {
+      choiceApp({ scope: 'user', groupMode: 'one' })
+      renderView()
+
+      await screen.findByText('John Doe')
+      expect(screen.getByRole('button', { name: 'deployment.groups.one' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'deployment.groups.custom' })).toBeEnabled()
+      expect(screen.getByTestId('scope-hint')).toHaveTextContent('deployment.groups.scopeHint')
+      expect(screen.queryByText('deployment.assignment.perPersonConstraintTitle')).not.toBeInTheDocument()
+    })
+
+    it('startet bei Standard-Scope user mit "Jeder einzeln", damit Durchklicken nichts ändert', async () => {
+      choiceApp({ scope: 'user', groupMode: 'one' })
+      renderView()
+
+      await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
+      expect(draft().scope).toBe('user')
+    })
+
+    it('startet bei Standard-Scope team in einer Gruppe', async () => {
+      choiceApp({ scope: 'team', groupMode: 'one' })
+      renderView()
+
+      await screen.findByText('John Doe')
+      expect(draft().groupMode).toBe('one')
+      expect(draft().scope).toBe('team')
+    })
+
+    it('"Jeder einzeln" ergibt scope user, jede Gruppierung scope team', async () => {
+      choiceApp({ scope: 'team', groupMode: 'one' })
+      renderView()
+      await screen.findByText('John Doe')
+
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.eachUser' }))
+      expect(draft().scope).toBe('user')
+
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.custom' }))
+      expect(draft().scope).toBe('team')
+
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.eachUser' }))
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.one' }))
+      expect(draft().scope).toBe('team')
+    })
+
+    it('eine frühere Wahl bleibt beim Zurückgehen erhalten', async () => {
+      choiceApp({ scope: 'team', groupMode: 'custom' })
+      renderView()
+
+      await screen.findByText('John Doe')
+      expect(draft().groupMode).toBe('custom')
+      expect(draft().scope).toBe('team')
+    })
+
+    it('ändert den Scope nicht, wo die App ihn festlegt', async () => {
+      useAppStore.setState({ apps: [{ appId: 'lab', name: 'Ubuntu Lab' } as any] })
+      seed({ appId: 'lab', runtime: 'kubernetes', scope: 'team', scopeChoice: false, groupMode: 'one' })
+      renderView()
+      await screen.findByText('John Doe')
+
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.eachUser' }))
+      expect(draft().scope).toBe('team')
+      expect(screen.queryByTestId('scope-hint')).not.toBeInTheDocument()
+    })
+  })
 })
