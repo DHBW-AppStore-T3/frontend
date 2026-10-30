@@ -117,6 +117,8 @@ export default function AppsDetailView() {
       releaseTag: effectiveVersion,
       runtime: versionRuntime.runtime?.runtime ?? null,
       scope: versionRuntime.runtime?.scope ?? null,
+      // Without it the wizard (which only asks for the runtime when the draft has none) forces the default scope.
+      scopeChoice: versionRuntime.runtime?.scope_choice ?? false,
       resourceChoices: versionRuntime.runtime?.resources ?? [],
       resources: defaultSelection(versionRuntime.runtime?.resources ?? []),
       networkChoices: versionRuntime.runtime?.network ?? {},
