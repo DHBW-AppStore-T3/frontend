@@ -531,4 +531,16 @@ describe('submitDraft golden payloads', () => {
       })
     })
   })
+
+  describe('submitDraft: scope the person chose', () => {
+    it('sends the scope where the app lets the person choose', async () => {
+      const sent = (await submit({ groupNames: ['A'], scope: 'team', scopeChoice: true })) as { userInputVar: unknown }
+      expect(sent.userInputVar).toStrictEqual({ terraform: {}, scope: 'team' })
+    })
+
+    it('sends no scope where the app fixes it', async () => {
+      const sent = (await submit({ groupNames: ['A'], scope: 'user', scopeChoice: false })) as { userInputVar: unknown }
+      expect(sent.userInputVar).toStrictEqual({ terraform: {} })
+    })
+  })
 })

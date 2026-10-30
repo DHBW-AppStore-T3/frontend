@@ -48,7 +48,7 @@ export default function NewDeploymentGroupsAssignmentView() {
   const navigate = useNavigate()
   const draft = useDeploymentStore((s) => s.draft)
   const draftApp = useDeploymentStore((s) => s.draftAppDetails)()
-  const { forcedGroupMode, groupModeReason, groupModeTitle } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope })
+  const { forcedGroupMode, groupModeReason, groupModeTitle } = useDeploymentConstraints(draftApp, { runtime: draft.runtime, scope: draft.scope, scopeChoice: draft.scopeChoice })
 
   const isForced = forcedGroupMode === 'eachUser'
   const needsVariables = useNeedsVariablesStep()

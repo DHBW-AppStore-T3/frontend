@@ -765,6 +765,12 @@ export default {
       assignedCount: '{assigned} / {total} zugewiesen',
       perPersonConstraintText: "Diese App läuft je Person: Jede und jeder bekommt ein eigenes Team.",
       perPersonConstraintTitle: "App läuft je Person",
+      scopeChoice: {
+        title: "Was ist eine Umgebung?",
+        help: "Die Gruppen haben Sie in beiden Fällen frei gewählt. Das hier entscheidet, ob jede Person oder jede Gruppe eine Umgebung bekommt.",
+        user: { label: "Eine je Person", text: "Jede Person bekommt eine eigene Umgebung, unabhängig von den Gruppen." },
+        team: { label: "Eine je Gruppe", text: "Jede Gruppe teilt sich eine Umgebung (ein Zugang für die Gruppe)." },
+      },
     },
 
     network: {

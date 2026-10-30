@@ -139,6 +139,8 @@ export function buildDeploymentPayload(draft: DeploymentDraft): DeploymentCreate
   // only with two or more workloads (otherwise there is nobody to reach).
   const network = networkPayload(draft)
   if (network) userInputVar.network = network
+  // One workload per person or per team, where the app lets the person choose.
+  if (draft.scopeChoice && draft.scope) userInputVar.scope = draft.scope
 
   const payload: DeploymentCreate = {
     name: draft.name,

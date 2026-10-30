@@ -6,7 +6,7 @@ import type { DeploymentDraft } from '@/types'
  * Whether the wizard needs its "Variables" step for this draft.
  *
  * The step is necessary when the app declares variables, offers resource
- * choices or shows a network switch. Otherwise it would only say "nothing to
+ * choices, shows a network switch or lets people choose the scope. Otherwise it would only say "nothing to
  * set" and is left out.
  *
  * ``null`` means "not known yet": the definitions load in the background and
@@ -15,7 +15,7 @@ import type { DeploymentDraft } from '@/types'
  * question without waiting for the definitions.
  */
 export function needsVariablesStep(draft: DeploymentDraft): boolean | null {
-  if ((draft.resourceChoices ?? []).length > 0 || visibleNetworkKeys(draft).length > 0) return true
+  if ((draft.resourceChoices ?? []).length > 0 || visibleNetworkKeys(draft).length > 0 || draft.scopeChoice) return true
   const definitions = draft.variableDefinitions
   if (definitions === undefined) return null
   return definitions.length > 0

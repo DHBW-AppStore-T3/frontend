@@ -485,4 +485,34 @@ describe('NewDeploymentVariableView · Windows-VM-App (kubevirt-vm)', () => {
       expect(screen.queryByTestId('vm-internet-access')).toBeNull()
     })
   })
+
+  describe('der Scope, den die Person wählt', () => {
+    const podScopeChoice = () =>
+      setVm({ runtime: 'kubernetes', scope: 'user', scopeChoice: true, resourceChoices: [], resources: {}, networkChoices: {}, network: {} })
+
+    it('steht in den Experteneinstellungen, auch wenn es sonst nichts einzustellen gibt', async () => {
+      podScopeChoice()
+      renderView()
+      expect(await screen.findByTestId('network-settings')).toBeInTheDocument()
+      expect(screen.queryByText('deployment.variables.noVariables')).toBeNull()
+      expect(screen.queryByTestId('scope-choice')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /deployment\.network\.title/ }))
+      expect(screen.getByRole('radio', { name: /scopeChoice\.user\.label/ })).toBeChecked()
+    })
+
+    it('ändert den Scope im Draft', async () => {
+      podScopeChoice()
+      renderView()
+      fireEvent.click(await screen.findByRole('button', { name: /deployment\.network\.title/ }))
+      fireEvent.click(screen.getByRole('radio', { name: /scopeChoice\.team\.label/ }))
+      expect(draft().scope).toBe('team')
+    })
+
+    it('fehlt, wenn die App den Scope festlegt', async () => {
+      setVm({ runtime: 'kubernetes', scope: 'user', scopeChoice: false, resourceChoices: [], resources: {}, networkChoices: {}, network: {} })
+      renderView()
+      expect(await screen.findByText('deployment.variables.noVariables')).toBeInTheDocument()
+      expect(screen.queryByTestId('network-settings')).toBeNull()
+    })
+  })
 })

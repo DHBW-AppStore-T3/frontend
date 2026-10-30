@@ -49,6 +49,11 @@ export default function NewDeploymentVariableView() {
   const chosen = useDeploymentStore((s) => s.draft.resources) ?? {}
   const draft = useDeploymentStore((s) => s.draft)
   const hasNetwork = visibleNetworkKeys(draft).length > 0
+  // The app lets the person choose what one environment is (one per person or per group).
+  const hasScopeChoice = !!draft.scopeChoice
+  const scope = hasScopeChoice
+    ? { value: draft.scope === 'team' ? ('team' as const) : ('user' as const), onChange: (next: 'user' | 'team') => useDeploymentStore.getState().updateDraft({ scope: next }) }
+    : undefined
   // A Windows VM gets its own layout (internet access up front, resources behind "expert settings");
   // pod apps keep theirs until the team has decided what applies to them.
   const isVm = draft.runtime === 'kubevirt-vm'
@@ -98,6 +103,7 @@ export default function NewDeploymentVariableView() {
             resources={chosen}
             onResourcesChange={setResources}
             onNetworkChange={setNetwork}
+            scope={scope}
           />
         </div>
       ) : (
@@ -106,7 +112,7 @@ export default function NewDeploymentVariableView() {
             <ResourcePicker choices={choices} value={chosen} onChange={setResources} />
           ) : null}
 
-          {hasNetwork ? <NetworkSettings draft={draft} onChange={setNetwork} /> : null}
+          {hasNetwork || hasScopeChoice ? <NetworkSettings draft={draft} onChange={setNetwork} scope={scope} /> : null}
         </>
       )}
 
@@ -127,7 +133,7 @@ export default function NewDeploymentVariableView() {
       ) : null}
 
       {/* The app's own settings, declared in its appstore.yaml */}
-      {!hasOtherSettings && (choices.length > 0 || hasNetwork || fileVariables.length > 0) ? null : (
+      {!hasOtherSettings && (choices.length > 0 || hasNetwork || hasScopeChoice || fileVariables.length > 0) ? null : (
       <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border-2 border-purple-200 overflow-hidden">
         <div className="bg-purple-600 text-white px-6 py-4 flex items-center gap-3">
           <Layers size={24} />
@@ -185,7 +191,7 @@ export default function NewDeploymentVariableView() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3" />
             <span className="text-textFaint">{t('deployment.variables.loading')}</span>
           </div>
-        ) : form.variables.length === 0 && choices.length === 0 && !hasNetwork ? (
+        ) : form.variables.length === 0 && choices.length === 0 && !hasNetwork && !hasScopeChoice ? (
           <div className="text-center py-12 text-textMuted italic bg-surfaceMuted rounded-xl border border-dashed">
             {t('deployment.variables.noVariables')}
           </div>
