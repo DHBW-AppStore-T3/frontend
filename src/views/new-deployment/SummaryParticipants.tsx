@@ -19,18 +19,22 @@ interface Props {
   unit: EnvironmentUnit
   people: number
   teams: ParticipantTeam[]
-  /** One environment per person although people are in groups (``scope: user`` with a group mode). */
-  ownEach?: boolean
+  /**
+   * What a group got where the app lets the person choose (step 2): one environment per group or one per person.
+   * ``null`` when there was nothing to choose.
+   */
+  environment?: 'team' | 'user' | null
   onEdit: () => void
 }
 
-/** "Teilnehmende": the mode in a chip, what it means in a sentence, and who is in it as one rail. */
-export default function SummaryParticipants({ mode, unit, people, teams, ownEach = false, onEdit }: Props) {
+/** "Teilnehmende": the mode (and the environments chosen for groups) in chips, what it means in a sentence, and who is in it as one rail. */
+export default function SummaryParticipants({ mode, unit, people, teams, environment = null, onEdit }: Props) {
   const { t } = useTranslation()
   const titleId = useId()
   const title = t('deployment.summary.participants.title')
 
-  const perPersonInGroups = ownEach && mode !== 'eachUser'
+  const groupEnvironment = mode !== 'eachUser' ? environment : null
+  const perPersonInGroups = groupEnvironment === 'user'
   let sentence = t(`deployment.summary.participants.${perPersonInGroups ? 'ownInGroups' : mode}.${unit}`)
   if (mode === 'custom') {
     sentence += ` ${t('deployment.summary.participants.customTotal', {
@@ -65,6 +69,14 @@ export default function SummaryParticipants({ mode, unit, people, teams, ownEach
         </CardBadge>
         <h2 id={titleId} className="summary-who__title">
           {title} <span className="summary-chip">{t(`deployment.groups.${mode}`)}</span>
+          {groupEnvironment ? (
+            <>
+              {' '}
+              <span className="summary-chip" data-testid="summary-environment">
+                {t(`deployment.summary.participants.environment.${groupEnvironment}`)}
+              </span>
+            </>
+          ) : null}
         </h2>
         <EditButton label={t('deployment.summary.edit.teams')} onClick={onEdit} />
         <p className="summary-who__sub">{sentence}</p>

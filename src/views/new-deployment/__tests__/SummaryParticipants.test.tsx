@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SummaryParticipants, { type ParticipantTeam } from '../SummaryParticipants'
 import { renderWithProviders } from '../../../../tests/helpers/render'
@@ -48,8 +48,25 @@ describe('SummaryParticipants', () => {
       'Jede Person bekommt eine eigene Umgebung; die Gruppen bestimmen, wer welche Dateien bekommt. Das sind 3 Umgebungen für 3 Personen.',
     ],
   ] as const)('says that in mode %s everybody still has an environment of their own', (mode, teams, sentence) => {
-    setup({ mode, unit: 'pod', teams: [...teams], ownEach: true })
+    setup({ mode, unit: 'pod', teams: [...teams], environment: 'user' })
     expect(screen.getByText(sentence)).toBeInTheDocument()
+  })
+
+  it.each([
+    ['user', 'Eine Umgebung je Person'],
+    ['team', 'Eine Umgebung je Gruppe'],
+  ] as const)('names the environments chosen for groups in a second chip (%s)', (environment, chip) => {
+    setup({ mode: 'custom', teams: CUSTOM, environment })
+    expect(screen.getByTestId('summary-environment')).toHaveTextContent(chip)
+  })
+
+  it('has no second chip where there was nothing to choose, or everybody is on their own anyway', () => {
+    setup({ mode: 'custom', teams: CUSTOM })
+    expect(screen.queryByTestId('summary-environment')).not.toBeInTheDocument()
+    cleanup()
+    setup({ mode: 'eachUser', environment: 'user' })
+    expect(screen.queryByTestId('summary-environment')).not.toBeInTheDocument()
+    expect(screen.getByText('Jede Person bekommt eine eigene Umgebung.')).toBeInTheDocument()
   })
 
   it('counts one environment and one person in the singular', () => {

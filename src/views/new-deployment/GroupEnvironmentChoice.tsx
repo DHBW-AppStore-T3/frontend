@@ -12,41 +12,42 @@ const OPTIONS: WorkloadScope[] = ['team', 'user']
 
 /**
  * What a group gets, where the app lets the person deploying choose (``scopeChoice``): one shared environment,
- * or one per member (the group then only decides who gets which files). Shown in the grouping step for the
- * group modes only; "each user individually" already means one per person.
+ * or one per member (the group then only decides who gets which files). Two short options like the file mode of
+ * step 3, and below them what the selected one means. Shown for the group modes only; "each user individually"
+ * already means one per person.
  */
 export default function GroupEnvironmentChoice({ value, onChange }: GroupEnvironmentChoiceProps) {
   const { t } = useTranslation()
   const name = useId()
+  const helpId = useId()
   return (
     <fieldset className="mt-4" data-testid="group-environment">
       <legend className="text-sm font-semibold text-textHeading">{t('deployment.groups.environment.title')}</legend>
-      <div className="mt-2 flex flex-wrap gap-3">
-        {OPTIONS.map((option) => {
-          const checked = value === option
-          return (
-            <label
-              key={option}
-              className={`flex max-w-sm cursor-pointer items-start gap-3 rounded-xl border-2 px-4 py-3 text-sm transition-colors ${
-                checked ? 'border-primary bg-primaryFaint' : 'border-borderSubtle bg-white hover:bg-surfaceMuted'
+      <div className="mt-2 inline-grid grid-cols-2 gap-1 rounded-xl bg-surfaceMuted p-1 max-sm:grid max-sm:w-full">
+        {OPTIONS.map((option) => (
+          <label key={option} className="cursor-pointer">
+            <input
+              type="radio"
+              name={name}
+              value={option}
+              checked={value === option}
+              onChange={() => onChange(option)}
+              aria-describedby={helpId}
+              className="peer sr-only"
+            />
+            <span
+              className={`block rounded-lg px-4 py-2 text-center text-sm transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary max-sm:px-1.5 max-sm:text-[13px] ${
+                value === option ? 'bg-surface font-bold text-primaryDeep shadow-sm' : 'font-semibold text-textStrong hover:text-textHeading'
               }`}
             >
-              <input
-                type="radio"
-                name={name}
-                value={option}
-                checked={checked}
-                onChange={() => onChange(option)}
-                className="mt-1 accent-primary"
-              />
-              <span>
-                <span className="block font-medium text-textHeading">{t(`deployment.groups.environment.${option}.label`)}</span>
-                <span className="block text-xs text-textMuted">{t(`deployment.groups.environment.${option}.text`)}</span>
-              </span>
-            </label>
-          )
-        })}
+              {t(`deployment.groups.environment.${option}.label`)}
+            </span>
+          </label>
+        ))}
       </div>
+      <p id={helpId} className="mt-1.5 text-sm text-textStrong" aria-live="polite" data-testid="group-environment-help">
+        {t(`deployment.groups.environment.${value}.text`)}
+      </p>
     </fieldset>
   )
 }

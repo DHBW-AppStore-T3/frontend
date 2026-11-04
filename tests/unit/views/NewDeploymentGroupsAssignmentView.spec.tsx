@@ -533,15 +533,30 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       seed({ appId: 'lab', runtime: 'kubernetes', scopeChoice: true, ...over })
     }
 
-    it('lässt alle Gruppierungen frei, auch bei Standard-Scope user, und erklärt, was sie bedeuten', async () => {
+    it('lässt alle Gruppierungen frei, auch bei Standard-Scope user', async () => {
       choiceApp({ scope: 'user', groupMode: 'one' })
       renderView()
 
       await screen.findByText('John Doe')
       expect(screen.getByRole('button', { name: 'deployment.groups.one' })).toBeEnabled()
       expect(screen.getByRole('button', { name: 'deployment.groups.custom' })).toBeEnabled()
-      expect(screen.getByTestId('scope-hint')).toHaveTextContent('deployment.groups.scopeHint')
       expect(screen.queryByText('deployment.assignment.perPersonConstraintTitle')).not.toBeInTheDocument()
+    })
+
+    it('nennt unter der Wahl nur, was die gewählte Option bedeutet', async () => {
+      choiceApp({ scope: 'team', scopeDefault: 'team', groupMode: 'one' })
+      renderView()
+      await screen.findByText('John Doe')
+
+      // Short options; the meaning stands once, below, and is what the radios are described by.
+      const team = screen.getByRole('radio', { name: 'deployment.groups.environment.team.label' })
+      const help = screen.getByTestId('group-environment-help')
+      expect(help).toHaveTextContent('deployment.groups.environment.team.text')
+      expect(team).toHaveAccessibleDescription('deployment.groups.environment.team.text')
+
+      await userEvent.click(screen.getByRole('radio', { name: 'deployment.groups.environment.user.label' }))
+      expect(help).toHaveTextContent('deployment.groups.environment.user.text')
+      expect(help).not.toHaveTextContent('deployment.groups.environment.team.text')
     })
 
     it('startet bei Standard-Scope user mit "Jeder einzeln", damit Durchklicken nichts ändert', async () => {
@@ -641,7 +656,6 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       expect(screen.queryByTestId('group-environment')).not.toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.eachUser' }))
       expect(draft().scope).toBe('team')
-      expect(screen.queryByTestId('scope-hint')).not.toBeInTheDocument()
     })
   })
 })

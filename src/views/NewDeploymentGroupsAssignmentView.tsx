@@ -215,11 +215,6 @@ export default function NewDeploymentGroupsAssignmentView() {
 
         {/* Controls */}
         <div className="p-6 bg-white border-b-2 border-borderSubtle">
-          {draft.scopeChoice ? (
-            <p className="mb-3 text-sm text-textMuted" data-testid="scope-hint">
-              {t('deployment.groups.scopeHint')}
-            </p>
-          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex gap-2">
               {modeButton(

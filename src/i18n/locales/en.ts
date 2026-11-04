@@ -730,7 +730,6 @@ export default {
       title: 'Set the number of groups',
       one: 'One group',
       eachUser: 'Each user individually', // <--- WICHTIG: "eachUser" statt "each"
-      scopeHint: 'The grouping also decides what one environment is: with "Each user individually" everyone gets an environment of their own. With groups you choose below whether a group shares one environment or everyone keeps their own.',
       environment: {
         title: 'Environments of a group',
         team: { label: 'One per group', text: 'The members of a group work together in one environment.' },
@@ -966,6 +965,10 @@ export default {
         custom: {
           pod: 'Each team gets an environment of its own.',
           desktop: 'Each team gets a Windows desktop of its own.',
+        },
+        environment: {
+          team: 'One environment per group',
+          user: 'One environment per person',
         },
         ownInGroups: {
           pod: 'Everyone gets an environment of their own; the groups decide who gets which files.',

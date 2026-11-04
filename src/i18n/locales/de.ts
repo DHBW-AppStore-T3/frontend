@@ -733,7 +733,6 @@ export default {
       title: 'Legen Sie die Anzahl der Gruppen fest',
       one: 'Eine Gruppe',
       eachUser: 'Jeder Nutzer einzeln',
-      scopeHint: 'Die Gruppierung legt auch fest, was eine Umgebung ist: Bei „Jeder Nutzer einzeln“ bekommt jede Person eine eigene Umgebung. Bei Gruppen wählen Sie unten, ob sich eine Gruppe eine Umgebung teilt oder jede Person ihre eigene behält.',
       environment: {
         title: 'Umgebungen einer Gruppe',
         team: { label: 'Eine je Gruppe', text: 'Die Mitglieder einer Gruppe arbeiten gemeinsam in einer Umgebung.' },
@@ -969,6 +968,10 @@ export default {
         custom: {
           pod: 'Jedes Team bekommt eine eigene Umgebung.',
           desktop: 'Jedes Team bekommt einen eigenen Windows-Desktop.',
+        },
+        environment: {
+          team: 'Eine Umgebung je Gruppe',
+          user: 'Eine Umgebung je Person',
         },
         ownInGroups: {
           pod: 'Jede Person bekommt eine eigene Umgebung; die Gruppen bestimmen, wer welche Dateien bekommt.',
