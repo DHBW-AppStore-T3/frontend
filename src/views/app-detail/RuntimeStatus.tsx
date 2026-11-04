@@ -31,7 +31,10 @@ export default function RuntimeStatus({ runtime, isLoading, errorKey }: RuntimeS
         >
           {isPod ? <Boxes size={14} /> : <Monitor size={14} />}
           {t(runtimeLabelKey(runtime.runtime))}
-          {runtime.scope === 'user' ? (
+          {runtime.scope_choice ? (
+            // The app's scope is only the default: the person deploying chooses.
+            <span className="font-normal">· {t('AppsDetailView.runtime.perPersonOrGroup')}</span>
+          ) : runtime.scope === 'user' ? (
             <span className="font-normal">· {t('AppsDetailView.runtime.perPerson')}</span>
           ) : null}
         </span>

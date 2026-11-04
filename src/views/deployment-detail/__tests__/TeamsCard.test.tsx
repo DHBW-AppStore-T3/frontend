@@ -39,6 +39,18 @@ function show(overrides: Partial<TeamsCardProps> & { account?: AccountHit | null
 const pillLabels = () =>
   Array.from(document.querySelectorAll('span.uppercase')).map((el) => el.textContent?.trim())
 
+describe('TeamsCard — what one environment is', () => {
+  it.each(['user', 'team'] as const)('says it next to the team count (scope %s)', (scope) => {
+    show({ scope })
+    expect(screen.getByTestId('deployment-scope')).toHaveTextContent(`DeploymentDetailView.scope.${scope}`)
+  })
+
+  it('says nothing when it is not known', () => {
+    show()
+    expect(screen.queryByTestId('deployment-scope')).not.toBeInTheDocument()
+  })
+})
+
 describe('TeamsCard — order: link, login, password', () => {
   it('shows the link first, then the login, then the password (web app with a team url)', () => {
     show({ account: own({ ...podAccount, url: undefined }), vmUrl: 'https://team.example' })

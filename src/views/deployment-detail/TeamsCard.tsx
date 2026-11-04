@@ -10,6 +10,8 @@ type EnrichedTeam = ReturnType<typeof enrichTeams>[number]
 export interface TeamsCardProps {
   teamCount: number
   teams: EnrichedTeam[]
+  /** One environment per team or per person (``deploymentScope``); nothing is shown when unknown. */
+  scope?: 'team' | 'user' | null
   copiedKey: string | null
   onCopy: (text: string, key: string) => void
   /** The caller may fetch other members' credentials (the operate right). */
@@ -34,6 +36,7 @@ const COPY_BTN =
 export default function TeamsCard({
   teamCount,
   teams,
+  scope = null,
   copiedKey,
   onCopy,
   canReveal,
@@ -80,6 +83,11 @@ export default function TeamsCard({
         </div>
         <span className="text-lg font-semibold text-gray-900">{t('DeploymentDetailView.teamsAndMembers')}</span>
         <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-bold rounded">{teamCount}</span>
+        {scope ? (
+          <span className="text-sm text-gray-600" data-testid="deployment-scope">
+            · {t(`DeploymentDetailView.scope.${scope}`)}
+          </span>
+        ) : null}
       </div>
 
       <div className="space-y-4">

@@ -163,7 +163,7 @@ describe('buildSettingsRows: Windows VM (type C)', () => {
       cpu: 4,
       memoryGb: '8',
       changed: false,
-      total: { people: 3, cpu: 12, memoryGb: '24' },
+      total: { count: 3, perPerson: true, cpu: 12, memoryGb: '24' },
     })
   })
 
@@ -177,8 +177,21 @@ describe('buildSettingsRows: Windows VM (type C)', () => {
     expect(rowsOf(one)[0]).toMatchObject({ kind: 'resources', total: null })
   })
 
-  it('leaves the sum out when the environments are not per person', () => {
-    const [row] = rowsOf(vm({ scope: 'team' }))
+  it('counts the teams when a team shares one environment', () => {
+    const teams = { groupMode: 'custom', groupCount: 2, groupNames: ['A', 'B'], assignments: [['u1', 'u2'], ['u3']] }
+    const [row] = rowsOf(vm({ scope: 'team', ...teams } as never))
+    expect(row).toMatchObject({ kind: 'resources', total: { count: 2, perPerson: false, cpu: 8, memoryGb: '16' } })
+  })
+
+  it('counts the people when everybody in a group has an environment of their own', () => {
+    const oneGroup = { groupMode: 'one', groupCount: 1, groupNames: ['Alle'], assignments: [['u1', 'u2', 'u3']] }
+    const [row] = rowsOf(vm({ scope: 'user', ...oneGroup } as never))
+    expect(row).toMatchObject({ kind: 'resources', total: { count: 3, perPerson: true, cpu: 12, memoryGb: '24' } })
+  })
+
+  it('leaves the sum out for one shared environment', () => {
+    const oneGroup = { groupMode: 'one', groupCount: 1, groupNames: ['Alle'], assignments: [['u1', 'u2', 'u3']] }
+    const [row] = rowsOf(vm({ scope: 'team', ...oneGroup } as never))
     expect(row).toMatchObject({ kind: 'resources', total: null })
   })
 

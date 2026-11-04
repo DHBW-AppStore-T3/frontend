@@ -96,6 +96,7 @@ export default function NewDeploymentSummaryView() {
               unit={unit}
               people={people}
               teams={participantTeams}
+              environment={draft.scopeChoice ? (draft.scope === 'user' ? 'user' : 'team') : null}
               onEdit={() => navigate(paths.deploymentTeams)}
             />
             <SummarySettings rows={settingsRows} onEdit={() => navigate(paths.deploymentVariables)} />

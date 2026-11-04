@@ -9,6 +9,7 @@ import {
   removeFromTeam,
   shuffleIntoTeams,
   clearAssignments,
+  scopeForMode,
   unassignedOf,
   keepSelected,
   isAssignmentComplete,
@@ -159,5 +160,26 @@ describe('helpers', () => {
     expect(isAssignmentComplete(['a', 'b'], state({ assignments: [['a'], []] }))).toBe(false)
     expect(isAssignmentComplete(['a', 'b'], state({ assignments: [['a', 'b'], []] }))).toBe(false)
     expect(isAssignmentComplete(['a', 'b'], state({ assignments: [['a'], ['b']], names: ['x', ' '] }))).toBe(false)
+  })
+})
+
+describe('scopeForMode (where the app lets the person choose)', () => {
+  it('runs everybody on their own per person', () => {
+    expect(scopeForMode('eachUser', { groupMode: 'one', scope: 'team', scopeDefault: 'team' })).toBe('user')
+  })
+
+  it('keeps the choice made for groups when switching between group modes', () => {
+    expect(scopeForMode('custom', { groupMode: 'one', scope: 'user', scopeDefault: 'team' })).toBe('user')
+    expect(scopeForMode('one', { groupMode: 'custom', scope: 'team', scopeDefault: 'user' })).toBe('team')
+  })
+
+  it("starts groups with the app's own scope after \"each user individually\"", () => {
+    expect(scopeForMode('custom', { groupMode: 'eachUser', scope: 'user', scopeDefault: 'team' })).toBe('team')
+    expect(scopeForMode('one', { groupMode: 'eachUser', scope: 'user', scopeDefault: 'user' })).toBe('user')
+  })
+
+  it('falls back to one environment per team when nothing is known', () => {
+    expect(scopeForMode('one', { groupMode: 'eachUser' })).toBe('team')
+    expect(scopeForMode('one', { groupMode: 'one', scope: null, scopeDefault: null })).toBe('team')
   })
 })

@@ -408,6 +408,8 @@ export interface DeploymentDraft {
   scope?: 'team' | 'user' | null
   // The app lets people choose the scope (see ``AppRuntime.scope_choice``); ``scope`` then holds the choice.
   scopeChoice?: boolean
+  // The app's own scope (what ``scope`` starts as); a group mode starts with it again after "each user individually".
+  scopeDefault?: 'team' | 'user' | null
   // Pods: containers whose cpu/memory the app lets people choose; undefined until asked.
   resourceChoices?: ResourceChoice[]
   // The cpu/memory chosen per container; sent as ``userInputVar.resources``.

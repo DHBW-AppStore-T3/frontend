@@ -370,6 +370,10 @@ export default {
     deploymentUserName: "Benutzername",
     deploymentUserRole: "Rolle",
     teamsAndMembers: "Teams & Mitglieder",
+    scope: {
+      team: "eine Umgebung je Team",
+      user: "eine Umgebung je Person",
+    },
     revealCredentials: "Zugangsdaten anzeigen",
     revealFailed: "Die Zugangsdaten konnten nicht geladen werden.",
     noCredentials: "Keine Zugangsdaten vorhanden.",
@@ -589,6 +593,7 @@ export default {
       loadError: "Konnte nicht ermitteln, wie diese Version läuft.",
       invalidSpec: "Die appstore.yaml dieser Version ist ungültig; sie kann nicht deployt werden.",
       perPerson: "je Person",
+      perPersonOrGroup: "je Person oder je Gruppe",
     },
     versionTableRuntime: "Laufzeit",
     hiddenByAdmin: "Von der Administration deaktiviert; nur Admins können die App wieder veröffentlichen.",
@@ -728,7 +733,11 @@ export default {
       title: 'Legen Sie die Anzahl der Gruppen fest',
       one: 'Eine Gruppe',
       eachUser: 'Jeder Nutzer einzeln',
-      scopeHint: 'Die Gruppierung legt auch fest, was eine Umgebung ist: Bei „Jeder Nutzer einzeln“ bekommt jede Person eine eigene Umgebung, bei Gruppen teilen sich die Mitglieder einer Gruppe eine Umgebung.',
+      environment: {
+        title: 'Umgebungen einer Gruppe',
+        team: { label: 'Eine je Gruppe', text: 'Die Mitglieder einer Gruppe arbeiten gemeinsam in einer Umgebung.' },
+        user: { label: 'Eine je Person', text: 'Jede Person bekommt eine eigene Umgebung; die Gruppe bestimmt, wer welche Dateien bekommt.' },
+      },
       custom: 'Individuell',
       autoAssigned: 'Automatisch zugewiesen',
       autoDistributed: 'Automatisch verteilt',
@@ -960,6 +969,14 @@ export default {
           pod: 'Jedes Team bekommt eine eigene Umgebung.',
           desktop: 'Jedes Team bekommt einen eigenen Windows-Desktop.',
         },
+        environment: {
+          team: 'Eine Umgebung je Gruppe',
+          user: 'Eine Umgebung je Person',
+        },
+        ownInGroups: {
+          pod: 'Jede Person bekommt eine eigene Umgebung; die Gruppen bestimmen, wer welche Dateien bekommt.',
+          desktop: 'Jede Person bekommt einen eigenen Windows-Desktop; die Gruppen bestimmen, wer welche Dateien bekommt.',
+        },
         customTotal: 'Das sind {environments} für {people}.',
       },
       counts: {
@@ -980,6 +997,10 @@ export default {
         perDesktop: 'je Desktop',
         totalFor_one: 'insgesamt für {count} Person:',
         totalFor_other: 'insgesamt für {count} Personen:',
+        totalForPods_one: 'insgesamt für {count} Umgebung:',
+        totalForPods_other: 'insgesamt für {count} Umgebungen:',
+        totalForDesktops_one: 'insgesamt für {count} Desktop:',
+        totalForDesktops_other: 'insgesamt für {count} Desktops:',
         together: {
           podOn: 'Die Umgebungen dieses Deployments können sich gegenseitig erreichen.',
           podOff: 'Die Umgebungen arbeiten getrennt voneinander.',

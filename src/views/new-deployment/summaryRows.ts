@@ -7,7 +7,7 @@
  * the language of the page. Files are described by name and size, never by content.
  */
 import type { AppVariable, DeploymentDraft, DeploymentFile } from '@/types'
-import { networkValue, visibleNetworkKeys } from '@/utils/network'
+import { networkValue, visibleNetworkKeys, workloadCount } from '@/utils/network'
 import { formatMemoryGb, isDefaultSelection, totalResources } from '@/utils/resources'
 import { humanizeName } from './fileLimits'
 import { buildRecipients, sameFile } from './recipientRows'
@@ -39,8 +39,11 @@ export interface ResourcesRow {
   memoryGb: string
   /** Differs from the recommendation of the app. */
   changed: boolean
-  /** What all people together get; only when every person has an environment of their own. */
-  total: { people: number; cpu: number; memoryGb: string } | null
+  /**
+   * What all environments together get, when there are several: ``count`` people when everybody has one of their
+   * own (``perPerson``), else ``count`` environments (one per team).
+   */
+  total: { count: number; perPerson: boolean; cpu: number; memoryGb: string } | null
 }
 
 export interface NetworkRow {
@@ -98,7 +101,7 @@ function resourcesRow(draft: DeploymentDraft, ctx: SettingsContext): ResourcesRo
   if (choices.length === 0) return null
   const selection = draft.resources ?? {}
   const sum = totalResources(choices, selection)
-  const people = draft.studentIds.length
+  const environments = workloadCount(draft)
   return {
     kind: 'resources',
     id: 'resources',
@@ -107,10 +110,15 @@ function resourcesRow(draft: DeploymentDraft, ctx: SettingsContext): ResourcesRo
     cpu: sum.cpuMillicores / 1000,
     memoryGb: formatMemoryGb(sum.memoryMib),
     changed: !isDefaultSelection(choices, selection),
-    // Only when several people each have an environment: for one person the sum is the row itself.
+    // Only with several environments (one per person or one per team): for one the sum is the row itself.
     total:
-      draft.scope === 'user' && people > 1
-        ? { people, cpu: (sum.cpuMillicores * people) / 1000, memoryGb: formatMemoryGb(sum.memoryMib * people) }
+      environments > 1
+        ? {
+            count: environments,
+            perPerson: draft.scope === 'user',
+            cpu: (sum.cpuMillicores * environments) / 1000,
+            memoryGb: formatMemoryGb(sum.memoryMib * environments),
+          }
         : null,
   }
 }

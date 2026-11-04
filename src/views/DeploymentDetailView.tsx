@@ -24,7 +24,7 @@ import { paths } from '@/router/paths'
 import BoldSlot from '@/i18n/BoldSlot'
 import { useDeploymentDetail } from './deployment-detail/useDeploymentDetail'
 import { useClipboard } from './deployment-detail/useClipboard'
-import { cleanVariableValue, getStatusStyles } from './deployment-detail/helpers'
+import { cleanVariableValue, deploymentScope, getStatusStyles } from './deployment-detail/helpers'
 import ActiveTaskCard from './deployment-detail/ActiveTaskCard'
 import DeploymentStatusNotice from './deployment-detail/DeploymentStatusNotice'
 import TeamsCard from './deployment-detail/TeamsCard'
@@ -416,6 +416,7 @@ export default function DeploymentDetailView() {
             <TeamsCard
               teamCount={deployment.teams.length}
               teams={d.enrichedTeams}
+              scope={deploymentScope(deployment)}
               copiedKey={copiedKey}
               onCopy={(text, key) => void copy(text, key)}
               canReveal={d.permissions.operate}

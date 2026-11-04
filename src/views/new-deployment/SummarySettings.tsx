@@ -37,7 +37,14 @@ function RowValue({ row, language }: { row: SettingsRow; language: string }) {
           {row.total ? (
             <span>
               {t(row.unit === 'desktop' ? 'deployment.summary.rows.perDesktop' : 'deployment.summary.rows.perPod')} ·{' '}
-              {t('deployment.summary.rows.totalFor', { count: row.total.people })}{' '}
+              {t(
+                row.total.perPerson
+                  ? 'deployment.summary.rows.totalFor'
+                  : row.unit === 'desktop'
+                    ? 'deployment.summary.rows.totalForDesktops'
+                    : 'deployment.summary.rows.totalForPods',
+                { count: row.total.count },
+              )}{' '}
               <b>
                 {number(row.total.cpu)} {t('deployment.vm.expert.cpuUnit')} · {row.total.memoryGb} {t('deployment.vm.expert.ramUnit')}
               </b>
