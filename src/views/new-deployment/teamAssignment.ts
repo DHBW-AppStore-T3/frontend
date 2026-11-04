@@ -63,6 +63,24 @@ export function chooseEachUser(studentIds: string[], t: Translate): TeamsState {
   }
 }
 
+/** What the draft knows about the scope: the current one, the app's own, and the grouping it was made for. */
+export interface ScopeState {
+  groupMode: GroupMode
+  scope?: 'team' | 'user' | null
+  scopeDefault?: 'team' | 'user' | null
+}
+
+/**
+ * The scope that goes with grouping ``mode`` where the app lets the person choose. Everybody on their own runs
+ * per person. A group mode keeps the choice made for groups (one per group or one per person) and starts with
+ * the app's own scope when it comes from "each user individually".
+ */
+export function scopeForMode(mode: GroupMode, current: ScopeState): 'team' | 'user' {
+  if (mode === 'eachUser') return 'user'
+  if (current.groupMode !== 'eachUser' && current.scope) return current.scope
+  return current.scopeDefault ?? 'team'
+}
+
 /** Free assignment; starts with two teams when coming from a single one. */
 export function chooseCustom(state: TeamsState, studentCount: number, t: Translate): TeamsState {
   const count = state.count === 1 && studentCount > 1 ? 2 : state.count

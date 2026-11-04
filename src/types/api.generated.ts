@@ -1727,6 +1727,8 @@ export interface components {
              * @default kubernetes
              */
             runtime: string;
+            /** Scope */
+            scope?: string | null;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;
@@ -1863,6 +1865,8 @@ export interface components {
              * @default kubernetes
              */
             runtime: string;
+            /** Scope */
+            scope?: string | null;
             /** Userinputvar */
             userInputVar?: {
                 [key: string]: unknown;

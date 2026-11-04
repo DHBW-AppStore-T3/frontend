@@ -40,6 +40,18 @@ describe('SummaryParticipants', () => {
     expect(screen.getByText(sentence)).toBeInTheDocument()
   })
 
+  it.each([
+    ['one', ONE, 'Jede Person bekommt eine eigene Umgebung; die Gruppen bestimmen, wer welche Dateien bekommt.'],
+    [
+      'custom',
+      CUSTOM,
+      'Jede Person bekommt eine eigene Umgebung; die Gruppen bestimmen, wer welche Dateien bekommt. Das sind 3 Umgebungen für 3 Personen.',
+    ],
+  ] as const)('says that in mode %s everybody still has an environment of their own', (mode, teams, sentence) => {
+    setup({ mode, unit: 'pod', teams: [...teams], ownEach: true })
+    expect(screen.getByText(sentence)).toBeInTheDocument()
+  })
+
   it('counts one environment and one person in the singular', () => {
     setup({ mode: 'custom', unit: 'pod', people: 1, teams: [{ id: 't0', name: 'Team Alpha', members: ['Studentin Drei'] }] })
     expect(screen.getByText(/Das sind 1 Umgebung für 1 Person\./)).toBeInTheDocument()

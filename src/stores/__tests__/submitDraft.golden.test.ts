@@ -538,6 +538,18 @@ describe('submitDraft golden payloads', () => {
       expect(sent.userInputVar).toStrictEqual({ terraform: {}, scope: 'team' })
     })
 
+    it('sends a group of several with one environment per person', async () => {
+      const sent = (await submit({
+        studentIds: ['s1', 's2'],
+        groupNames: ['A'],
+        assignments: [['s1', 's2']],
+        scope: 'user',
+        scopeChoice: true,
+      })) as { teams: unknown; userInputVar: unknown }
+      expect(sent.teams).toStrictEqual([{ name: 'A', userIds: ['s1', 's2'] }])
+      expect(sent.userInputVar).toStrictEqual({ terraform: {}, scope: 'user' })
+    })
+
     it('sends no scope where the app fixes it', async () => {
       const sent = (await submit({ groupNames: ['A'], scope: 'user', scopeChoice: false })) as { userInputVar: unknown }
       expect(sent.userInputVar).toStrictEqual({ terraform: {} })

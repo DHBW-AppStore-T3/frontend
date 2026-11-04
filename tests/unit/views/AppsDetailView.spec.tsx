@@ -201,6 +201,7 @@ describe('AppsDetailView', () => {
 
       const draft = useDeploymentStore.getState().draft
       expect(draft.scope).toBe('user')
+      expect(draft.scopeDefault).toBe('user')
       expect(draft.scopeChoice).toBe(true)
     })
 
@@ -343,6 +344,23 @@ describe('AppsDetailView', () => {
 
       await waitFor(() => expect(screen.getByTestId('version-runtime')).toHaveTextContent('runtime.kubernetes'))
       expect(appApi.getRuntime).toHaveBeenCalledWith('app-123', 'v1.0')
+    })
+
+    it('sagt "je Person" bei einer App, die je Person läuft', async () => {
+      vi.mocked(appApi.getRuntime).mockResolvedValue({ data: { runtime: 'kubernetes', scope: 'user' } } as any)
+      renderView()
+
+      await waitFor(() => expect(screen.getByTestId('version-runtime')).toHaveTextContent('runtime.perPerson'))
+      expect(screen.getByTestId('version-runtime')).not.toHaveTextContent('perPersonOrGroup')
+    })
+
+    it('sagt "je Person oder je Gruppe", wenn die App die Wahl lässt (auch bei Standard je Person)', async () => {
+      vi.mocked(appApi.getRuntime).mockResolvedValue({
+        data: { runtime: 'kubernetes', scope: 'user', scope_choice: true },
+      } as any)
+      renderView()
+
+      await waitFor(() => expect(screen.getByTestId('version-runtime')).toHaveTextContent('runtime.perPersonOrGroup'))
     })
 
     it('eine Pod-Version kann deployt werden', async () => {

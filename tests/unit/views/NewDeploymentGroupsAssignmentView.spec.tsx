@@ -561,8 +561,8 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       expect(draft().scope).toBe('team')
     })
 
-    it('"Jeder einzeln" ergibt scope user, jede Gruppierung scope team', async () => {
-      choiceApp({ scope: 'team', groupMode: 'one' })
+    it('"Jeder einzeln" ergibt scope user, Gruppen starten danach mit dem Scope der App', async () => {
+      choiceApp({ scope: 'team', scopeDefault: 'team', groupMode: 'one' })
       renderView()
       await screen.findByText('John Doe')
 
@@ -575,6 +575,52 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.eachUser' }))
       await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.one' }))
       expect(draft().scope).toBe('team')
+    })
+
+    it('bietet bei Gruppen "eine je Gruppe" oder "eine je Person" an, bei "Jeder einzeln" nicht', async () => {
+      choiceApp({ scope: 'team', scopeDefault: 'team', groupMode: 'one' })
+      renderView()
+      await screen.findByText('John Doe')
+      expect(screen.getByRole('radio', { name: /environment\.team\.label/ })).toBeChecked()
+
+      // Groups for the files, an environment for everybody (e.g. a ZIP per team, an IDE per person).
+      await userEvent.click(screen.getByRole('radio', { name: /environment\.user\.label/ }))
+      expect(draft().scope).toBe('user')
+
+      // Another group mode keeps the choice.
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.custom' }))
+      expect(draft().scope).toBe('user')
+      expect(screen.getByRole('radio', { name: /environment\.user\.label/ })).toBeChecked()
+
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.eachUser' }))
+      expect(screen.queryByTestId('group-environment')).not.toBeInTheDocument()
+      expect(draft().scope).toBe('user')
+    })
+
+    it('Gruppen einer App, die je Person läuft, behalten zuerst eine Umgebung je Person', async () => {
+      choiceApp({ scope: 'user', scopeDefault: 'user', groupMode: 'one' })
+      renderView()
+      await waitFor(() => expect(draft().groupMode).toBe('eachUser'))
+
+      await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.custom' }))
+      expect(draft().scope).toBe('user')
+      expect(screen.getByRole('radio', { name: /environment\.user\.label/ })).toBeChecked()
+    })
+
+    it('"Eine Gruppe, eine Umgebung je Person" bleibt beim Zurückgehen erhalten', async () => {
+      choiceApp({
+        scope: 'user',
+        scopeDefault: 'user',
+        groupMode: 'one',
+        groupCount: 1,
+        groupNames: ['Alle'],
+        assignments: [['u1', 'u2']],
+      })
+      renderView()
+
+      await screen.findByText('John Doe')
+      expect(draft().groupMode).toBe('one')
+      expect(draft().scope).toBe('user')
     })
 
     it('eine frühere Wahl bleibt beim Zurückgehen erhalten', async () => {
@@ -592,6 +638,7 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       renderView()
       await screen.findByText('John Doe')
 
+      expect(screen.queryByTestId('group-environment')).not.toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'deployment.groups.eachUser' }))
       expect(draft().scope).toBe('team')
       expect(screen.queryByTestId('scope-hint')).not.toBeInTheDocument()

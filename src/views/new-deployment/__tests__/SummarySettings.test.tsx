@@ -84,13 +84,23 @@ describe('SummarySettings', () => {
     })
 
     it('adds what everybody gets together when every person has an environment', () => {
-      setup([resources({ total: { people: 3, cpu: 12, memoryGb: '24' } })])
+      setup([resources({ total: { count: 3, perPerson: true, cpu: 12, memoryGb: '24' } })])
       expect(valueOf('Rechenressourcen')).toHaveTextContent('je Desktop · insgesamt für 3 Personen: 12 vCPU · 24 GB RAM')
     })
 
     it('names a pod "je Umgebung"', () => {
-      setup([resources({ unit: 'pod', total: { people: 2, cpu: 4, memoryGb: '4' } })])
+      setup([resources({ unit: 'pod', total: { count: 2, perPerson: true, cpu: 4, memoryGb: '4' } })])
       expect(valueOf('Rechenressourcen')).toHaveTextContent('je Umgebung · insgesamt für 2 Personen: 4 vCPU · 4 GB RAM')
+    })
+
+    it('counts environments, not people, when a team shares one', () => {
+      setup([resources({ unit: 'pod', total: { count: 2, perPerson: false, cpu: 4, memoryGb: '4' } })])
+      expect(valueOf('Rechenressourcen')).toHaveTextContent('je Umgebung · insgesamt für 2 Umgebungen: 4 vCPU · 4 GB RAM')
+    })
+
+    it('counts desktops when a team shares one', () => {
+      setup([resources({ total: { count: 2, perPerson: false, cpu: 8, memoryGb: '16' } })])
+      expect(valueOf('Rechenressourcen')).toHaveTextContent('je Desktop · insgesamt für 2 Desktops: 8 vCPU · 16 GB RAM')
     })
 
     it('says nothing about a sum when there is none', () => {

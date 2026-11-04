@@ -22,6 +22,7 @@ import { useStudentNames } from './new-deployment/useStudentNames'
 import { ensureVariableDefinitions, resolveNeedsVariablesStep } from './new-deployment/variableDefinitions'
 import { useNeedsVariablesStep } from './new-deployment/variablesStep'
 import { type MoveTarget } from './new-deployment/MoveSelect'
+import GroupEnvironmentChoice from './new-deployment/GroupEnvironmentChoice'
 import {
   chooseCustom,
   chooseEachUser,
@@ -32,6 +33,7 @@ import {
   normalizeTeams,
   removeFromTeam,
   resizeTeams,
+  scopeForMode,
   shuffleIntoTeams,
   unassignedOf,
   type GroupMode,
@@ -68,18 +70,18 @@ export default function NewDeploymentGroupsAssignmentView() {
   const nameOf = useStudentNames([...new Set([...studentIds, ...teams.assignments.flat()])])
   const translate = (key: string, options: { index: number }) => t(key, options)
 
-  const apply = (next: TeamsState) =>
+  const apply = (next: TeamsState) => {
+    const current = useDeploymentStore.getState().draft
     useDeploymentStore.getState().updateDraft({
       groupMode: next.mode,
       groupCount: next.count,
       assignments: next.assignments,
       groupNames: next.names,
-      // Where the app lets the person choose, the grouping decides what one environment is:
-      // everybody on their own gets a workload each, any group gets one per group.
-      ...(useDeploymentStore.getState().draft.scopeChoice
-        ? { scope: next.mode === 'eachUser' ? ('user' as const) : ('team' as const) }
-        : {}),
+      // Where the app lets the person choose, everybody on their own gets a workload each; groups get one
+      // per group or one per member, as chosen below the buttons (GroupEnvironmentChoice).
+      ...(current.scopeChoice ? { scope: scopeForMode(next.mode, current) } : {}),
     })
+  }
 
   // Guard + normalisation on entry (and the Windows constraint).
   const initialised = useRef(false)
@@ -101,7 +103,9 @@ export default function NewDeploymentGroupsAssignmentView() {
       translate,
     )
     // An app whose author default is one workload per person starts that way, so clicking through changes nothing.
-    const startsPerPerson = !!current.scopeChoice && current.scope === 'user' && current.groupMode === 'one'
+    // Only while nobody is placed yet: "one group, an environment each" chosen earlier stays.
+    const untouched = current.assignments.every((group) => !group || group.length === 0)
+    const startsPerPerson = !!current.scopeChoice && current.scope === 'user' && current.groupMode === 'one' && untouched
     apply(forcedGroupMode === 'eachUser' || startsPerPerson ? chooseEachUser(current.studentIds, translate) : normalised)
   })
 
@@ -295,6 +299,13 @@ export default function NewDeploymentGroupsAssignmentView() {
               </button>
             </div>
           </div>
+
+          {draft.scopeChoice && teams.mode !== 'eachUser' ? (
+            <GroupEnvironmentChoice
+              value={draft.scope === 'user' ? 'user' : 'team'}
+              onChange={(scope) => useDeploymentStore.getState().updateDraft({ scope })}
+            />
+          ) : null}
 
           {!isForced ? (
             <div className="mt-4 bg-infoTint border-2 border-info/30 rounded-xl p-4 flex items-start gap-3">

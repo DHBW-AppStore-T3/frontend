@@ -5243,6 +5243,17 @@
             "title": "Runtime",
             "default": "kubernetes"
           },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
           "userInputVar": {
             "anyOf": [
               {
@@ -5502,6 +5513,17 @@
             "type": "string",
             "title": "Runtime",
             "default": "kubernetes"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
           },
           "userInputVar": {
             "anyOf": [

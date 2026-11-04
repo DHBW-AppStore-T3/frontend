@@ -336,6 +336,18 @@ export function parseGroups(userInputVar: unknown): DeploymentGroup[] {
   }))
 }
 
+/**
+ * What one environment of the deployment is: the scope the backend recorded (``scope``), else the choice made in
+ * the wizard (``userInputVar.scope``, for deployments from before the record). Null when neither says it.
+ */
+export function deploymentScope(deployment: { scope?: string | null; userInputVar?: unknown }): 'team' | 'user' | null {
+  const recorded = deployment.scope
+  if (recorded === 'team' || recorded === 'user') return recorded
+  const input = deployment.userInputVar
+  const chosen = input && typeof input === 'object' && !Array.isArray(input) ? (input as { scope?: unknown }).scope : undefined
+  return chosen === 'team' || chosen === 'user' ? chosen : null
+}
+
 export function parseVariables(userInputVar: unknown): Record<string, string> {
   const data = userInputObject(userInputVar)
   return data?.variables ?? {}

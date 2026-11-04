@@ -19,19 +19,24 @@ interface Props {
   unit: EnvironmentUnit
   people: number
   teams: ParticipantTeam[]
+  /** One environment per person although people are in groups (``scope: user`` with a group mode). */
+  ownEach?: boolean
   onEdit: () => void
 }
 
 /** "Teilnehmende": the mode in a chip, what it means in a sentence, and who is in it as one rail. */
-export default function SummaryParticipants({ mode, unit, people, teams, onEdit }: Props) {
+export default function SummaryParticipants({ mode, unit, people, teams, ownEach = false, onEdit }: Props) {
   const { t } = useTranslation()
   const titleId = useId()
   const title = t('deployment.summary.participants.title')
 
-  let sentence = t(`deployment.summary.participants.${mode}.${unit}`)
+  const perPersonInGroups = ownEach && mode !== 'eachUser'
+  let sentence = t(`deployment.summary.participants.${perPersonInGroups ? 'ownInGroups' : mode}.${unit}`)
   if (mode === 'custom') {
     sentence += ` ${t('deployment.summary.participants.customTotal', {
-      environments: t(`deployment.summary.counts.${unit === 'desktop' ? 'desktops' : 'pods'}`, { count: teams.length }),
+      environments: t(`deployment.summary.counts.${unit === 'desktop' ? 'desktops' : 'pods'}`, {
+        count: perPersonInGroups ? people : teams.length,
+      }),
       people: t('deployment.summary.counts.persons', { count: people }),
     })}`
   }

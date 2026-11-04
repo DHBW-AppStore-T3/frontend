@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest'
-import { parseGroups, parseVariables } from '../helpers'
+import { deploymentScope, parseGroups, parseVariables } from '../helpers'
+
+describe('deploymentScope', () => {
+  it('takes what the backend recorded', () => {
+    expect(deploymentScope({ scope: 'user', userInputVar: { scope: 'team' } })).toBe('user')
+    expect(deploymentScope({ scope: 'team' })).toBe('team')
+  })
+
+  it('falls back to the choice made in the wizard (deployments from before the record)', () => {
+    expect(deploymentScope({ scope: null, userInputVar: { scope: 'user' } })).toBe('user')
+  })
+
+  it('is null when neither says it, or says something else', () => {
+    expect(deploymentScope({ scope: null, userInputVar: { terraform: {} } })).toBeNull()
+    expect(deploymentScope({ scope: 'everyone', userInputVar: { scope: 'all' } })).toBeNull()
+    expect(deploymentScope({ userInputVar: '{"scope":"user"}' })).toBeNull()
+  })
+})
 
 // The API returns ``userInputVar`` as an object (OpenAPI: DeploymentResponse),
 // older data as a JSON string; both are read the same way.
