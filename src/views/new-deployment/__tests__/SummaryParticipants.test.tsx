@@ -41,11 +41,11 @@ describe('SummaryParticipants', () => {
   })
 
   it.each([
-    ['one', ONE, 'Jede Person bekommt eine eigene Umgebung; die Gruppen bestimmen, wer welche Dateien bekommt.'],
+    ['one', ONE, 'Jede Person bekommt eine eigene Umgebung; die Teams bestimmen, wer welche Dateien bekommt.'],
     [
       'custom',
       CUSTOM,
-      'Jede Person bekommt eine eigene Umgebung; die Gruppen bestimmen, wer welche Dateien bekommt. Das sind 3 Umgebungen für 3 Personen.',
+      'Jede Person bekommt eine eigene Umgebung; die Teams bestimmen, wer welche Dateien bekommt. Das sind 3 Umgebungen für 3 Personen.',
     ],
   ] as const)('says that in mode %s everybody still has an environment of their own', (mode, teams, sentence) => {
     setup({ mode, unit: 'pod', teams: [...teams], environment: 'user' })
@@ -54,7 +54,7 @@ describe('SummaryParticipants', () => {
 
   it.each([
     ['user', 'Eine Umgebung je Person'],
-    ['team', 'Eine Umgebung je Gruppe'],
+    ['team', 'Eine Umgebung je Team'],
   ] as const)('names the environments chosen for groups in a second chip (%s)', (environment, chip) => {
     setup({ mode: 'custom', teams: CUSTOM, environment })
     expect(screen.getByTestId('summary-environment')).toHaveTextContent(chip)
