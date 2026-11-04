@@ -354,7 +354,7 @@ describe('AppsDetailView', () => {
       expect(screen.getByTestId('version-runtime')).not.toHaveTextContent('perPersonOrGroup')
     })
 
-    it('sagt "je Person oder je Gruppe", wenn die App die Wahl lässt (auch bei Standard je Person)', async () => {
+    it('sagt "je Person oder je Team", wenn die App die Wahl lässt (auch bei Standard je Person)', async () => {
       vi.mocked(appApi.getRuntime).mockResolvedValue({
         data: { runtime: 'kubernetes', scope: 'user', scope_choice: true },
       } as any)

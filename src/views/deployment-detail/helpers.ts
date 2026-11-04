@@ -331,7 +331,7 @@ export function parseGroups(userInputVar: unknown): DeploymentGroup[] {
   const { groupNames, assignments } = data
   return Object.keys(assignments).map((groupIndex, idx) => ({
     index: parseInt(groupIndex),
-    name: groupNames[idx] || `Gruppe ${parseInt(groupIndex) + 1}`,
+    name: groupNames[idx] || `Team ${parseInt(groupIndex) + 1}`,
     students: assignments[groupIndex] || [],
   }))
 }

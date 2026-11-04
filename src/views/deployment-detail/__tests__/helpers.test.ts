@@ -207,7 +207,7 @@ describe('parseGroups / parseVariables', () => {
     ])
   })
   it('names groups when no group name is available', () => {
-    expect(parseGroups({ assignments: { 2: ['x'] } })[0]!.name).toBe('Gruppe 3')
+    expect(parseGroups({ assignments: { 2: ['x'] } })[0]!.name).toBe('Team 3')
   })
   it('returns empty arrays/objects for missing or invalid input', () => {
     expect(parseGroups(null)).toEqual([])

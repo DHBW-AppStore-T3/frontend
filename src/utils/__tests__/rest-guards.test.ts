@@ -134,7 +134,7 @@ describe('parseGroups / parseVariables with broken userInputVar (previously cras
   it('does not throw on groupNames/assignments of the wrong type', () => {
     quiet()
     expect(parseGroups({ groupNames: 'A', assignments: 'x' })).toEqual([])
-    expect(parseGroups({ groupNames: 5, assignments: { 0: 'x' } })).toEqual([{ index: 0, name: 'Gruppe 1', students: [] }])
+    expect(parseGroups({ groupNames: 5, assignments: { 0: 'x' } })).toEqual([{ index: 0, name: 'Team 1', students: [] }])
   })
 
   it('returns variables as strings only', () => {

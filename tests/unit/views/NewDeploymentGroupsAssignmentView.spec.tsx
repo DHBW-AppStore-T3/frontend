@@ -82,7 +82,7 @@ describe('NewDeploymentGroupsAssignmentView', () => {
     expect(screen.getByTestId('btn-next')).toBeDisabled()
   })
 
-  it('weist in "Eine Gruppe" alle einem Team zu', async () => {
+  it('weist in "Ein Team" alle einem Team zu', async () => {
     renderView()
     await screen.findByText('John Doe')
 
@@ -567,7 +567,7 @@ describe('NewDeploymentGroupsAssignmentView', () => {
       expect(draft().scope).toBe('user')
     })
 
-    it('startet bei Standard-Scope team in einer Gruppe', async () => {
+    it('startet bei Standard-Scope team in einem Team', async () => {
       choiceApp({ scope: 'team', groupMode: 'one' })
       renderView()
 
